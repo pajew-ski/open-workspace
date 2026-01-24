@@ -125,6 +125,19 @@
     padding: var(--space-4);
     border-top: 1px solid var(--color-border);
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.rightButtons {
+    display: flex;
     gap: var(--space-2);
+}
+
+.deleteBtn {
+    color: var(--color-error) !important;
+}
+
+.deleteBtn:hover {
+    background-color: #fef2f2 !important;
 }

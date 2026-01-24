@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { AppShell } from '@/components/layout';
-import { Button, Card, CardHeader, CardContent } from '@/components/ui';
+import { Button, Card, CardHeader, CardContent, ConfirmDialog } from '@/components/ui';
 import { TaskCard, Task } from '@/components/tasks/TaskCard';
 import { TaskModal } from '@/components/tasks/TaskModal';
 import { ProjectForm } from '@/components/tasks/ProjectForm';
@@ -33,6 +33,7 @@ export default function TasksPage() {
     const [editingProject, setEditingProject] = useState<Project | null>(null);
     const [isAddingTask, setIsAddingTask] = useState(false);
     const [isAddingProject, setIsAddingProject] = useState(false);
+    const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
     const { success, error } = useToast();
 
     useEffect(() => {
@@ -97,6 +98,23 @@ export default function TasksPage() {
             error('Status konnte nicht geändert werden');
         } else {
             success('Status geändert', () => handleMoveTask(taskId, oldTask.status));
+        }
+    };
+
+    const handleDeleteTask = async () => {
+        if (!taskToDelete) return;
+
+        const res = await fetch(`/api/tasks/${taskToDelete.id}`, {
+            method: 'DELETE'
+        });
+
+        if (res.ok) {
+            fetchData();
+            success('Aufgabe gelöscht');
+            setTaskToDelete(null);
+            setEditingTask(null);
+        } else {
+            error('Fehler beim Löschen');
         }
     };
 
@@ -178,8 +196,20 @@ export default function TasksPage() {
                     task={editingTask || undefined}
                     onClose={() => { setEditingTask(null); setIsAddingTask(false); }}
                     onSave={handleSaveTask}
+                    onDelete={async (id) => setTaskToDelete(editingTask)}
                 />
             )}
+
+            <ConfirmDialog
+                isOpen={!!taskToDelete}
+                title="Aufgabe löschen?"
+                message={`Möchtest du "${taskToDelete?.title}" wirklich löschen?`}
+                confirmText="Löschen"
+                cancelText="Abbrechen"
+                variant="danger"
+                onConfirm={handleDeleteTask}
+                onCancel={() => setTaskToDelete(null)}
+            />
 
             {(isAddingProject || editingProject) && (
                 <ProjectForm

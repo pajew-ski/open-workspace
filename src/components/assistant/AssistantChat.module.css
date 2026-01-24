@@ -1,6 +1,5 @@
 .container {
-    position: fixed;
-    z-index: var(--z-fab);
+    /* No positioning here to avoid blocking the screen */
 }
 
 /* FAB */
@@ -12,15 +11,16 @@
     height: 56px;
     border-radius: 50%;
     border: none;
-    background-color: var(--color-primary);
+    background-color: var(--color-primary, #00674F);
     color: white;
     cursor: pointer;
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all var(--transition-base);
-    z-index: var(--z-fab);
+    z-index: 10000;
+    pointer-events: auto;
 }
 
 .fab:hover {
@@ -49,14 +49,16 @@
     position: fixed;
     bottom: calc(var(--space-5) + 70px);
     right: var(--space-5);
+    background-color: #FFFFFF;
+    /* Fallback */
     background-color: var(--color-surface-elevated);
     border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-xl);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
     display: flex;
     flex-direction: column;
     overflow: hidden;
     animation: slideUp var(--transition-base);
-    z-index: calc(var(--z-modal) + 50);
+    z-index: 9000;
     border: 1px solid var(--color-border);
     backdrop-filter: blur(10px);
 }
@@ -107,8 +109,13 @@
     align-items: center;
     gap: var(--space-2);
     padding: var(--space-3);
+    background-color: #00674F;
+    /* Fallback */
     background-color: var(--color-primary);
     color: white;
+    flex-shrink: 0;
+    /* Important: Don't squish */
+    min-height: 52px;
 }
 
 .menuButton,
@@ -430,7 +437,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: calc(var(--z-modal) + 10);
+    z-index: 10000;
+    pointer-events: auto;
 }
 
 .renameDialog {

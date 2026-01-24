@@ -27,9 +27,10 @@ interface TaskModalProps {
     task?: Task;
     onClose: () => void;
     onSave: (task: any) => Promise<void>;
+    onDelete?: (id: string) => Promise<void>;
 }
 
-export function TaskModal({ task, onClose, onSave }: TaskModalProps) {
+export function TaskModal({ task, onClose, onSave, onDelete }: TaskModalProps) {
     const [formData, setFormData] = useState<Task>(task || {
         title: '',
         description: '',
@@ -152,10 +153,15 @@ export function TaskModal({ task, onClose, onSave }: TaskModalProps) {
                     )}
 
                     <div className={styles.footer}>
-                        <Button type="button" variant="ghost" onClick={onClose}>Abbrechen</Button>
-                        <Button type="submit" variant="primary" disabled={isLoading}>
-                            {isLoading ? 'Speichern...' : (task ? 'Aktualisieren' : 'Erstellen')}
-                        </Button>
+                        {task?.id && (
+                            <Button type="button" variant="ghost" onClick={() => onDelete?.(task.id!)} className={styles.deleteBtn}>Löschen</Button>
+                        )}
+                        <div className={styles.rightButtons}>
+                            <Button type="button" variant="ghost" onClick={onClose}>Abbrechen</Button>
+                            <Button type="submit" variant="primary" disabled={isLoading}>
+                                {isLoading ? 'Speichern...' : (task ? 'Aktualisieren' : 'Erstellen')}
+                            </Button>
+                        </div>
                     </div>
                 </form>
             </div>

@@ -537,6 +537,10 @@ export function AssistantChat() {
                             placeholder={connectionStatus === 'offline' ? 'AI offline...' : 'Schreib mir...'}
                             className={styles.input}
                             disabled={isLoading || connectionStatus === 'offline'}
+                            autoComplete="off"
+                            name="assistant-chat-input"
+                            data-lpignore="true"
+                            data-1p-ignore="true"
                         />
                         <button type="submit" className={styles.sendButton} disabled={!input.trim() || isLoading}>
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
