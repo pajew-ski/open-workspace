@@ -1,6 +1,7 @@
 import { AppShell } from '@/components/layout';
 import { Card, CardHeader, CardContent, Button } from '@/components/ui';
 import { ThemeSelector } from './ThemeSelector';
+import { CalendarSettings } from './CalendarSettings';
 import styles from './page.module.css';
 
 // Force dynamic rendering to use ThemeProvider context
@@ -84,6 +85,15 @@ export default function SettingsPage() {
                                 />
                             </div>
                         </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <h3>Kalender</h3>
+                    </CardHeader>
+                    <CardContent>
+                        <CalendarSettings />
                     </CardContent>
                 </Card>
 

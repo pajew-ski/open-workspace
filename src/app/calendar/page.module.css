@@ -1,0 +1,226 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - var(--header-height) - var(--space-8));
+    gap: var(--space-4);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+}
+
+.navigation {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.currentDate {
+    margin: 0 0 0 var(--space-4);
+    font-size: var(--text-xl);
+    font-weight: var(--font-bold);
+    min-width: 200px;
+}
+
+.viewToggle {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.calendarCard {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.calendarContent {
+    flex: 1;
+    padding: 0 !important;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+
+.loadingOverlay {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    font-weight: bold;
+}
+
+/* Month View */
+.monthGrid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-template-rows: auto 1fr 1fr 1fr 1fr 1fr;
+    /* Header + 5 weeks approx */
+    height: 100%;
+    border-left: 1px solid var(--color-border);
+    border-top: 1px solid var(--color-border);
+}
+
+.weekDayHeader {
+    padding: var(--space-2);
+    text-align: center;
+    font-weight: var(--font-semibold);
+    border-right: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+    background-color: var(--color-surface-sunken);
+}
+
+.dayCell {
+    border-right: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+    padding: var(--space-1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 80px;
+}
+
+.dimmed {
+    background-color: var(--color-surface-sunken);
+    opacity: 0.5;
+}
+
+.today {
+    background-color: var(--color-primary-subtle);
+}
+
+.dayNumber {
+    font-weight: var(--font-semibold);
+    font-size: var(--text-sm);
+    margin-bottom: var(--space-1);
+    text-align: right;
+    padding-right: var(--space-1);
+}
+
+.dayEvents {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow-y: auto;
+}
+
+.eventChip {
+    font-size: 10px;
+    padding: 2px 4px;
+    border-radius: var(--radius-sm);
+    color: white;
+    /* Assumption: most provider colors are dark enough */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+}
+
+.moreEvents {
+    font-size: 10px;
+    color: var(--color-text-secondary);
+    text-align: center;
+}
+
+/* Week View */
+.weekGrid {
+    display: flex;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.timeColumn {
+    width: 60px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--color-border);
+}
+
+.timeSlot {
+    height: 60px;
+    /* 1 hour */
+    border-bottom: 1px solid var(--color-border-subtle);
+    font-size: var(--text-xs);
+    color: var(--color-text-tertiary);
+    text-align: right;
+    padding-right: var(--space-2);
+    padding-top: var(--space-1);
+}
+
+.dayColumn {
+    flex: 1;
+    border-right: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    min-width: 100px;
+}
+
+.dayHeader {
+    height: 40px;
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--color-surface-sunken);
+}
+
+.dayName {
+    font-weight: bold;
+    font-size: var(--text-xs);
+}
+
+.dayNum {
+    font-size: var(--text-xs);
+}
+
+.dayContent {
+    flex: 1;
+    position: relative;
+    background-image: repeating-linear-gradient(to bottom, transparent, transparent 59px, var(--color-border-subtle) 60px);
+    background-size: 100% 60px;
+    /* Matches timeSlot height */
+    min-height: 1440px;
+    /* 24 * 60 */
+}
+
+.weekEvent {
+    position: absolute;
+    left: 2px;
+    right: 2px;
+    background-color: var(--color-primary);
+    color: white;
+    font-size: 10px;
+    padding: 2px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    height: 25px;
+    /* Fixed height for now, ideally dynamic */
+}
+
+/* Day View Placeholder */
+.placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--color-text-tertiary);
+}
+
+@media (max-width: 768px) {
+    .monthGrid {
+        grid-template-rows: auto repeat(5, minmax(60px, 1fr));
+    }
+
+    .currentDate {
+        font-size: var(--text-lg);
+    }
+}

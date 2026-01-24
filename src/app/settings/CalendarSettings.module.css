@@ -1,0 +1,127 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.info {
+    display: flex;
+    flex-direction: column;
+}
+
+.label {
+    font-weight: var(--font-semibold);
+    font-size: var(--text-base);
+    color: var(--color-text-primary);
+}
+
+.description {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+}
+
+.addForm {
+    background-color: var(--color-surface-sunken);
+    border: 1px solid var(--color-border);
+}
+
+.formGrid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.colorPicker {
+    display: flex;
+    gap: var(--space-2);
+    padding: var(--space-2) 0;
+}
+
+.colorDot {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform var(--transition-fast);
+}
+
+.colorDot:hover {
+    transform: scale(1.1);
+}
+
+.colorDot.active {
+    border-color: var(--color-text-primary);
+}
+
+.formActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    border-top: 1px solid var(--color-border);
+    padding-top: var(--space-4);
+}
+
+.empty {
+    text-align: center;
+    color: var(--color-text-tertiary);
+    font-size: var(--text-sm);
+    padding: var(--space-4);
+}
+
+.providerItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-3);
+    background-color: var(--color-surface-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+}
+
+.providerInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow: hidden;
+}
+
+.providerName {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-weight: var(--font-semibold);
+    font-size: var(--text-sm);
+}
+
+.providerColor {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.providerMeta {
+    font-size: var(--text-xs);
+    color: var(--color-text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.providerActions {
+    display: flex;
+    gap: var(--space-2);
+}
