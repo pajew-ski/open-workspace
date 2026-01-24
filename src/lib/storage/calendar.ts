@@ -126,12 +126,16 @@ export async function syncProvider(id: string) {
 
     try {
         // 1. Fetch ICS data
+        console.log(`[Calendar] Fetching ${provider.url}...`);
         const response = await fetch(provider.url);
         if (!response.ok) throw new Error(`Fetch failed: ${response.statusText}`);
         const icsData = await response.text();
+        console.log(`[Calendar] Fetched ${icsData.length} bytes`);
 
         // 2. Parse events
+        console.log(`[Calendar] Parsing ICS data...`);
         const parsedEvents = await parseICS(icsData);
+        console.log(`[Calendar] Parsed ${parsedEvents.length} events`);
 
         // 3. Map to internal format
         const newEvents: CalendarEvent[] = parsedEvents.map(e => ({

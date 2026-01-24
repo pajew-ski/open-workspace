@@ -24,8 +24,11 @@ export async function parseICS(icsData: string): Promise<ParsedEvent[]> {
         }
     }
 
+    console.log(`[ICS] Unfolded ${lines.length} lines`);
+
     let currentEvent: Partial<ParsedEvent> & { dtstart?: string; dtend?: string; dtstartParams?: string } = {};
     let inEvent = false;
+    let eventCount = 0;
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
@@ -38,21 +41,28 @@ export async function parseICS(icsData: string): Promise<ParsedEvent[]> {
 
         if (line.startsWith('END:VEVENT')) {
             inEvent = false;
+            eventCount++;
             // Parse dates only if we have DTSTART
             if (currentEvent.dtstart) {
-                const isDateOnly = currentEvent.dtstartParams?.includes('VALUE=DATE') || currentEvent.dtstart.length === 8;
-                const start = parseICALDate(currentEvent.dtstart);
-                const end = currentEvent.dtend ? parseICALDate(currentEvent.dtend) : (isDateOnly ? start : new Date(start.getTime() + 3600000));
+                try {
+                    const isDateOnly = currentEvent.dtstartParams?.includes('VALUE=DATE') || currentEvent.dtstart.length === 8;
+                    const start = parseICALDate(currentEvent.dtstart);
+                    const end = currentEvent.dtend ? parseICALDate(currentEvent.dtend) : (isDateOnly ? start : new Date(start.getTime() + 3600000));
 
-                events.push({
-                    uid: currentEvent.uid || Math.random().toString(36),
-                    summary: currentEvent.summary || '',
-                    description: currentEvent.description,
-                    start,
-                    end,
-                    location: currentEvent.location,
-                    allDay: isDateOnly
-                });
+                    events.push({
+                        uid: currentEvent.uid || Math.random().toString(36),
+                        summary: currentEvent.summary || '',
+                        description: currentEvent.description,
+                        start,
+                        end,
+                        location: currentEvent.location,
+                        allDay: isDateOnly
+                    });
+                } catch (e) {
+                    console.error('[ICS] Error parsing event date:', e, currentEvent);
+                }
+            } else {
+                console.warn('[ICS] Skipped event without DTSTART', currentEvent);
             }
             continue;
         }
