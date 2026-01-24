@@ -1,0 +1,61 @@
+{
+  "conversations": [
+    {
+      "id": "conv-1769246803368-l97j0o",
+      "title": "was siehst du?",
+      "messages": [
+        {
+          "id": "msg-1769246850437-leu2re",
+          "role": "user",
+          "content": "was siehst du?",
+          "timestamp": "2026-01-24T09:27:30.437Z"
+        },
+        {
+          "id": "msg-1769246871423-x5jrf8",
+          "role": "assistant",
+          "content": "Hey! Auf dem Dashboard siehst du in der Regel eine Übersicht deiner wichtigsten Infos und schnellen Zugriffsmöglichkeiten:\n\n- **Widgets / Kurzinfos**: z. B. aktuelle Aufgaben, Projekte, Kalender‑Highlights.\n- **Benachrichtigungen**: letzte Updates, Kommentare, Systemmeldungen.\n- **Verknüpfte Canvas‑Karten**: Schnell‑Links zu deinen häufig genutzten Canvas‑Boards.\n- **Filter & Suchleiste**: um gezielt nach Projekten oder Dokumenten zu suchen.\n- **Aktuelle Kennzahlen**: z. B. offene Aufgaben, abgeschlossene Aufgaben, anstehende Termine.\n\nFalls du etwas Bestimmtes suchst oder die Ansicht anpassen möchtest, sag einfach Bescheid! Ich kann dir helfen, die richtigen Module zu öffnen oder die Dashboards zu konfigurieren.",
+          "timestamp": "2026-01-24T09:27:51.423Z"
+        },
+        {
+          "id": "msg-1769246879101-34fyn2",
+          "role": "user",
+          "content": "was siehst du?",
+          "timestamp": "2026-01-24T09:27:59.101Z"
+        },
+        {
+          "id": "msg-1769246902381-xo9wtx",
+          "role": "assistant",
+          "content": "Ich sehe, dass du gerade im Modul **Wissensbasis** bist, Seite: **/knowledge**.  \nHier kannst du:\n\n* Notizen und Dokumente durchsuchen und bearbeiten  \n* Neue Notizen oder Markdown‑Dokumente anlegen  \n* Canvas‑Karten erstellen und miteinander verknüpfen  \n* Aufgaben verwalten und priorisieren  \n* Und natürlich alle anderen Module des Workspaces aufrufen, falls du etwas anderes brauchst.\n\nFalls du etwas Spezielles in der Wissensbasis suchen oder erstellen möchtest, sag mir einfach Bescheid!",
+          "timestamp": "2026-01-24T09:28:22.381Z"
+        },
+        {
+          "id": "msg-1769246918700-foec44",
+          "role": "user",
+          "content": "was siehst du?",
+          "timestamp": "2026-01-24T09:28:38.700Z"
+        },
+        {
+          "id": "msg-1769246954907-as64cx",
+          "role": "assistant",
+          "content": "Hey, du bist gerade im **Canvas‑Modul** auf der Seite **/canvas**.  \nHier siehst du die visuelle Planungsfläche – deine Karten, Boards und die dazugehörigen Werkzeuge:\n\n- **Leinwand**: frei platzierbare Karten (Text, Bilder, Links, Notizen usw.).\n- **Menüleiste**: Schnellzugriff auf neue Karten, Bearbeitung, Verknüpfungen und Layout‑Optionen.\n- **Such- & Filterleiste**: um schnell nach bestimmten Karten oder Inhalten zu suchen.\n- **Seitenleiste**: Übersicht über deine gespeicherten Canvas‑Projekte, Tags oder Kategorien.\n- **Karten‑Editor**: Drag‑&‑Drop, Textformatierung, Verknüpfungen zu anderen Modulen und mehr.\n\nWenn du etwas Bestimmtes machen möchtest – z. B. eine neue Karte anlegen, Karten verknüpfen oder die Layout‑Einstellungen anpassen – sag einfach Bescheid! Ich kümmere mich darum.",
+          "timestamp": "2026-01-24T09:29:14.907Z"
+        },
+        {
+          "id": "msg-1769246966416-qove99",
+          "role": "user",
+          "content": "was siehst du?",
+          "timestamp": "2026-01-24T09:29:26.416Z"
+        },
+        {
+          "id": "msg-1769246991529-d3u414",
+          "role": "assistant",
+          "content": "Du bist gerade im **Aufgaben‑Modul** (Seite: `/tasks`).  \nHier siehst du:\n\n- Eine Liste deiner aktuellen Aufgaben – gefiltert nach Status, Priorität oder Projekt.\n- Einen Kalender‑View, um Termine und Fälligkeiten auf einen Blick zu haben.\n- Filter‑ und Suchleiste, damit du schnell nach bestimmten Aufgaben oder Projekten kommst.\n- Aufzählungen der wichtigsten Kennzahlen (offene Aufgaben, erledigte Aufgaben, anstehende Deadlines).\n- Schnell‑Buttons zum Erstellen neuer Aufgaben, zu Ordnern oder zu Projekten.\n\nFalls du etwas Bestimmtes ändern oder ergänzen möchtest, sag einfach Bescheid!",
+          "timestamp": "2026-01-24T09:29:51.529Z"
+        }
+      ],
+      "createdAt": "2026-01-24T09:26:43.368Z",
+      "updatedAt": "2026-01-24T09:29:51.529Z"
+    }
+  ],
+  "activeId": "conv-1769246803368-l97j0o"
+}
