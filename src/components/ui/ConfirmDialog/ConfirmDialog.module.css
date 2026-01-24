@@ -1,0 +1,89 @@
+.overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: var(--z-modal);
+    animation: fadeIn var(--transition-fast);
+}
+
+.dialog {
+    background-color: var(--color-surface-elevated);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    max-width: 400px;
+    width: 90%;
+    box-shadow: var(--shadow-xl);
+    text-align: center;
+    outline: none;
+    animation: scaleIn var(--transition-fast);
+}
+
+.icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto var(--space-4);
+}
+
+.icon.danger {
+    background-color: var(--color-error-subtle);
+    color: var(--color-error);
+}
+
+.icon.warning {
+    background-color: var(--color-warning-subtle);
+    color: var(--color-warning);
+}
+
+.icon.info {
+    background-color: var(--color-primary-subtle);
+    color: var(--color-primary);
+}
+
+.title {
+    margin: 0 0 var(--space-2) 0;
+    font-size: var(--text-lg);
+    font-weight: var(--font-semibold);
+    color: var(--color-text-primary);
+}
+
+.message {
+    margin: 0 0 var(--space-5) 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    line-height: var(--leading-relaxed);
+}
+
+.actions {
+    display: flex;
+    gap: var(--space-3);
+    justify-content: center;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}

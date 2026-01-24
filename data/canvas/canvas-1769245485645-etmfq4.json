@@ -1,0 +1,37 @@
+{
+  "id": "canvas-1769245485645-etmfq4",
+  "name": "idee workspace",
+  "description": "",
+  "cards": [
+    {
+      "id": "card-1769245489091-5nw09j",
+      "type": "note",
+      "title": "Neue Karte",
+      "x": 580,
+      "y": 240,
+      "width": 240,
+      "height": 180,
+      "createdAt": "2026-01-24T09:04:49.091Z",
+      "updatedAt": "2026-01-24T09:04:49.091Z"
+    },
+    {
+      "id": "card-1769245495291-0wb7ih",
+      "type": "note",
+      "title": "Neue Karte",
+      "x": 580,
+      "y": 360,
+      "width": 240,
+      "height": 180,
+      "createdAt": "2026-01-24T09:04:55.291Z",
+      "updatedAt": "2026-01-24T09:04:56.338Z"
+    }
+  ],
+  "connections": [],
+  "viewport": {
+    "x": 0,
+    "y": 0,
+    "zoom": 1
+  },
+  "createdAt": "2026-01-24T09:04:45.645Z",
+  "updatedAt": "2026-01-24T09:04:56.338Z"
+}

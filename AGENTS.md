@@ -125,6 +125,22 @@ bun run build  # Produktion
 - **Umlaute**: Korrekte ä, ö, ü, ß verwenden (nie ae, oe, ue)
 - **Design**: Mobile-first, responsive
 
+## Safety & UX Regeln
+
+### Löschen
+- **Immer Bestätigung**: Löschvorgänge erfordern IMMER eine Sicherheitsabfrage
+- Dialog mit Titel, Beschreibung und "Abbrechen" / "Löschen" Buttons
+- Kein silentes Löschen ohne explizite Nutzer-Bestätigung
+
+### Auto-Save
+- Automatisches Speichern muss IMMER eine Undo-Möglichkeit bieten
+- Toast-Benachrichtigung: "Gespeichert" mit "Rückgängig" Button
+- Undo-Zeitfenster: mindestens 5 Sekunden
+
+### Bestätigungen
+- Destruktive Aktionen (Löschen, Überschreiben) = Bestätigungsdialog
+- Konstruktive Aktionen (Erstellen, Speichern) = Keine Bestätigung nötig
+
 ## Design System
 
 - **Stil**: Digital Zen Garden (minimal, fokussiert)

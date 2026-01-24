@@ -1,0 +1,409 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - var(--header-height) - var(--space-10));
+    gap: var(--space-2);
+}
+
+.toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-2) var(--space-3);
+    background-color: var(--color-surface-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.toolGroup {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.divider {
+    width: 1px;
+    height: 24px;
+    background-color: var(--color-border-subtle);
+}
+
+.zoomLevel {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    min-width: 50px;
+    text-align: center;
+}
+
+.select {
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
+    font-size: var(--text-sm);
+}
+
+.connectionEditor {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background-color: var(--color-surface-elevated);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius-lg);
+}
+
+.connectionLabelInput {
+    flex: 1;
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
+    font-size: var(--text-sm);
+    min-width: 150px;
+}
+
+.canvas {
+    flex: 1;
+    position: relative;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    cursor: grab;
+}
+
+.canvas:active {
+    cursor: grabbing;
+}
+
+.canvas.connectingMode {
+    cursor: crosshair;
+}
+
+.grid {
+    position: absolute;
+    width: 20000px;
+    height: 20000px;
+    left: -10000px;
+    top: -10000px;
+    background-image: linear-gradient(var(--color-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--color-border-subtle) 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+.connections {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+}
+
+.connectionGroup {
+    pointer-events: auto;
+}
+
+.connectionHitArea {
+    cursor: pointer;
+}
+
+.connectionLine {
+    pointer-events: none;
+}
+
+.connectionLabel {
+    font-family: inherit;
+    pointer-events: none;
+}
+
+.card {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--color-surface-elevated);
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    cursor: move;
+    overflow: hidden;
+    transition: box-shadow var(--transition-fast);
+    user-select: none;
+}
+
+.card:hover {
+    box-shadow: var(--shadow-lg);
+}
+
+.card.selected {
+    box-shadow: 0 0 0 3px var(--color-primary), var(--shadow-lg);
+}
+
+.card.connectable {
+    cursor: crosshair;
+}
+
+.card.connectable:hover {
+    box-shadow: 0 0 0 3px var(--color-primary-light), var(--shadow-lg);
+}
+
+.cardHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2);
+    border-bottom: 1px solid var(--color-border-subtle);
+    background-color: var(--color-surface-sunken);
+    min-height: 36px;
+}
+
+.cardTitle {
+    flex: 1;
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    color: var(--color-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cardTitleInput {
+    flex: 1;
+    border: none;
+    background: var(--color-surface);
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    color: var(--color-text-primary);
+    outline: none;
+    padding: var(--space-1);
+    border-radius: var(--radius-sm);
+}
+
+.cardDelete {
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-text-tertiary);
+    font-size: 16px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.cardDelete:hover {
+    background-color: var(--color-error-subtle);
+    color: var(--color-error);
+}
+
+.cardBody {
+    flex: 1;
+    overflow: auto;
+    min-height: 0;
+}
+
+.cardContent {
+    padding: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+}
+
+.cardContent h2,
+.cardContent h3,
+.cardContent h4 {
+    margin: 0 0 var(--space-1) 0;
+    color: var(--color-text-primary);
+}
+
+.cardContent code {
+    background-color: var(--color-surface-sunken);
+    padding: 1px 4px;
+    border-radius: var(--radius-sm);
+    font-family: monospace;
+    font-size: 0.9em;
+}
+
+.cardContentEdit {
+    width: 100%;
+    height: 100%;
+    padding: var(--space-2);
+    border: none;
+    resize: none;
+    font-size: var(--text-sm);
+    font-family: monospace;
+    color: var(--color-text-primary);
+    background: var(--color-surface);
+    outline: none;
+}
+
+.cardContentEdit::placeholder {
+    color: var(--color-text-tertiary);
+}
+
+.cardFooter {
+    display: flex;
+    gap: var(--space-1);
+    padding: var(--space-2);
+    border-top: 1px solid var(--color-border-subtle);
+}
+
+.colorDot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform var(--transition-fast);
+}
+
+.colorDot:hover {
+    transform: scale(1.2);
+}
+
+.colorDot.colorActive {
+    border-color: var(--color-text-primary);
+}
+
+.resizeHandle {
+    position: absolute;
+    background: transparent;
+    z-index: 10;
+}
+
+.resizeHandle:hover {
+    background: var(--color-primary-subtle);
+}
+
+.resizeSE {
+    right: 0;
+    bottom: 0;
+    width: 12px;
+    height: 12px;
+    cursor: se-resize;
+}
+
+.resizeSW {
+    left: 0;
+    bottom: 0;
+    width: 12px;
+    height: 12px;
+    cursor: sw-resize;
+}
+
+.resizeNE {
+    right: 0;
+    top: 0;
+    width: 12px;
+    height: 12px;
+    cursor: ne-resize;
+}
+
+.resizeNW {
+    left: 0;
+    top: 0;
+    width: 12px;
+    height: 12px;
+    cursor: nw-resize;
+}
+
+.resizeE {
+    right: 0;
+    top: 12px;
+    bottom: 12px;
+    width: 6px;
+    cursor: e-resize;
+}
+
+.resizeW {
+    left: 0;
+    top: 12px;
+    bottom: 12px;
+    width: 6px;
+    cursor: w-resize;
+}
+
+.resizeN {
+    top: 0;
+    left: 12px;
+    right: 12px;
+    height: 6px;
+    cursor: n-resize;
+}
+
+.resizeS {
+    bottom: 0;
+    left: 12px;
+    right: 12px;
+    height: 6px;
+    cursor: s-resize;
+}
+
+.emptyState {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: var(--color-text-tertiary);
+    pointer-events: none;
+}
+
+.emptyState h3 {
+    margin: 0 0 var(--space-2) 0;
+    font-size: var(--text-lg);
+    color: var(--color-text-secondary);
+}
+
+.minimap {
+    position: absolute;
+    right: var(--space-3);
+    bottom: var(--space-3);
+    width: 150px;
+    height: 100px;
+    background-color: var(--color-surface-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    opacity: 0.8;
+}
+
+.minimap:hover {
+    opacity: 1;
+}
+
+.help {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-4);
+    padding: var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--color-text-tertiary);
+    background-color: var(--color-surface-sunken);
+    border-radius: var(--radius-md);
+}
+
+.help span {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+@media (max-width: 768px) {
+    .container {
+        height: calc(100vh - var(--header-height) - var(--space-6));
+    }
+
+    .help {
+        display: none;
+    }
+
+    .minimap {
+        display: none;
+    }
+}
