@@ -106,3 +106,122 @@
     color: var(--color-text-tertiary);
     padding: 24px;
 }
+
+/* Image Widget */
+.imageWidget {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.imageContainer {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+}
+
+.widgetImage {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.uploadOverlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.imageContainer:hover .uploadOverlay {
+    opacity: 1;
+}
+
+.uploadPlaceholder {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    color: var(--color-text-secondary);
+    background: var(--color-surface-sunken);
+    border-radius: var(--radius-md);
+    border: 2px dashed var(--color-border);
+}
+
+.uploadBtn,
+.urlBtn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: var(--radius-sm);
+    transition: background 0.2s;
+    border: none;
+    background: transparent;
+    color: inherit;
+}
+
+.uploadBtn:hover,
+.urlBtn:hover {
+    background: var(--color-surface-hover);
+    color: var(--color-primary);
+}
+
+.orDivider {
+    font-size: 12px;
+    margin: 8px 0;
+    color: var(--color-text-tertiary);
+}
+
+.urlInput {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+    margin-bottom: 8px;
+}
+
+.urlActions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.cancelBtn,
+.saveBtn,
+.overlayBtn {
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    cursor: pointer;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+}
+
+.saveBtn {
+    background: var(--color-primary);
+    color: white;
+    border: none;
+}
+
+.overlayBtn {
+    background: white;
+    color: black;
+    border: none;
+    font-weight: 500;
+}

@@ -7,10 +7,10 @@
       "order": 0
     },
     {
-      "id": "activity-1",
-      "type": "activity",
-      "title": "Letzte Aktivitäten",
-      "order": 1
+      "id": "image-1769262146726",
+      "type": "image",
+      "order": 1,
+      "url": "https://upload.wikimedia.org/wikipedia/commons/c/c3/NGC_4414_%28NASA-med%29.jpg"
     },
     {
       "id": "stats-1",
@@ -18,15 +18,15 @@
       "order": 2
     },
     {
-      "id": "quick-1",
-      "type": "quick-access",
+      "id": "activity-1",
+      "type": "activity",
+      "title": "Letzte Aktivitäten",
       "order": 3
     },
     {
-      "id": "image-1769262146726",
-      "type": "image",
-      "order": 4,
-      "url": "https://upload.wikimedia.org/wikipedia/commons/c/c3/NGC_4414_%28NASA-med%29.jpg"
+      "id": "quick-1",
+      "type": "quick-access",
+      "order": 4
     }
   ]
 }
