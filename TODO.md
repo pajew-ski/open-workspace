@@ -32,11 +32,11 @@
 - [ ] Module container with consistent spacing
 
 ### Dashboard Module
-- [ ] Dashboard page layout
-- [ ] Activity feed component
-- [ ] Quick stats widgets
-- [ ] Recent items list
-- [ ] Chat widget integration
+- [x] Dashboard page layout
+- [x] Activity feed component
+- [x] Quick stats widgets
+- [x] Recent items list
+- [x] Chat widget integration
 
 ### Knowledge Base Module
 - [ ] Knowledge base page layout
@@ -58,14 +58,14 @@
 - [ ] Chat widget integration
 
 ### Tasks Module
-- [ ] Tasks page layout
-- [ ] Task list with status (open/in-progress/done)
-- [ ] Project grouping
-- [ ] Priority levels
-- [ ] Due dates and reminders
-- [ ] Task filtering and sorting
-- [ ] Add task (+) widget
-- [ ] Chat widget integration
+- [x] Tasks page layout
+- [x] Task list with status (open/in-progress/done)
+- [x] Project grouping
+- [x] Priority levels
+- [x] Due dates and reminders
+- [x] Task filtering and sorting
+- [x] Add task (+) widget
+- [x] Chat widget integration
 
 ---
 
@@ -89,10 +89,10 @@
 - [ ] Conflict resolution
 
 ### Inference Client
-- [ ] Ollama API client implementation
-- [ ] Streaming response handler
-- [ ] Error handling and retry logic
-- [ ] Model configuration management
+- [x] Ollama/Hybrid API client implementation
+- [x] Streaming response handler
+- [x] Error handling and retry logic
+- [x] Model configuration management (Env vars)
 
 ### A2A Protocol
 - [ ] Agent card schema
@@ -107,11 +107,11 @@
 - [ ] Streaming UI updates
 
 ### Chat Widget
-- [ ] Base chat component
-- [ ] Message list with markdown
-- [ ] Input with send action
-- [ ] Context injection per module
-- [ ] Streaming response display
+- [x] Base chat component
+- [x] Message list with markdown
+- [x] Input with send action
+- [x] Context injection per module
+- [x] Streaming response display
 
 ### MCP Protocol
 - [ ] MCP server implementation
@@ -145,17 +145,18 @@
 ## Phase 5: Polish
 
 ### Settings Module
-- [ ] Theme selection (light/dark/system)
+- [x] Theme selection (light/dark/system)
 - [ ] Language selection (de/en)
-- [ ] AI endpoint configuration
-- [ ] Model selection
+- [x] AI endpoint configuration
+- [x] Model selection
 - [ ] Notification preferences
 
 ### Search
-- [ ] Global search implementation
-- [ ] Module-specific search
-- [ ] Search result highlighting
-- [ ] Keyboard shortcuts (Cmd+K)
+- [x] Global search implementation
+- [x] Module-specific search
+- [x] Search result highlighting
+- [x] Keyboard shortcuts (Cmd+K/Cmd+F)
+- [x] Fuzzy search & Modifiers
 
 ### Notifications
 - [ ] Notification center component
@@ -176,9 +177,9 @@
 - [ ] Export/import functionality
 - [ ] Version history for notes
 - [ ] Collaborative editing (future)
-- [ ] Additional AI providers
+- [x] Additional AI providers (Groq/OpenAI)
 - [ ] Plugin/extension system
-- [ ] Mobile-optimized views
+- [x] Mobile-optimized views (Sidebar Overlay)
 - [ ] GitLab sync support
 
 ---
