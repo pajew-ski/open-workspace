@@ -381,12 +381,52 @@ export default function CanvasEditorPage() {
         const from = cards.find(c => c.id === conn.fromId);
         const to = cards.find(c => c.id === conn.toId);
         if (!from || !to) return null;
-        const x1 = from.x + from.width / 2, y1 = from.y + from.height / 2;
-        const x2 = to.x + to.width / 2, y2 = to.y + to.height / 2;
+
+        // Calculate center points
+        const fromCenterX = from.x + from.width / 2;
+        const fromCenterY = from.y + from.height / 2;
+        const toCenterX = to.x + to.width / 2;
+        const toCenterY = to.y + to.height / 2;
+
+        // Calculate angle between centers
+        const angle = Math.atan2(toCenterY - fromCenterY, toCenterX - fromCenterX);
+
+        // Calculate edge intersection points
+        const getEdgePoint = (card: CanvasCard, angleToOther: number): { x: number; y: number } => {
+            const cx = card.x + card.width / 2;
+            const cy = card.y + card.height / 2;
+            const hw = card.width / 2;
+            const hh = card.height / 2;
+
+            // Check which edge the line intersects
+            const tanAngle = Math.tan(angleToOther);
+            let edgeX, edgeY;
+
+            // Right or left edge
+            if (Math.abs(Math.cos(angleToOther)) * hh > Math.abs(Math.sin(angleToOther)) * hw) {
+                // Intersects left or right edge
+                edgeX = cx + (Math.cos(angleToOther) > 0 ? hw : -hw);
+                edgeY = cy + (Math.cos(angleToOther) > 0 ? hw : -hw) * tanAngle;
+            } else {
+                // Intersects top or bottom edge
+                const cotAngle = 1 / tanAngle;
+                edgeY = cy + (Math.sin(angleToOther) > 0 ? hh : -hh);
+                edgeX = cx + (Math.sin(angleToOther) > 0 ? hh : -hh) * cotAngle;
+            }
+
+            return { x: edgeX, y: edgeY };
+        };
+
+        const fromEdge = getEdgePoint(from, angle);
+        const toEdge = getEdgePoint(to, angle + Math.PI);
+
+        const x1 = fromEdge.x, y1 = fromEdge.y;
+        const x2 = toEdge.x, y2 = toEdge.y;
         const midX = (x1 + x2) / 2, midY = (y1 + y2) / 2;
-        const angle = Math.atan2(y2 - y1, x2 - x1);
+
         const arrowLength = 12, arrowAngle = Math.PI / 6;
         const isSelected = editingConnectionId === conn.id;
+
         return (
             <g key={conn.id} className={styles.connectionGroup}>
                 <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="transparent" strokeWidth={20} className={styles.connectionHitArea} onClick={() => setEditingConnectionId(conn.id)} />

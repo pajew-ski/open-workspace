@@ -7,31 +7,62 @@
       "id": "card-1769245489091-5nw09j",
       "type": "note",
       "title": "Neue Karte",
-      "x": 580,
-      "y": 240,
+      "x": 500,
+      "y": 220,
       "width": 240,
       "height": 180,
       "createdAt": "2026-01-24T09:04:49.091Z",
-      "updatedAt": "2026-01-24T09:04:49.091Z"
+      "updatedAt": "2026-01-24T09:09:00.837Z"
     },
     {
       "id": "card-1769245495291-0wb7ih",
       "type": "note",
+      "title": "Karte 1",
+      "x": 400,
+      "y": 660,
+      "width": 440,
+      "height": 360,
+      "createdAt": "2026-01-24T09:04:55.291Z",
+      "updatedAt": "2026-01-24T09:09:45.154Z",
+      "color": "#ea580c"
+    },
+    {
+      "id": "card-1769245559285-jpipng",
+      "type": "note",
       "title": "Neue Karte",
-      "x": 580,
-      "y": 360,
+      "x": 960,
+      "y": 320,
       "width": 240,
       "height": 180,
-      "createdAt": "2026-01-24T09:04:55.291Z",
-      "updatedAt": "2026-01-24T09:04:56.338Z"
+      "createdAt": "2026-01-24T09:05:59.285Z",
+      "updatedAt": "2026-01-24T09:08:07.857Z"
     }
   ],
-  "connections": [],
+  "connections": [
+    {
+      "id": "conn-1769245672069",
+      "fromId": "card-1769245489091-5nw09j",
+      "toId": "card-1769245559285-jpipng",
+      "type": "directional"
+    },
+    {
+      "id": "conn-1769245677556",
+      "fromId": "card-1769245495291-0wb7ih",
+      "toId": "card-1769245489091-5nw09j",
+      "type": "bidirectional"
+    },
+    {
+      "id": "conn-1769245690406",
+      "fromId": "card-1769245495291-0wb7ih",
+      "toId": "card-1769245559285-jpipng",
+      "type": "directional"
+    }
+  ],
   "viewport": {
     "x": 0,
     "y": 0,
     "zoom": 1
   },
   "createdAt": "2026-01-24T09:04:45.645Z",
-  "updatedAt": "2026-01-24T09:04:56.338Z"
+  "updatedAt": "2026-01-24T09:09:45.154Z"
 }
