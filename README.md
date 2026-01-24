@@ -57,9 +57,25 @@ src/
 ├── app/          # Seiten und API-Routen
 ├── components/   # Wiederverwendbare UI-Komponenten
 ├── lib/          # Core-Utilities und Clients
-├── stores/       # State Management
+│   ├── inference/  # Ollama Client
+│   └── storage/    # Datenspeicher (Notes, Tasks)
 └── types/        # TypeScript Definitionen
+data/
+├── notes/        # Markdown-Notizen (GitHub-sync ready)
+├── tasks/        # Aufgaben (JSON)
+└── canvas/       # Canvas-Karten (JSON)
 ```
+
+## API Routes
+
+| Route | Beschreibung |
+|-------|--------------|
+| `POST /api/chat` | AI Chat mit Streaming |
+| `GET /api/chat/health` | Ollama Verbindungsstatus |
+| `GET/POST /api/notes` | Notizen auflisten/erstellen |
+| `GET/PUT/DELETE /api/notes/[id]` | Notiz bearbeiten |
+| `GET/POST /api/tasks` | Aufgaben auflisten/erstellen |
+| `GET/PUT/DELETE /api/tasks/[id]` | Aufgabe bearbeiten |
 
 ## Dokumentation
 

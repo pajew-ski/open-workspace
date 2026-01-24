@@ -14,7 +14,7 @@ Der **Persönliche Assistent** ist der zentrale AI-Agent und einziger Ansprechpa
 - **Kontext-bewusst**: Weiß immer, auf welcher Seite der Nutzer ist und was er sieht
 - **Vollzugriff**: Hat Zugriff auf den gesamten Workspace, alle Module und Daten
 - **Koordinator**: Kann alle anderen Agenten delegieren und orchestrieren
-- **Allgegenwärtig**: Als Chat-Widget unten links auf allen Seiten verfügbar
+- **Allgegenwärtig**: Als Chat-Widget unten rechts auf allen Seiten verfügbar
 
 ### Fähigkeiten
 - Wissensbasis durchsuchen und bearbeiten
@@ -47,16 +47,20 @@ open-workspace/
 │   │   ├── communication/        # Matrix Chat
 │   │   ├── settings/             # Einstellungen
 │   │   └── api/                  # API-Routen
+│   │       ├── chat/             # AI Chat + Health
+│   │       ├── notes/            # Notes CRUD
+│   │       └── tasks/            # Tasks CRUD
 │   ├── components/
 │   │   ├── ui/                   # Base UI (Material Design)
-│   │   ├── chat/                 # Chat-Widget
 │   │   ├── layout/               # App Shell
 │   │   └── assistant/            # Persönlicher Assistent
-│   ├── lib/
-│   │   ├── agents/               # A2A Client
-│   │   └── inference/            # Ollama Client
-│   └── stores/                   # Zustand State
-├── data/                         # JSON Datenspeicher
+│   └── lib/
+│       ├── inference/            # Ollama Client
+│       └── storage/              # Notes (MD), Tasks (JSON)
+├── data/
+│   ├── notes/                    # Markdown-Notizen (GitHub-sync)
+│   ├── tasks/                    # Aufgaben (JSON)
+│   └── canvas/                   # Canvas-Karten (JSON)
 └── public/                       # Static Assets
 ```
 
@@ -84,6 +88,14 @@ open-workspace/
 **Endpunkt**: `http://192.168.42.2:11434`
 **Modell**: `gpt-oss-20`
 **API**: Ollama REST API
+
+## Data Layer
+
+### Notizen (Markdown)
+Gespeichert als `.md` Dateien mit YAML Frontmatter in `data/notes/` für GitHub-Synchronisation.
+
+### Aufgaben (JSON)
+Gespeichert in `data/tasks/tasks.json` mit Kanban-Status (open/in-progress/done).
 
 ## Modul-Agenten
 
