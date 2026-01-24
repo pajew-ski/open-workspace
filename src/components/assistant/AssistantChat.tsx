@@ -30,6 +30,7 @@ const MODULE_CONTEXT: Record<string, { name: string; description: string }> = {
     '/knowledge': { name: 'Wissensbasis', description: 'Notizen und Dokumente' },
     '/canvas': { name: 'Canvas', description: 'Visuelle Planung' },
     '/tasks': { name: 'Aufgaben', description: 'Projekt- und Aufgabenverwaltung' },
+    '/calendar': { name: 'Kalender', description: 'Termine und Zeitplanung' },
     '/agents': { name: 'Agenten', description: 'A2A Agent-Konfiguration' },
     '/communication': { name: 'Kommunikation', description: 'Matrix Chat' },
     '/settings': { name: 'Einstellungen', description: 'App-Konfiguration' },
@@ -275,6 +276,28 @@ export function AssistantChat() {
         setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: '', timestamp: new Date().toISOString() }]);
 
         try {
+            // Fetch calendar events if on calendar page
+            let additionalContext = '';
+            if (pathname === '/calendar') {
+                try {
+                    const start = new Date();
+                    const end = new Date();
+                    end.setDate(end.getDate() + 7); // Next 7 days
+
+                    const res = await fetch(`/api/calendar?action=events&start=${start.toISOString()}&end=${end.toISOString()}`);
+                    const data = await res.json();
+                    if (data.events && data.events.length > 0) {
+                        additionalContext = `\nAKTUELLE TERMINE (nächste 7 Tage):\n${data.events.map((e: any) =>
+                            `- ${new Date(e.startDate).toLocaleString('de-DE')}: ${e.title} ${e.location ? `(${e.location})` : ''}`
+                        ).join('\n')}`;
+                    } else {
+                        additionalContext = '\nAKTUELLE TERMINE: Keine Termine in den nächsten 7 Tagen gefunden.';
+                    }
+                } catch (e) {
+                    console.error('Failed to fetch calendar context', e);
+                }
+            }
+
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -283,7 +306,11 @@ export function AssistantChat() {
                         role: m.role,
                         content: m.content,
                     })),
-                    context: { module: currentModule.name, moduleDescription: currentModule.description, pathname },
+                    context: {
+                        module: currentModule.name,
+                        moduleDescription: currentModule.description + additionalContext,
+                        pathname
+                    },
                     stream: true,
                 }),
             });

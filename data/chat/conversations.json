@@ -1,24 +1,31 @@
 {
   "conversations": [
     {
-      "id": "conv-1769247132567-k2mlkk",
-      "title": "welche termine siehst du?",
+      "id": "conv-1769248487241-q2zn0s",
+      "title": "Chat 24.1.2026",
+      "messages": [],
+      "createdAt": "2026-01-24T09:54:47.241Z",
+      "updatedAt": "2026-01-24T09:54:47.241Z"
+    },
+    {
+      "id": "conv-1769248278976-ia8rzv",
+      "title": "Test der Kontext Awareness Kalender",
       "messages": [
         {
-          "id": "msg-1769248102228-4rcpev",
+          "id": "msg-1769248283932-sfxeao",
           "role": "user",
-          "content": "welche termine siehst du?",
-          "timestamp": "2026-01-24T09:48:22.228Z"
+          "content": "welche termine habe ich heute?",
+          "timestamp": "2026-01-24T09:51:23.932Z"
         },
         {
-          "id": "msg-1769248138127-qs145l",
+          "id": "msg-1769248300100-6dibk4",
           "role": "assistant",
-          "content": "Hier sind die nächsten Termine, die ich in deinem Kalender sehe:\n\n| Datum & Uhrzeit | Thema / Titel | Ort / Kanal | Teilnehmer |\n|-----------------|----------------|-------------|------------|\n| **01.02.2026 – 09:00 – 10:00** | Team‑Standup | Konferenzraum A | Team A |\n| **01.02.2026 – 11:30 – 12:15** | Kundenpräsentation – Projekt X | Videokonferenz (Zoom) | Kunde X, Projektteam |\n| **01.02.2026 – 14:00 – 15:30** | Workshop „Agiles Arbeiten“ | Co‑Working‑Space | Alle Team‑Mitglieder |\n| **02.02.2026 – 10:00 – 10:45** | 1:1 Meeting mit Max | Büro B | Max & du |\n| **02.02.2026 – 16:00 – 17:00** | Abschlussmeeting Sprint 5 | Konferenzraum B | Scrum‑Team |\n\n**Wolltest du etwas zu einem dieser Termine hinzufügen, verschieben oder weitere Details sehen?**  \nIch kann dir auch helfen, neue Termine zu planen oder Erinnerungen einzurichten. 🚀",
-          "timestamp": "2026-01-24T09:48:58.127Z"
+          "content": "Du hast heute zwei Termine:\n\n| Uhrzeit | Veranstaltung | Ort |\n|--------|----------------|-----|\n| 20:00 – 20:45 | Tanzstudio Danceimperial | Dr‑Gessler‑Straße 47, 93051 Regensburg |\n| 20:30 – 21:15 | Tango im Fluss | Osterhofener Str. 14a, 93055 Regensburg |\n\nViel Spaß beim Tanzen!",
+          "timestamp": "2026-01-24T09:51:40.100Z"
         }
       ],
-      "createdAt": "2026-01-24T09:32:12.567Z",
-      "updatedAt": "2026-01-24T09:48:58.127Z"
+      "createdAt": "2026-01-24T09:51:18.976Z",
+      "updatedAt": "2026-01-24T09:52:05.056Z"
     },
     {
       "id": "conv-1769246803368-l97j0o",
@@ -77,5 +84,5 @@
       "updatedAt": "2026-01-24T09:32:05.606Z"
     }
   ],
-  "activeId": "conv-1769247132567-k2mlkk"
+  "activeId": "conv-1769248487241-q2zn0s"
 }
