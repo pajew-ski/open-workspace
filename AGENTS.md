@@ -92,10 +92,13 @@ open-workspace/
 ### Agent Tools
 - Verfügbare Tools sind in [TOOLS.md](./TOOLS.md) dokumentiert.
 - Standard-Tool: `workspace_finder` (Global Finder)
+  - Unterstützt Fuzzy-Suche (Levenshtein) für Inhalte und Befehle
+  - Smart Modifiers: `@task`, `@note`, `@termin`, `@chat`, `@projekt`
+  - Findet auch Aufgaben ohne Projektzuordnung via `@projekt`
 
 ## AI Inference
 
-**Endpunkt**: `http://192.168.42.2:11434`
+**Endpunkt**: `Konfigurierbar via .env`
 **Modell**: `gpt-oss:20b` (konfigurierbar)
 **API**: Ollama REST API
 
@@ -140,7 +143,8 @@ bun run build  # Produktion
 - **UI-Labels**: Deutsch (Standard), Englisch (umschaltbar)
 - **Anrede**: Immer informell (du-Form, nie Sie-Form)
 - **Umlaute**: Korrekte ä, ö, ü, ß verwenden (nie ae, oe, ue)
-- **Design**: Mobile-first, responsive
+- **Design**: **Mobile First!** UI muss auf kleinen Screens perfekt funktionieren (Overlay Sidebar, Burger Menü).
+- **Navigation**: Logische Sortierung beachten (Übersicht -> Aufgaben -> Kalender...)
 
 ## Safety & UX Regeln
 

@@ -9,10 +9,11 @@ Ein umfassender, offline-fähiger Workspace für AI-Agent-Kollaboration. Entwick
 - **Pinnwand**: Visuelle Planung mit Karten und Verbindungen
 - **Aufgaben**: Projekte und Aufgabenverwaltung im Kanban-Stil
 - **Kalender**: ICS/iCal Integration mit Monats-/Wochenansicht
-- **Global Finder**: Kontext-sensitive Suche über alle Module (`Cmd+F`)
+- **Global Finder**: Smarte Suche (`Cmd+F`) mit Modifiers (`@task`, `@note`) und Fuzzy-Matching
 - **Agenten**: A2A Agent-Verwaltung und Koordination
 - **Kommunikation**: Matrix-Protokoll Chat für Team-Kommunikation
 - **Persönlicher Assistent**: Kontext-bewusster AI-Assistent mit Chat-Historie
+- **Mobile First**: Voll responsive UI mit Overlay-Sidebar und Burger-Menü
 - **Offline PWA**: Volle Funktionalität ohne Internet
 - **Internationalisierung**: Deutsch (Standard) / Englisch
 
@@ -32,6 +33,10 @@ Ein umfassender, offline-fähiger Workspace für AI-Agent-Kollaboration. Entwick
 # Klonen und installieren
 bun install
 
+# Konfiguration (optional, aber empfohlen für AI)
+cp .env.example .env.local
+# -> Passe .env.local nach Bedarf an (lokale Ollama IP etc.)
+
 # Entwicklungsserver starten
 bun run dev
 ```
@@ -40,11 +45,12 @@ bun run dev
 
 ## AI Konfiguration
 
-Standard Inference-Endpunkt: `http://192.168.42.2:11434`
+Standard Inference-Endpunkt: `http://localhost:11434` (Ollama Default)
 
 Konfiguriere in `.env.local`:
 ```env
-INFERENCE_ENDPOINT=http://192.168.42.2:11434
+NEXT_PUBLIC_LLM_API_BASE_URL=http://localhost:11434
+NEXT_PUBLIC_LLM_API_KEY= # Optional
 INFERENCE_MODEL=gpt-oss:20b
 ```
 
@@ -80,6 +86,7 @@ data/
 | `GET/PUT/DELETE /api/notes/[id]` | Notiz bearbeiten |
 | `GET/POST /api/tasks` | Aufgaben auflisten/erstellen |
 | `GET/PUT/DELETE /api/tasks/[id]` | Aufgabe bearbeiten |
+| `GET /api/finder` | Globaler Such-Endpunkt (Fuzzy + Smart Modifiers) |
 | `GET/POST /api/calendar` | Kalender-Provider & Sync |
 
 ## Dokumentation

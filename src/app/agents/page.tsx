@@ -39,7 +39,7 @@ export default function AgentsPage() {
                         <CardContent>
                             <div className={styles.configItem}>
                                 <span className={styles.configLabel}>Inference-Endpunkt</span>
-                                <span className={styles.configValue}>192.168.42.2:11434</span>
+                                <span className={styles.configValue}>{process.env.NEXT_PUBLIC_LLM_API_BASE_URL || 'http://localhost:11434'}</span>
                             </div>
                             <div className={styles.configItem}>
                                 <span className={styles.configLabel}>Standard-Modell</span>

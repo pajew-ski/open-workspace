@@ -64,7 +64,6 @@ export default function SettingsPage() {
                                 <input
                                     type="text"
                                     className={styles.input}
-                                    defaultValue="http://192.168.42.2:11434"
                                     placeholder="http://localhost:11434"
                                 />
                             </div>

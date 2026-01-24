@@ -40,9 +40,12 @@ export interface StreamChunk {
 
 // Default configuration
 const DEFAULT_CONFIG: OllamaConfig = {
-    endpoint: process.env.NEXT_PUBLIC_INFERENCE_ENDPOINT || 'http://192.168.42.2:11434',
-    model: process.env.NEXT_PUBLIC_INFERENCE_MODEL || 'gpt-oss:20b',
+    endpoint: process.env.NEXT_PUBLIC_LLM_API_BASE_URL || 'http://localhost:11434',
+    model: process.env.NEXT_PUBLIC_LLM_MODEL || 'gpt-oss:20b',
 };
+
+// Optional API Key for endpoints that require it (e.g. together.ai or custom proxy)
+const API_KEY = process.env.NEXT_PUBLIC_LLM_API_KEY || '';
 
 /**
  * Send a chat request to Ollama
@@ -57,6 +60,7 @@ export async function chat(
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            ...(API_KEY ? { 'Authorization': `Bearer ${API_KEY}` } : {}),
         },
         body: JSON.stringify({
             model,
@@ -86,6 +90,7 @@ export async function* chatStream(
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            ...(API_KEY ? { 'Authorization': `Bearer ${API_KEY}` } : {}),
         },
         body: JSON.stringify({
             model,
