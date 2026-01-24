@@ -17,9 +17,10 @@ Der **Persönliche Assistent** ist der zentrale AI-Agent und einziger Ansprechpa
 - **Allgegenwärtig**: Als Chat-Widget unten rechts auf allen Seiten verfügbar
 
 ### Fähigkeiten
-- Wissensbasis durchsuchen und bearbeiten
+- Wissensbasis durchsuchen und bearbeiten (Professional Editor)
 - Canvas-Karten erstellen und verknüpfen
 - Aufgaben verwalten und priorisieren
+- Global Finder nutzen (`workspace_finder`) für kontext-sensitive Suchen
 - A2A-Agenten koordinieren und delegieren
 - Tools via MCP aufrufen
 - Code generieren und analysieren
@@ -87,6 +88,10 @@ open-workspace/
 - Tool und Resource Exposure für Agenten
 - Standardisiertes Context Passing
 - JSON-RPC 2.0 Messaging
+
+### Agent Tools
+- Verfügbare Tools sind in [TOOLS.md](./TOOLS.md) dokumentiert.
+- Standard-Tool: `workspace_finder` (Global Finder)
 
 ## AI Inference
 

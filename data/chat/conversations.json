@@ -2,10 +2,23 @@
   "conversations": [
     {
       "id": "conv-1769251973058-lrkeew",
-      "title": "Chat 24.1.2026",
-      "messages": [],
+      "title": "was weißt du über meine notizen?",
+      "messages": [
+        {
+          "id": "msg-1769254440630-p20frb",
+          "role": "user",
+          "content": "was weißt du über meine notizen?",
+          "timestamp": "2026-01-24T11:34:00.630Z"
+        },
+        {
+          "id": "msg-1769254463582-h9ie0m",
+          "role": "assistant",
+          "content": "Ich habe leider keinen direkten Zugriff auf die Inhalte deiner persönlichen Notizen – dafür brauchst du den Workspace selbst.  \nWenn du mir sagst, welche Notiz du suchst oder welche Stichworte dort vorkommen, kann ich dir helfen, sie zu finden, zu verlinken oder neu zu strukturieren.  \n\nMöchtest du, dass ich nach bestimmten Schlüsselwörtern in Canvas suche oder möchtest du, dass ich dir einen Überblick über deine aktuell gespeicherten Karten gebe?",
+          "timestamp": "2026-01-24T11:34:23.582Z"
+        }
+      ],
       "createdAt": "2026-01-24T10:52:53.058Z",
-      "updatedAt": "2026-01-24T10:52:53.058Z"
+      "updatedAt": "2026-01-24T11:34:23.582Z"
     },
     {
       "id": "conv-1769249450680-1ok3xk",

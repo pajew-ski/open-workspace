@@ -141,3 +141,45 @@
     font-size: 10px;
     color: var(--color-text-tertiary);
 }
+
+.floatingTrigger {
+    position: fixed;
+    bottom: 20px;
+    right: 80px;
+    /* Left of Assistant FAB (assuming FAB is ~20px right + size) */
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: var(--color-surface-elevated);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 50;
+    transition: all var(--transition-fast);
+    color: var(--color-text-secondary);
+}
+
+.floatingTrigger:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-xl);
+    color: var(--color-primary);
+}
+
+.globalSearchBtn {
+    margin-top: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    background-color: var(--color-primary);
+    color: var(--color-text-inverse);
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+}
+
+.globalSearchBtn:hover {
+    background-color: var(--color-primary-light);
+}

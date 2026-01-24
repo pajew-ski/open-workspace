@@ -18,8 +18,21 @@ export function GlobalFinder() {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<SearchResult[]>([]);
     const [selectedIndex, setSelectedIndex] = useState(0);
+    const [contextType, setContextType] = useState<string | null>(null);
+    const [isGlobal, setIsGlobal] = useState(false);
+
     const inputRef = useRef<HTMLInputElement>(null);
     const router = useRouter();
+    const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+
+    // Determine context from pathname
+    useEffect(() => {
+        if (pathname.startsWith('/tasks')) setContextType('task');
+        else if (pathname.startsWith('/knowledge')) setContextType('note');
+        else if (pathname.startsWith('/communication')) setContextType('chat');
+        else if (pathname.startsWith('/calendar')) setContextType('calendar');
+        else setContextType(null);
+    }, [pathname]);
 
     // Toggle with CMD+F
     useEffect(() => {
@@ -55,7 +68,9 @@ export function GlobalFinder() {
             }
 
             try {
-                const res = await fetch(`/api/finder?q=${encodeURIComponent(query)}`);
+                // If context exists and not explicitly global, filter by context
+                const typeParam = (contextType && !isGlobal) ? `&type=${contextType}` : '';
+                const res = await fetch(`/api/finder?q=${encodeURIComponent(query)}${typeParam}`);
                 const data = await res.json();
                 setResults(data.results || []);
                 setSelectedIndex(0);
@@ -66,7 +81,7 @@ export function GlobalFinder() {
 
         const timeoutId = setTimeout(search, 200);
         return () => clearTimeout(timeoutId);
-    }, [query]);
+    }, [query, contextType, isGlobal]);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'ArrowDown') {
@@ -99,63 +114,87 @@ export function GlobalFinder() {
         }
     };
 
-    if (!isOpen) return null;
+    // Removed early return to allow floating button to render
 
     return (
-        <div className={styles.overlay} onClick={() => setIsOpen(false)}>
-            <div className={styles.modal} onClick={e => e.stopPropagation()}>
-                <div className={styles.searchHeader}>
-                    <Search className={styles.searchIcon} size={20} />
-                    <input
-                        ref={inputRef}
-                        type="text"
-                        className={styles.input}
-                        placeholder="Finden..."
-                        value={query}
-                        onChange={e => setQuery(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        autoComplete="off"
-                    />
-                    <span className={styles.shortcut}>ESC</span>
-                </div>
+        <>
+            {/* Floating Trigger Button */}
+            <button
+                className={styles.floatingTrigger}
+                onClick={() => { setIsGlobal(false); setIsOpen(true); }}
+                title="Finden (CMD+F)"
+            >
+                <Search size={20} />
+            </button>
 
-                <div className={styles.results}>
-                    {results.length > 0 ? (
-                        results.map((result, index) => (
-                            <div
-                                key={`${result.type}-${result.id}`}
-                                className={`${styles.resultItem} ${index === selectedIndex ? styles.active : ''}`}
-                                onClick={() => handleSelect(result)}
-                                onMouseEnter={() => setSelectedIndex(index)}
-                            >
-                                <div className={styles.resultIcon}>
-                                    {getIcon(result.type)}
-                                </div>
-                                <div className={styles.resultContent}>
-                                    <span className={styles.resultTitle}>{result.title}</span>
-                                    {result.subtitle && (
-                                        <span className={styles.resultSubtitle}>{result.subtitle}</span>
-                                    )}
-                                </div>
-                                {index === selectedIndex && (
-                                    <span className={styles.shortcut}>⏎</span>
-                                )}
-                            </div>
-                        ))
-                    ) : (
-                        query && (
-                            <div className={styles.emptyState}>
-                                Keine Ergebnisse für "{query}" gefunden.
-                            </div>
-                        )
-                    )}
-                </div>
+            {isOpen && (
+                <div className={styles.overlay} onClick={() => setIsOpen(false)}>
+                    <div className={styles.modal} onClick={e => e.stopPropagation()}>
+                        <div className={styles.searchHeader}>
+                            <Search className={styles.searchIcon} size={20} />
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                className={styles.input}
+                                placeholder={contextType && !isGlobal ? `Finden in ${contextType}...` : "Alles finden..."}
+                                value={query}
+                                onChange={e => setQuery(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                autoComplete="off"
+                            />
+                            <span className={styles.shortcut}>ESC</span>
+                        </div>
 
-                <div className={styles.footer}>
-                    <span>↑↓ Navigieren</span>
-                    <span>⏎ Auswählen</span>
+                        <div className={styles.results}>
+                            {results.length > 0 ? (
+                                results.map((result, index) => (
+                                    <div
+                                        key={`${result.type}-${result.id}`}
+                                        className={`${styles.resultItem} ${index === selectedIndex ? styles.active : ''}`}
+                                        onClick={() => handleSelect(result)}
+                                        onMouseEnter={() => setSelectedIndex(index)}
+                                    >
+                                        <div className={styles.resultIcon}>
+                                            {getIcon(result.type)}
+                                        </div>
+                                        <div className={styles.resultContent}>
+                                            <span className={styles.resultTitle}>{result.title}</span>
+                                            {result.subtitle && (
+                                                <span className={styles.resultSubtitle}>{result.subtitle}</span>
+                                            )}
+                                        </div>
+                                        {index === selectedIndex && (
+                                            <span className={styles.shortcut}>⏎</span>
+                                        )}
+                                    </div>
+                                ))
+                            ) : (
+                                query && (
+                                    <div className={styles.emptyState}>
+                                        <p>Keine Ergebnisse{contextType && !isGlobal ? ` in ${contextType}` : ''} gefunden.</p>
+                                        {contextType && !isGlobal && (
+                                            <button
+                                                className={styles.globalSearchBtn}
+                                                onClick={() => setIsGlobal(true)}
+                                            >
+                                                Global suchen
+                                            </button>
+                                        )}
+                                    </div>
+                                )
+                            )}
+                        </div>
+
+                        <div className={styles.footer}>
+                            <span>↑↓ Navigieren</span>
+                            <span>⏎ Auswählen</span>
+                            {contextType && !isGlobal && (
+                                <span>Global suchen: Klick Button</span>
+                            )}
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
+            )}
+        </>
     );
 }
