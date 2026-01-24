@@ -39,10 +39,22 @@
           "role": "assistant",
           "content": "Am einfachsten:  \n1️⃣ **Wäsche waschen** – das dauert ein bisschen, aber danach hast du die Kleidung schon sauber.  \n2️⃣ **Staubsaugen** – danach ist das Zuhause wieder ordentlich.\n\nWenn du lieber zuerst den Staubsauger in die Hand nimmst, kann ich die Reihenfolge natürlich umkehren. Sag einfach Bescheid!",
           "timestamp": "2026-01-24T10:30:19.743Z"
+        },
+        {
+          "id": "msg-1769265095192-gqnja1",
+          "role": "user",
+          "content": "Was siehst du auf dem Dashboard?",
+          "timestamp": "2026-01-24T14:31:35.192Z"
+        },
+        {
+          "id": "msg-1769265095914-xun80q",
+          "role": "assistant",
+          "content": "Auf dem Dashboard siehst du fünf Widgets, die dir einen schnellen Überblick geben:\n\n| Widget‑ID | Typ            | Inhalt/Was du siehst |\n|-----------|----------------|----------------------|\n| **welcome-1** | Willkommen | Eine Überschrift “Willkommen im Open Workspace” und ein kurzer Einführungstext. |\n| **image-1769262146726** | Bild | Ein Foto des Galaxienobjekts NGC 4414 (NASA). |\n| **stats-1** | Statistiken | Ein Überblick über wichtige Kennzahlen (z. B. Projekt‑Statistiken, Nutzer‑Aktivität – die konkreten Zahlen wären im UI sichtbar). |\n| **activity-1** | Aktivität | Zeigt deine kürzlichen Aktivitäten, z. B. neue Aufgaben oder Änderungen. |\n| **quick-1** | Schnellzugriff | Kurze Verlinkungen zu häufig genutzten Modulen oder Aktionen (z. B. „Neues Projekt“, „Aufgabenliste“, etc.). |\n\nAlles zusammen bietet dir einen schnellen Einstieg in deine aktuelle Arbeit und die wichtigsten Kennzahlen. Wenn du zu einem dieser Widgets etwas genauer wissen möchtest, sag einfach Bescheid!",
+          "timestamp": "2026-01-24T14:31:35.914Z"
         }
       ],
       "createdAt": "2026-01-24T10:10:50.680Z",
-      "updatedAt": "2026-01-24T10:30:19.744Z"
+      "updatedAt": "2026-01-24T14:31:35.914Z"
     },
     {
       "id": "conv-1769248278976-ia8rzv",

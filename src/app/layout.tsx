@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { ThemeProvider } from "@/components/providers";
 import { ToastContainer } from "@/components/ui";
+import { AssistantProvider } from "@/lib/assistant/context";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -32,8 +33,10 @@ export default function RootLayout({
     <html lang="de" suppressHydrationWarning>
       <body>
         <ThemeProvider>
-          {children}
-          <ToastContainer />
+          <AssistantProvider>
+            {children}
+            <ToastContainer />
+          </AssistantProvider>
         </ThemeProvider>
       </body>
     </html>

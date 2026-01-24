@@ -1,5 +1,89 @@
 [
   {
+    "id": "evt-1769264993555-y3c834h2s",
+    "type": "canvas_deleted",
+    "entityId": "canvas-1769245485645-etmfq4",
+    "title": "Canvas gelöscht: idee workspace",
+    "timestamp": "2026-01-24T14:29:53.555Z"
+  },
+  {
+    "id": "evt-1769264906039-c26nv6dxx",
+    "type": "canvas_updated",
+    "entityId": "canvas-1769264688921-xx9iyk",
+    "title": "Canvas Karte erstellt: Neue Karte",
+    "timestamp": "2026-01-24T14:28:26.039Z"
+  },
+  {
+    "id": "evt-1769264832190-sk797bmjm",
+    "type": "canvas_updated",
+    "entityId": "canvas-1769264688921-xx9iyk",
+    "title": "Canvas Karte erstellt: Neue Karte",
+    "timestamp": "2026-01-24T14:27:12.190Z"
+  },
+  {
+    "id": "evt-1769264816974-m6dqn9nv7",
+    "type": "canvas_updated",
+    "entityId": "canvas-1769264688921-xx9iyk",
+    "title": "Canvas Karte erstellt: Neue Karte",
+    "timestamp": "2026-01-24T14:26:56.974Z"
+  },
+  {
+    "id": "evt-1769264771174-4omtjwtao",
+    "type": "canvas_updated",
+    "entityId": "canvas-1769264688921-xx9iyk",
+    "title": "Canvas Karte erstellt: Neue Karte",
+    "timestamp": "2026-01-24T14:26:11.174Z"
+  },
+  {
+    "id": "evt-1769264752490-60jpqekl7",
+    "type": "canvas_updated",
+    "entityId": "canvas-1769264688921-xx9iyk",
+    "title": "Canvas Karte erstellt: Neue Karte",
+    "timestamp": "2026-01-24T14:25:52.490Z"
+  },
+  {
+    "id": "evt-1769264735774-8yh2xh4eu",
+    "type": "canvas_updated",
+    "entityId": "canvas-1769264688921-xx9iyk",
+    "title": "Canvas Karte erstellt: Neue Karte",
+    "timestamp": "2026-01-24T14:25:35.774Z"
+  },
+  {
+    "id": "evt-1769264708062-2b7c9x17v",
+    "type": "canvas_updated",
+    "entityId": "canvas-1769264688921-xx9iyk",
+    "title": "Canvas Karte erstellt: Neue Karte",
+    "timestamp": "2026-01-24T14:25:08.062Z"
+  },
+  {
+    "id": "evt-1769264694841-dymybrrl8",
+    "type": "canvas_updated",
+    "entityId": "canvas-1769264688921-xx9iyk",
+    "title": "Canvas Karte erstellt: Neue Karte",
+    "timestamp": "2026-01-24T14:24:54.841Z"
+  },
+  {
+    "id": "evt-1769264688927-fru9gqidd",
+    "type": "canvas_created",
+    "entityId": "canvas-1769264688921-xx9iyk",
+    "title": "Canvas erstellt: Open Workspace",
+    "timestamp": "2026-01-24T14:24:48.927Z"
+  },
+  {
+    "id": "evt-1769264665340-x922a6uo1",
+    "type": "task_created",
+    "entityId": "task-1769264665338-9f381w",
+    "title": "Aufgabe erstellt: Projekt Dokumentation schreiben",
+    "timestamp": "2026-01-24T14:24:25.340Z"
+  },
+  {
+    "id": "evt-1769264639263-5113uw5s3",
+    "type": "project_created",
+    "entityId": "proj-1769264639258-lxhg49",
+    "title": "Projekt erstellt: Entwicklung Open Workspace",
+    "timestamp": "2026-01-24T14:23:59.263Z"
+  },
+  {
     "id": "evt-1769262602476-3rku79me4",
     "type": "task_deleted",
     "entityId": "task-1769262537739-v29ls5",

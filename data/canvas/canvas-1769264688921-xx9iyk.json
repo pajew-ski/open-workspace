@@ -1,0 +1,154 @@
+{
+  "id": "canvas-1769264688921-xx9iyk",
+  "name": "Open Workspace",
+  "description": "",
+  "cards": [
+    {
+      "id": "card-1769264694837-3nnsdg",
+      "type": "note",
+      "title": "Übersicht",
+      "x": 20,
+      "y": 20,
+      "width": 240,
+      "height": 180,
+      "createdAt": "2026-01-24T14:24:54.837Z",
+      "updatedAt": "2026-01-24T14:25:30.743Z",
+      "color": "#00674F"
+    },
+    {
+      "id": "card-1769264708061-7mep67",
+      "type": "note",
+      "title": "Aufgaben",
+      "x": 20,
+      "y": 240,
+      "width": 240,
+      "height": 180,
+      "createdAt": "2026-01-24T14:25:08.061Z",
+      "updatedAt": "2026-01-24T14:25:32.478Z",
+      "color": "#00674F"
+    },
+    {
+      "id": "card-1769264735770-vz0q16",
+      "type": "note",
+      "title": "Kalender",
+      "x": 20,
+      "y": 460,
+      "width": 240,
+      "height": 180,
+      "createdAt": "2026-01-24T14:25:35.770Z",
+      "updatedAt": "2026-01-24T14:26:26.184Z",
+      "color": "#00674F"
+    },
+    {
+      "id": "card-1769264752485-x1nt7c",
+      "type": "note",
+      "title": "Wissensbasis",
+      "x": 20,
+      "y": 680,
+      "width": 240,
+      "height": 180,
+      "createdAt": "2026-01-24T14:25:52.485Z",
+      "updatedAt": "2026-01-24T14:26:27.334Z",
+      "color": "#00674F"
+    },
+    {
+      "id": "card-1769264771170-aql8lk",
+      "type": "note",
+      "title": "Pinnwand",
+      "x": 20,
+      "y": 900,
+      "width": 240,
+      "height": 180,
+      "createdAt": "2026-01-24T14:26:11.170Z",
+      "updatedAt": "2026-01-24T14:26:41.296Z",
+      "color": "#00674F"
+    },
+    {
+      "id": "card-1769264816970-llqa0r",
+      "type": "note",
+      "title": "Kommunikation",
+      "x": 20,
+      "y": 1120,
+      "width": 240,
+      "height": 180,
+      "createdAt": "2026-01-24T14:26:56.970Z",
+      "updatedAt": "2026-01-24T14:27:21.414Z",
+      "color": "#00674F"
+    },
+    {
+      "id": "card-1769264832186-2ucyu2",
+      "type": "note",
+      "title": "Agenten",
+      "x": 20,
+      "y": 1340,
+      "width": 240,
+      "height": 180,
+      "createdAt": "2026-01-24T14:27:12.186Z",
+      "updatedAt": "2026-01-24T14:28:11.531Z",
+      "color": "#00674F"
+    },
+    {
+      "id": "card-1769264906035-leols9",
+      "type": "note",
+      "title": "Projektmanagement",
+      "x": 320,
+      "y": 240,
+      "width": 240,
+      "height": 180,
+      "createdAt": "2026-01-24T14:28:26.034Z",
+      "updatedAt": "2026-01-24T14:28:51.948Z",
+      "color": "#00674F"
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn-1769264850114",
+      "fromId": "card-1769264694837-3nnsdg",
+      "toId": "card-1769264708061-7mep67",
+      "type": "simple"
+    },
+    {
+      "id": "conn-1769264866112",
+      "fromId": "card-1769264708061-7mep67",
+      "toId": "card-1769264735770-vz0q16",
+      "type": "simple"
+    },
+    {
+      "id": "conn-1769264869665",
+      "fromId": "card-1769264735770-vz0q16",
+      "toId": "card-1769264752485-x1nt7c",
+      "type": "simple"
+    },
+    {
+      "id": "conn-1769264874633",
+      "fromId": "card-1769264752485-x1nt7c",
+      "toId": "card-1769264771170-aql8lk",
+      "type": "simple"
+    },
+    {
+      "id": "conn-1769264886848",
+      "fromId": "card-1769264771170-aql8lk",
+      "toId": "card-1769264816970-llqa0r",
+      "type": "simple"
+    },
+    {
+      "id": "conn-1769264889485",
+      "fromId": "card-1769264816970-llqa0r",
+      "toId": "card-1769264832186-2ucyu2",
+      "type": "simple"
+    },
+    {
+      "id": "conn-1769264944714",
+      "fromId": "card-1769264708061-7mep67",
+      "toId": "card-1769264906035-leols9",
+      "type": "bidirectional"
+    }
+  ],
+  "viewport": {
+    "x": 0,
+    "y": 0,
+    "zoom": 1
+  },
+  "createdAt": "2026-01-24T14:24:48.921Z",
+  "updatedAt": "2026-01-24T14:29:04.714Z"
+}

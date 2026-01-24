@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { ConfirmDialog } from '@/components/ui';
+import { useAssistantContext } from '@/lib/assistant/context';
 import styles from './AssistantChat.module.css';
 
 interface Message {
@@ -69,6 +70,7 @@ export function AssistantChat() {
     const inputRef = useRef<HTMLInputElement>(null);
     const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
     const pathname = usePathname();
+    const { viewState } = useAssistantContext();
 
     // Improved context matching
     const currentModule = useMemo(() => {
@@ -358,7 +360,8 @@ export function AssistantChat() {
                     context: {
                         module: currentModule.name,
                         moduleDescription: currentModule.description + additionalContext,
-                        pathname
+                        pathname,
+                        viewState // Pass the dynamic view state
                     },
                     stream: true,
                 }),
@@ -421,7 +424,7 @@ export function AssistantChat() {
         } finally {
             setIsLoading(false);
         }
-    }, [messages, activeConversation, currentModule, pathname]);
+    }, [messages, activeConversation, currentModule, pathname, viewState]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

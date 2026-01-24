@@ -30,6 +30,19 @@
       "createdAt": "2026-01-24T10:07:25.188Z",
       "updatedAt": "2026-01-24T10:50:16.816Z",
       "startDate": "2026-01-24T00:00:00.000Z"
+    },
+    {
+      "id": "task-1769264665338-9f381w",
+      "title": "Projekt Dokumentation schreiben",
+      "description": "",
+      "status": "todo",
+      "priority": "high",
+      "type": "task",
+      "projectId": "proj-1769264639258-lxhg49",
+      "tags": [],
+      "dependencies": [],
+      "createdAt": "2026-01-24T14:24:25.338Z",
+      "updatedAt": "2026-01-24T14:24:25.338Z"
     }
   ],
   "version": 1

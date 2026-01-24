@@ -25,7 +25,25 @@ interface DashboardGridProps {
     setWidgets: (widgets: Widget[]) => void;
 }
 
+import { useAssistantContext } from '@/lib/assistant/context';
+import { useEffect as useReactEffect } from 'react';
+
 export function DashboardGrid({ widgets, isEditing, setWidgets }: DashboardGridProps) {
+    const { setModuleState } = useAssistantContext();
+
+    // Sync widgets to context
+    useReactEffect(() => {
+        setModuleState('dashboard_widgets', {
+            count: widgets.length,
+            items: widgets.map(w => ({
+                id: w.id,
+                type: w.type,
+                content: w.content ? w.content.substring(0, 100) + '...' : undefined, // Truncate content
+                url: w.url
+            }))
+        });
+        return () => setModuleState('dashboard_widgets', null);
+    }, [widgets, setModuleState]);
     // Keep track of the item currently being dragged
     const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
     const dragNode = useRef<HTMLDivElement | null>(null);

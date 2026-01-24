@@ -1,4 +1,15 @@
 {
-  "projects": [],
+  "projects": [
+    {
+      "id": "proj-1769264639258-lxhg49",
+      "title": "Entwicklung Open Workspace",
+      "description": "",
+      "prefix": "OWS",
+      "status": "active",
+      "color": "#00674F",
+      "createdAt": "2026-01-24T14:23:59.258Z",
+      "updatedAt": "2026-01-24T14:23:59.258Z"
+    }
+  ],
   "version": 1
 }
