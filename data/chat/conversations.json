@@ -1,24 +1,24 @@
 {
   "conversations": [
     {
-      "id": "conv-1769251973058-lrkeew",
-      "title": "was weißt du über meine notizen?",
+      "id": "conv-1769259058651-0r709m",
+      "title": "hi nochmal",
       "messages": [
         {
-          "id": "msg-1769254440630-p20frb",
+          "id": "msg-1769259063246-4ioetm",
           "role": "user",
-          "content": "was weißt du über meine notizen?",
-          "timestamp": "2026-01-24T11:34:00.630Z"
+          "content": "hi nochmal",
+          "timestamp": "2026-01-24T12:51:03.246Z"
         },
         {
-          "id": "msg-1769254463582-h9ie0m",
+          "id": "msg-1769259063481-uv6mix",
           "role": "assistant",
-          "content": "Ich habe leider keinen direkten Zugriff auf die Inhalte deiner persönlichen Notizen – dafür brauchst du den Workspace selbst.  \nWenn du mir sagst, welche Notiz du suchst oder welche Stichworte dort vorkommen, kann ich dir helfen, sie zu finden, zu verlinken oder neu zu strukturieren.  \n\nMöchtest du, dass ich nach bestimmten Schlüsselwörtern in Canvas suche oder möchtest du, dass ich dir einen Überblick über deine aktuell gespeicherten Karten gebe?",
-          "timestamp": "2026-01-24T11:34:23.582Z"
+          "content": "Hi! Schön, dass du wieder da bist. Wie kann ich dir heute weiterhelfen?",
+          "timestamp": "2026-01-24T12:51:03.481Z"
         }
       ],
-      "createdAt": "2026-01-24T10:52:53.058Z",
-      "updatedAt": "2026-01-24T11:34:23.582Z"
+      "createdAt": "2026-01-24T12:50:58.650Z",
+      "updatedAt": "2026-01-24T12:51:03.481Z"
     },
     {
       "id": "conv-1769249450680-1ok3xk",
@@ -141,5 +141,5 @@
       "updatedAt": "2026-01-24T10:11:59.166Z"
     }
   ],
-  "activeId": "conv-1769251973058-lrkeew"
+  "activeId": "conv-1769259058651-0r709m"
 }
