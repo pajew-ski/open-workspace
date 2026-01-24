@@ -65,3 +65,21 @@
         opacity: 1;
     }
 }
+
+.floatingActionContainer {
+    position: fixed;
+    bottom: 20px;
+    right: 140px;
+    z-index: 50;
+    display: flex;
+    gap: 12px;
+}
+
+@media (max-width: 768px) {
+    .floatingActionContainer {
+        bottom: 16px;
+        /* Match mobile space-4 */
+        right: 140px;
+        /* Keep consistent with Finder/Chat stacking */
+    }
+}

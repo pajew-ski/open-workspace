@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { AppShell } from '@/components/layout';
-import { Card, CardContent, Button, Input, ConfirmDialog } from '@/components/ui';
+import { Card, CardContent, Button, Input, ConfirmDialog, FloatingActionButton } from '@/components/ui';
 import styles from './page.module.css';
 
 interface CanvasItem {
@@ -87,16 +87,22 @@ export default function CanvasOverviewPage() {
     };
 
     return (
-        <AppShell title="Pinnwand">
+        <AppShell
+            title="Pinnwand"
+            actions={
+                <FloatingActionButton
+                    icon={<span style={{ fontSize: '24px' }}>+</span>}
+                    onClick={() => setIsCreating(true)}
+                    label="Neue Pinnwand"
+                />
+            }
+        >
             <div className={styles.container}>
                 <div className={styles.header}>
                     <div>
                         <h1>Pinnwand Übersicht</h1>
                         <p className={styles.subtitle}>Erstelle und verwalte deine visuellen Planungen</p>
                     </div>
-                    <Button variant="primary" onClick={() => setIsCreating(true)}>
-                        + Neue Pinnwand
-                    </Button>
                 </div>
 
                 {isCreating && (

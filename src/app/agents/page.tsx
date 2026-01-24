@@ -1,17 +1,25 @@
 import { AppShell } from '@/components/layout';
-import { Card, CardHeader, CardContent, Button } from '@/components/ui';
+import { Card, CardHeader, CardContent, Button, FloatingActionButton } from '@/components/ui';
 import styles from './page.module.css';
 
 export default function AgentsPage() {
     return (
-        <AppShell title="Agenten">
+        <AppShell
+            title="Agenten"
+            actions={
+                <FloatingActionButton
+                    icon={<span style={{ fontSize: '24px' }}>+</span>}
+                    // onClick={() => setIsCreating(true)} // TODO: Add state
+                    label="Neuer Agent"
+                />
+            }
+        >
             <div className={styles.container}>
                 <div className={styles.header}>
                     <div>
                         <h2>AI Agenten</h2>
                         <p>Verwalte deine Agent2Agent (A2A) Agenten und deren Fähigkeiten.</p>
                     </div>
-                    <Button variant="primary">+ Neuer Agent</Button>
                 </div>
 
                 <div className={styles.grid}>

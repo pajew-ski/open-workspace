@@ -10,11 +10,12 @@ import styles from './AppShell.module.css';
 interface AppShellProps {
     children: ReactNode;
     title?: string;
+    actions?: ReactNode;
 }
 
 const SIDEBAR_COLLAPSED_KEY = 'open-workspace-sidebar-collapsed';
 
-export function AppShell({ children, title }: AppShellProps) {
+export function AppShell({ children, title, actions }: AppShellProps) {
     const [isCollapsed, setIsCollapsed] = useState(true); // Default to collapsed on desktop
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
@@ -57,6 +58,14 @@ export function AppShell({ children, title }: AppShellProps) {
                     {children}
                 </main>
             </div>
+
+            {/* Context Actions (FABs) */}
+            {actions && (
+                <div className={styles.floatingActionContainer}>
+                    {actions}
+                </div>
+            )}
+
             <AssistantChat />
             <GlobalFinder />
         </div>

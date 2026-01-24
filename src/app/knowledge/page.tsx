@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { AppShell } from '@/components/layout';
-import { Card, CardHeader, CardContent, Button, Input } from '@/components/ui';
+import { Card, CardHeader, CardContent, Button, Input, FloatingActionButton } from '@/components/ui';
 import { MarkdownEditor } from '@/components/markdown';
 import styles from './page.module.css';
 
@@ -149,7 +149,16 @@ export default function KnowledgePage() {
     };
 
     return (
-        <AppShell title="Wissensbasis">
+        <AppShell
+            title="Wissensbasis"
+            actions={
+                <FloatingActionButton
+                    icon={<span style={{ fontSize: '24px' }}>+</span>}
+                    onClick={() => setIsCreating(true)}
+                    label="Neue Notiz"
+                />
+            }
+        >
             <div className={styles.container}>
                 {/* Sidebar with note list */}
                 <div className={styles.sidebar}>

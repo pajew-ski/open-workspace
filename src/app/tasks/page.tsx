@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { AppShell } from '@/components/layout';
-import { Button, Card, CardHeader, CardContent, ConfirmDialog } from '@/components/ui';
+import { Button, Card, CardHeader, CardContent, ConfirmDialog, FloatingActionButton } from '@/components/ui';
 import { TaskCard, Task } from '@/components/tasks/TaskCard';
 import { TaskModal } from '@/components/tasks/TaskModal';
 import { ProjectForm } from '@/components/tasks/ProjectForm';
@@ -139,11 +139,26 @@ export default function TasksPage() {
     }, [projects, groupedTasks]);
 
     return (
-        <AppShell title="Aufgaben">
+        <AppShell
+            title="Aufgaben"
+            actions={
+                <>
+                    <FloatingActionButton
+                        icon={<span style={{ fontSize: '24px' }}>P</span>}
+                        onClick={() => setIsAddingProject(true)}
+                        label="Neues Projekt"
+                    />
+                    <FloatingActionButton
+                        icon={<span style={{ fontSize: '24px' }}>+</span>}
+                        onClick={() => setIsAddingTask(true)}
+                        label="Neue Aufgabe"
+                    />
+                </>
+            }
+        >
             <div className={styles.container}>
                 <div className={styles.topActions}>
-                    <Button variant="secondary" onClick={() => setIsAddingProject(true)}>+ Projekt</Button>
-                    <Button variant="primary" onClick={() => setIsAddingTask(true)}>+ Neue Aufgabe</Button>
+                    {/* Actions moved to FABs */}
                 </div>
 
                 <div className={styles.boardWrapper}>

@@ -143,7 +143,10 @@ bun run build  # Produktion
 - **UI-Labels**: Deutsch (Standard), Englisch (umschaltbar)
 - **Anrede**: Immer informell (du-Form, nie Sie-Form)
 - **Umlaute**: Korrekte ä, ö, ü, ß verwenden (nie ae, oe, ue)
-- **Design**: **Mobile First!** UI muss auf kleinen Screens perfekt funktionieren (Overlay Sidebar, Burger Menü).
+- **Design**: **Mobile First!**
+  - UI muss auf kleinen Screens perfekt funktionieren.
+  - **Aktionen**: Primäre "Hinzufügen"-Aktionen (Notiz, Aufgabe etc.) MÜSSEN als **Floating Action Button (FAB)** unten rechts platziert werden.
+  - Reihenfolge unten rechts: [Chat] -> [Finder] -> [Aktion].
 - **Navigation**: Logische Sortierung beachten (Übersicht -> Aufgaben -> Kalender...)
 
 ## Safety & UX Regeln
