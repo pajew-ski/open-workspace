@@ -1,6 +1,13 @@
 {
   "conversations": [
     {
+      "id": "conv-1769251973058-lrkeew",
+      "title": "Chat 24.1.2026",
+      "messages": [],
+      "createdAt": "2026-01-24T10:52:53.058Z",
+      "updatedAt": "2026-01-24T10:52:53.058Z"
+    },
+    {
       "id": "conv-1769249450680-1ok3xk",
       "title": "Tasks Kontext Awareness Test",
       "messages": [
@@ -121,5 +128,5 @@
       "updatedAt": "2026-01-24T10:11:59.166Z"
     }
   ],
-  "activeId": "conv-1769249450680-1ok3xk"
+  "activeId": "conv-1769251973058-lrkeew"
 }

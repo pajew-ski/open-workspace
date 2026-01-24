@@ -2,6 +2,7 @@
 
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { Link, Calendar, Clock, ArrowLeft, ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui';
 import styles from './TaskCard.module.css';
 
@@ -65,10 +66,14 @@ export function TaskCard({ task, onClick, onMoveStatus }: TaskCardProps) {
             <Card className={`${styles.card} ${styles[task.priority]}`}>
                 <div className={styles.statusActions} onClick={e => e.stopPropagation()}>
                     {PREV_STATUS[task.status] && (
-                        <button className={styles.statusBtn} onClick={() => onMoveStatus?.(PREV_STATUS[task.status]!)}>←</button>
+                        <button className={styles.statusBtn} onClick={() => onMoveStatus?.(PREV_STATUS[task.status]!)}>
+                            <ArrowLeft size={12} />
+                        </button>
                     )}
                     {NEXT_STATUS[task.status] && (
-                        <button className={styles.statusBtn} onClick={() => onMoveStatus?.(NEXT_STATUS[task.status]!)}>→</button>
+                        <button className={styles.statusBtn} onClick={() => onMoveStatus?.(NEXT_STATUS[task.status]!)}>
+                            <ArrowRight size={12} />
+                        </button>
                     )}
                 </div>
                 <CardContent className={styles.content}>
@@ -77,7 +82,7 @@ export function TaskCard({ task, onClick, onMoveStatus }: TaskCardProps) {
                             <span className={styles.typeLabel}>{TYPE_LABELS[task.type] || 'Dokument'}</span>
                             {task.dependencies && task.dependencies.length > 0 && (
                                 <span className={styles.depIndicator} title={`${task.dependencies.length} Abhängigkeiten`}>
-                                    🔗 {task.dependencies.length}
+                                    <Link size={10} /> {task.dependencies.length}
                                 </span>
                             )}
                         </div>
@@ -101,12 +106,12 @@ export function TaskCard({ task, onClick, onMoveStatus }: TaskCardProps) {
                         <div className={styles.dates}>
                             {task.dueDate && (
                                 <span className={`${styles.date} ${isOverdue ? styles.overdue : ''}`}>
-                                    Fällig: {format(new Date(task.dueDate), 'd. MMM', { locale: de })}
+                                    <Calendar size={10} /> {format(new Date(task.dueDate), 'd. MMM', { locale: de })}
                                 </span>
                             )}
                             {isDeferred && (
                                 <span className={styles.deferred}>
-                                    Start: {format(new Date(task.deferredUntil!), 'd. MMM', { locale: de })}
+                                    <Clock size={10} /> {format(new Date(task.deferredUntil!), 'd. MMM', { locale: de })}
                                 </span>
                             )}
                         </div>

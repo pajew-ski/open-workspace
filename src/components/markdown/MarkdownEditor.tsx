@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Bold, Italic, Code, List, ListOrdered, Link, Image, Quote, Heading } from 'lucide-react';
 import styles from './MarkdownEditor.module.css';
 
 export type EditorMode = 'read' | 'raw' | 'wysiwyg';
@@ -75,12 +76,42 @@ export function MarkdownEditor({
     const [mode, setMode] = useState<EditorMode>(readOnly ? 'read' : defaultMode);
     const [localContent, setLocalContent] = useState(content);
 
+    useEffect(() => {
+        setLocalContent(content);
+    }, [content]);
+
     const handleContentChange = useCallback((newContent: string) => {
         setLocalContent(newContent);
         onChange?.(newContent);
     }, [onChange]);
 
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    const checkMobile = () => typeof window !== 'undefined' && window.innerWidth < 768;
+
     const renderedHtml = useMemo(() => parseMarkdown(localContent), [localContent]);
+
+    const insertFormatting = (prefix: string, suffix: string = '') => {
+        if (!textareaRef.current) return;
+
+        const start = textareaRef.current.selectionStart;
+        const end = textareaRef.current.selectionEnd;
+        const text = textareaRef.current.value;
+        const before = text.substring(0, start);
+        const selection = text.substring(start, end);
+        const after = text.substring(end);
+
+        const newText = before + prefix + selection + suffix + after;
+        const newCursor = start + prefix.length + selection.length + suffix.length; // Cursor after insertion
+
+        setLocalContent(newText);
+        onChange?.(newText);
+
+        setTimeout(() => {
+            textareaRef.current?.focus();
+            textareaRef.current?.setSelectionRange(start + prefix.length, end + prefix.length);
+        }, 10);
+    };
 
     const handleWysiwygInput = useCallback((e: React.FormEvent<HTMLDivElement>) => {
         // For WYSIWYG, we'd need to convert HTML back to Markdown
@@ -96,40 +127,25 @@ export function MarkdownEditor({
             {!readOnly && (
                 <div className={styles.toolbar}>
                     <div className={styles.modeButtons}>
-                        <button
-                            className={`${styles.modeButton} ${mode === 'read' ? styles.active : ''}`}
-                            onClick={() => setMode('read')}
-                            title="Lesemodus"
-                        >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                <circle cx="12" cy="12" r="3" />
-                            </svg>
-                            <span>Lesen</span>
-                        </button>
-                        <button
-                            className={`${styles.modeButton} ${mode === 'wysiwyg' ? styles.active : ''}`}
-                            onClick={() => setMode('wysiwyg')}
-                            title="WYSIWYG Editor"
-                        >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M12 20h9" />
-                                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-                            </svg>
-                            <span>Bearbeiten</span>
-                        </button>
-                        <button
-                            className={`${styles.modeButton} ${mode === 'raw' ? styles.active : ''}`}
-                            onClick={() => setMode('raw')}
-                            title="Markdown Quelltext"
-                        >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <polyline points="16 18 22 12 16 6" />
-                                <polyline points="8 6 2 12 8 18" />
-                            </svg>
-                            <span>Quelltext</span>
-                        </button>
+                        <button className={`${styles.modeButton} ${mode === 'read' ? styles.active : ''}`} onClick={() => setMode('read')}>Lesen</button>
+                        <button className={`${styles.modeButton} ${mode === 'raw' ? styles.active : ''}`} onClick={() => setMode('raw')}>Editor</button>
                     </div>
+
+                    {mode === 'raw' && (
+                        <div className={styles.formatButtons}>
+                            <button onClick={() => insertFormatting('**', '**')} title="Fett"><Bold size={16} /></button>
+                            <button onClick={() => insertFormatting('*', '*')} title="Kursiv"><Italic size={16} /></button>
+                            <div className={styles.divider} />
+                            <button onClick={() => insertFormatting('### ')} title="Überschrift"><Heading size={16} /></button>
+                            <button onClick={() => insertFormatting('> ')} title="Zitat"><Quote size={16} /></button>
+                            <button onClick={() => insertFormatting('`', '`')} title="Code"><Code size={16} /></button>
+                            <div className={styles.divider} />
+                            <button onClick={() => insertFormatting('- ')} title="Liste"><List size={16} /></button>
+                            <button onClick={() => insertFormatting('1. ')} title="Nummerierte Liste"><ListOrdered size={16} /></button>
+                            <div className={styles.divider} />
+                            <button onClick={() => insertFormatting('[', '](url)')} title="Link"><Link size={16} /></button>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -153,6 +169,7 @@ export function MarkdownEditor({
 
                 {mode === 'raw' && (
                     <textarea
+                        ref={textareaRef}
                         className={styles.rawView}
                         value={localContent}
                         onChange={(e) => handleContentChange(e.target.value)}

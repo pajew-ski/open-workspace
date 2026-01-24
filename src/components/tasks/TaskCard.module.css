@@ -190,4 +190,7 @@
     background-color: var(--color-surface-sunken);
     padding: 2px 4px;
     border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }

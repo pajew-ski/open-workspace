@@ -1,9 +1,9 @@
 ---
 id: "note-1769244382432-bpvnpt"
-title: "Ich bin begeisternt"
+title: "Ich bin begeistert"
 tags: [""]
 createdAt: "2026-01-24T08:46:22.432Z"
-updatedAt: "2026-01-24T09:00:39.373Z"
+updatedAt: "2026-01-24T10:52:18.473Z"
 ---
 
 # Ich bin begeistert

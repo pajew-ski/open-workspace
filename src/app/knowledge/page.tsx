@@ -22,6 +22,8 @@ export default function KnowledgePage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
     const [newTitle, setNewTitle] = useState('');
+    const [renameId, setRenameId] = useState<string | null>(null);
+    const [renameTitle, setRenameTitle] = useState('');
     const [hasChanges, setHasChanges] = useState(false);
 
     // Fetch notes on mount
@@ -75,6 +77,31 @@ export default function KnowledgePage() {
             fetchNotes();
         } catch (error) {
             console.error('Fehler beim Speichern:', error);
+        }
+    };
+
+    const handleRenameSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!renameId || !renameTitle.trim()) return;
+
+        try {
+            const noteToUpdate = notes.find(n => n.id === renameId);
+            if (!noteToUpdate) return;
+
+            await fetch(`/api/notes/${renameId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...noteToUpdate, title: renameTitle }),
+            });
+
+            setRenameId(null);
+            fetchNotes();
+            if (selectedNote?.id === renameId) {
+                setSelectedNote({ ...selectedNote!, title: renameTitle });
+            }
+        } catch (error) {
+            console.error('Fehler beim Umbenennen:', error);
         }
     };
 
@@ -159,14 +186,37 @@ export default function KnowledgePage() {
                             <p className={styles.empty}>Keine Notizen vorhanden</p>
                         ) : (
                             notes.map((note) => (
-                                <button
-                                    key={note.id}
-                                    className={`${styles.noteItem} ${selectedNote?.id === note.id ? styles.active : ''}`}
-                                    onClick={() => handleSelectNote(note)}
-                                >
-                                    <span className={styles.noteTitle}>{note.title}</span>
-                                    <span className={styles.noteDate}>{formatDate(note.updatedAt)}</span>
-                                </button>
+                                <div key={note.id} className={`${styles.noteItemWrapper} ${selectedNote?.id === note.id ? styles.active : ''}`}>
+                                    {renameId === note.id ? (
+                                        <form className={styles.renameForm} onSubmit={handleRenameSubmit} onClick={e => e.stopPropagation()}>
+                                            <input
+                                                className={styles.renameInput}
+                                                value={renameTitle}
+                                                onChange={e => setRenameTitle(e.target.value)}
+                                                autoFocus
+                                                onBlur={() => setRenameId(null)}
+                                            />
+                                        </form>
+                                    ) : (
+                                        <div className={styles.noteItemContent} onClick={() => handleSelectNote(note)}>
+                                            <div className={styles.noteInfo}>
+                                                <span className={styles.noteTitle}>{note.title}</span>
+                                                <span className={styles.noteDate}>{formatDate(note.updatedAt)}</span>
+                                            </div>
+                                            <button
+                                                className={styles.renameBtn}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setRenameId(note.id);
+                                                    setRenameTitle(note.title);
+                                                }}
+                                                title="Umbenennen"
+                                            >
+                                                ✎
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             ))
                         )}
                     </div>
