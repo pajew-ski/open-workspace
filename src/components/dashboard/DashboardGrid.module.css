@@ -23,16 +23,19 @@
 
 /* Grid Layout */
 .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    /* Masonry-like flow */
-    gap: 16px;
-    align-items: start;
+    column-width: 350px;
+    column-gap: 16px;
+    padding-bottom: 16px;
+    /* Space for the last item's margin */
 }
 
 .gridItem {
     position: relative;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    break-inside: avoid;
+    margin-bottom: 16px;
+    /* Fix for some browsers clipping shadow */
+    transform: translateZ(0);
 }
 
 /* Drag Styling */
@@ -67,11 +70,7 @@
 }
 
 /* On mobile, stack them */
-@media (max-width: 768px) {
-    .grid {
-        grid-template-columns: 1fr;
-    }
-}
+/* Mobile behavior handled by column-width */
 
 @keyframes fadeIn {
     from {
