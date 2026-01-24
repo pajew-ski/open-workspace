@@ -1,96 +1,181 @@
 .container {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: var(--space-4);
+    height: calc(100vh - var(--header-height) - var(--space-10));
+}
+
+.sidebar {
     display: flex;
     flex-direction: column;
-    gap: var(--space-5);
+    background-color: var(--color-surface-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
 }
 
-.header {
+.sidebarHeader {
     display: flex;
+    align-items: center;
     justify-content: space-between;
-    align-items: flex-start;
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--color-border-subtle);
 }
 
-.header h2 {
-    margin: 0 0 var(--space-1) 0;
-    font-size: var(--text-2xl);
-}
-
-.header p {
-    margin: 0;
-    color: var(--color-text-secondary);
-}
-
-.content {
-    display: grid;
-    grid-template-columns: 240px 1fr;
-    gap: var(--space-5);
-}
-
-.sidebar h3 {
+.sidebarHeader h3 {
     margin: 0;
     font-size: var(--text-base);
+    font-weight: var(--font-semibold);
 }
 
-.categories {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+.createForm {
+    padding: var(--space-3);
+    border-bottom: 1px solid var(--color-border-subtle);
+    background-color: var(--color-surface-sunken);
+}
+
+.createActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+}
+
+.noteList {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-2);
+}
+
+.loading,
+.empty {
+    padding: var(--space-4);
+    text-align: center;
+    color: var(--color-text-tertiary);
+    font-size: var(--text-sm);
+}
+
+.noteItem {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
-}
-
-.categories li {
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius-sm);
+    width: 100%;
+    padding: var(--space-3);
+    margin-bottom: var(--space-1);
+    border: none;
+    border-radius: var(--radius-md);
+    background-color: transparent;
+    text-align: left;
     cursor: pointer;
-    font-size: var(--text-sm);
-    color: var(--color-text-secondary);
     transition: all var(--transition-fast);
-    margin: 0;
 }
 
-.categories li:hover {
+.noteItem:hover {
     background-color: var(--color-surface-sunken);
-    color: var(--color-text-primary);
 }
 
-.categories li.active {
+.noteItem.active {
     background-color: var(--color-primary-subtle);
-    color: var(--color-primary);
 }
 
-.main {
+.noteTitle {
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--color-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.noteDate {
+    font-size: var(--text-xs);
+    color: var(--color-text-tertiary);
+    margin-top: var(--space-1);
+}
+
+.editorArea {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.editorHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    margin-bottom: var(--space-3);
+}
+
+.titleInput {
     flex: 1;
+    font-size: var(--text-xl);
+    font-weight: var(--font-semibold);
+    border: none;
+    background: transparent;
+    color: var(--color-text-primary);
+    outline: none;
+    padding: var(--space-2) 0;
 }
 
-.empty {
+.titleInput:focus {
+    border-bottom: 2px solid var(--color-primary);
+}
+
+.editorActions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.unsaved {
+    font-size: var(--text-xs);
+    color: var(--color-warning);
+    background-color: var(--color-warning-subtle);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+}
+
+.emptyState {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.emptyContent {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    padding: var(--space-10);
     text-align: center;
     color: var(--color-text-tertiary);
 }
 
-.empty svg {
+.emptyContent svg {
     margin-bottom: var(--space-4);
     opacity: 0.5;
 }
 
-.empty h3 {
+.emptyContent h3 {
     margin: 0 0 var(--space-2) 0;
     color: var(--color-text-secondary);
 }
 
-.empty p {
+.emptyContent p {
     margin: 0 0 var(--space-4) 0;
-    max-width: 400px;
+    max-width: 300px;
 }
 
 @media (max-width: 768px) {
-    .content {
+    .container {
         grid-template-columns: 1fr;
+        height: auto;
+    }
+
+    .sidebar {
+        max-height: 300px;
+    }
+
+    .editorArea {
+        min-height: 400px;
     }
 }

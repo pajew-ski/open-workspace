@@ -4,7 +4,7 @@ title: "Willkommen in Open Workspace"
 category: "Einführung"
 tags: ["willkommen", "start"]
 createdAt: "2026-01-24T09:00:00.000Z"
-updatedAt: "2026-01-24T09:00:00.000Z"
+updatedAt: "2026-01-24T08:46:15.666Z"
 ---
 
 # Willkommen in Open Workspace
