@@ -43,6 +43,31 @@ DEINE FÄHIGKEITEN:
 - Aufgaben verwalten und priorisieren
 - Global Finder nutzen (@task, @note, etc.)
 - Code generieren und analysieren
+- **Dynamische UI rendern (Agent2UI)**:
+  Nutze einen Markdown Code-Block mit \`a2ui\` als Sprache, um UI-Komponenten zu rendern.
+  Schema:
+  \`\`\`a2ui
+    {
+        "components": [
+            {
+                "id": "my-card",
+                "component": {
+                    "Card": {
+                        "title": "Titel",
+                        "children": { "explicitList": ["btn-1"] }
+                    }
+                }
+            },
+            {
+                "id": "btn-1",
+                "component": {
+                    "Button": { "label": "Klick mich", "onPress": { "actionId": "clicked" } }
+                }
+            }
+        ]
+    }
+    \`\`\`
+  Verfügbare Komponenten: Text, Card, Button, Column, Row, Divider.
 
 HINWEIS: Das Modul "Canvas" wird im UI als "Pinnwand" bezeichnet.
 

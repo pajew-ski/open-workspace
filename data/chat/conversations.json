@@ -51,10 +51,34 @@
           "role": "assistant",
           "content": "Auf dem Dashboard siehst du fünf Widgets, die dir einen schnellen Überblick geben:\n\n| Widget‑ID | Typ            | Inhalt/Was du siehst |\n|-----------|----------------|----------------------|\n| **welcome-1** | Willkommen | Eine Überschrift “Willkommen im Open Workspace” und ein kurzer Einführungstext. |\n| **image-1769262146726** | Bild | Ein Foto des Galaxienobjekts NGC 4414 (NASA). |\n| **stats-1** | Statistiken | Ein Überblick über wichtige Kennzahlen (z. B. Projekt‑Statistiken, Nutzer‑Aktivität – die konkreten Zahlen wären im UI sichtbar). |\n| **activity-1** | Aktivität | Zeigt deine kürzlichen Aktivitäten, z. B. neue Aufgaben oder Änderungen. |\n| **quick-1** | Schnellzugriff | Kurze Verlinkungen zu häufig genutzten Modulen oder Aktionen (z. B. „Neues Projekt“, „Aufgabenliste“, etc.). |\n\nAlles zusammen bietet dir einen schnellen Einstieg in deine aktuelle Arbeit und die wichtigsten Kennzahlen. Wenn du zu einem dieser Widgets etwas genauer wissen möchtest, sag einfach Bescheid!",
           "timestamp": "2026-01-24T14:31:35.914Z"
+        },
+        {
+          "id": "msg-1769265839715-uwqpsr",
+          "role": "user",
+          "content": "Erstelle eine Card mit dem Titel 'A2UI Test' und einem Button 'Click Me' using Agent2UI.",
+          "timestamp": "2026-01-24T14:43:59.715Z"
+        },
+        {
+          "id": "msg-1769265840367-f55gii",
+          "role": "assistant",
+          "content": "Hier ist die gewünschte Card mit einem Button – als Agent2UI‑Codeblock:\n\n```a2ui\n{\n    \"components\": [\n        {\n            \"id\": \"my-card\",\n            \"component\": {\n                \"Card\": {\n                    \"title\": \"A2UI Test\",\n                    \"children\": { \"explicitList\": [\"btn-1\"] }\n                }\n            }\n        },\n        {\n            \"id\": \"btn-1\",\n            \"component\": {\n                \"Button\": {\n                    \"label\": \"Click Me\",\n                    \"onPress\": { \"actionId\": \"clicked\" }\n                }\n            }\n        }\n    ]\n}\n```\n\nFüge diesen Block in das UI ein, und du bekommst eine Card mit dem Titel „A2UI Test“ sowie einen Button „Click Me“, der beim Klicken die Aktion `clicked` auslöst.",
+          "timestamp": "2026-01-24T14:44:00.367Z"
+        },
+        {
+          "id": "msg-1769265858170-iusngh",
+          "role": "user",
+          "content": "[User Action: clicked]",
+          "timestamp": "2026-01-24T14:44:18.170Z"
+        },
+        {
+          "id": "msg-1769265858692-safbw2",
+          "role": "assistant",
+          "content": "Der Button wurde geklickt! 🚀\n\n```a2ui\n{\n  \"components\": [\n    {\n      \"id\": \"notification\",\n      \"component\": {\n        \"Text\": {\n          \"content\": \"Button wurde geklickt!\"\n        }\n      }\n    }\n  ]\n}\n```",
+          "timestamp": "2026-01-24T14:44:18.692Z"
         }
       ],
       "createdAt": "2026-01-24T10:10:50.680Z",
-      "updatedAt": "2026-01-24T14:31:35.914Z"
+      "updatedAt": "2026-01-24T14:44:18.692Z"
     },
     {
       "id": "conv-1769248278976-ia8rzv",

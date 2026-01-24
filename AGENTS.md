@@ -29,7 +29,8 @@ Der **Persönliche Assistent** ist der zentrale AI-Agent und einziger Ansprechpa
 ### Kontext-Informationen
 Der Assistent erhält automatisch:
 - Aktuelle Seite/Modul
-- Sichtbare Inhalte im Browser
+- Sichtbare Inhalte im Browser (Dynamic `viewState`)
+- Ausgewählte Elemente
 - Ausgewählte Elemente
 - Letzte Aktionen des Nutzers
 - Relevante Daten aus der Wissensbasis
@@ -80,8 +81,14 @@ open-workspace/
 
 ### Agent2UI (A2UI)
 - Deklarative UI-Komponenten-Beschreibungen
-- Streaming JSON für progressive Darstellung
-- Pre-approved Component Catalog
+- Streaming JSON (JSONL) für progressive Darstellung innerhalb des Chats
+- **Verfügbare Komponenten**:
+  - `Text`: Einfacher Text
+  - `Card`: Container mit Titel und Rahmen
+  - `Button`: Interaktive Elemente mit Actions
+  - `Column` / `Row`: Layout-Container
+  - `Divider`: Trennlinie
+- Interaktionen werden als `UserAction` zurück an den Agenten gesendet
 - Secure by Design (keine Code-Ausführung)
 
 ### Model Context Protocol (MCP)

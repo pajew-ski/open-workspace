@@ -4,7 +4,7 @@ Ein umfassender, offline-fähiger Workspace für AI-Agent-Kollaboration. Entwick
 
 ## Features
 
-- **Übersicht (Dashboard)**: Echtzeit-Übersicht über Systemaktivität und aktuelle Elemente
+- **Übersicht (Dashboard)**: Echtzeit-Übersicht mit adaptivem **Masonry-Layout** für optimale Platznutzung
 - **Wissensbasis**: Markdown-Notizen mit Professional-Editor (Toolbar) und Umbenennung
 - **Pinnwand**: Visuelle Planung mit Karten und Verbindungen
 - **Aufgaben**: Projekte und Aufgabenverwaltung im Kanban-Stil
@@ -12,7 +12,7 @@ Ein umfassender, offline-fähiger Workspace für AI-Agent-Kollaboration. Entwick
 - **Global Finder**: Smarte Suche (`Cmd+F`) mit Modifiers (`@task`, `@note`) und Fuzzy-Matching
 - **Agenten**: A2A Agent-Verwaltung und Koordination
 - **Kommunikation**: Matrix-Protokoll Chat für Team-Kommunikation
-- **Persönlicher Assistent**: Kontext-bewusster AI-Assistent mit Chat-Historie
+- **Persönlicher Assistent**: Kontext-bewusster AI-Assistent mit **Dynamic UI Generation** (A2UI) und Chat-Historie
 - **Mobile First**: Voll responsive UI mit Overlay-Sidebar und Burger-Menü
 - **Offline PWA**: Volle Funktionalität ohne Internet
 - **Internationalisierung**: Deutsch (Standard) / Englisch

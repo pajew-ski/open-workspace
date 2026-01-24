@@ -4,12 +4,15 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { ConfirmDialog } from '@/components/ui';
 import { useAssistantContext } from '@/lib/assistant/context';
+import { A2UIRenderer } from '../a2ui/A2UIRenderer';
+import { A2UINode } from '../a2ui/types';
 import styles from './AssistantChat.module.css';
 
 interface Message {
     id: string;
     role: 'user' | 'assistant';
     content: string;
+    uiComponents?: A2UINode[];
     timestamp: string;
 }
 
@@ -22,8 +25,9 @@ interface Conversation {
 }
 
 interface StreamChunk {
-    message: { content: string };
-    done: boolean;
+    message?: { content: string };
+    surfaceUpdate?: { components: A2UINode[] };
+    done?: boolean;
 }
 
 const MODULE_CONTEXT: Record<string, { name: string; description: string }> = {
@@ -385,10 +389,47 @@ export function AssistantChat() {
                 for (const line of lines) {
                     try {
                         const chunk: StreamChunk = JSON.parse(line);
+
+                        // Handle Text Content
                         if (chunk.message?.content) {
                             fullContent += chunk.message.content;
-                            setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: fullContent } : m));
                         }
+
+                        // Handle UI Updates
+                        let uiUpdates: A2UINode[] | undefined;
+                        if (chunk.surfaceUpdate?.components) {
+                            uiUpdates = chunk.surfaceUpdate.components;
+                        }
+
+                        // Fallback: Check for A2UI markdown blocks
+                        if (!uiUpdates) {
+                            const a2uiMatch = fullContent.match(/```a2ui\s*([\s\S]*?)\s*```/);
+                            if (a2uiMatch) {
+                                try {
+                                    const json = JSON.parse(a2uiMatch[1]);
+                                    // Support both direct array or surfaceUpdate wrapper
+                                    if (Array.isArray(json)) {
+                                        uiUpdates = json;
+                                    } else if (json.surfaceUpdate?.components) {
+                                        uiUpdates = json.surfaceUpdate.components;
+                                    } else if (json.components) {
+                                        uiUpdates = json.components;
+                                    }
+                                } catch { /* incomplete json */ }
+                            }
+                        }
+
+                        setMessages(prev => prev.map(m => {
+                            if (m.id === assistantId) {
+                                return {
+                                    ...m,
+                                    content: fullContent, // Keep content so user sees the raw block via markdown renderer if needed, or we filter it out later
+                                    uiComponents: uiUpdates || m.uiComponents
+                                };
+                            }
+                            return m;
+                        }));
+
                     } catch { /* skip */ }
                 }
             }
@@ -464,6 +505,12 @@ export function AssistantChat() {
         return new Date(timestamp).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
     };
 
+    const handleUserAction = useCallback(async (actionId: string, payload?: any) => {
+        // Send user action back to the chat as a system/hidden message or trigger a new flow
+        // For now, we simulate a user message describing the action to keep context
+        await sendMessage(`[User Action: ${actionId}]`);
+    }, [sendMessage]);
+
     return (
         <div className={styles.container}>
             {isOpen && (
@@ -533,7 +580,13 @@ export function AssistantChat() {
                         ) : (
                             messages.map(message => (
                                 <div key={message.id} className={`${styles.message} ${styles[message.role]}`}>
-                                    {message.content || <span className={styles.typing}><span></span><span></span><span></span></span>}
+                                    {message.content && <div>{message.content}</div>}
+                                    {message.uiComponents && (
+                                        <div className={styles.uiContainer}>
+                                            <A2UIRenderer components={message.uiComponents} onAction={handleUserAction} />
+                                        </div>
+                                    )}
+                                    {(!message.content && !message.uiComponents) && <span className={styles.typing}><span></span><span></span><span></span></span>}
                                     <div className={styles.messageFooter}>
                                         <span className={styles.timestamp}>{formatTime(message.timestamp)}</span>
                                         {message.role === 'assistant' && message.content && (
