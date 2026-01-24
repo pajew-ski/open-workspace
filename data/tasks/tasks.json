@@ -10,7 +10,8 @@
       "tags": [],
       "dependencies": [],
       "createdAt": "2026-01-24T10:07:09.739Z",
-      "updatedAt": "2026-01-24T10:07:09.739Z"
+      "updatedAt": "2026-01-24T10:25:08.559Z",
+      "startDate": "2026-01-24T00:00:00.000Z"
     },
     {
       "id": "task-1769249245188-pvp7vi",
@@ -22,7 +23,8 @@
       "tags": [],
       "dependencies": [],
       "createdAt": "2026-01-24T10:07:25.188Z",
-      "updatedAt": "2026-01-24T10:07:38.393Z"
+      "updatedAt": "2026-01-24T10:23:54.687Z",
+      "startDate": "2026-01-24T00:00:00.000Z"
     }
   ],
   "version": 1

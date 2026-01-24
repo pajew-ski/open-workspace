@@ -32,11 +32,11 @@ const PRIORITY_LABELS: Record<string, string> = {
     urgent: 'Dringend'
 };
 
-const TYPE_ICONS: Record<string, string> = {
-    task: '✅',
-    bug: '🐛',
-    feature: '✨',
-    milestone: '🚩'
+const TYPE_LABELS: Record<string, string> = {
+    task: 'Aufgabe',
+    bug: 'Bug',
+    feature: 'Feature',
+    milestone: 'Meilenstein'
 };
 
 const NEXT_STATUS: Record<string, string | null> = {
@@ -72,7 +72,7 @@ export function TaskCard({ task, onClick, onMoveStatus }: TaskCardProps) {
                 </div>
                 <CardContent className={styles.content}>
                     <div className={styles.header}>
-                        <span className={styles.typeIcon}>{TYPE_ICONS[task.type] || '📄'}</span>
+                        <span className={styles.typeLabel}>{TYPE_LABELS[task.type] || 'Dokument'}</span>
                         <span className={styles.title}>{task.title}</span>
                     </div>
 
@@ -93,12 +93,12 @@ export function TaskCard({ task, onClick, onMoveStatus }: TaskCardProps) {
                         <div className={styles.dates}>
                             {task.dueDate && (
                                 <span className={`${styles.date} ${isOverdue ? styles.overdue : ''}`}>
-                                    📅 {format(new Date(task.dueDate), 'd. MMM', { locale: de })}
+                                    Fällig: {format(new Date(task.dueDate), 'd. MMM', { locale: de })}
                                 </span>
                             )}
                             {isDeferred && (
                                 <span className={styles.deferred}>
-                                    ⏳ Bis {format(new Date(task.deferredUntil!), 'd. MMM', { locale: de })}
+                                    Start: {format(new Date(task.deferredUntil!), 'd. MMM', { locale: de })}
                                 </span>
                             )}
                         </div>

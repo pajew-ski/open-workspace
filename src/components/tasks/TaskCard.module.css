@@ -77,9 +77,13 @@
     margin-bottom: var(--space-2);
 }
 
-.typeIcon {
-    font-size: var(--text-base);
+.typeLabel {
+    font-size: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: var(--color-text-tertiary);
     flex-shrink: 0;
+    margin-top: 2px;
 }
 
 .title {

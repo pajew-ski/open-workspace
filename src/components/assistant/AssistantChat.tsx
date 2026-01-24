@@ -496,8 +496,8 @@ export function AssistantChat() {
                                 >
                                     <span className={styles.convTitle}>{conv.title}</span>
                                     <div className={styles.convActions}>
-                                        <button onClick={(e) => { e.stopPropagation(); setRenameConv(conv); setRenameValue(conv.title); }} title="Umbenennen">✏️</button>
-                                        <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(conv); }} title="Löschen">🗑️</button>
+                                        <button onClick={(e) => { e.stopPropagation(); setRenameConv(conv); setRenameValue(conv.title); }} title="Umbenennen">Edit</button>
+                                        <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(conv); }} title="Löschen">Del</button>
                                     </div>
                                 </div>
                             ))}
@@ -508,7 +508,7 @@ export function AssistantChat() {
                     <div className={styles.messages} onClick={() => showSidebar && setShowSidebar(false)}>
                         {messages.length === 0 ? (
                             <div className={styles.emptyChat}>
-                                <p>👋 Wie kann ich dir helfen?</p>
+                                <p>Wie kann ich dir helfen?</p>
                                 <p className={styles.hint}>Drücke ⌘+Shift+A zum Öffnen/Schließen</p>
                             </div>
                         ) : (
@@ -518,7 +518,7 @@ export function AssistantChat() {
                                     <div className={styles.messageFooter}>
                                         <span className={styles.timestamp}>{formatTime(message.timestamp)}</span>
                                         {message.role === 'assistant' && message.content && (
-                                            <button className={styles.copyButton} onClick={() => copyToClipboard(message.content)} title="Kopieren">📋</button>
+                                            <button className={styles.copyButton} onClick={() => copyToClipboard(message.content)} title="Kopieren">Copy</button>
                                         )}
                                     </div>
                                 </div>
