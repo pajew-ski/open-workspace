@@ -1,0 +1,112 @@
+.trigger {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-4);
+    background-color: var(--color-surface-sunken);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    min-width: 280px;
+}
+
+.trigger:hover {
+    border-color: var(--color-text-tertiary);
+    color: var(--color-text-secondary);
+}
+
+.triggerText {
+    flex: 1;
+    text-align: left;
+    font-size: var(--text-sm);
+}
+
+.kbd {
+    padding: var(--space-1) var(--space-2);
+    background-color: var(--color-surface-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--color-text-tertiary);
+}
+
+.overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: var(--z-modal);
+    animation: fadeIn var(--transition-fast);
+}
+
+.modal {
+    position: fixed;
+    top: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 560px;
+    background-color: var(--color-surface-elevated);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
+    z-index: calc(var(--z-modal) + 1);
+    animation: slideIn var(--transition-fast);
+}
+
+.searchForm {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--color-border-subtle);
+    color: var(--color-text-tertiary);
+}
+
+.input {
+    flex: 1;
+    border: none;
+    background: none;
+    font-size: var(--text-base);
+    color: var(--color-text-primary);
+    outline: none;
+}
+
+.input::placeholder {
+    color: var(--color-text-tertiary);
+}
+
+.results {
+    padding: var(--space-4);
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.noResults {
+    text-align: center;
+    color: var(--color-text-tertiary);
+    font-size: var(--text-sm);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}

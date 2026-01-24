@@ -57,6 +57,16 @@
 - [ ] Module search functionality
 - [ ] Chat widget integration
 
+### Tasks Module
+- [ ] Tasks page layout
+- [ ] Task list with status (open/in-progress/done)
+- [ ] Project grouping
+- [ ] Priority levels
+- [ ] Due dates and reminders
+- [ ] Task filtering and sorting
+- [ ] Add task (+) widget
+- [ ] Chat widget integration
+
 ---
 
 ## Phase 3: AI Integration and Data Layer
@@ -68,6 +78,15 @@
 - [ ] Artifacts CRUD operations
 - [ ] Canvas data operations
 - [ ] Chat history persistence
+- [ ] Tasks data operations
+
+### GitHub Sync
+- [ ] GitHub OAuth integration
+- [ ] Repository selection
+- [ ] Sync notes to GitHub
+- [ ] Sync code artifacts
+- [ ] Pull changes from GitHub
+- [ ] Conflict resolution
 
 ### Inference Client
 - [ ] Ollama API client implementation
@@ -160,6 +179,7 @@
 - [ ] Additional AI providers
 - [ ] Plugin/extension system
 - [ ] Mobile-optimized views
+- [ ] GitLab sync support
 
 ---
 

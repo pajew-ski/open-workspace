@@ -1,0 +1,19 @@
+.container {
+    display: flex;
+    min-height: 100vh;
+}
+
+.main {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    display: flex;
+    flex-direction: column;
+}
+
+.content {
+    flex: 1;
+    padding: var(--space-5);
+    max-width: var(--content-max-width);
+    width: 100%;
+    margin: 0 auto;
+}

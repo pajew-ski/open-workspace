@@ -1,0 +1,65 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - var(--header-height) - var(--space-10));
+    gap: var(--space-4);
+}
+
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-3);
+    background-color: var(--color-surface-elevated);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+}
+
+.tools {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.canvas {
+    flex: 1;
+    background-color: var(--color-surface-sunken);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-lg);
+    position: relative;
+    overflow: hidden;
+
+    /* Grid pattern */
+    background-image:
+        linear-gradient(to right, var(--color-border-subtle) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--color-border-subtle) 1px, transparent 1px);
+    background-size: 24px 24px;
+}
+
+.empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: var(--color-text-tertiary);
+    padding: var(--space-6);
+}
+
+.empty svg {
+    margin-bottom: var(--space-4);
+    opacity: 0.4;
+}
+
+.empty h2 {
+    margin: 0 0 var(--space-2) 0;
+    color: var(--color-text-secondary);
+    font-size: var(--text-xl);
+}
+
+.empty p {
+    margin: 0 0 var(--space-5) 0;
+    max-width: 400px;
+    line-height: var(--leading-relaxed);
+}

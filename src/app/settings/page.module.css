@@ -1,0 +1,68 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    max-width: 720px;
+}
+
+.container h3 {
+    margin: 0;
+    font-size: var(--text-lg);
+}
+
+.setting {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.setting:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.setting:first-child {
+    padding-top: 0;
+}
+
+.settingInfo {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.settingLabel {
+    font-weight: var(--font-medium);
+}
+
+.settingDescription {
+    font-size: var(--text-sm);
+    color: var(--color-text-tertiary);
+}
+
+.themeButtons {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.inputGroup {
+    flex-shrink: 0;
+}
+
+.input {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-surface-elevated);
+    color: var(--color-text-primary);
+    width: 280px;
+}
+
+.input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-subtle);
+}

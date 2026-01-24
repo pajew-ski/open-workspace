@@ -1,0 +1,70 @@
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    width: var(--sidebar-width);
+    height: 100vh;
+    background-color: var(--color-surface-elevated);
+    border-right: 1px solid var(--color-border-subtle);
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: var(--z-sticky);
+}
+
+.logo {
+    padding: var(--space-5);
+    border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.logoText {
+    font-size: var(--text-lg);
+    font-weight: var(--font-semibold);
+    color: var(--color-primary);
+}
+
+.nav {
+    flex: 1;
+    padding: var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    overflow-y: auto;
+}
+
+.navItem {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md);
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    transition: all var(--transition-fast);
+}
+
+.navItem:hover {
+    background-color: var(--color-surface-sunken);
+    color: var(--color-text-primary);
+}
+
+.navItem.active {
+    background-color: var(--color-primary-subtle);
+    color: var(--color-primary);
+}
+
+.navIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.navLabel {
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+}
+
+.footer {
+    padding: var(--space-3);
+    border-top: 1px solid var(--color-border-subtle);
+}
