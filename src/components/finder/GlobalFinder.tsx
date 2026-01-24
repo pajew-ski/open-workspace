@@ -13,6 +13,52 @@ interface SearchResult {
     url: string;
 }
 
+// Simple Levenshtein distance for fuzzy command matching
+const levenshtein = (a: string, b: string): number => {
+    const matrix = Array(b.length + 1).fill(null).map(() => Array(a.length + 1).fill(null));
+    for (let i = 0; i <= a.length; i++) matrix[0][i] = i;
+    for (let j = 0; j <= b.length; j++) matrix[j][0] = j;
+    for (let j = 1; j <= b.length; j++) {
+        for (let i = 1; i <= a.length; i++) {
+            const indicator = a[i - 1] === b[j - 1] ? 0 : 1;
+            matrix[j][i] = Math.min(
+                matrix[j][i - 1] + 1,
+                matrix[j - 1][i] + 1,
+                matrix[j - 1][i - 1] + indicator
+            );
+        }
+    }
+    return matrix[b.length][a.length];
+};
+
+const mapModifierToType = (input: string): string | null => {
+    const lower = input.toLowerCase();
+
+    // 1. Exact or Prefix Match
+    if (['task', 'aufgabe', 'todo', 't'].some(k => k.startsWith(lower))) return 'task';
+    if (['note', 'notiz', 'wissen', 'n'].some(k => k.startsWith(lower))) return 'note';
+    if (['termin', 'date', 'kalender', 'cal', 'd'].some(k => k.startsWith(lower))) return 'calendar';
+    if (['chat', 'nachricht', 'c'].some(k => k.startsWith(lower))) return 'chat';
+    if (['project', 'projekt', 'p'].some(k => k.startsWith(lower))) return 'project';
+
+    // 2. Fuzzy Match (Levensthein < 2)
+    const keywords: Record<string, string[]> = {
+        'task': ['task', 'aufgabe', 'todo'],
+        'note': ['note', 'notiz', 'wissen'],
+        'calendar': ['termin', 'date', 'kalender', 'cal'],
+        'chat': ['chat', 'nachricht'],
+        'project': ['project', 'projekt']
+    };
+
+    for (const [type, words] of Object.entries(keywords)) {
+        for (const word of words) {
+            if (levenshtein(lower, word) <= 1) return type;
+        }
+    }
+
+    return null;
+};
+
 export function GlobalFinder() {
     const [isOpen, setIsOpen] = useState(false);
     const [query, setQuery] = useState('');

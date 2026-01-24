@@ -5,6 +5,45 @@ import { listProjects } from '@/lib/storage/projects';
 import { listConversations } from '@/lib/storage/chat';
 import { getEvents } from '@/lib/storage/calendar';
 
+// Simple Levenshtein for server-side fuzzy match
+const getLevenshteinDistance = (a: string, b: string): number => {
+    const matrix = Array(b.length + 1).fill(null).map(() => Array(a.length + 1).fill(null));
+    for (let i = 0; i <= a.length; i++) matrix[0][i] = i;
+    for (let j = 0; j <= b.length; j++) matrix[j][0] = j;
+    for (let j = 1; j <= b.length; j++) {
+        for (let i = 1; i <= a.length; i++) {
+            const indicator = a[i - 1] === b[j - 1] ? 0 : 1;
+            matrix[j][i] = Math.min(
+                matrix[j][i - 1] + 1,
+                matrix[j - 1][i] + 1,
+                matrix[j - 1][i - 1] + indicator
+            );
+        }
+    }
+    return matrix[b.length][a.length];
+};
+
+const isFuzzyMatch = (text: string, query: string): boolean => {
+    if (!text || !query) return false;
+    const t = text.toLowerCase();
+    const q = query.toLowerCase();
+
+    // 1. Exact Substring (Fast)
+    if (t.includes(q)) return true;
+
+    // 2. Token Match (All query words must exist in text if multi-word)
+    const tokens = q.split(/\s+/).filter(x => x.length > 2);
+    if (tokens.length > 1 && tokens.every(token => t.includes(token))) return true;
+
+    // 3. Levenshtein (Only for short titles/queries to avoid perf hit)
+    // Only if query doesn't match substring but is similar length
+    if (q.length > 3 && Math.abs(t.length - q.length) < 3) {
+        if (getLevenshteinDistance(t, q) <= 2) return true;
+    }
+
+    return false;
+};
+
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q')?.toLowerCase() || '';
@@ -30,14 +69,14 @@ export async function GET(request: Request) {
         // Search Notes
         if (!typeFilter || typeFilter === 'note') {
             for (const note of notes) {
-                if (note.title.toLowerCase().includes(query) || note.content.toLowerCase().includes(query)) {
+                if (isFuzzyMatch(note.title, query) || note.content.toLowerCase().includes(query)) {
                     results.push({
                         type: 'note',
                         id: note.id,
                         title: note.title,
                         subtitle: `Notiz • ${new Date(note.updatedAt).toLocaleDateString('de-DE')}`,
                         url: `/knowledge?id=${note.id}`,
-                        matchScore: note.title.toLowerCase().includes(query) ? 2 : 1
+                        matchScore: note.title.toLowerCase().startsWith(query) ? 3 : (note.title.toLowerCase().includes(query) ? 2 : 1)
                     });
                 }
             }
@@ -46,7 +85,7 @@ export async function GET(request: Request) {
         // Search Tasks
         if (!typeFilter || typeFilter === 'task') {
             for (const task of tasks) {
-                if (task.title.toLowerCase().includes(query) || task.description?.toLowerCase().includes(query)) {
+                if (isFuzzyMatch(task.title, query) || task.description?.toLowerCase().includes(query)) {
                     const projectTitle = task.projectId ? projectMap.get(task.projectId) || task.projectId : 'Kein Projekt';
                     results.push({
                         type: 'task',
@@ -54,7 +93,7 @@ export async function GET(request: Request) {
                         title: task.title,
                         subtitle: `Aufgabe • ${task.status.toUpperCase()} • ${projectTitle}`,
                         url: `/tasks?id=${task.id}`,
-                        matchScore: task.title.toLowerCase().includes(query) ? 2 : 1
+                        matchScore: task.title.toLowerCase().startsWith(query) ? 3 : (task.title.toLowerCase().includes(query) ? 2 : 1)
                     });
                 }
             }
@@ -64,7 +103,7 @@ export async function GET(request: Request) {
         if (!typeFilter || typeFilter === 'project') {
             // Projects
             for (const proj of projects) {
-                if (proj.title.toLowerCase().includes(query)) {
+                if (isFuzzyMatch(proj.title, query)) {
                     results.push({
                         type: 'project',
                         id: proj.id,
@@ -77,10 +116,9 @@ export async function GET(request: Request) {
             }
 
             // Include Unassigned Tasks ONLY if explicitly filtering by project
-            // (Otherwise they are covered by the standard Task search)
             if (typeFilter === 'project') {
                 for (const task of tasks) {
-                    if (!task.projectId && (task.title.toLowerCase().includes(query) || task.description?.toLowerCase().includes(query))) {
+                    if (!task.projectId && (isFuzzyMatch(task.title, query) || task.description?.toLowerCase().includes(query))) {
                         results.push({
                             type: 'task',
                             id: task.id,
@@ -97,7 +135,7 @@ export async function GET(request: Request) {
         // Search Chats
         if (!typeFilter || typeFilter === 'chat') {
             for (const chat of conversations) {
-                if (chat.title.toLowerCase().includes(query)) {
+                if (isFuzzyMatch(chat.title, query)) {
                     results.push({
                         type: 'chat',
                         id: chat.id,
@@ -113,14 +151,14 @@ export async function GET(request: Request) {
         // Search Calendar
         if (!typeFilter || typeFilter === 'calendar') {
             for (const event of events) {
-                if (event.title.toLowerCase().includes(query) || event.description?.toLowerCase().includes(query)) {
+                if (isFuzzyMatch(event.title, query) || event.description?.toLowerCase().includes(query)) {
                     results.push({
                         type: 'calendar',
                         id: event.id,
                         title: event.title,
                         subtitle: `Termin • ${new Date(event.startDate).toLocaleDateString('de-DE')}`,
                         url: `/calendar?date=${event.startDate.split('T')[0]}`,
-                        matchScore: 2
+                        matchScore: event.title.toLowerCase().startsWith(query) ? 3 : (event.title.toLowerCase().includes(query) ? 2 : 1)
                     });
                 }
             }
