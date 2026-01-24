@@ -3,6 +3,7 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { AssistantChat } from '@/components/assistant';
 import styles from './AppShell.module.css';
 
 interface AppShellProps {
@@ -10,7 +11,7 @@ interface AppShellProps {
     title?: string;
 }
 
-const SIDEBAR_COLLAPSED_KEY = 'ai-workspace-sidebar-collapsed';
+const SIDEBAR_COLLAPSED_KEY = 'open-workspace-sidebar-collapsed';
 
 export function AppShell({ children, title }: AppShellProps) {
     const [isCollapsed, setIsCollapsed] = useState(true); // Default to collapsed
@@ -42,6 +43,7 @@ export function AppShell({ children, title }: AppShellProps) {
                     {children}
                 </main>
             </div>
+            <AssistantChat />
         </div>
     );
 }

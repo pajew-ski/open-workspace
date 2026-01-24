@@ -9,7 +9,7 @@ export default function AgentsPage() {
                 <div className={styles.header}>
                     <div>
                         <h2>AI Agenten</h2>
-                        <p>Verwalten Sie Ihre Agent2Agent (A2A) Agenten und deren Fähigkeiten.</p>
+                        <p>Verwalte deine Agent2Agent (A2A) Agenten und deren Fähigkeiten.</p>
                     </div>
                     <Button variant="primary">+ Neuer Agent</Button>
                 </div>
@@ -26,7 +26,7 @@ export default function AgentsPage() {
                                     <path d="M3 21v-2a7 7 0 0 1 7-7h4a7 7 0 0 1 7 7v2" />
                                 </svg>
                                 <h4>Keine Agenten konfiguriert</h4>
-                                <p>Erstellen Sie Ihren ersten A2A-Agenten, um mit der Automatisierung zu beginnen.</p>
+                                <p>Erstelle deinen ersten A2A-Agenten, um mit der Automatisierung zu beginnen.</p>
                                 <Button variant="primary">Ersten Agenten erstellen</Button>
                             </div>
                         </CardContent>

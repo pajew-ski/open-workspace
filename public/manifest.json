@@ -1,6 +1,6 @@
 {
-    "name": "AI Workspace",
-    "short_name": "AI Workspace",
+    "name": "Open Workspace",
+    "short_name": "Open Workspace",
     "description": "Umfassender AI-Workspace für Agenten-Kollaboration",
     "start_url": "/",
     "display": "standalone",

@@ -1,172 +1,125 @@
-# AGENTS.md - AI Workspace Protocol
+# AGENTS.md - Open Workspace Protocol
 
-> Single Source of Truth for AI agent interaction with this codebase
+> Single Source of Truth für AI-Agent Interaktion mit dieser Codebase
 
 ## System Overview
 
-AI Workspace is a comprehensive Next.js application designed as a unified interface for AI agent collaboration. The system implements Agent2Agent (A2A) and Agent2UI (A2UI) protocols for standardized agent communication and UI generation.
+Open Workspace ist eine umfassende Next.js-Anwendung als einheitliche Schnittstelle für AI-Agent-Kollaboration. Das System implementiert Agent2Agent (A2A), Agent2UI (A2UI) und Model Context Protocol (MCP) für standardisierte Agent-Kommunikation.
 
-## Architecture
+## Persönlicher Assistent
+
+Der **Persönliche Assistent** ist der zentrale AI-Agent und einziger Ansprechpartner des Operators (Nutzers):
+
+### Eigenschaften
+- **Kontext-bewusst**: Weiß immer, auf welcher Seite der Nutzer ist und was er sieht
+- **Vollzugriff**: Hat Zugriff auf den gesamten Workspace, alle Module und Daten
+- **Koordinator**: Kann alle anderen Agenten delegieren und orchestrieren
+- **Allgegenwärtig**: Als Chat-Widget unten links auf allen Seiten verfügbar
+
+### Fähigkeiten
+- Wissensbasis durchsuchen und bearbeiten
+- Canvas-Karten erstellen und verknüpfen
+- Aufgaben verwalten und priorisieren
+- A2A-Agenten koordinieren und delegieren
+- Tools via MCP aufrufen
+- Code generieren und analysieren
+- Markdown-Dokumente erstellen
+
+### Kontext-Informationen
+Der Assistent erhält automatisch:
+- Aktuelle Seite/Modul
+- Sichtbare Inhalte im Browser
+- Ausgewählte Elemente
+- Letzte Aktionen des Nutzers
+- Relevante Daten aus der Wissensbasis
+
+## Architektur
 
 ```
-ai-workspace/
+open-workspace/
 ├── src/
-│   ├── app/                    # Next.js App Router pages
-│   │   ├── (dashboard)/        # Dashboard module
-│   │   ├── (knowledge)/        # Knowledge base module
-│   │   ├── (canvas)/           # Visual planning module
-│   │   ├── (tasks)/            # Task/project management module
-│   │   ├── api/                # API routes
-│   │   │   ├── agents/         # A2A protocol endpoints
-│   │   │   ├── chat/           # Chat inference endpoints
-│   │   │   ├── artifacts/      # Artifact CRUD operations
-│   │   │   └── github/         # GitHub sync endpoints
-│   │   └── settings/           # Settings page
+│   ├── app/
+│   │   ├── page.tsx              # Dashboard
+│   │   ├── knowledge/            # Wissensbasis
+│   │   ├── canvas/               # Visuelle Planung
+│   │   ├── tasks/                # Aufgaben
+│   │   ├── agents/               # A2A Agenten
+│   │   ├── communication/        # Matrix Chat
+│   │   ├── settings/             # Einstellungen
+│   │   └── api/                  # API-Routen
 │   ├── components/
-│   │   ├── ui/                 # Base UI components (Material Design)
-│   │   ├── chat/               # Chat widget components
-│   │   ├── markdown/           # Markdown renderer with Mermaid
-│   │   ├── canvas/             # Canvas planning components
-│   │   ├── tasks/              # Task/project management components
-│   │   └── a2ui/               # A2UI renderer components
+│   │   ├── ui/                   # Base UI (Material Design)
+│   │   ├── chat/                 # Chat-Widget
+│   │   ├── layout/               # App Shell
+│   │   └── assistant/            # Persönlicher Assistent
 │   ├── lib/
-│   │   ├── agents/             # A2A client implementation
-│   │   ├── inference/          # LLM inference client (Ollama)
-│   │   ├── github/             # GitHub API integration
-│   │   ├── i18n/               # Internationalization
-│   │   ├── storage/            # IndexedDB for offline
-│   │   └── hooks/              # React hooks
-│   ├── stores/                 # Zustand state management
-│   └── types/                  # TypeScript definitions
-├── data/                       # JSON data storage
-├── public/
-│   ├── manifest.json           # PWA manifest
-│   └── sw.js                   # Service worker
-└── locales/
-    ├── de.json                 # German translations (default)
-    └── en.json                 # English translations
+│   │   ├── agents/               # A2A Client
+│   │   └── inference/            # Ollama Client
+│   └── stores/                   # Zustand State
+├── data/                         # JSON Datenspeicher
+└── public/                       # Static Assets
 ```
 
-## Core Protocols
+## Core Protokolle
 
-### Agent2Agent (A2A) Protocol
-- HTTP/SSE-based communication
-- JSON-RPC message format
-- Capability discovery via agent cards
-- Long-running task support
-- Multi-modal content (text, structured data)
+### Agent2Agent (A2A)
+- HTTP/SSE-basierte Kommunikation
+- JSON-RPC Nachrichtenformat
+- Capability Discovery via Agent Cards
+- Long-running Task Support
 
-### Agent2UI (A2UI) Protocol
-- Declarative UI component descriptions
-- Streaming JSON for progressive rendering
-- Pre-approved component catalog
-- Framework-agnostic specification
-- Secure by design (no code execution)
+### Agent2UI (A2UI)
+- Deklarative UI-Komponenten-Beschreibungen
+- Streaming JSON für progressive Darstellung
+- Pre-approved Component Catalog
+- Secure by Design (keine Code-Ausführung)
 
 ### Model Context Protocol (MCP)
-- Tool and resource exposure for agents
-- Standardized context passing
-- Server/client architecture
-- JSON-RPC 2.0 messaging
+- Tool und Resource Exposure für Agenten
+- Standardisiertes Context Passing
+- JSON-RPC 2.0 Messaging
 
-## AI Inference Configuration
+## AI Inference
 
-**Primary Endpoint**: `http://192.168.42.2:11434`
-**Model**: `gpt-oss-20`
-**API Compatibility**: Ollama REST API
+**Endpunkt**: `http://192.168.42.2:11434`
+**Modell**: `gpt-oss-20`
+**API**: Ollama REST API
 
-### Available Endpoints
-- `POST /api/chat` - Chat completions with message history
-- `POST /api/generate` - Single prompt completions
-- `GET /api/tags` - List available models
+## Modul-Agenten
 
-## Data Storage
+| Modul | Agent-Rolle | Kontext-Zugriff |
+|-------|------------|-----------------|
+| Dashboard | Übersicht-Assistent | System-Metriken, aktuelle Items |
+| Wissensbasis | Recherche-Assistent | Notizen, Dokumente, Artefakte |
+| Canvas | Planungs-Assistent | Karten, Verbindungen |
+| Aufgaben | Projekt-Assistent | Tasks, Deadlines, Fortschritt |
+| Agenten | A2A Koordinator | Agent-Configs, MCP Tools |
+| Kommunikation | Chat-Assistent | Matrix Rooms, Nachrichten |
 
-**Location**: `data/` (project root)
-**Format**: JSON files (database-ready structure)
-
-```
-data/
-├── notes/           # Knowledge base notes
-│   └── {id}.json
-├── artifacts/       # Generated artifacts
-│   └── {id}.json
-├── canvas/          # Canvas cards and connections
-│   └── {id}.json
-├── chat/            # Chat history per session
-│   └── {sessionId}.json
-└── settings.json    # User preferences
-```
-
-**Schema Design**: All JSON files use database-compatible schemas with `id`, `createdAt`, `updatedAt` fields for future migration to SQLite/PostgreSQL.
-
-## Module Agents
-
-Each module has a dedicated agent accessible via chat widget:
-
-| Module | Agent Role | Context Access |
-|--------|-----------|----------------|
-| Dashboard | Overview assistant | System metrics, recent items |
-| Knowledge | Research assistant | Notes, documents, code, artifacts |
-| Canvas | Planning assistant | Cards, visual elements, connections |
-| Tasks | Project assistant | Tasks, projects, deadlines, progress |
-| Agenten | A2A coordinator | Agent configs, capabilities, MCP tools |
-| Kommunikation | Chat assistant | Matrix rooms, messages, contacts |
-
-## Development Commands
+## Entwicklung
 
 ```bash
-# Install dependencies
-bun install
-
-# Development server
-bun run dev
-
-# Build production
-bun run build
-
-# Lint check
-bun run lint
+bun install    # Abhängigkeiten
+bun run dev    # Entwicklung
+bun run build  # Produktion
 ```
 
-## Code Conventions
+## Code-Konventionen
 
-- Language: TypeScript (strict mode)
-- API endpoints: English
-- UI labels: German (default), English (switchable)
-- **German text MUST use correct umlauts: ä, ö, ü, Ä, Ö, Ü, ß** (never ae, oe, ue)
-- No emojis in UI or code
-- Semantic HTML structure
-- CSS: CSS Modules with Material Design tokens
-- **Responsive design**: Mobile-first, works on all screen sizes
+- **Sprache**: TypeScript (strict mode)
+- **API**: Englisch
+- **UI-Labels**: Deutsch (Standard), Englisch (umschaltbar)
+- **Anrede**: Immer informell (du-Form, nie Sie-Form)
+- **Umlaute**: Korrekte ä, ö, ü, ß verwenden (nie ae, oe, ue)
+- **Design**: Mobile-first, responsive
 
 ## Design System
 
-- **Style**: Digital Zen Garden (minimal, focused)
-- **Primary Color**: #00674F (teal accent)
-- **Theme**: Light/Dark/System-auto
-- **Typography**: System fonts, clean hierarchy
-- **Components**: Material Design 3 inspired
-
-## File Naming
-
-- Components: PascalCase (e.g., `ChatWidget.tsx`)
-- Utilities: camelCase (e.g., `parseMarkdown.ts`)
-- Types: PascalCase with `.types.ts` suffix
-- API routes: kebab-case
-
-## State Management
-
-- **Server State**: React Query / SWR
-- **Client State**: Zustand stores
-- **Persistence**: IndexedDB via idb-keyval
-
-## Testing
-
-- Unit: Vitest
-- Component: React Testing Library
-- E2E: Playwright (if needed)
+- **Stil**: Digital Zen Garden (minimal, fokussiert)
+- **Primärfarbe**: #00674F (Teal)
+- **Themes**: Light / Dark / System-auto
+- **Komponenten**: Material Design 3 inspiriert
 
 ---
 
-*This document is maintained by AI agents and humans collaboratively.*
+*Dieses Dokument wird von AI-Agenten und Menschen kollaborativ gepflegt.*

@@ -9,7 +9,7 @@ export default function TasksPage() {
                 <div className={styles.header}>
                     <div>
                         <h2>Aufgaben und Projekte</h2>
-                        <p>Verwalten Sie Ihre Aufgaben und behalten Sie den Fortschritt im Blick.</p>
+                        <p>Verwalte deine Aufgaben und behalte den Fortschritt im Blick.</p>
                     </div>
                     <Button variant="primary">+ Neue Aufgabe</Button>
                 </div>

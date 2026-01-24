@@ -1,4 +1,4 @@
-# TODO - AI Workspace Development
+# TODO - Open Workspace Development
 
 ## Phase 1: Foundation
 

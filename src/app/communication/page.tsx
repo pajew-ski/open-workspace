@@ -9,7 +9,7 @@ export default function CommunicationPage() {
                 <div className={styles.header}>
                     <div>
                         <h2>Kommunikation</h2>
-                        <p>Matrix-Protokoll Chat für sichere Kommunikation mit Ihrem Team.</p>
+                        <p>Matrix-Protokoll Chat für sichere Kommunikation mit deinem Team.</p>
                     </div>
                 </div>
 
@@ -39,7 +39,7 @@ export default function CommunicationPage() {
                                 </svg>
                                 <h3>Matrix Chat</h3>
                                 <p>
-                                    Verbinden Sie sich mit einem Matrix-Server, um mit Ihrem Team
+                                    Verbinde dich mit einem Matrix-Server, um mit deinem Team
                                     zu kommunizieren. Der Chat unterstützt Ende-zu-Ende-Verschlüsselung.
                                 </p>
                                 <div className={styles.chatActions}>

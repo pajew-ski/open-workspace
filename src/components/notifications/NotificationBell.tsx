@@ -17,7 +17,7 @@ const demoNotifications: Notification[] = [
     {
         id: '1',
         title: 'Willkommen',
-        message: 'AI Workspace ist bereit für die Nutzung.',
+        message: 'Open Workspace ist bereit für die Nutzung.',
         timestamp: new Date(),
         read: false,
         type: 'info',

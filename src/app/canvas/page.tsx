@@ -24,7 +24,7 @@ export default function CanvasPage() {
                         </svg>
                         <h2>Leeres Canvas</h2>
                         <p>
-                            Beginnen Sie mit der visuellen Planung, indem Sie Karten erstellen
+                            Beginne mit der visuellen Planung, indem du Karten erstellst
                             und diese miteinander verbinden.
                         </p>
                         <Button variant="primary">Erste Karte erstellen</Button>

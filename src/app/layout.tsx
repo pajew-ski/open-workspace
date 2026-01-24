@@ -3,13 +3,13 @@ import { ThemeProvider } from "@/components/providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI Workspace",
+  title: "Open Workspace",
   description: "Umfassender AI-Workspace für Agenten-Kollaboration",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "AI Workspace",
+    title: "Open Workspace",
   },
 };
 

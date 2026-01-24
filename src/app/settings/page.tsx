@@ -19,7 +19,7 @@ export default function SettingsPage() {
                             <div className={styles.settingInfo}>
                                 <span className={styles.settingLabel}>Farbschema</span>
                                 <span className={styles.settingDescription}>
-                                    Wählen Sie zwischen hellem und dunklem Modus
+                                    Wähle zwischen hellem und dunklem Modus
                                 </span>
                             </div>
                             <ThemeSelector />
@@ -36,7 +36,7 @@ export default function SettingsPage() {
                             <div className={styles.settingInfo}>
                                 <span className={styles.settingLabel}>Anzeigesprache</span>
                                 <span className={styles.settingDescription}>
-                                    Wählen Sie die Sprache der Benutzeroberfläche
+                                    Wähle die Sprache der Benutzeroberfläche
                                 </span>
                             </div>
                             <div className={styles.themeButtons}>
@@ -96,7 +96,7 @@ export default function SettingsPage() {
                             <div className={styles.settingInfo}>
                                 <span className={styles.settingLabel}>Repository verbinden</span>
                                 <span className={styles.settingDescription}>
-                                    Synchronisieren Sie Ihre Notizen und Artefakte mit GitHub
+                                    Synchronisiere deine Notizen und Artefakte mit GitHub
                                 </span>
                             </div>
                             <Button variant="secondary" size="sm">Mit GitHub verbinden</Button>

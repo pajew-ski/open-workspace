@@ -9,7 +9,7 @@ export default function KnowledgePage() {
                 <div className={styles.header}>
                     <div>
                         <h2>Notizen und Dokumente</h2>
-                        <p>Verwalten Sie Ihre Wissensbasis mit Markdown-Notizen, Code-Fragmenten und Artefakten.</p>
+                        <p>Verwalte deine Wissensbasis mit Markdown-Notizen, Code-Fragmenten und Artefakten.</p>
                     </div>
                     <Button variant="primary">+ Neue Notiz</Button>
                 </div>
@@ -39,7 +39,7 @@ export default function KnowledgePage() {
                                         <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
                                     </svg>
                                     <h3>Keine Notizen vorhanden</h3>
-                                    <p>Erstellen Sie Ihre erste Notiz, um Ihre Wissensbasis aufzubauen.</p>
+                                    <p>Erstelle deine erste Notiz, um deine Wissensbasis aufzubauen.</p>
                                     <Button variant="primary">+ Neue Notiz erstellen</Button>
                                 </div>
                             </CardContent>

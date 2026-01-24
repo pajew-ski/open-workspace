@@ -97,7 +97,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                         <line x1="3" y1="18" x2="21" y2="18" />
                     </svg>
                 </button>
-                {!isCollapsed && <span className={styles.logoText}>AI Workspace</span>}
+                {!isCollapsed && <span className={styles.logoText}>Open Workspace</span>}
             </div>
 
             <nav className={styles.nav}>

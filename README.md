@@ -1,75 +1,75 @@
-# AI Workspace
+# Open Workspace
 
-A comprehensive, offline-capable workspace for AI agent collaboration. Built with Next.js, implementing Agent2Agent (A2A) and Agent2UI (A2UI) protocols.
+Ein umfassender, offline-fähiger Workspace für AI-Agent-Kollaboration. Entwickelt mit Next.js, implementiert Agent2Agent (A2A) und Agent2UI (A2UI) Protokolle.
 
 ## Features
 
-- **Dashboard**: Real-time overview of system activity and recent items
-- **Knowledge Base**: Markdown notes, documents, code fragments, artifacts
-- **Canvas**: Visual planning with cards and connections
-- **AI Chat**: Context-aware agents per module
-- **Offline PWA**: Full functionality without internet
-- **Internationalization**: German (default) / English
+- **Dashboard**: Echtzeit-Übersicht über Systemaktivität und aktuelle Elemente
+- **Wissensbasis**: Markdown-Notizen, Dokumente, Code-Fragmente, Artefakte
+- **Canvas**: Visuelle Planung mit Karten und Verbindungen
+- **Aufgaben**: Projekte und Aufgabenverwaltung im Kanban-Stil
+- **Agenten**: A2A Agent-Verwaltung und Koordination
+- **Kommunikation**: Matrix-Protokoll Chat für Team-Kommunikation
+- **Persönlicher Assistent**: Kontext-bewusster AI-Assistent auf allen Seiten
+- **Offline PWA**: Volle Funktionalität ohne Internet
+- **Internationalisierung**: Deutsch (Standard) / Englisch
 
 ## Tech Stack
 
-- **Framework**: Next.js 14 (App Router)
-- **Language**: TypeScript
+- **Framework**: Next.js 16 (App Router)
+- **Sprache**: TypeScript
 - **Styling**: CSS Modules, Material Design 3
 - **State**: Zustand, React Query
 - **Offline**: Service Worker, IndexedDB
-- **AI Protocols**: A2A, A2UI
-- **Inference**: Ollama API (local)
+- **AI Protokolle**: A2A, A2UI, MCP
+- **Inference**: Ollama API (lokal)
 
 ## Quick Start
 
 ```bash
-# Clone and install
+# Klonen und installieren
 bun install
 
-# Configure environment
-cp .env.example .env.local
-
-# Start development
+# Entwicklungsserver starten
 bun run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+Öffne [http://localhost:3000](http://localhost:3000)
 
-## AI Configuration
+## AI Konfiguration
 
-Default inference endpoint: `http://192.168.42.2:11434`
+Standard Inference-Endpunkt: `http://192.168.42.2:11434`
 
-Configure in `.env.local`:
+Konfiguriere in `.env.local`:
 ```env
 INFERENCE_ENDPOINT=http://192.168.42.2:11434
 INFERENCE_MODEL=gpt-oss-20
 ```
 
-## Design Philosophy
+## Design Philosophie
 
-**Digital Zen Garden**: Calm, focused interface with minimal distractions. Neutral tones with #00674F teal accent. Light and dark modes with system preference detection.
+**Digital Zen Garden**: Ruhige, fokussierte Oberfläche mit minimalen Ablenkungen. Neutrale Töne mit #00674F Teal-Akzent. Hell- und Dunkelmodus mit System-Präferenz-Erkennung.
 
-## Project Structure
+## Projekt-Struktur
 
 ```
 src/
-├── app/          # Pages and API routes
-├── components/   # Reusable UI components
-├── lib/          # Core utilities and clients
-├── stores/       # State management
-└── types/        # TypeScript definitions
+├── app/          # Seiten und API-Routen
+├── components/   # Wiederverwendbare UI-Komponenten
+├── lib/          # Core-Utilities und Clients
+├── stores/       # State Management
+└── types/        # TypeScript Definitionen
 ```
 
-## Documentation
+## Dokumentation
 
-- [AGENTS.md](./AGENTS.md) - AI agent protocol and architecture
-- [TODO.md](./TODO.md) - Development roadmap
+- [AGENTS.md](./AGENTS.md) - AI-Agent Protokoll und Architektur
+- [TODO.md](./TODO.md) - Entwicklungs-Roadmap
 
-## License
+## Lizenz
 
-GPL-3.0 - This software is and will remain open source.
+GPL-3.0 - Diese Software ist und bleibt Open Source.
 
 ---
 
-*Built for focused AI collaboration*
+*Entwickelt für fokussierte AI-Kollaboration*

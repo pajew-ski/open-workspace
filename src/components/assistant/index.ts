@@ -1,0 +1,1 @@
+export { AssistantChat } from './AssistantChat';

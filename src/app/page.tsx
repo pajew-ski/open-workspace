@@ -8,12 +8,12 @@ export default function DashboardPage() {
       <div className={styles.grid}>
         <Card elevated className={styles.welcome}>
           <CardHeader>
-            <h2>Willkommen im AI Workspace</h2>
+            <h2>Willkommen im Open Workspace</h2>
           </CardHeader>
           <CardContent>
             <p>
-              Ihr zentraler Arbeitsbereich für AI-gestützte Produktivität.
-              Nutzen Sie die Navigation links, um zwischen den Modulen zu wechseln.
+              Dein zentraler Arbeitsbereich für AI-gestützte Produktivität.
+              Nutze die Navigation links, um zwischen den Modulen zu wechseln.
             </p>
           </CardContent>
         </Card>
@@ -59,9 +59,9 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <ul className={styles.quickList}>
-              <li>Drücken Sie Cmd+K für die globale Suche</li>
-              <li>Nutzen Sie das Chat-Widget für AI-Unterstützung</li>
-              <li>Erstellen Sie Notizen in der Wissensbasis</li>
+              <li>Drücke Cmd+K für die globale Suche</li>
+              <li>Nutze das Chat-Widget für AI-Unterstützung</li>
+              <li>Erstelle Notizen in der Wissensbasis</li>
             </ul>
           </CardContent>
         </Card>
