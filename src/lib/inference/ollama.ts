@@ -41,7 +41,7 @@ export interface StreamChunk {
 // Default configuration
 const DEFAULT_CONFIG: OllamaConfig = {
     endpoint: process.env.NEXT_PUBLIC_INFERENCE_ENDPOINT || 'http://192.168.42.2:11434',
-    model: process.env.NEXT_PUBLIC_INFERENCE_MODEL || 'gpt-oss-20',
+    model: process.env.NEXT_PUBLIC_INFERENCE_MODEL || 'gpt-oss:20b',
 };
 
 /**
