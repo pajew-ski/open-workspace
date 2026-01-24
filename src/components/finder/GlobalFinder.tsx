@@ -59,7 +59,7 @@ export function GlobalFinder() {
         }
     }, [isOpen]);
 
-    // Search logic with debounce
+    // Search logic with debounce and modifiers
     useEffect(() => {
         const search = async () => {
             if (!query.trim()) {
@@ -67,10 +67,29 @@ export function GlobalFinder() {
                 return;
             }
 
+            // Parse Modifiers (e.g., "@task fix bug")
+            let activeQuery = query;
+            let activeType = contextType && !isGlobal ? contextType : null;
+
+            const modifierMatch = query.match(/^@(\w+)\s+(.*)/);
+            if (modifierMatch) {
+                const modifier = modifierMatch[1].toLowerCase();
+                const content = modifierMatch[2];
+
+                // Map modifiers to types
+                if (['task', 'aufgabe', 'todo'].includes(modifier)) activeType = 'task';
+                else if (['note', 'notiz', 'wissen'].includes(modifier)) activeType = 'note';
+                else if (['termin', 'date', 'kalender', 'cal'].includes(modifier)) activeType = 'calendar';
+                else if (['chat', 'nachricht'].includes(modifier)) activeType = 'chat';
+                else if (['project', 'projekt'].includes(modifier)) activeType = 'project';
+
+                activeQuery = content;
+            }
+
             try {
-                // If context exists and not explicitly global, filter by context
-                const typeParam = (contextType && !isGlobal) ? `&type=${contextType}` : '';
-                const res = await fetch(`/api/finder?q=${encodeURIComponent(query)}${typeParam}`);
+                // If context exists (either mapped from modifier or path), filter by it
+                const typeParam = activeType ? `&type=${activeType}` : '';
+                const res = await fetch(`/api/finder?q=${encodeURIComponent(activeQuery)}${typeParam}`);
                 const data = await res.json();
                 setResults(data.results || []);
                 setSelectedIndex(0);
@@ -136,7 +155,7 @@ export function GlobalFinder() {
                                 ref={inputRef}
                                 type="text"
                                 className={styles.input}
-                                placeholder={contextType && !isGlobal ? `Finden in ${contextType}...` : "Alles finden..."}
+                                placeholder={contextType && !isGlobal ? `Finden in ${contextType}... (oder @task, @note...)` : "Alles finden... (nutze @task, @termin...)"}
                                 value={query}
                                 onChange={e => setQuery(e.target.value)}
                                 onKeyDown={handleKeyDown}

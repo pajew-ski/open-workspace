@@ -60,8 +60,9 @@ export async function GET(request: Request) {
             }
         }
 
-        // Search Projects
+        // Search Projects (and unassigned tasks if explicit project filter)
         if (!typeFilter || typeFilter === 'project') {
+            // Projects
             for (const proj of projects) {
                 if (proj.title.toLowerCase().includes(query)) {
                     results.push({
@@ -72,6 +73,23 @@ export async function GET(request: Request) {
                         url: `/tasks?projectId=${proj.id}`,
                         matchScore: 3
                     });
+                }
+            }
+
+            // Include Unassigned Tasks ONLY if explicitly filtering by project
+            // (Otherwise they are covered by the standard Task search)
+            if (typeFilter === 'project') {
+                for (const task of tasks) {
+                    if (!task.projectId && (task.title.toLowerCase().includes(query) || task.description?.toLowerCase().includes(query))) {
+                        results.push({
+                            type: 'task',
+                            id: task.id,
+                            title: task.title,
+                            subtitle: 'Aufgabe (Kein Projekt)',
+                            url: `/tasks?id=${task.id}`,
+                            matchScore: 2
+                        });
+                    }
                 }
             }
         }

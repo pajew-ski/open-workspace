@@ -1,6 +1,5 @@
 'use client';
 
-import { GlobalSearch } from '@/components/search';
 import { NotificationBell } from '@/components/notifications';
 import styles from './Header.module.css';
 
@@ -28,7 +27,7 @@ export function Header({ title, onMobileMenuClick }: HeaderProps) {
             </div>
 
             <div className={styles.center}>
-                <GlobalSearch />
+                {/* Search removed as per user request (Redundant with GlobalFinder Bottom-Right) */}
             </div>
 
             <div className={styles.right}>
