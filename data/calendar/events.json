@@ -1,4 +1,865 @@
 {
-  "events": [],
-  "updatedAt": "2026-01-24T09:41:33.690Z"
+  "events": [
+    {
+      "id": "evt-cal-1769248004176-auqd7obg2oum0jfshha88ipi34@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango Amorcito",
+      "description": "uid-466bf6ff",
+      "startDate": "2026-02-01T14:00:00.000Z",
+      "endDate": "2026-02-01T18:00:00.000Z",
+      "allDay": false,
+      "location": "M26, Maxstraße 26, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-16eu21j0dvq73orngfeen3u5sc@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango-Treff",
+      "description": "uid-9fe0fd65",
+      "startDate": "2026-04-26T16:00:00.000Z",
+      "endDate": "2026-04-26T20:00:00.000Z",
+      "allDay": false,
+      "location": "Mehrgenerationenhaus, Ostengasse 29, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-2q69h0nfgjmcvmtanci8ravv8g@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "tango12",
+      "description": "uid-f3fd4c88",
+      "startDate": "2026-02-13T19:30:00.000Z",
+      "endDate": "2026-02-13T23:30:00.000Z",
+      "allDay": false,
+      "location": "Music Academy Regensburg, Zollerstraße 1a, 93053 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-pk0jra9cegq16qaqef93nquse4@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Milonga de la Luna",
+      "description": "uid-737dd9bb",
+      "startDate": "2026-03-21T19:30:00.000Z",
+      "endDate": "2026-03-21T23:30:00.000Z",
+      "allDay": false,
+      "location": "Alte Mälzerei, Galgenbergstraße 20, 93053 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-dunumjmpbvicpvokchm510q9a4@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tanzstudio Danceimperial",
+      "description": "uid-fee62a85",
+      "startDate": "2026-09-26T18:00:00.000Z",
+      "endDate": "2026-09-26T22:00:00.000Z",
+      "allDay": false,
+      "location": "Dance Imperial, Dr.-Gessler-Straße 47, 93051 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-gginikp3rbsb36gj9p57qjffp4@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango-Treff",
+      "description": "uid-84e66bef",
+      "startDate": "2026-04-19T16:00:00.000Z",
+      "endDate": "2026-04-19T20:00:00.000Z",
+      "allDay": false,
+      "location": "Mehrgenerationenhaus, Ostengasse 29, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-ns7bl0j2tccgqpm195242r6k2o@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango Amorcito",
+      "description": "uid-3e4601d8",
+      "startDate": "2026-05-03T13:00:00.000Z",
+      "endDate": "2026-05-03T17:00:00.000Z",
+      "allDay": false,
+      "location": "M26, Maxstraße 26, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-eamr3ngvn0n09ssmr7c87sfd2o@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango-Treff",
+      "description": "uid-d3eb145e",
+      "startDate": "2026-05-17T16:00:00.000Z",
+      "endDate": "2026-05-17T20:00:00.000Z",
+      "allDay": false,
+      "location": "Mehrgenerationenhaus, Ostengasse 29, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-bc8mj4l799vea8f96l0a84q998@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango Amorcito",
+      "description": "uid-c18af08f",
+      "startDate": "2026-10-11T13:00:00.000Z",
+      "endDate": "2026-10-11T17:00:00.000Z",
+      "allDay": false,
+      "location": "M26, Maxstraße 26, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-l1aek05kd0ol7ojjcj7a78vmhs@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "tango12",
+      "description": "uid-43b61a37",
+      "startDate": "2026-03-13T19:30:00.000Z",
+      "endDate": "2026-03-13T23:30:00.000Z",
+      "allDay": false,
+      "location": "Music Academy Regensburg, Zollerstraße 1a, 93053 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-62ueja71ns7lphch7cff1gsnjc@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tanzerei",
+      "description": "uid-1bcaa6fd",
+      "startDate": "2026-03-01T16:00:00.000Z",
+      "endDate": "2026-03-01T20:00:00.000Z",
+      "allDay": false,
+      "location": "Schulstrasse 10, Haibach, Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-kl9un0um2agrii04v14hcs1os8@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tangomegusta",
+      "description": "uid-6dc032c7",
+      "startDate": "2026-05-16T14:00:00.000Z",
+      "endDate": "2026-05-16T18:00:00.000Z",
+      "allDay": false,
+      "location": "tbd., Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-ro8e7vugcn6ej9t0ieo51ajkig@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "tangoNegro",
+      "description": "uid-47e3e2b6",
+      "startDate": "2026-07-24T22:00:00.000Z",
+      "endDate": "2026-07-25T02:00:00.000Z",
+      "allDay": false,
+      "location": "Schwaigstraße 12, Aldersbach, Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-8ja9p5q1jeael4i8qlnfkq356o@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango im Fluss",
+      "description": "uid-dba73248",
+      "startDate": "2026-03-14T19:30:00.000Z",
+      "endDate": "2026-03-14T23:30:00.000Z",
+      "allDay": false,
+      "location": "Tanzbar, Osterhofener Str. 14a, 93055 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-jbuo47advgscv3bfnl3in9gpg0@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Afterworkmilonga",
+      "description": "uid-8b645fa",
+      "startDate": "2026-04-14T16:30:00.000Z",
+      "endDate": "2026-04-14T20:30:00.000Z",
+      "allDay": false,
+      "location": "Spitalgarten, St.-Katharinen-Platz 1, 93059 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-hnvfnanp4t9fprhnok4prtnngg@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Milonga de la Luna",
+      "description": "uid-5dc33e6f",
+      "startDate": "2026-07-18T18:30:00.000Z",
+      "endDate": "2026-07-18T22:30:00.000Z",
+      "allDay": false,
+      "location": "Alte Mälzerei, Galgenbergstraße 20, 93053 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-j7tsig4tgfu8oambqhs98ue3kc@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tanzstudio Danceimperial",
+      "description": "uid-2241916c",
+      "startDate": "2026-07-25T18:00:00.000Z",
+      "endDate": "2026-07-25T22:00:00.000Z",
+      "allDay": false,
+      "location": "Dance Imperial, Dr.-Gessler-Straße 47, 93051 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-n8079lnfbeq9ptea33lbmn5tj0@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Milonga del Sol",
+      "description": "uid-ea3626e8",
+      "startDate": "2026-03-07T19:30:00.000Z",
+      "endDate": "2026-03-07T23:30:00.000Z",
+      "allDay": false,
+      "location": "Alte Mälzerei, Galgenbergstraße 20, 93053 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-ca2qqnvoq4adf8ma6ifkvjv7ko@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Milonga del Sol",
+      "description": "uid-eaf0441a",
+      "startDate": "2026-06-06T18:30:00.000Z",
+      "endDate": "2026-06-06T22:30:00.000Z",
+      "allDay": false,
+      "location": "Alte Mälzerei, Galgenbergstraße 20, 93053 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-lh9i84th4c8d2gq5a1m83qjcgk@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "tango12",
+      "description": "uid-18837474",
+      "startDate": "2026-06-13T18:30:00.000Z",
+      "endDate": "2026-06-13T22:30:00.000Z",
+      "allDay": false,
+      "location": "Music Academy Regensburg, Zollerstraße 1a, 93053 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-dln0u1np2aelce1somik8b85mo@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango Amorcito",
+      "description": "uid-3f7dd162",
+      "startDate": "2026-11-08T14:00:00.000Z",
+      "endDate": "2026-11-08T18:00:00.000Z",
+      "allDay": false,
+      "location": "M26, Maxstraße 26, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-i80dl18ruiuhbfonte9t0hvd34@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Milonga de la Luna",
+      "description": "uid-f6251b77",
+      "startDate": "2026-05-16T18:30:00.000Z",
+      "endDate": "2026-05-16T22:30:00.000Z",
+      "allDay": false,
+      "location": "Alte Mälzerei, Galgenbergstraße 20, 93053 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-2ujna7iecpbp7tnm8257kkl9eg@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Manuel und Susanne",
+      "description": "uid-2fcf71e3",
+      "startDate": "2026-05-04T17:30:00.000Z",
+      "endDate": "2026-05-04T21:30:00.000Z",
+      "allDay": false,
+      "location": "Pfarrheim St. Mang, Andreasstraße 9, 93059 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-d4de64bu30rffu6r0c6mo8pd20@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Milonga del Sol",
+      "description": "uid-1ce6f68b",
+      "startDate": "2026-05-02T18:30:00.000Z",
+      "endDate": "2026-05-02T22:30:00.000Z",
+      "allDay": false,
+      "location": "Alte Mälzerei, Galgenbergstraße 20, 93053 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-6bfo9o4n8bvta1v4l6bokpfe90@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango-Treff",
+      "description": "uid-7b316fb0",
+      "startDate": "2026-12-06T17:00:00.000Z",
+      "endDate": "2026-12-06T21:00:00.000Z",
+      "allDay": false,
+      "location": "Mehrgenerationenhaus, Ostengasse 29, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-g26kdogrpm05o2fnrhpvb9msts@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango-Treff",
+      "description": "uid-788c1147",
+      "startDate": "2026-10-18T16:00:00.000Z",
+      "endDate": "2026-10-18T20:00:00.000Z",
+      "allDay": false,
+      "location": "Mehrgenerationenhaus, Ostengasse 29, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-k9p3kmhmaojfpql67cgdnka98s@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango-Treff",
+      "description": "uid-52582ece",
+      "startDate": "2026-03-15T17:00:00.000Z",
+      "endDate": "2026-03-15T21:00:00.000Z",
+      "allDay": false,
+      "location": "Mehrgenerationenhaus, Ostengasse 29, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-hnl4uu0q54heimqeo11r4tdqsk@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango-Treff",
+      "description": "uid-350c96e9",
+      "startDate": "2026-07-05T16:00:00.000Z",
+      "endDate": "2026-07-05T20:00:00.000Z",
+      "allDay": false,
+      "location": "Mehrgenerationenhaus, Ostengasse 29, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-aimrtaqfjs0im698vi53uqqgs0@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "AfterWEEKmilonga",
+      "description": "uid-ec14fb97",
+      "startDate": "2026-10-31T23:00:00.000Z",
+      "endDate": "2026-11-01T03:00:00.000Z",
+      "allDay": false,
+      "location": "Arberhütte, Arberstraße 15, 93059 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-ofv0fsm3ncl47ac4lj53q1u5vo@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango-Treff",
+      "description": "uid-661fca22",
+      "startDate": "2026-12-13T17:00:00.000Z",
+      "endDate": "2026-12-13T21:00:00.000Z",
+      "allDay": false,
+      "location": "Mehrgenerationenhaus, Ostengasse 29, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-t6cmhfi2b2m4re99qqcthribh0@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "AfterWEEKmilonga",
+      "description": "uid-53ebbe8e",
+      "startDate": "2026-05-30T22:00:00.000Z",
+      "endDate": "2026-05-31T02:00:00.000Z",
+      "allDay": false,
+      "location": "Arberhütte, Arberstraße 15, 93059 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-6uspfhbbacli5bo0jd7j3licb0@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango-Treff",
+      "description": "uid-dae064ec",
+      "startDate": "2026-06-21T16:00:00.000Z",
+      "endDate": "2026-06-21T20:00:00.000Z",
+      "allDay": false,
+      "location": "Mehrgenerationenhaus, Ostengasse 29, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-pubvdl7jd5mkr4lku75m4huvfs@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "tango12",
+      "description": "uid-a0418b69",
+      "startDate": "2026-06-12T18:30:00.000Z",
+      "endDate": "2026-06-12T22:30:00.000Z",
+      "allDay": false,
+      "location": "Music Academy Regensburg, Zollerstraße 1a, 93053 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-ve1hg1a76jbqbsk8fkgq52ngrk@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "tango12",
+      "description": "uid-3917f661",
+      "startDate": "2026-08-14T18:30:00.000Z",
+      "endDate": "2026-08-14T22:30:00.000Z",
+      "allDay": false,
+      "location": "Music Academy Regensburg, Zollerstraße 1a, 93053 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-hbaoa46ftev1erme8esm90huv4@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "CHE!",
+      "description": "uid-89f175ef",
+      "startDate": "2026-07-12T14:00:00.000Z",
+      "endDate": "2026-07-12T18:00:00.000Z",
+      "allDay": false,
+      "location": "Pfarrheim St. Mang, Andreasstraße 9, 93059 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-k7hbues8cvo498tfis25hfmj40@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "tango12",
+      "description": "uid-6d9d4c33",
+      "startDate": "2026-09-11T18:30:00.000Z",
+      "endDate": "2026-09-11T22:30:00.000Z",
+      "allDay": false,
+      "location": "Music Academy Regensburg, Zollerstraße 1a, 93053 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-0oqlifut9jjm0d5od1v7f65q20@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "tangoNegro",
+      "description": "uid-470e27e2",
+      "startDate": "2026-07-27T00:00:00.000Z",
+      "endDate": "2026-07-27T04:00:00.000Z",
+      "allDay": false,
+      "location": "t.b.d., Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-0nm1i7jcbr217a5p2n66nmapfk@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Afterworkmilonga",
+      "description": "uid-90d7eeed",
+      "startDate": "2026-11-17T17:30:00.000Z",
+      "endDate": "2026-11-17T21:30:00.000Z",
+      "allDay": false,
+      "location": "Spitalgarten, St.-Katharinen-Platz 1, 93059 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-natpuvrj9slsbj4uciqrv08ar4@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Manuel und Susanne",
+      "description": "uid-bac63010",
+      "startDate": "2026-06-22T17:30:00.000Z",
+      "endDate": "2026-06-22T21:30:00.000Z",
+      "allDay": false,
+      "location": "Pfarrheim St. Mang, Andreasstraße 9, 93059 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-7v2upj7jos7e6cmiusr245kk0s@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango-Treff",
+      "description": "uid-b60685a0",
+      "startDate": "2026-01-11T17:00:00.000Z",
+      "endDate": "2026-01-11T21:00:00.000Z",
+      "allDay": false,
+      "location": "Mehrgenerationenhaus, Ostengasse 29, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-fjjkl3e7gfg6lv44f69mvh0300@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Manuel und Susanne",
+      "description": "uid-24683ff2",
+      "startDate": "2026-05-18T17:30:00.000Z",
+      "endDate": "2026-05-18T21:30:00.000Z",
+      "allDay": false,
+      "location": "Pfarrheim St. Mang, Andreasstraße 9, 93059 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-nvkj41bjme9mdqaponrrjbh4vo@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango-Treff",
+      "description": "uid-2332884d",
+      "startDate": "2026-05-03T16:00:00.000Z",
+      "endDate": "2026-05-03T20:00:00.000Z",
+      "allDay": false,
+      "location": "Mehrgenerationenhaus, Ostengasse 29, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-p08c75d0reu3mv5dt9f7a47f3o@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Milonga de la Luna",
+      "description": "uid-c9813dbd",
+      "startDate": "2026-06-20T18:30:00.000Z",
+      "endDate": "2026-06-20T22:30:00.000Z",
+      "allDay": false,
+      "location": "Alte Mälzerei, Galgenbergstraße 20, 93053 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-r7rqmre9qevpivhos0dtqtq0rg@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tanzstudio Danceimperial",
+      "description": "uid-69c6bad9",
+      "startDate": "2026-03-28T19:00:00.000Z",
+      "endDate": "2026-03-28T23:00:00.000Z",
+      "allDay": false,
+      "location": "Dance Imperial, Dr.-Gessler-Straße 47, 93051 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-b0a5eou6cip44o6ukcknmmas9g@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "tango12",
+      "description": "uid-b01119b9",
+      "startDate": "2026-04-10T18:30:00.000Z",
+      "endDate": "2026-04-10T22:30:00.000Z",
+      "allDay": false,
+      "location": "Music Academy Regensburg, Zollerstraße 1a, 93053 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-m4kco2hl8pdk3p0t98a32gtqok@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango-Treff",
+      "description": "uid-27a8c64",
+      "startDate": "2026-09-20T16:00:00.000Z",
+      "endDate": "2026-09-20T20:00:00.000Z",
+      "allDay": false,
+      "location": "Mehrgenerationenhaus, Ostengasse 29, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-a5csd0pi4eomekcinp11qlobk8@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango Amorcito",
+      "description": "uid-342d23f1",
+      "startDate": "2026-08-23T13:00:00.000Z",
+      "endDate": "2026-08-23T17:00:00.000Z",
+      "allDay": false,
+      "location": "M26, Maxstraße 26, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-0gq9airmj6ef50tntvrgggvgb0@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango-Treff",
+      "description": "uid-2524d095",
+      "startDate": "2026-11-15T17:00:00.000Z",
+      "endDate": "2026-11-15T21:00:00.000Z",
+      "allDay": false,
+      "location": "Mehrgenerationenhaus, Ostengasse 29, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-s7cn3on4tj6jukli0n7t6j6idg@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango-Treff",
+      "description": "uid-808298a6",
+      "startDate": "2026-02-01T17:00:00.000Z",
+      "endDate": "2026-02-01T21:00:00.000Z",
+      "allDay": false,
+      "location": "Mehrgenerationenhaus, Ostengasse 29, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-u2qqd27c32178q13vh46c2djf8@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Manuel und Susanne",
+      "description": "uid-bb0ea63",
+      "startDate": "2026-02-09T18:30:00.000Z",
+      "endDate": "2026-02-09T22:30:00.000Z",
+      "allDay": false,
+      "location": "Pfarrheim St. Mang, Andreasstraße 9, 93059 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-0nqlsf7fm9a2n4nmapogf3ijlk@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Milonga del Sol",
+      "description": "uid-26cb0ac3",
+      "startDate": "2026-02-07T19:30:00.000Z",
+      "endDate": "2026-02-07T23:30:00.000Z",
+      "allDay": false,
+      "location": "Alte Mälzerei, Galgenbergstraße 20, 93053 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-vsn75f7u9sdo9atl3fhnt1su2g@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango Amorcito",
+      "description": "uid-57cb4d01",
+      "startDate": "2026-06-14T13:00:00.000Z",
+      "endDate": "2026-06-14T17:00:00.000Z",
+      "allDay": false,
+      "location": "M26, Maxstraße 26, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-v94tnmp4scit2hf8uj36akrll0@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tanzstudio Danceimperial",
+      "description": "uid-91935d48",
+      "startDate": "2026-05-23T18:00:00.000Z",
+      "endDate": "2026-05-23T22:00:00.000Z",
+      "allDay": false,
+      "location": "Dance Imperial, Dr.-Gessler-Straße 47, 93051 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-44lfh8e1hoajnkfa21id5mffhc@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "tango12",
+      "description": "uid-25c481f4",
+      "startDate": "2026-07-10T18:30:00.000Z",
+      "endDate": "2026-07-10T22:30:00.000Z",
+      "allDay": false,
+      "location": "Music Academy Regensburg, Zollerstraße 1a, 93053 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-56mb5e6om6huqu3gtaof4c2gk4@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Manuel und Susanne",
+      "description": "uid-7814a1b2",
+      "startDate": "2026-03-23T18:30:00.000Z",
+      "endDate": "2026-03-23T22:30:00.000Z",
+      "allDay": false,
+      "location": "Pfarrheim St. Mang, Andreasstraße 9, 93059 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-adudtljqu44l1sbfrnqdqffo9o@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tanzstudio Danceimperial",
+      "description": "uid-faa8f2cf",
+      "startDate": "2026-01-24T19:00:00.000Z",
+      "endDate": "2026-01-24T23:00:00.000Z",
+      "allDay": false,
+      "location": "Dance Imperial, Dr.-Gessler-Straße 47, 93051 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-ar0b395qd4pcqgn71n15derd2c@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "tango12",
+      "description": "uid-af75cdec",
+      "startDate": "2026-11-13T19:30:00.000Z",
+      "endDate": "2026-11-13T23:30:00.000Z",
+      "allDay": false,
+      "location": "Music Academy Regensburg, Zollerstraße 1a, 93053 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-rl31vk1nlvbfrra4o6isb0d3js@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Milonga de la Luna",
+      "description": "uid-6c34c21e",
+      "startDate": "2026-04-18T18:30:00.000Z",
+      "endDate": "2026-04-18T22:30:00.000Z",
+      "allDay": false,
+      "location": "Alte Mälzerei, Galgenbergstraße 20, 93053 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-c257dpc6tpahs94d6f86hmubn8@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango im Fluss",
+      "description": "uid-eb9b5b3d",
+      "startDate": "2026-01-24T19:30:00.000Z",
+      "endDate": "2026-01-24T23:30:00.000Z",
+      "allDay": false,
+      "location": "Tanzbar, Osterhofener Str. 14a, 93055 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-on57jrt18l727ccdr2oiqku208@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango-Treff",
+      "description": "uid-799332e4",
+      "startDate": "2026-06-14T16:00:00.000Z",
+      "endDate": "2026-06-14T20:00:00.000Z",
+      "allDay": false,
+      "location": "Mehrgenerationenhaus, Ostengasse 29, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-b9j2j7pl7uro3jnao8mpo2ramk@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tanzstudio Danceimperial",
+      "description": "uid-530e0c66",
+      "startDate": "2026-11-28T19:00:00.000Z",
+      "endDate": "2026-11-28T23:00:00.000Z",
+      "allDay": false,
+      "location": "Dance Imperial, Dr.-Gessler-Straße 47, 93051 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-d4o3j89u3bpgftpvohuiajqdp8@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango-Kollektiv",
+      "description": "uid-ece4d9bd",
+      "startDate": "2026-03-06T19:00:00.000Z",
+      "endDate": "2026-03-06T23:00:00.000Z",
+      "allDay": false,
+      "location": "Konzertsaal im Leeren Beutel, Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-cgqnfed709gs2lmea7i3ar01q8@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango Amorcito",
+      "description": "uid-8efaeeb2",
+      "startDate": "2026-03-29T13:00:00.000Z",
+      "endDate": "2026-03-29T17:00:00.000Z",
+      "allDay": false,
+      "location": "M26, Maxstraße 26, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-r6dika03i1c2b2sj5g8gu6tb2c@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango Amorcito",
+      "description": "uid-98ccf7bb",
+      "startDate": "2026-12-13T14:00:00.000Z",
+      "endDate": "2026-12-13T18:00:00.000Z",
+      "allDay": false,
+      "location": "M26, Maxstraße 26, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-elj6ken6t7p6cslsbprga4uf14@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "tango12",
+      "description": "uid-55f9f4c2",
+      "startDate": "2026-10-09T18:30:00.000Z",
+      "endDate": "2026-10-09T22:30:00.000Z",
+      "allDay": false,
+      "location": "Music Academy Regensburg, Zollerstraße 1a, 93053 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-b5nqfu8pt2r8fagvlnopgbqdno@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango-Kollektiv",
+      "description": "uid-1da59a28",
+      "startDate": "2026-01-30T19:00:00.000Z",
+      "endDate": "2026-01-30T23:00:00.000Z",
+      "allDay": false,
+      "location": "Konzertsaal im Leeren Beutel, Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-r0f7cr36ett9i961ul9qpa034s@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Manuel und Susanne",
+      "description": "uid-7311935b",
+      "startDate": "2026-07-20T17:30:00.000Z",
+      "endDate": "2026-07-20T21:30:00.000Z",
+      "allDay": false,
+      "location": "Pfarrheim St. Mang, Andreasstraße 9, 93059 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-jf4lh0jlujjo4hunvv16e5979s@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "tangoNegro",
+      "description": "uid-fff835d4",
+      "startDate": "2026-07-25T23:00:00.000Z",
+      "endDate": "2026-07-26T03:00:00.000Z",
+      "allDay": false,
+      "location": "t.b.d., Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-h42b79i8ittk38joi58fccoos8@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "CHE!",
+      "description": "uid-aecfce00",
+      "startDate": "2026-04-12T14:00:00.000Z",
+      "endDate": "2026-04-12T18:00:00.000Z",
+      "allDay": false,
+      "location": "Pfarrheim St. Mang, Andreasstraße 9, 93059 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-cusq133245fh15j21qebu021h4@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango Amorcito",
+      "description": "uid-abcb702f",
+      "startDate": "2026-07-19T13:00:00.000Z",
+      "endDate": "2026-07-19T17:00:00.000Z",
+      "allDay": false,
+      "location": "M26, Maxstraße 26, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-11uri9a3btcql8fjkags565v2o@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango-Treff",
+      "description": "uid-e43e6d23",
+      "startDate": "2026-11-22T17:00:00.000Z",
+      "endDate": "2026-11-22T21:00:00.000Z",
+      "allDay": false,
+      "location": "Mehrgenerationenhaus, Ostengasse 29, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-mog6j4mumslejjj4i8uuce6fhc@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango-Treff",
+      "description": "uid-db968861",
+      "startDate": "2026-03-01T17:00:00.000Z",
+      "endDate": "2026-03-01T21:00:00.000Z",
+      "allDay": false,
+      "location": "Mehrgenerationenhaus, Ostengasse 29, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-p88ngfr49adhse0beb84o990no@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Afterworkmilonga",
+      "description": "uid-14bbd74c",
+      "startDate": "2026-10-13T16:30:00.000Z",
+      "endDate": "2026-10-13T20:30:00.000Z",
+      "allDay": false,
+      "location": "Spitalgarten, St.-Katharinen-Platz 1, 93059 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-5oe451d83rhbq3vs0b8q90s1bc@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "CHE!",
+      "description": "uid-437e6a00",
+      "startDate": "2026-06-07T14:00:00.000Z",
+      "endDate": "2026-06-07T18:00:00.000Z",
+      "allDay": false,
+      "location": "Pfarrheim St. Mang, Andreasstraße 9, 93059 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-a695ponapdnd0nmj2ohveiopfs@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango Amorcito",
+      "description": "uid-f61872f0",
+      "startDate": "2026-04-26T13:00:00.000Z",
+      "endDate": "2026-04-26T17:00:00.000Z",
+      "allDay": false,
+      "location": "M26, Maxstraße 26, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-crj5eg4kk738vv7v5eqdu7shc4@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Manuel und Susanne",
+      "description": "uid-bf181f14",
+      "startDate": "2026-04-20T17:30:00.000Z",
+      "endDate": "2026-04-20T21:30:00.000Z",
+      "allDay": false,
+      "location": "Pfarrheim St. Mang, Andreasstraße 9, 93059 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-g5m4hpgfp92oig6at8ar9rqrtg@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "tango12",
+      "description": "uid-72cf88f5",
+      "startDate": "2026-05-08T18:30:00.000Z",
+      "endDate": "2026-05-08T22:30:00.000Z",
+      "allDay": false,
+      "location": "Music Academy Regensburg, Zollerstraße 1a, 93053 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-9pbhg91k22el3nja970fb5ste4@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango-Treff",
+      "description": "uid-694748e8",
+      "startDate": "2026-10-04T16:00:00.000Z",
+      "endDate": "2026-10-04T20:00:00.000Z",
+      "allDay": false,
+      "location": "Mehrgenerationenhaus, Ostengasse 29, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-5t7s99m66ab3ueumi2jntc8154@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango Amorcito",
+      "description": "uid-dfdf6967",
+      "startDate": "2026-09-13T13:00:00.000Z",
+      "endDate": "2026-09-13T17:00:00.000Z",
+      "allDay": false,
+      "location": "M26, Maxstraße 26, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-uisho321ponlfuu9c1sesk43fc@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango-Treff",
+      "description": "uid-dac0bf51",
+      "startDate": "2026-02-15T17:00:00.000Z",
+      "endDate": "2026-02-15T21:00:00.000Z",
+      "allDay": false,
+      "location": "Mehrgenerationenhaus, Ostengasse 29, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-iiuphiad0gk51filn9da659b94@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango-Treff",
+      "description": "uid-97bb3a96",
+      "startDate": "2026-07-19T16:00:00.000Z",
+      "endDate": "2026-07-19T20:00:00.000Z",
+      "allDay": false,
+      "location": "Mehrgenerationenhaus, Ostengasse 29, 93047 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-3tkuabshvt0i61caqvvotnepu4@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Milonga de la Luna",
+      "description": "uid-429cfb80",
+      "startDate": "2026-02-21T19:30:00.000Z",
+      "endDate": "2026-02-21T23:30:00.000Z",
+      "allDay": false,
+      "location": "Alte Mälzerei, Galgenbergstraße 20, 93053 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-09tfss5e13egd233kk9b6sdan8@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tangomegusta",
+      "description": "uid-1e88dd19",
+      "startDate": "2026-05-17T15:00:00.000Z",
+      "endDate": "2026-05-17T19:00:00.000Z",
+      "allDay": false,
+      "location": "tbd., Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-bg0090nb44gtgh6j6ufue190u8@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango im Fluss",
+      "description": "uid-c4787de5",
+      "startDate": "2026-02-14T19:30:00.000Z",
+      "endDate": "2026-02-14T23:30:00.000Z",
+      "allDay": false,
+      "location": "Tanzbar, Osterhofener Str. 14a, 93055 Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-b3dpq38vgjk7mm0kllvhv1hfek@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "Tango-Kollektiv",
+      "description": "uid-a32e9418",
+      "startDate": "2026-04-11T18:00:00.000Z",
+      "endDate": "2026-04-11T22:00:00.000Z",
+      "allDay": false,
+      "location": "Konzertsaal im Leeren Beutel, Regensburg"
+    },
+    {
+      "id": "evt-cal-1769248004176-dlq1bof681aomoc0thv27sjkdo@google.com",
+      "providerId": "cal-1769248004176",
+      "title": "tango12",
+      "description": "uid-8a87fb9f",
+      "startDate": "2026-12-11T19:30:00.000Z",
+      "endDate": "2026-12-11T23:30:00.000Z",
+      "allDay": false,
+      "location": "Music Academy Regensburg, Zollerstraße 1a, 93053 Regensburg"
+    }
+  ],
+  "updatedAt": "2026-01-24T09:46:46.079Z"
 }

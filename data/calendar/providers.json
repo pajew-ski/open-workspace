@@ -1,12 +1,12 @@
 {
   "providers": [
     {
-      "id": "cal-1769247581967",
+      "id": "cal-1769248004176",
       "name": "Tango Regensburg",
-      "url": "https://calendar.google.com/calendar/u/0?cid=M2FhMjZmNjNlNzk2NDVlMjM2Mjg1NTY0ZGU2OTI3NTgzMzZlNWFjNTkyNTE0ZWVkMTVlYzlhZDIyZWM2NmFjMkBncm91cC5jYWxlbmRhci5nb29nbGUuY29t",
+      "url": "https://calendar.google.com/calendar/ical/3aa26f63e79645e236285564de692758336e5ac592514eed15ec9ad22ec66ac2%40group.calendar.google.com/public/basic.ics",
       "color": "#be185d",
       "enabled": true,
-      "lastSync": "2026-01-24T09:41:33.691Z"
+      "lastSync": "2026-01-24T09:46:46.080Z"
     }
   ]
 }

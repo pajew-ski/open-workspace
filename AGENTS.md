@@ -33,7 +33,7 @@ Der Assistent erhält automatisch:
 - Letzte Aktionen des Nutzers
 - Relevante Daten aus der Wissensbasis
 
-## Architektur
+### Architektur
 
 ```
 open-workspace/
@@ -43,11 +43,13 @@ open-workspace/
 │   │   ├── knowledge/            # Wissensbasis
 │   │   ├── canvas/               # Visuelle Planung
 │   │   ├── tasks/                # Aufgaben
+│   │   ├── calendar/             # Kalender (ICS)
 │   │   ├── agents/               # A2A Agenten
 │   │   ├── communication/        # Matrix Chat
 │   │   ├── settings/             # Einstellungen
 │   │   └── api/                  # API-Routen
-│   │       ├── chat/             # AI Chat + Health
+│   │       ├── chat/             # AI Chat + Health + Conversations
+│   │       ├── calendar/         # Calendar Providers + Events
 │   │       ├── notes/            # Notes CRUD
 │   │       └── tasks/            # Tasks CRUD
 │   ├── components/
@@ -56,11 +58,14 @@ open-workspace/
 │   │   └── assistant/            # Persönlicher Assistent
 │   └── lib/
 │       ├── inference/            # Ollama Client
-│       └── storage/              # Notes (MD), Tasks (JSON)
+│       ├── calendar/             # ICS Parser
+│       └── storage/              # Notes, Tasks, Chat, Calendar
 ├── data/
 │   ├── notes/                    # Markdown-Notizen (GitHub-sync)
 │   ├── tasks/                    # Aufgaben (JSON)
-│   └── canvas/                   # Canvas-Karten (JSON)
+│   ├── canvas/                   # Canvas-Karten (JSON)
+│   ├── chat/                     # Konversationen (JSON)
+│   └── calendar/                 # Kalender-Provider & Events (JSON)
 └── public/                       # Static Assets
 ```
 
@@ -86,7 +91,7 @@ open-workspace/
 ## AI Inference
 
 **Endpunkt**: `http://192.168.42.2:11434`
-**Modell**: `gpt-oss-20`
+**Modell**: `gpt-oss:20b` (konfigurierbar)
 **API**: Ollama REST API
 
 ## Data Layer
@@ -97,14 +102,21 @@ Gespeichert als `.md` Dateien mit YAML Frontmatter in `data/notes/` für GitHub-
 ### Aufgaben (JSON)
 Gespeichert in `data/tasks/tasks.json` mit Kanban-Status (open/in-progress/done).
 
+### Kalender (ICS/JSON)
+Provider-Konfiguration in `data/calendar/providers.json`. Gecachte Events in `data/calendar/events.json`.
+
+### Chat (JSON)
+Historie und Konversationen in `data/chat/conversations.json`.
+
 ## Modul-Agenten
 
 | Modul | Agent-Rolle | Kontext-Zugriff |
 |-------|------------|-----------------|
 | Dashboard | Übersicht-Assistent | System-Metriken, aktuelle Items |
 | Wissensbasis | Recherche-Assistent | Notizen, Dokumente, Artefakte |
-| Canvas | Planungs-Assistent | Karten, Verbindungen |
+| Canvas | Planungs-Assistent | Karten, Verbindungen, Layout |
 | Aufgaben | Projekt-Assistent | Tasks, Deadlines, Fortschritt |
+| Kalender | Zeit-Assistent | Termine, Verfügbarkeit |
 | Agenten | A2A Koordinator | Agent-Configs, MCP Tools |
 | Kommunikation | Chat-Assistent | Matrix Rooms, Nachrichten |
 

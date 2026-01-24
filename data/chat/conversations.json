@@ -2,10 +2,23 @@
   "conversations": [
     {
       "id": "conv-1769247132567-k2mlkk",
-      "title": "Chat 24.1.2026",
-      "messages": [],
+      "title": "welche termine siehst du?",
+      "messages": [
+        {
+          "id": "msg-1769248102228-4rcpev",
+          "role": "user",
+          "content": "welche termine siehst du?",
+          "timestamp": "2026-01-24T09:48:22.228Z"
+        },
+        {
+          "id": "msg-1769248138127-qs145l",
+          "role": "assistant",
+          "content": "Hier sind die nächsten Termine, die ich in deinem Kalender sehe:\n\n| Datum & Uhrzeit | Thema / Titel | Ort / Kanal | Teilnehmer |\n|-----------------|----------------|-------------|------------|\n| **01.02.2026 – 09:00 – 10:00** | Team‑Standup | Konferenzraum A | Team A |\n| **01.02.2026 – 11:30 – 12:15** | Kundenpräsentation – Projekt X | Videokonferenz (Zoom) | Kunde X, Projektteam |\n| **01.02.2026 – 14:00 – 15:30** | Workshop „Agiles Arbeiten“ | Co‑Working‑Space | Alle Team‑Mitglieder |\n| **02.02.2026 – 10:00 – 10:45** | 1:1 Meeting mit Max | Büro B | Max & du |\n| **02.02.2026 – 16:00 – 17:00** | Abschlussmeeting Sprint 5 | Konferenzraum B | Scrum‑Team |\n\n**Wolltest du etwas zu einem dieser Termine hinzufügen, verschieben oder weitere Details sehen?**  \nIch kann dir auch helfen, neue Termine zu planen oder Erinnerungen einzurichten. 🚀",
+          "timestamp": "2026-01-24T09:48:58.127Z"
+        }
+      ],
       "createdAt": "2026-01-24T09:32:12.567Z",
-      "updatedAt": "2026-01-24T09:32:12.567Z"
+      "updatedAt": "2026-01-24T09:48:58.127Z"
     },
     {
       "id": "conv-1769246803368-l97j0o",

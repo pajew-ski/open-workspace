@@ -8,9 +8,10 @@ Ein umfassender, offline-fähiger Workspace für AI-Agent-Kollaboration. Entwick
 - **Wissensbasis**: Markdown-Notizen, Dokumente, Code-Fragmente, Artefakte
 - **Canvas**: Visuelle Planung mit Karten und Verbindungen
 - **Aufgaben**: Projekte und Aufgabenverwaltung im Kanban-Stil
+- **Kalender**: ICS/iCal Integration mit Monats-/Wochenansicht
 - **Agenten**: A2A Agent-Verwaltung und Koordination
 - **Kommunikation**: Matrix-Protokoll Chat für Team-Kommunikation
-- **Persönlicher Assistent**: Kontext-bewusster AI-Assistent auf allen Seiten
+- **Persönlicher Assistent**: Kontext-bewusster AI-Assistent mit Chat-Historie
 - **Offline PWA**: Volle Funktionalität ohne Internet
 - **Internationalisierung**: Deutsch (Standard) / Englisch
 
@@ -43,7 +44,7 @@ Standard Inference-Endpunkt: `http://192.168.42.2:11434`
 Konfiguriere in `.env.local`:
 ```env
 INFERENCE_ENDPOINT=http://192.168.42.2:11434
-INFERENCE_MODEL=gpt-oss-20
+INFERENCE_MODEL=gpt-oss:20b
 ```
 
 ## Design Philosophie
@@ -72,10 +73,13 @@ data/
 |-------|--------------|
 | `POST /api/chat` | AI Chat mit Streaming |
 | `GET /api/chat/health` | Ollama Verbindungsstatus |
+| `GET/POST /api/chat/conversations` | Chat-Historie verwalten |
+| `GET /api/chat/conversations?action=events` | Kalender-Termine abrufen |
 | `GET/POST /api/notes` | Notizen auflisten/erstellen |
 | `GET/PUT/DELETE /api/notes/[id]` | Notiz bearbeiten |
 | `GET/POST /api/tasks` | Aufgaben auflisten/erstellen |
 | `GET/PUT/DELETE /api/tasks/[id]` | Aufgabe bearbeiten |
+| `GET/POST /api/calendar` | Kalender-Provider & Sync |
 
 ## Dokumentation
 
