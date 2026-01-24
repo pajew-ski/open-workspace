@@ -1,15 +1,47 @@
 {
   "conversations": [
     {
-      "id": "conv-1769248487241-q2zn0s",
+      "id": "conv-1769249581116-9gy4qb",
       "title": "Chat 24.1.2026",
       "messages": [],
-      "createdAt": "2026-01-24T09:54:47.241Z",
-      "updatedAt": "2026-01-24T09:54:47.241Z"
+      "createdAt": "2026-01-24T10:13:01.116Z",
+      "updatedAt": "2026-01-24T10:13:01.116Z"
+    },
+    {
+      "id": "conv-1769249450680-1ok3xk",
+      "title": "Tasks Kontext Awareness Test",
+      "messages": [
+        {
+          "id": "msg-1769249454612-yjpnq6",
+          "role": "user",
+          "content": "was ist zu tun?",
+          "timestamp": "2026-01-24T10:10:54.612Z"
+        },
+        {
+          "id": "msg-1769249467903-1uirmj",
+          "role": "assistant",
+          "content": "Hier stehen zwei Aufgaben auf der Liste, beide mit niedriger Priorität:\n\n1. **Wäsche waschen**  \n2. **Staubsaugen**\n\nDu könntest jetzt mit einer der beiden Aufgaben beginnen oder sie in der Reihenfolge deiner Wahl erledigen. Falls du möchtest, kann ich die Aufgaben auch priorisieren oder einen Plan vorschlagen, z. B. „Wäsche waschen, danach Staubsaugen“. Sag einfach Bescheid, welche Aktion du wünschst!",
+          "timestamp": "2026-01-24T10:11:07.903Z"
+        },
+        {
+          "id": "msg-1769249554664-s6d1rd",
+          "role": "user",
+          "content": "was siehst du?",
+          "timestamp": "2026-01-24T10:12:34.664Z"
+        },
+        {
+          "id": "msg-1769249568534-9d92vk",
+          "role": "assistant",
+          "content": "Ich sehe die aktuelle Aufgabenliste im Workspace:\n\n- **Projekte**: Keine Projekte vorhanden  \n- **Aufgaben**:\n  - [TODO] **Wäsche waschen**  (Prio: niedrig)\n  - [TODO] **Staubsaugen**     (Prio: niedrig)\n- Du befindest dich auf der Seite `/tasks`.\n\nWie kann ich dir dabei helfen? Möchtest du die Aufgaben priorisieren, delegieren oder etwas anderes erledigen?",
+          "timestamp": "2026-01-24T10:12:48.534Z"
+        }
+      ],
+      "createdAt": "2026-01-24T10:10:50.680Z",
+      "updatedAt": "2026-01-24T10:12:48.534Z"
     },
     {
       "id": "conv-1769248278976-ia8rzv",
-      "title": "Test der Kontext Awareness Kalender",
+      "title": "Kalender Kontext Awareness Test",
       "messages": [
         {
           "id": "msg-1769248283932-sfxeao",
@@ -25,11 +57,11 @@
         }
       ],
       "createdAt": "2026-01-24T09:51:18.976Z",
-      "updatedAt": "2026-01-24T09:52:05.056Z"
+      "updatedAt": "2026-01-24T10:11:47.899Z"
     },
     {
       "id": "conv-1769246803368-l97j0o",
-      "title": "Test der Kontext Awareness",
+      "title": "Kontext Awareness Test",
       "messages": [
         {
           "id": "msg-1769246850437-leu2re",
@@ -81,8 +113,8 @@
         }
       ],
       "createdAt": "2026-01-24T09:26:43.368Z",
-      "updatedAt": "2026-01-24T09:32:05.606Z"
+      "updatedAt": "2026-01-24T10:11:59.166Z"
     }
   ],
-  "activeId": "conv-1769248487241-q2zn0s"
+  "activeId": "conv-1769249581116-9gy4qb"
 }

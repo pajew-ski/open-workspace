@@ -1,0 +1,29 @@
+{
+  "tasks": [
+    {
+      "id": "task-1769249229739-k32jmu",
+      "title": "Staubsaugen",
+      "description": "",
+      "status": "todo",
+      "priority": "low",
+      "type": "task",
+      "tags": [],
+      "dependencies": [],
+      "createdAt": "2026-01-24T10:07:09.739Z",
+      "updatedAt": "2026-01-24T10:07:09.739Z"
+    },
+    {
+      "id": "task-1769249245188-pvp7vi",
+      "title": "Wäsche waschen",
+      "description": "",
+      "status": "todo",
+      "priority": "low",
+      "type": "task",
+      "tags": [],
+      "dependencies": [],
+      "createdAt": "2026-01-24T10:07:25.188Z",
+      "updatedAt": "2026-01-24T10:07:38.393Z"
+    }
+  ],
+  "version": 1
+}

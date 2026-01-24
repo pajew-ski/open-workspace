@@ -11,20 +11,33 @@ import path from 'path';
 const DATA_DIR = path.join(process.cwd(), 'data', 'tasks');
 const TASKS_FILE = path.join(DATA_DIR, 'tasks.json');
 
-export type TaskStatus = 'open' | 'in-progress' | 'done';
-export type TaskPriority = 'low' | 'medium' | 'high';
+export type TaskStatus = 'backlog' | 'todo' | 'in-progress' | 'review' | 'done' | 'on-hold';
+export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
+export type TaskType = 'task' | 'bug' | 'feature' | 'milestone';
+
+export interface TaskDependency {
+    id: string;
+    type: 'FS' | 'SS' | 'FF' | 'SF'; // Finish-to-Start, Start-to-Start, etc.
+}
 
 export interface Task {
     id: string;
+    projectId?: string;
     title: string;
     description?: string;
     status: TaskStatus;
     priority: TaskPriority;
+    type: TaskType;
+    startDate?: string;
     dueDate?: string;
-    projectId?: string;
+    deferredUntil?: string;
+    estimatedEffort?: number; // hours
+    actualEffort?: number;    // hours
+    dependencies: TaskDependency[];
     tags: string[];
     createdAt: string;
     updatedAt: string;
+    completedAt?: string;
 }
 
 export interface TasksData {
@@ -106,9 +119,14 @@ export async function createTask(input: {
     description?: string;
     status?: TaskStatus;
     priority?: TaskPriority;
+    type?: TaskType;
+    startDate?: string;
     dueDate?: string;
+    deferredUntil?: string;
+    estimatedEffort?: number;
     projectId?: string;
     tags?: string[];
+    dependencies?: TaskDependency[];
 }): Promise<Task> {
     const data = await readTasksData();
     const now = new Date().toISOString();
@@ -117,11 +135,16 @@ export async function createTask(input: {
         id: generateId(),
         title: input.title,
         description: input.description,
-        status: input.status || 'open',
+        status: input.status || 'todo',
         priority: input.priority || 'medium',
+        type: input.type || 'task',
+        startDate: input.startDate,
         dueDate: input.dueDate,
+        deferredUntil: input.deferredUntil,
+        estimatedEffort: input.estimatedEffort,
         projectId: input.projectId,
         tags: input.tags || [],
+        dependencies: input.dependencies || [],
         createdAt: now,
         updatedAt: now,
     };
@@ -141,10 +164,16 @@ export async function updateTask(id: string, input: Partial<Omit<Task, 'id' | 'c
 
     if (index === -1) return null;
 
+    const now = new Date().toISOString();
+    const completedAt = input.status === 'done' && data.tasks[index].status !== 'done'
+        ? now
+        : (input.status && input.status !== 'done' ? undefined : data.tasks[index].completedAt);
+
     const updated: Task = {
         ...data.tasks[index],
         ...input,
-        updatedAt: new Date().toISOString(),
+        completedAt: completedAt || data.tasks[index].completedAt,
+        updatedAt: now,
     };
 
     data.tasks[index] = updated;
@@ -171,12 +200,15 @@ export async function deleteTask(id: string): Promise<boolean> {
 /**
  * Get tasks grouped by status (for Kanban)
  */
-export async function getTasksByStatus(): Promise<Record<TaskStatus, Task[]>> {
+export async function getTasksByStatus(): Promise<Record<string, Task[]>> {
     const tasks = await listTasks();
 
     return {
-        'open': tasks.filter(t => t.status === 'open'),
+        'backlog': tasks.filter(t => t.status === 'backlog'),
+        'todo': tasks.filter(t => t.status === 'todo'),
         'in-progress': tasks.filter(t => t.status === 'in-progress'),
+        'review': tasks.filter(t => t.status === 'review'),
         'done': tasks.filter(t => t.status === 'done'),
+        'on-hold': tasks.filter(t => t.status === 'on-hold'),
     };
 }

@@ -1,0 +1,130 @@
+.overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: var(--z-modal);
+    backdrop-filter: blur(2px);
+}
+
+.modal {
+    background-color: var(--color-surface-elevated);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
+    width: 500px;
+    max-width: 90%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.header {
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header h2 {
+    margin: 0;
+    font-size: var(--text-lg);
+}
+
+.closeBtn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--color-text-tertiary);
+}
+
+.tabs {
+    display: flex;
+    padding: 0 var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+    gap: var(--space-4);
+}
+
+.tabs button {
+    padding: var(--space-3) 0;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+}
+
+.tabs button.activeTab {
+    border-bottom-color: var(--color-primary);
+    color: var(--color-primary);
+    font-weight: bold;
+}
+
+.form {
+    padding: var(--space-4);
+    overflow-y: auto;
+    flex: 1;
+}
+
+.tabContent {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.field label {
+    font-size: var(--text-xs);
+    font-weight: bold;
+    color: var(--color-text-secondary);
+}
+
+.textarea {
+    min-height: 100px;
+    padding: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-sunken);
+    color: var(--color-text-primary);
+    font-family: inherit;
+    resize: vertical;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+}
+
+.field select {
+    padding: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-sunken);
+    color: var(--color-text-primary);
+}
+
+.placeholder {
+    padding: var(--space-8);
+    text-align: center;
+    color: var(--color-text-tertiary);
+    font-style: italic;
+}
+
+.footer {
+    padding: var(--space-4);
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+}

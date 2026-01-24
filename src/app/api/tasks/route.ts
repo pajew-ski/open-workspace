@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ tasks: grouped });
         }
 
-        const status = searchParams.get('status') as 'open' | 'in-progress' | 'done' | null;
+        const status = searchParams.get('status') as 'backlog' | 'todo' | 'in-progress' | 'review' | 'done' | 'on-hold' | null;
         const projectId = searchParams.get('projectId');
 
         const tasks = await listTasks({
@@ -45,9 +45,14 @@ export async function POST(request: NextRequest) {
             description: body.description,
             status: body.status,
             priority: body.priority,
+            type: body.type,
+            startDate: body.startDate,
             dueDate: body.dueDate,
+            deferredUntil: body.deferredUntil,
+            estimatedEffort: body.estimatedEffort,
             projectId: body.projectId,
             tags: body.tags,
+            dependencies: body.dependencies,
         });
 
         return NextResponse.json({ task }, { status: 201 });

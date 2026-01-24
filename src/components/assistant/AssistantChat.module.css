@@ -56,7 +56,9 @@
     flex-direction: column;
     overflow: hidden;
     animation: slideUp var(--transition-base);
-    z-index: var(--z-modal);
+    z-index: calc(var(--z-modal) + 50);
+    border: 1px solid var(--color-border);
+    backdrop-filter: blur(10px);
 }
 
 .chatWindow.mobile {
@@ -278,6 +280,7 @@
     flex-direction: column;
     gap: var(--space-3);
     min-height: 0;
+    scroll-behavior: smooth;
 }
 
 .emptyChat {

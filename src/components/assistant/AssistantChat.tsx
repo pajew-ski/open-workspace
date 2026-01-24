@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { ConfirmDialog } from '@/components/ui';
 import styles from './AssistantChat.module.css';
@@ -70,7 +70,12 @@ export function AssistantChat() {
     const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
     const pathname = usePathname();
 
-    const currentModule = MODULE_CONTEXT[pathname] || MODULE_CONTEXT['/'];
+    // Improved context matching
+    const currentModule = useMemo(() => {
+        const routes = Object.keys(MODULE_CONTEXT).sort((a, b) => b.length - a.length);
+        const match = routes.find(r => pathname === r || (r !== '/' && pathname.startsWith(r)));
+        return match ? MODULE_CONTEXT[match] : MODULE_CONTEXT['/'];
+    }, [pathname]);
 
     // Check mobile
     useEffect(() => {
@@ -295,6 +300,34 @@ export function AssistantChat() {
                     }
                 } catch (e) {
                     console.error('Failed to fetch calendar context', e);
+                }
+            }
+
+            // Fetch tasks and projects if on tasks page
+            if (pathname === '/tasks') {
+                try {
+                    const [tasksRes, projsRes] = await Promise.all([
+                        fetch('/api/tasks'),
+                        fetch('/api/projects')
+                    ]);
+                    const [tasksData, projsData] = await Promise.all([
+                        tasksRes.json(),
+                        projsRes.json()
+                    ]);
+
+                    if (tasksData.tasks) {
+                        const projectMap: Record<string, string> = {};
+                        (projsData.projects || []).forEach((p: any) => projectMap[p.id] = p.title);
+
+                        additionalContext = `\nAKTUELLE AUFGABEN & PROJEKTE:\n`;
+                        additionalContext += `Projekte: ${(projsData.projects || []).map((p: any) => p.title).join(', ') || 'Keine Projekte'}\n`;
+                        additionalContext += `Aufgaben:\n${tasksData.tasks.slice(0, 15).map((t: any) =>
+                            `- [${t.status.toUpperCase()}] ${t.title} ${t.projectId ? `(Proj: ${projectMap[t.projectId] || t.projectId})` : ''} [Prio: ${t.priority}]`
+                        ).join('\n')}`;
+                        if (tasksData.tasks.length > 15) additionalContext += `\n... und ${tasksData.tasks.length - 15} weitere Aufgaben.`;
+                    }
+                } catch (e) {
+                    console.error('Failed to fetch tasks context', e);
                 }
             }
 
