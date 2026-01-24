@@ -7,14 +7,14 @@
       "order": 0
     },
     {
-      "id": "stats-1",
-      "type": "stats",
-      "order": 1
-    },
-    {
       "id": "activity-1",
       "type": "activity",
       "title": "Letzte Aktivitäten",
+      "order": 1
+    },
+    {
+      "id": "stats-1",
+      "type": "stats",
       "order": 2
     },
     {
@@ -23,9 +23,10 @@
       "order": 3
     },
     {
-      "id": "image-1769261806979",
+      "id": "image-1769262146726",
       "type": "image",
-      "order": 4
+      "order": 4,
+      "url": "https://upload.wikimedia.org/wikipedia/commons/c/c3/NGC_4414_%28NASA-med%29.jpg"
     }
   ]
 }

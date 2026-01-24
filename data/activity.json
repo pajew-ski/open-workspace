@@ -1,5 +1,61 @@
 [
   {
+    "id": "evt-1769262602476-3rku79me4",
+    "type": "task_deleted",
+    "entityId": "task-1769262537739-v29ls5",
+    "title": "Aufgabe gelöscht: test",
+    "timestamp": "2026-01-24T13:50:02.476Z"
+  },
+  {
+    "id": "evt-1769262555957-m1cun5jv0",
+    "type": "task_updated",
+    "entityId": "task-1769262537739-v29ls5",
+    "title": "Aufgabe aktualisiert: test",
+    "timestamp": "2026-01-24T13:49:15.957Z"
+  },
+  {
+    "id": "evt-1769262537741-ls06xhzeh",
+    "type": "task_created",
+    "entityId": "task-1769262537739-v29ls5",
+    "title": "Aufgabe erstellt: tesetr",
+    "timestamp": "2026-01-24T13:48:57.741Z"
+  },
+  {
+    "id": "evt-1769262503143-w8ww9od4i",
+    "type": "canvas_deleted",
+    "entityId": "canvas-1769262495338-m53caf",
+    "title": "Canvas gelöscht: neu canvas test",
+    "timestamp": "2026-01-24T13:48:23.143Z"
+  },
+  {
+    "id": "evt-1769262495349-uylyjrix5",
+    "type": "canvas_created",
+    "entityId": "canvas-1769262495338-m53caf",
+    "title": "Canvas erstellt: neu canvas test",
+    "timestamp": "2026-01-24T13:48:15.350Z"
+  },
+  {
+    "id": "evt-1769262470133-7g5auzre5",
+    "type": "note_deleted",
+    "entityId": "note-1769262095156-y061c6",
+    "title": "Notiz gelöscht: test",
+    "timestamp": "2026-01-24T13:47:50.133Z"
+  },
+  {
+    "id": "evt-1769262098252-0i42gss77",
+    "type": "note_updated",
+    "entityId": "note-1769262095156-y061c6",
+    "title": "Notiz bearbeitet: test",
+    "timestamp": "2026-01-24T13:41:38.252Z"
+  },
+  {
+    "id": "evt-1769262095160-09zarfuow",
+    "type": "note_created",
+    "entityId": "note-1769262095156-y061c6",
+    "title": "Notiz erstellt: test",
+    "timestamp": "2026-01-24T13:41:35.160Z"
+  },
+  {
     "id": "evt-1769261872922-6fmfsqve7",
     "type": "task_created",
     "entityId": "task-1769261872918-f76rvv",

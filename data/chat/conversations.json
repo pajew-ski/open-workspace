@@ -15,10 +15,22 @@
           "role": "assistant",
           "content": "Hi! Schön, dass du wieder da bist. Wie kann ich dir heute weiterhelfen?",
           "timestamp": "2026-01-24T12:51:03.481Z"
+        },
+        {
+          "id": "msg-1769262657338-g1vior",
+          "role": "user",
+          "content": "was siehst du in der übersicht?",
+          "timestamp": "2026-01-24T13:50:57.338Z"
+        },
+        {
+          "id": "msg-1769262658033-9rt6oq",
+          "role": "assistant",
+          "content": "Im Dashboard‑Modul siehst du die zentrale Übersicht deines Workspaces. Typische Inhalte sind:\n\n| Abschnitt | Inhalt |\n|-----------|--------|\n| **KPI‑Widgets** | Schnellübersicht zu wichtigsten Kennzahlen (z. B. offene Aufgaben, abgeschlossene Projekte, Umsatz, etc.) |\n| **Offene Aufgaben** | Kurze Liste deiner aktuellsten Aufgaben mit Priorität und Fälligkeitsdatum |\n| **Projekt‑Highlights** | Übersicht der laufenden Projekte – Status, Fortschritt und nächste Meilensteine |\n| **Kalender‑Ansicht** | Kurzfristiger Kalender mit anstehenden Terminen, Deadlines und Meetings |\n| **Benachrichtigungen** | Aktuelle Alerts und Updates aus dem Workspace (z. B. neue Kommentare, freigegebene Dokumente) |\n| **Schnellzugriff** | Links zu häufig genutzten Modulen (Canvas, Dokumente, Chat, etc.) |\n| **Statistiken & Trends** | Diagramme oder Graphen, die Entwicklungen und Leistungen zeigen |\n\nDu kannst die Widgets jederzeit verschieben, anpassen oder neue hinzufügen, je nachdem, was für dich am wichtigsten ist. Wenn du einen bestimmten Bereich genauer erkunden möchtest, sag einfach Bescheid!",
+          "timestamp": "2026-01-24T13:50:58.033Z"
         }
       ],
       "createdAt": "2026-01-24T12:50:58.650Z",
-      "updatedAt": "2026-01-24T12:51:03.481Z"
+      "updatedAt": "2026-01-24T13:50:58.033Z"
     },
     {
       "id": "conv-1769249450680-1ok3xk",

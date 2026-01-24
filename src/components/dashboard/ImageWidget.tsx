@@ -14,6 +14,8 @@ interface ImageWidgetProps {
 }
 
 export function ImageWidget({ id, url, isEditing, onDelete, onUpdate }: ImageWidgetProps) {
+    const [showUrlInput, setShowUrlInput] = useState(false);
+    const [tempUrl, setTempUrl] = useState('');
     const [isUploading, setIsUploading] = useState(false);
 
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -40,24 +42,69 @@ export function ImageWidget({ id, url, isEditing, onDelete, onUpdate }: ImageWid
         }
     };
 
+    const handleUrlSubmit = () => {
+        if (tempUrl) {
+            onUpdate(id, { url: tempUrl });
+            setShowUrlInput(false);
+        }
+    };
+
     return (
         <WidgetWrapper id={id} isEditing={isEditing} onDelete={onDelete} className={styles.imageWidget}>
             {url ? (
                 <div className={styles.imageContainer}>
                     <img src={url} alt="Dashboard Widget" className={styles.widgetImage} />
                     {isEditing && (
-                        <label className={styles.uploadOverlay}>
-                            <input type="file" accept="image/*" onChange={handleUpload} hidden />
-                            <span>Bild ändern</span>
-                        </label>
+                        <div className={styles.uploadOverlay}>
+                            <label className={styles.overlayBtn}>
+                                <input type="file" accept="image/*" onChange={handleUpload} hidden />
+                                <span>Bild hochladen</span>
+                            </label>
+                            <button
+                                className={styles.overlayBtn}
+                                onClick={() => {
+                                    setShowUrlInput(true);
+                                    setTempUrl(url);
+                                    onUpdate(id, { url: '' }); // Reset to show input
+                                }}
+                            >
+                                URL ändern
+                            </button>
+                        </div>
                     )}
                 </div>
+            ) : showUrlInput ? (
+                <div className={styles.uploadPlaceholder}>
+                    <input
+                        type="text"
+                        placeholder="https://example.com/image.jpg"
+                        className={styles.urlInput}
+                        value={tempUrl}
+                        onChange={(e) => setTempUrl(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleUrlSubmit()}
+                        autoFocus
+                    />
+                    <div className={styles.urlActions}>
+                        <button onClick={() => setShowUrlInput(false)} className={styles.cancelBtn}>Zurück</button>
+                        <button onClick={handleUrlSubmit} className={styles.saveBtn}>Speichern</button>
+                    </div>
+                </div>
             ) : (
-                <label className={styles.uploadPlaceholder}>
-                    <input type="file" accept="image/*" onChange={handleUpload} hidden />
-                    <Upload size={32} />
-                    <span>{isUploading ? 'Lädt hoch...' : 'Bild hochladen'}</span>
-                </label>
+                <div className={styles.uploadPlaceholder}>
+                    <label className={styles.uploadBtn}>
+                        <input type="file" accept="image/*" onChange={handleUpload} hidden />
+                        <Upload size={32} />
+                        <span>{isUploading ? 'Lädt hoch...' : 'Bild hochladen'}</span>
+                    </label>
+                    <div className={styles.orDivider}>oder</div>
+                    <button
+                        className={styles.urlBtn}
+                        onClick={() => setShowUrlInput(true)}
+                    >
+                        <ImageIcon size={20} />
+                        URL eingeben
+                    </button>
+                </div>
             )}
         </WidgetWrapper>
     );

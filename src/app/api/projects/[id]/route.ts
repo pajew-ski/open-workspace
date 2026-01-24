@@ -41,6 +41,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             );
         }
 
+        const { logActivity } = await import('@/lib/activity');
+        await logActivity('project_updated', project.id, `Projekt aktualisiert: ${project.title}`);
+
         return NextResponse.json({ project });
     } catch (error) {
         console.error('Project update error:', error);
@@ -54,6 +57,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
     try {
         const { id } = await params;
+        const project = await getProject(id);
         const success = await deleteProject(id);
 
         if (!success) {
@@ -61,6 +65,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
                 { error: 'Projekt nicht gefunden' },
                 { status: 404 }
             );
+        }
+
+        if (project) {
+            const { logActivity } = await import('@/lib/activity');
+            await logActivity('project_deleted', id, `Projekt gelöscht: ${project.title}`);
         }
 
         return NextResponse.json({ success: true });

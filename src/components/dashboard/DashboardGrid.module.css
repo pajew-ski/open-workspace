@@ -6,63 +6,71 @@
 
 .toolbar {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background-color: var(--color-surface-elevated);
+    border: 1px dashed var(--color-primary);
+    border-radius: var(--radius-md);
     margin-bottom: 8px;
-    height: 40px;
+    animation: fadeIn 0.2s;
 }
 
 .addButtons {
     display: flex;
     gap: 8px;
-    animation: fadeIn 0.2s;
 }
 
+/* Grid Layout */
 .grid {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    /* Masonry-like flow */
     gap: 16px;
+    align-items: start;
 }
 
 .gridItem {
     position: relative;
-    transition: all 0.2s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.editingGrid .gridItem {
-    padding-left: 40px;
-    /* Space for reorder controls */
+/* Drag Styling */
+.draggable {
+    cursor: grab;
+    opacity: 0.9;
 }
 
-.reorderControls {
+.draggable:active {
+    cursor: grabbing;
+    /* transform: scale(0.98); Removed to prevent flicker */
+}
+
+.beingDragged {
+    opacity: 0.5;
+    border: 2px dashed var(--color-primary);
+}
+
+.dragOverlay {
     position: absolute;
+    top: 0;
     left: 0;
-    top: 50%;
-    transform: translateY(-50%);
+    right: 0;
+    height: 24px;
     display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.reorderControls button {
-    width: 32px;
-    height: 32px;
-    border: 1px solid var(--color-border);
-    background: var(--color-surface-elevated);
-    border-radius: 4px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
     justify-content: center;
-}
-
-.reorderControls button:disabled {
-    opacity: 0.3;
+    align-items: center;
+    z-index: 10;
+    /* Only visible when needed, though existing header has handle too */
     pointer-events: none;
+    /* Let clicks pass through usually, but for drag? */
 }
 
-.reorderControls button:hover {
-    background: var(--color-surface-subtle);
+/* On mobile, stack them */
+@media (max-width: 768px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 @keyframes fadeIn {

@@ -1,58 +1,78 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui';
+import { useState, useRef } from 'react';
+import { WidgetWrapper } from './WidgetWrapper';
 import { WelcomeWidget } from './WelcomeWidget';
 import { StatsWidget } from './StatsWidget';
 import { ActivityWidget } from './ActivityWidget';
 import { ImageWidget } from './ImageWidget';
-import { Plus, Save, RotateCcw } from 'lucide-react';
+import { Plus, GripHorizontal } from 'lucide-react';
+import { Button } from '@/components/ui';
 import styles from './DashboardGrid.module.css';
 
-interface Widget {
+export interface Widget {
     id: string;
     type: 'welcome' | 'stats' | 'activity' | 'image' | 'quick-access';
     order: number;
+    content?: string;
+    url?: string;
     [key: string]: any;
 }
 
-export function DashboardGrid() {
-    const [widgets, setWidgets] = useState<Widget[]>([]);
-    const [isEditing, setIsEditing] = useState(false);
-    const [loading, setLoading] = useState(true);
+interface DashboardGridProps {
+    widgets: Widget[];
+    isEditing: boolean;
+    setWidgets: (widgets: Widget[]) => void;
+}
 
-    useEffect(() => {
-        loadDashboard();
-    }, []);
+export function DashboardGrid({ widgets, isEditing, setWidgets }: DashboardGridProps) {
+    // Keep track of the item currently being dragged
+    const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
+    const dragNode = useRef<HTMLDivElement | null>(null);
 
-    const loadDashboard = async () => {
-        try {
-            const res = await fetch('/api/dashboard');
-            const data = await res.json();
-            if (data.layout) {
-                setWidgets(data.layout.sort((a: any, b: any) => a.order - b.order));
-            }
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setLoading(false);
-        }
+    const onDragStart = (e: React.DragEvent, index: number) => {
+        setDraggedItemIndex(index);
+        dragNode.current = e.target as HTMLDivElement;
+        e.dataTransfer.effectAllowed = 'move';
+        // Set ghost image if needed, or rely on browser default
     };
 
-    const saveDashboard = async () => {
-        try {
-            // Update orders based on current array index
-            const updatedWidgets = widgets.map((w, i) => ({ ...w, order: i }));
+    const onDragEnter = (e: React.DragEvent, targetIndex: number) => {
+        if (!isEditing || draggedItemIndex === null || draggedItemIndex === targetIndex) return;
 
-            await fetch('/api/dashboard', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ layout: updatedWidgets })
-            });
-            setIsEditing(false);
-        } catch (e) {
-            console.error(e);
-        }
+        // Swap locally to show preview
+        const newWidgets = [...widgets];
+        const draggedItem = newWidgets[draggedItemIndex];
+
+        // Check if we already swapped (to avoid flicker) - handled by React diffing usually
+        // Remove from old index
+        newWidgets.splice(draggedItemIndex, 1);
+        // Insert at new index
+        newWidgets.splice(targetIndex, 0, draggedItem);
+
+        // Update state
+        setWidgets(newWidgets);
+
+        // Important: Update the dragged index to match the new position
+        setDraggedItemIndex(targetIndex);
+    };
+
+    const onDragEnd = () => {
+        setDraggedItemIndex(null);
+        dragNode.current = null;
+    };
+
+    const onDragOver = (e: React.DragEvent) => {
+        e.preventDefault(); // Necessary to allow dropping
+    };
+
+    // Helpers for internal widget updates
+    const removeWidget = (id: string) => {
+        setWidgets(widgets.filter(w => w.id !== id));
+    };
+
+    const updateWidget = (id: string, updates: any) => {
+        setWidgets(widgets.map(w => w.id === id ? { ...w, ...updates } : w));
     };
 
     const addWidget = (type: string) => {
@@ -65,64 +85,35 @@ export function DashboardGrid() {
         setWidgets([...widgets, newWidget]);
     };
 
-    const removeWidget = (id: string) => {
-        setWidgets(widgets.filter(w => w.id !== id));
-    };
-
-    const updateWidget = (id: string, updates: any) => {
-        setWidgets(widgets.map(w => w.id === id ? { ...w, ...updates } : w));
-    };
-
-    const moveWidget = (index: number, direction: 'up' | 'down') => {
-        if (direction === 'up' && index === 0) return;
-        if (direction === 'down' && index === widgets.length - 1) return;
-
-        const newWidgets = [...widgets];
-        const swapIndex = direction === 'up' ? index - 1 : index + 1;
-        [newWidgets[index], newWidgets[swapIndex]] = [newWidgets[swapIndex], newWidgets[index]];
-        setWidgets(newWidgets);
-    };
-
-    if (loading) return <div>Lade Dashboard...</div>;
-
     return (
         <div className={styles.container}>
-            <div className={styles.toolbar}>
-                <div className={styles.left}>
-                    {isEditing && (
-                        <div className={styles.addButtons}>
-                            <Button variant="secondary" size="sm" onClick={() => addWidget('welcome')}>+ Text</Button>
-                            <Button variant="secondary" size="sm" onClick={() => addWidget('image')}>+ Bild</Button>
-                            <Button variant="secondary" size="sm" onClick={() => addWidget('stats')}>+ Stats</Button>
-                            <Button variant="secondary" size="sm" onClick={() => addWidget('activity')}>+ Activity</Button>
-                        </div>
-                    )}
+            {isEditing && (
+                <div className={styles.toolbar}>
+                    <span>Widget hinzufügen:</span>
+                    <div className={styles.addButtons}>
+                        <Button variant="secondary" size="sm" onClick={() => addWidget('welcome')}>+ Text</Button>
+                        <Button variant="secondary" size="sm" onClick={() => addWidget('image')}>+ Bild</Button>
+                        <Button variant="secondary" size="sm" onClick={() => addWidget('stats')}>+ Stats</Button>
+                        <Button variant="secondary" size="sm" onClick={() => addWidget('activity')}>+ Activity</Button>
+                    </div>
                 </div>
-                <div className={styles.right}>
-                    {isEditing ? (
-                        <>
-                            <Button variant="ghost" onClick={() => { setIsEditing(false); loadDashboard(); }}>
-                                Abbrechen
-                            </Button>
-                            <Button variant="primary" onClick={saveDashboard}>
-                                <Save size={16} style={{ marginRight: 8 }} /> Speichern
-                            </Button>
-                        </>
-                    ) : (
-                        <Button variant="secondary" onClick={() => setIsEditing(true)}>
-                            Layout bearbeiten
-                        </Button>
-                    )}
-                </div>
-            </div>
+            )}
 
-            <div className={`${styles.grid} ${isEditing ? styles.editingGrid : ''}`}>
+            <div className={styles.grid}>
                 {widgets.map((widget, index) => (
-                    <div key={widget.id} className={styles.gridItem}>
+                    <div
+                        key={widget.id}
+                        className={`${styles.gridItem} ${isEditing ? styles.draggable : ''} ${draggedItemIndex === index ? styles.beingDragged : ''}`}
+                        draggable={isEditing}
+                        onDragStart={(e) => onDragStart(e, index)}
+                        onDragEnter={(e) => onDragEnter(e, index)}
+                        onDragOver={onDragOver}
+                        onDragEnd={onDragEnd}
+                    >
+                        {/* Overlay for Drag in Edit Mode */}
                         {isEditing && (
-                            <div className={styles.reorderControls}>
-                                <button onClick={() => moveWidget(index, 'up')} disabled={index === 0}>↑</button>
-                                <button onClick={() => moveWidget(index, 'down')} disabled={index === widgets.length - 1}>↓</button>
+                            <div className={styles.dragOverlay}>
+                                <GripHorizontal className={styles.dragIcon} />
                             </div>
                         )}
 

@@ -6,7 +6,7 @@ const ACTIVITY_FILE = path.join(process.cwd(), 'data', 'activity.json');
 export type ActivityType =
     | 'note_created' | 'note_updated' | 'note_deleted'
     | 'task_created' | 'task_updated' | 'task_completed' | 'task_deleted'
-    | 'project_created'
+    | 'project_created' | 'project_updated' | 'project_deleted'
     | 'canvas_created' | 'canvas_updated' | 'canvas_deleted'
     | 'agent_created';
 

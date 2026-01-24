@@ -41,6 +41,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             );
         }
 
+        const { logActivity } = await import('@/lib/activity');
+        await logActivity('task_updated', task.id, `Aufgabe aktualisiert: ${task.title}`);
+
         return NextResponse.json({ task });
     } catch (error) {
         console.error('Task update error:', error);
@@ -54,6 +57,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
     try {
         const { id } = await params;
+        const task = await getTask(id);
         const success = await deleteTask(id);
 
         if (!success) {
@@ -61,6 +65,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
                 { error: 'Aufgabe nicht gefunden' },
                 { status: 404 }
             );
+        }
+
+        if (task) {
+            const { logActivity } = await import('@/lib/activity');
+            await logActivity('task_deleted', id, `Aufgabe gelöscht: ${task.title}`);
         }
 
         return NextResponse.json({ success: true });

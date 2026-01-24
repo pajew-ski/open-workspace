@@ -33,6 +33,9 @@ export async function POST(request: NextRequest) {
             color: body.color,
         });
 
+        const { logActivity } = await import('@/lib/activity');
+        await logActivity('project_created', project.id, `Projekt erstellt: ${project.title}`);
+
         return NextResponse.json({ project }, { status: 201 });
     } catch (error) {
         console.error('Project create error:', error);

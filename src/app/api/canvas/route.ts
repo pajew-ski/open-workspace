@@ -52,12 +52,23 @@ export async function POST(request: NextRequest) {
             case 'updateMeta': {
                 const canvas = await updateCanvasMeta(canvasId, { name: body.name, description: body.description });
                 if (!canvas) return NextResponse.json({ error: 'Canvas nicht gefunden' }, { status: 404 });
+
+                const { logActivity } = await import('@/lib/activity');
+                await logActivity('canvas_updated', canvas.id, `Canvas bearbeitet: ${canvas.name}`);
+
                 return NextResponse.json({ canvas });
             }
 
             case 'delete': {
+                const canvas = await getCanvas(body.id);
                 const success = await deleteCanvas(body.id);
                 if (!success) return NextResponse.json({ error: 'Canvas nicht gefunden' }, { status: 404 });
+
+                if (canvas) {
+                    const { logActivity } = await import('@/lib/activity');
+                    await logActivity('canvas_deleted', body.id, `Canvas gelöscht: ${canvas.name}`);
+                }
+
                 return NextResponse.json({ success: true });
             }
 
@@ -74,18 +85,27 @@ export async function POST(request: NextRequest) {
                     color: body.color,
                 });
                 if (!card) return NextResponse.json({ error: 'Canvas nicht gefunden' }, { status: 404 });
+
+                const { logActivity } = await import('@/lib/activity');
+                await logActivity('canvas_updated', canvasId, `Canvas Karte erstellt: ${card.title}`);
+
                 return NextResponse.json({ card }, { status: 201 });
             }
 
             case 'updateCard': {
                 const card = await updateCard(canvasId, body.cardId, body.updates);
                 if (!card) return NextResponse.json({ error: 'Karte nicht gefunden' }, { status: 404 });
+                // No logging for updates (high frequency)
                 return NextResponse.json({ card });
             }
 
             case 'deleteCard': {
                 const success = await deleteCard(canvasId, body.cardId);
                 if (!success) return NextResponse.json({ error: 'Karte nicht gefunden' }, { status: 404 });
+
+                const { logActivity } = await import('@/lib/activity');
+                await logActivity('canvas_updated', canvasId, `Canvas Karte gelöscht`);
+
                 return NextResponse.json({ success: true });
             }
 
