@@ -27,10 +27,22 @@
           "role": "assistant",
           "content": "Ich sehe die aktuelle Aufgabenliste im Workspace:\n\n- **Projekte**: Keine Projekte vorhanden  \n- **Aufgaben**:\n  - [TODO] **Wäsche waschen**  (Prio: niedrig)\n  - [TODO] **Staubsaugen**     (Prio: niedrig)\n- Du befindest dich auf der Seite `/tasks`.\n\nWie kann ich dir dabei helfen? Möchtest du die Aufgaben priorisieren, delegieren oder etwas anderes erledigen?",
           "timestamp": "2026-01-24T10:12:48.534Z"
+        },
+        {
+          "id": "msg-1769250599712-m3xp21",
+          "role": "user",
+          "content": "was muss ich zuerst machen?",
+          "timestamp": "2026-01-24T10:29:59.712Z"
+        },
+        {
+          "id": "msg-1769250619743-9nx737",
+          "role": "assistant",
+          "content": "Am einfachsten:  \n1️⃣ **Wäsche waschen** – das dauert ein bisschen, aber danach hast du die Kleidung schon sauber.  \n2️⃣ **Staubsaugen** – danach ist das Zuhause wieder ordentlich.\n\nWenn du lieber zuerst den Staubsauger in die Hand nimmst, kann ich die Reihenfolge natürlich umkehren. Sag einfach Bescheid!",
+          "timestamp": "2026-01-24T10:30:19.743Z"
         }
       ],
       "createdAt": "2026-01-24T10:10:50.680Z",
-      "updatedAt": "2026-01-24T10:12:48.534Z"
+      "updatedAt": "2026-01-24T10:30:19.744Z"
     },
     {
       "id": "conv-1769248278976-ia8rzv",

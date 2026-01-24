@@ -72,9 +72,27 @@
 
 .header {
     display: flex;
-    align-items: flex-start;
-    gap: var(--space-2);
+    flex-direction: column;
+    gap: var(--space-1);
     margin-bottom: var(--space-2);
+}
+
+.headerLeft {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.depIndicator {
+    font-size: 10px;
+    background-color: var(--color-surface-sunken);
+    padding: 1px 4px;
+    border-radius: var(--radius-sm);
+    color: var(--color-text-tertiary);
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 2px;
 }
 
 .typeLabel {

@@ -319,12 +319,28 @@ export function AssistantChat() {
                         const projectMap: Record<string, string> = {};
                         (projsData.projects || []).forEach((p: any) => projectMap[p.id] = p.title);
 
+                        const taskMap: Record<string, string> = {};
+                        tasksData.tasks.forEach((t: any) => taskMap[t.id] = t.title);
+
                         additionalContext = `\nAKTUELLE AUFGABEN & PROJEKTE:\n`;
                         additionalContext += `Projekte: ${(projsData.projects || []).map((p: any) => p.title).join(', ') || 'Keine Projekte'}\n`;
-                        additionalContext += `Aufgaben:\n${tasksData.tasks.slice(0, 15).map((t: any) =>
-                            `- [${t.status.toUpperCase()}] ${t.title} ${t.projectId ? `(Proj: ${projectMap[t.projectId] || t.projectId})` : ''} [Prio: ${t.priority}]`
-                        ).join('\n')}`;
-                        if (tasksData.tasks.length > 15) additionalContext += `\n... und ${tasksData.tasks.length - 15} weitere Aufgaben.`;
+                        additionalContext += `Aufgaben:\n${tasksData.tasks.slice(0, 20).map((t: any) => {
+                            let info = `- [${t.status.toUpperCase()}] ${t.title} (ID: ${t.id})`;
+                            if (t.projectId) info += ` [Proj: ${projectMap[t.projectId] || t.projectId}]`;
+                            if (t.priority) info += ` [Prio: ${t.priority}]`;
+
+                            // Add dependencies if any
+                            if (t.dependencies && t.dependencies.length > 0) {
+                                const deps = t.dependencies.map((d: any) => {
+                                    const depTitle = taskMap[d.id] || d.id;
+                                    return `${d.type}: "${depTitle}"`;
+                                }).join(', ');
+                                info += ` [Abhängig von: ${deps}]`;
+                            }
+                            return info;
+                        }).join('\n')}`;
+
+                        if (tasksData.tasks.length > 20) additionalContext += `\n... und ${tasksData.tasks.length - 20} weitere Aufgaben.`;
                     }
                 } catch (e) {
                     console.error('Failed to fetch tasks context', e);

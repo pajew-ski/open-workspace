@@ -21,9 +21,14 @@
       "priority": "low",
       "type": "task",
       "tags": [],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "id": "task-1769249229739-k32jmu",
+          "type": "FS"
+        }
+      ],
       "createdAt": "2026-01-24T10:07:25.188Z",
-      "updatedAt": "2026-01-24T10:23:54.687Z",
+      "updatedAt": "2026-01-24T10:29:40.466Z",
       "startDate": "2026-01-24T00:00:00.000Z"
     }
   ],

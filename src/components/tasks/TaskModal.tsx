@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Button, Input, Card, CardHeader, CardContent } from '@/components/ui';
+import { TaskSelector } from './TaskSelector';
 import styles from './TaskModal.module.css';
 
 interface Task {
@@ -16,6 +17,7 @@ interface Task {
     startDate?: string;
     deferredUntil?: string;
     tags: string[];
+    dependencies?: { id: string; type: 'FS' | 'SS' | 'FF' | 'SF' }[];
 }
 
 interface Project {
@@ -40,15 +42,14 @@ export function TaskModal({ task, onClose, onSave, onDelete }: TaskModalProps) {
         tags: []
     });
     const [projects, setProjects] = useState<Project[]>([]);
+    const [allTasks, setAllTasks] = useState<Task[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<'general' | 'timing' | 'deps'>('general');
 
     useEffect(() => {
-        fetch('/api/projects').then(r => r.json()).then(data => setProviders(data.projects || []));
+        fetch('/api/projects').then(r => r.json()).then(data => setProjects(data.projects || []));
+        fetch('/api/tasks').then(r => r.json()).then(data => setAllTasks(data.tasks || []));
     }, []);
-
-    // Placeholder for setProviders - should be setProjects but API returns { projects: [] } 
-    const setProviders = (p: Project[]) => setProjects(p);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -148,7 +149,44 @@ export function TaskModal({ task, onClose, onSave, onDelete }: TaskModalProps) {
 
                     {activeTab === 'deps' && (
                         <div className={styles.tabContent}>
-                            <p className={styles.placeholder}>Abhängigkeits-Management folgt...</p>
+                            <div className={styles.field}>
+                                <label>Abhängigkeit hinzufügen</label>
+                                <TaskSelector
+                                    tasks={allTasks as any[]}
+                                    excludeIds={[...(formData.dependencies?.map(d => d.id) || []), formData.id || '']}
+                                    onSelect={(id) => {
+                                        const newDeps = [...(formData.dependencies || []), { id, type: 'FS' as const }];
+                                        setFormData({ ...formData, dependencies: newDeps });
+                                    }}
+                                />
+                            </div>
+
+                            <div className={styles.depsList}>
+                                <label>Aktuelle Abhängigkeiten</label>
+                                {formData.dependencies?.length ? (
+                                    formData.dependencies.map(dep => {
+                                        const depTask = allTasks.find(t => t.id === dep.id);
+                                        return (
+                                            <div key={dep.id} className={styles.depItem}>
+                                                <span className={styles.depType}>{dep.type}</span>
+                                                <span className={styles.depTitle}>{depTask?.title || 'Unbekannte Aufgabe'}</span>
+                                                <button
+                                                    type="button"
+                                                    className={styles.removeDepBtn}
+                                                    onClick={() => setFormData({
+                                                        ...formData,
+                                                        dependencies: formData.dependencies?.filter(d => d.id !== dep.id)
+                                                    })}
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        );
+                                    })
+                                ) : (
+                                    <p className={styles.emptyDeps}>Keine Abhängigkeiten.</p>
+                                )}
+                            </div>
                         </div>
                     )}
 

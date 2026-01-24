@@ -141,3 +141,56 @@
 .deleteBtn:hover {
     background-color: #fef2f2 !important;
 }
+
+.depsList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+}
+
+.depItem {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+}
+
+.depType {
+    font-size: 10px;
+    background-color: var(--color-surface-sunken);
+    padding: 2px 4px;
+    border-radius: var(--radius-sm);
+    color: var(--color-text-tertiary);
+    font-weight: bold;
+}
+
+.depTitle {
+    flex: 1;
+    font-size: var(--text-sm);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.removeDepBtn {
+    border: none;
+    background: transparent;
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 0 var(--space-1);
+}
+
+.removeDepBtn:hover {
+    color: var(--color-error);
+}
+
+.emptyDeps {
+    font-size: var(--text-sm);
+    color: var(--color-text-tertiary);
+    font-style: italic;
+}

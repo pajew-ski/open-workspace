@@ -17,6 +17,7 @@ export interface Task {
     deferredUntil?: string;
     projectId?: string;
     tags: string[];
+    dependencies?: { id: string; type: 'FS' | 'SS' | 'FF' | 'SF' }[];
 }
 
 interface TaskCardProps {
@@ -72,7 +73,14 @@ export function TaskCard({ task, onClick, onMoveStatus }: TaskCardProps) {
                 </div>
                 <CardContent className={styles.content}>
                     <div className={styles.header}>
-                        <span className={styles.typeLabel}>{TYPE_LABELS[task.type] || 'Dokument'}</span>
+                        <div className={styles.headerLeft}>
+                            <span className={styles.typeLabel}>{TYPE_LABELS[task.type] || 'Dokument'}</span>
+                            {task.dependencies && task.dependencies.length > 0 && (
+                                <span className={styles.depIndicator} title={`${task.dependencies.length} Abhängigkeiten`}>
+                                    🔗 {task.dependencies.length}
+                                </span>
+                            )}
+                        </div>
                         <span className={styles.title}>{task.title}</span>
                     </div>
 
