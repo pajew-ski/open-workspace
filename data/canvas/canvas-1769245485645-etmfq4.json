@@ -6,13 +6,14 @@
     {
       "id": "card-1769245489091-5nw09j",
       "type": "note",
-      "title": "Neue Karte",
+      "title": "Karte 2",
       "x": 500,
       "y": 220,
       "width": 240,
       "height": 180,
       "createdAt": "2026-01-24T09:04:49.091Z",
-      "updatedAt": "2026-01-24T09:09:00.837Z"
+      "updatedAt": "2026-01-24T09:13:04.637Z",
+      "color": "#2563eb"
     },
     {
       "id": "card-1769245495291-0wb7ih",
@@ -20,22 +21,24 @@
       "title": "Karte 1",
       "x": 400,
       "y": 660,
-      "width": 440,
-      "height": 360,
+      "width": 660,
+      "height": 500,
       "createdAt": "2026-01-24T09:04:55.291Z",
-      "updatedAt": "2026-01-24T09:09:45.154Z",
-      "color": "#ea580c"
+      "updatedAt": "2026-01-24T09:12:40.178Z",
+      "color": "#ea580c",
+      "content": "# Die erste Karte\n## mit einer weiteren überschrift\nund text der **fett** geschrieben ist\ndas ist toll!\n- listen\n- sind\n- auch\n- toll\ncoool!"
     },
     {
       "id": "card-1769245559285-jpipng",
       "type": "note",
-      "title": "Neue Karte",
+      "title": "Karte 3",
       "x": 960,
       "y": 320,
       "width": 240,
       "height": 180,
       "createdAt": "2026-01-24T09:05:59.285Z",
-      "updatedAt": "2026-01-24T09:08:07.857Z"
+      "updatedAt": "2026-01-24T09:13:00.848Z",
+      "color": "#65a30d"
     }
   ],
   "connections": [
@@ -64,5 +67,5 @@
     "zoom": 1
   },
   "createdAt": "2026-01-24T09:04:45.645Z",
-  "updatedAt": "2026-01-24T09:09:45.154Z"
+  "updatedAt": "2026-01-24T09:13:18.671Z"
 }

@@ -508,7 +508,14 @@ export default function CanvasEditorPage() {
                             <div key={card.id} className={`${styles.card} ${selectedCards.has(card.id) ? styles.selected : ''} ${connectionMode === 'connecting' ? styles.connectable : ''}`} style={{ left: card.x, top: card.y, width: card.width, height: card.height, borderColor: card.color || 'var(--color-border)' }} onMouseDown={(e) => handleCardMouseDown(e, card.id)} onDoubleClick={(e) => { e.stopPropagation(); setEditingCardId(card.id); }}>
                                 <div className={styles.cardHeader} style={{ backgroundColor: card.color ? `${card.color}20` : undefined }}>
                                     {editingCardId === card.id ? (
-                                        <input className={styles.cardTitleInput} value={card.title} onChange={(e) => updateCard(card.id, { title: e.target.value })} onBlur={() => { updateCard(card.id, { title: card.title }, true); setEditingCardId(null); }} onKeyDown={(e) => e.key === 'Enter' && setEditingCardId(null)} onMouseDown={(e) => e.stopPropagation()} autoFocus />
+                                        <input className={styles.cardTitleInput} value={card.title} onChange={(e) => updateCard(card.id, { title: e.target.value })} onBlur={(e) => {
+                                            updateCard(card.id, { title: card.title }, true);
+                                            // Only exit edit mode if not clicking into the same card
+                                            const relatedTarget = e.relatedTarget as HTMLElement;
+                                            if (!relatedTarget?.closest(`.${styles.card}`)) {
+                                                setEditingCardId(null);
+                                            }
+                                        }} onKeyDown={(e) => e.key === 'Escape' && setEditingCardId(null)} onMouseDown={(e) => e.stopPropagation()} autoFocus />
                                     ) : (
                                         <span className={styles.cardTitle}>{card.title}</span>
                                     )}
@@ -516,7 +523,13 @@ export default function CanvasEditorPage() {
                                 </div>
                                 <div className={styles.cardBody}>
                                     {editingCardId === card.id ? (
-                                        <textarea className={styles.cardContentEdit} value={card.content || ''} onChange={(e) => updateCard(card.id, { content: e.target.value })} onBlur={() => updateCard(card.id, { content: card.content }, true)} onMouseDown={(e) => e.stopPropagation()} placeholder="Markdown schreiben..." />
+                                        <textarea className={styles.cardContentEdit} value={card.content || ''} onChange={(e) => updateCard(card.id, { content: e.target.value })} onBlur={(e) => {
+                                            updateCard(card.id, { content: card.content }, true);
+                                            const relatedTarget = e.relatedTarget as HTMLElement;
+                                            if (!relatedTarget?.closest(`.${styles.card}`)) {
+                                                setEditingCardId(null);
+                                            }
+                                        }} onMouseDown={(e) => e.stopPropagation()} placeholder="Markdown schreiben..." />
                                     ) : (
                                         <div className={styles.cardContent} dangerouslySetInnerHTML={{ __html: parseMarkdown(card.content || '') }} />
                                     )}
