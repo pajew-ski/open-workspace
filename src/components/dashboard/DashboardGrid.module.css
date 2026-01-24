@@ -1,0 +1,78 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    height: 40px;
+}
+
+.addButtons {
+    display: flex;
+    gap: 8px;
+    animation: fadeIn 0.2s;
+}
+
+.grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.gridItem {
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.editingGrid .gridItem {
+    padding-left: 40px;
+    /* Space for reorder controls */
+}
+
+.reorderControls {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.reorderControls button {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-elevated);
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.reorderControls button:disabled {
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+.reorderControls button:hover {
+    background: var(--color-surface-subtle);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

@@ -55,6 +55,9 @@ export async function POST(request: NextRequest) {
             dependencies: body.dependencies,
         });
 
+        const { logActivity } = await import('@/lib/activity');
+        await logActivity('task_created', task.id, `Aufgabe erstellt: ${task.title}`);
+
         return NextResponse.json({ task }, { status: 201 });
     } catch (error) {
         console.error('Task create error:', error);

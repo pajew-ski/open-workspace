@@ -1,0 +1,31 @@
+{
+  "layout": [
+    {
+      "id": "welcome-1",
+      "type": "welcome",
+      "content": "<h2>Willkommen im Open Workspace</h2><p>Dein zentraler Arbeitsbereich für AI-gestützte Produktivität. Nutze die Navigation links, um zwischen den Modulen zu wechseln.</p>",
+      "order": 0
+    },
+    {
+      "id": "stats-1",
+      "type": "stats",
+      "order": 1
+    },
+    {
+      "id": "activity-1",
+      "type": "activity",
+      "title": "Letzte Aktivitäten",
+      "order": 2
+    },
+    {
+      "id": "quick-1",
+      "type": "quick-access",
+      "order": 3
+    },
+    {
+      "id": "image-1769261806979",
+      "type": "image",
+      "order": 4
+    }
+  ]
+}

@@ -44,6 +44,8 @@ export async function POST(request: NextRequest) {
             // Canvas CRUD
             case 'create': {
                 const canvas = await createCanvas(body.name, body.description);
+                const { logActivity } = await import('@/lib/activity');
+                await logActivity('canvas_created', canvas.id, `Canvas erstellt: ${canvas.name}`);
                 return NextResponse.json({ canvas }, { status: 201 });
             }
 

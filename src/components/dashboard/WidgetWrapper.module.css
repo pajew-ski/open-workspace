@@ -1,0 +1,54 @@
+.widget {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.headerLeft {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dragHandle {
+    cursor: grab;
+    color: var(--color-text-tertiary);
+}
+
+.dragHandle:active {
+    cursor: grabbing;
+}
+
+.controls {
+    display: flex;
+    gap: 4px;
+}
+
+.iconBtn {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.iconBtn:hover {
+    background-color: var(--color-surface-sunken);
+    color: var(--color-primary);
+}
+
+.editing {
+    border: 1px dashed var(--color-primary);
+    background-color: var(--color-surface-elevated);
+}

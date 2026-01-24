@@ -1,0 +1,108 @@
+.statGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 16px;
+    text-align: center;
+}
+
+.stat {
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+    background-color: var(--color-surface-sunken);
+    border-radius: var(--radius-md);
+}
+
+.statValue {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--color-primary);
+}
+
+.statLabel {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    margin-top: 4px;
+}
+
+.welcomeWidget h2 {
+    margin-bottom: 8px;
+    color: var(--color-primary);
+}
+
+.textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+    margin-bottom: 12px;
+}
+
+.actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.actions button {
+    padding: 6px 12px;
+    border: 1px solid var(--color-border);
+    background: transparent;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+.actions button.primary {
+    background: var(--color-primary);
+    color: white;
+    border: none;
+}
+
+/* Activity */
+.activityList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.activityItem {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 8px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.activityItem:last-child {
+    border-bottom: none;
+}
+
+.actIcon {
+    color: var(--color-text-tertiary);
+    margin-top: 2px;
+}
+
+.actContent {
+    flex: 1;
+}
+
+.actTitle {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.actTime {
+    font-size: 11px;
+    color: var(--color-text-tertiary);
+}
+
+.empty {
+    text-align: center;
+    color: var(--color-text-tertiary);
+    padding: 24px;
+}

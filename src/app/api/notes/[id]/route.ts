@@ -46,6 +46,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             );
         }
 
+        const { logActivity } = await import('@/lib/activity');
+        await logActivity('note_updated', note.id, `Notiz bearbeitet: ${note.title}`);
+
         return NextResponse.json({ note });
     } catch (error) {
         console.error('Note update error:', error);
@@ -59,6 +62,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
     try {
         const { id } = await params;
+        const note = await getNote(id);
         const success = await deleteNote(id);
 
         if (!success) {
@@ -66,6 +70,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
                 { error: 'Notiz nicht gefunden' },
                 { status: 404 }
             );
+        }
+
+        if (note) {
+            const { logActivity } = await import('@/lib/activity');
+            await logActivity('note_deleted', id, `Notiz gelöscht: ${note.title}`);
         }
 
         return NextResponse.json({ success: true });

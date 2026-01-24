@@ -32,6 +32,9 @@ export async function POST(request: NextRequest) {
             tags: body.tags || [],
         });
 
+        const { logActivity } = await import('@/lib/activity');
+        await logActivity('note_created', note.id, `Notiz erstellt: ${note.title}`);
+
         return NextResponse.json({ note }, { status: 201 });
     } catch (error) {
         console.error('Note create error:', error);
