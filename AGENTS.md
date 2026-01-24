@@ -119,7 +119,7 @@ Historie und Konversationen in `data/chat/conversations.json`.
 |-------|------------|-----------------|
 | Dashboard | Übersicht-Assistent | System-Metriken, aktuelle Items |
 | Wissensbasis | Recherche-Assistent | Notizen, Dokumente, Artefakte |
-| Canvas | Planungs-Assistent | Karten, Verbindungen, Layout |
+| Pinnwand | Planungs-Assistent | Karten, Verbindungen, Layout |
 | Aufgaben | Projekt-Assistent | Tasks, Deadlines, Fortschritt |
 | Kalender | Zeit-Assistent | Termine, Verfügbarkeit |
 | Agenten | A2A Koordinator | Agent-Configs, MCP Tools |

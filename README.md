@@ -6,7 +6,7 @@ Ein umfassender, offline-fähiger Workspace für AI-Agent-Kollaboration. Entwick
 
 - **Dashboard**: Echtzeit-Übersicht über Systemaktivität und aktuelle Elemente
 - **Wissensbasis**: Markdown-Notizen mit Professional-Editor (Toolbar) und Umbenennung
-- **Canvas**: Visuelle Planung mit Karten und Verbindungen
+- **Pinnwand**: Visuelle Planung mit Karten und Verbindungen
 - **Aufgaben**: Projekte und Aufgabenverwaltung im Kanban-Stil
 - **Kalender**: ICS/iCal Integration mit Monats-/Wochenansicht
 - **Global Finder**: Kontext-sensitive Suche über alle Module (`Cmd+F`)

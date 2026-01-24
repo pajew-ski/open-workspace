@@ -87,15 +87,15 @@ export default function CanvasOverviewPage() {
     };
 
     return (
-        <AppShell title="Canvas">
+        <AppShell title="Pinnwand">
             <div className={styles.container}>
                 <div className={styles.header}>
                     <div>
-                        <h1>Canvas Übersicht</h1>
+                        <h1>Pinnwand Übersicht</h1>
                         <p className={styles.subtitle}>Erstelle und verwalte deine visuellen Planungen</p>
                     </div>
                     <Button variant="primary" onClick={() => setIsCreating(true)}>
-                        + Neues Canvas
+                        + Neue Pinnwand
                     </Button>
                 </div>
 
@@ -104,7 +104,7 @@ export default function CanvasOverviewPage() {
                         <CardContent>
                             <div className={styles.formFields}>
                                 <Input
-                                    placeholder="Name des Canvas..."
+                                    placeholder="Name der Pinnwand..."
                                     value={newName}
                                     onChange={(e) => setNewName(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && createCanvas()}
@@ -135,10 +135,10 @@ export default function CanvasOverviewPage() {
                                     <path d="M3 9h18" />
                                     <path d="M9 21V9" />
                                 </svg>
-                                <h3>Noch keine Canvases</h3>
-                                <p>Erstelle dein erstes Canvas für visuelle Planung</p>
+                                <h3>Noch keine Pinnwände</h3>
+                                <p>Erstelle deine erste Pinnwand für visuelle Planung</p>
                                 <Button variant="primary" onClick={() => setIsCreating(true)}>
-                                    + Erstes Canvas erstellen
+                                    + Erste Pinnwand erstellen
                                 </Button>
                             </div>
                         </CardContent>
@@ -174,7 +174,7 @@ export default function CanvasOverviewPage() {
 
             <ConfirmDialog
                 isOpen={deleteConfirm !== null}
-                title="Canvas löschen?"
+                title="Pinnwand löschen?"
                 message={`Möchtest du "${deleteConfirm?.name}" wirklich löschen? Alle Karten und Verbindungen werden unwiderruflich entfernt.`}
                 confirmText="Löschen"
                 cancelText="Abbrechen"

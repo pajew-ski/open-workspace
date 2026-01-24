@@ -34,7 +34,7 @@ export default function DashboardPage() {
               </div>
               <div className={styles.stat}>
                 <span className={styles.statValue}>0</span>
-                <span className={styles.statLabel}>Canvas-Karten</span>
+                <span className={styles.statLabel}>Pinnwand-Karten</span>
               </div>
               <div className={styles.stat}>
                 <span className={styles.statValue}>0</span>
