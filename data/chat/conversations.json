@@ -1,8 +1,15 @@
 {
   "conversations": [
     {
+      "id": "conv-1769247132567-k2mlkk",
+      "title": "Chat 24.1.2026",
+      "messages": [],
+      "createdAt": "2026-01-24T09:32:12.567Z",
+      "updatedAt": "2026-01-24T09:32:12.567Z"
+    },
+    {
       "id": "conv-1769246803368-l97j0o",
-      "title": "was siehst du?",
+      "title": "Test der Kontext Awareness",
       "messages": [
         {
           "id": "msg-1769246850437-leu2re",
@@ -54,8 +61,8 @@
         }
       ],
       "createdAt": "2026-01-24T09:26:43.368Z",
-      "updatedAt": "2026-01-24T09:29:51.529Z"
+      "updatedAt": "2026-01-24T09:32:05.606Z"
     }
   ],
-  "activeId": "conv-1769246803368-l97j0o"
+  "activeId": "conv-1769247132567-k2mlkk"
 }
