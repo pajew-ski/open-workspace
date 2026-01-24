@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "AI Workspace",
-  description: "Umfassender AI-Workspace fuer Agenten-Kollaboration",
+  description: "Umfassender AI-Workspace für Agenten-Kollaboration",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

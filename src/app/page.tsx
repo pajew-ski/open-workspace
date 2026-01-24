@@ -12,7 +12,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <p>
-              Ihr zentraler Arbeitsbereich fuer AI-gestuetzte Produktivitaet.
+              Ihr zentraler Arbeitsbereich für AI-gestützte Produktivität.
               Nutzen Sie die Navigation links, um zwischen den Modulen zu wechseln.
             </p>
           </CardContent>
@@ -20,7 +20,7 @@ export default function DashboardPage() {
 
         <Card className={styles.stats}>
           <CardHeader>
-            <h3>Schnelluebersicht</h3>
+            <h3>Schnellübersicht</h3>
           </CardHeader>
           <CardContent>
             <div className={styles.statGrid}>
@@ -46,10 +46,10 @@ export default function DashboardPage() {
 
         <Card className={styles.recent}>
           <CardHeader>
-            <h3>Letzte Aktivitaeten</h3>
+            <h3>Letzte Aktivitäten</h3>
           </CardHeader>
           <CardContent>
-            <p className={styles.empty}>Keine aktuellen Aktivitaeten</p>
+            <p className={styles.empty}>Keine aktuellen Aktivitäten</p>
           </CardContent>
         </Card>
 
@@ -59,8 +59,8 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <ul className={styles.quickList}>
-              <li>Druecken Sie Cmd+K fuer die globale Suche</li>
-              <li>Nutzen Sie das Chat-Widget fuer AI-Unterstuetzung</li>
+              <li>Drücken Sie Cmd+K für die globale Suche</li>
+              <li>Nutzen Sie das Chat-Widget für AI-Unterstützung</li>
               <li>Erstellen Sie Notizen in der Wissensbasis</li>
             </ul>
           </CardContent>

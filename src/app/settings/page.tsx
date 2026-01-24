@@ -19,7 +19,7 @@ export default function SettingsPage() {
                             <div className={styles.settingInfo}>
                                 <span className={styles.settingLabel}>Farbschema</span>
                                 <span className={styles.settingDescription}>
-                                    Waehlen Sie zwischen hellem und dunklem Modus
+                                    Wählen Sie zwischen hellem und dunklem Modus
                                 </span>
                             </div>
                             <ThemeSelector />
@@ -36,7 +36,7 @@ export default function SettingsPage() {
                             <div className={styles.settingInfo}>
                                 <span className={styles.settingLabel}>Anzeigesprache</span>
                                 <span className={styles.settingDescription}>
-                                    Waehlen Sie die Sprache der Benutzeroberflaeche
+                                    Wählen Sie die Sprache der Benutzeroberfläche
                                 </span>
                             </div>
                             <div className={styles.themeButtons}>

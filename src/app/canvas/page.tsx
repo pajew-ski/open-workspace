@@ -8,9 +8,9 @@ export default function CanvasPage() {
             <div className={styles.container}>
                 <div className={styles.toolbar}>
                     <div className={styles.tools}>
-                        <Button variant="ghost" size="sm">Karte hinzufuegen</Button>
+                        <Button variant="ghost" size="sm">Karte hinzufügen</Button>
                         <Button variant="ghost" size="sm">Verbindung erstellen</Button>
-                        <Button variant="ghost" size="sm">Zoom zuruecksetzen</Button>
+                        <Button variant="ghost" size="sm">Zoom zurücksetzen</Button>
                     </div>
                     <Button variant="primary">+ Neue Karte</Button>
                 </div>

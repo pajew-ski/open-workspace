@@ -1,7 +1,7 @@
 {
     "name": "AI Workspace",
     "short_name": "AI Workspace",
-    "description": "Umfassender AI-Workspace fuer Agenten-Kollaboration",
+    "description": "Umfassender AI-Workspace für Agenten-Kollaboration",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#FAFAFA",

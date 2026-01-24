@@ -110,6 +110,8 @@ Each module has a dedicated agent accessible via chat widget:
 | Knowledge | Research assistant | Notes, documents, code, artifacts |
 | Canvas | Planning assistant | Cards, visual elements, connections |
 | Tasks | Project assistant | Tasks, projects, deadlines, progress |
+| Agenten | A2A coordinator | Agent configs, capabilities, MCP tools |
+| Kommunikation | Chat assistant | Matrix rooms, messages, contacts |
 
 ## Development Commands
 
@@ -132,9 +134,11 @@ bun run lint
 - Language: TypeScript (strict mode)
 - API endpoints: English
 - UI labels: German (default), English (switchable)
+- **German text MUST use correct umlauts: ä, ö, ü, Ä, Ö, Ü, ß** (never ae, oe, ue)
 - No emojis in UI or code
 - Semantic HTML structure
 - CSS: CSS Modules with Material Design tokens
+- **Responsive design**: Mobile-first, works on all screen sizes
 
 ## Design System
 
