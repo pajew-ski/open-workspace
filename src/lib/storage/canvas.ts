@@ -26,6 +26,7 @@ export interface CanvasConnection {
     id: string;
     fromId: string;
     toId: string;
+    type: 'simple' | 'directional' | 'bidirectional';
     label?: string;
 }
 
@@ -135,7 +136,7 @@ export async function deleteCard(id: string): Promise<boolean> {
     return true;
 }
 
-export async function createConnection(fromId: string, toId: string, label?: string): Promise<CanvasConnection | null> {
+export async function createConnection(fromId: string, toId: string, type: CanvasConnection['type'] = 'directional', label?: string): Promise<CanvasConnection | null> {
     const data = await readCanvasData();
 
     // Verify both cards exist
@@ -147,12 +148,23 @@ export async function createConnection(fromId: string, toId: string, label?: str
         id: `conn-${Date.now()}`,
         fromId,
         toId,
+        type,
         label,
     };
 
     data.connections.push(connection);
     await writeCanvasData(data);
     return connection;
+}
+
+export async function updateConnection(id: string, updates: Partial<Omit<CanvasConnection, 'id'>>): Promise<CanvasConnection | null> {
+    const data = await readCanvasData();
+    const index = data.connections.findIndex(c => c.id === id);
+    if (index === -1) return null;
+
+    data.connections[index] = { ...data.connections[index], ...updates };
+    await writeCanvasData(data);
+    return data.connections[index];
 }
 
 export async function deleteConnection(id: string): Promise<boolean> {

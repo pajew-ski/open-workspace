@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCanvas, createCard, updateCard, deleteCard, createConnection, deleteConnection, updateViewport } from '@/lib/storage';
+import { getCanvas, createCard, updateCard, deleteCard, createConnection, deleteConnection, updateViewport, updateConnection } from '@/lib/storage';
 
 export async function GET() {
     try {
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
             }
 
             case 'createConnection': {
-                const connection = await createConnection(body.fromId, body.toId, body.label);
+                const connection = await createConnection(body.fromId, body.toId, body.type || 'directional', body.label);
                 if (!connection) {
                     return NextResponse.json({ error: 'Karten nicht gefunden' }, { status: 404 });
                 }
@@ -61,6 +61,14 @@ export async function POST(request: NextRequest) {
                     return NextResponse.json({ error: 'Verbindung nicht gefunden' }, { status: 404 });
                 }
                 return NextResponse.json({ success: true });
+            }
+
+            case 'updateConnection': {
+                const connection = await updateConnection(body.id, body.updates);
+                if (!connection) {
+                    return NextResponse.json({ error: 'Verbindung nicht gefunden' }, { status: 404 });
+                }
+                return NextResponse.json({ connection });
             }
 
             case 'updateViewport': {
