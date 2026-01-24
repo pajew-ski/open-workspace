@@ -5,10 +5,10 @@
 /* FAB */
 .fab {
     position: fixed;
-    bottom: var(--space-5);
-    right: var(--space-5);
-    width: 56px;
-    height: 56px;
+    bottom: 20px;
+    right: 20px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     border: none;
     background-color: var(--color-primary, #00674F);
@@ -522,8 +522,8 @@
 /* Mobile adjustments */
 @media (max-width: 767px) {
     .fab {
-        bottom: var(--space-4);
-        right: var(--space-4);
+        bottom: 16px;
+        right: 16px;
     }
 
     .sidebar {

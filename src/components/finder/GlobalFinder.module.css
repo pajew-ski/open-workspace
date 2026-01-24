@@ -183,3 +183,11 @@
 .globalSearchBtn:hover {
     background-color: var(--color-primary-light);
 }
+
+@media (max-width: 768px) {
+    .floatingTrigger {
+        bottom: 16px;
+        right: 76px;
+        /* 16px + 48px + 12px */
+    }
+}
