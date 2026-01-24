@@ -1,7 +1,7 @@
 .container {
     position: fixed;
     bottom: var(--space-5);
-    left: var(--space-5);
+    right: var(--space-5);
     z-index: var(--z-modal);
 }
 
@@ -33,7 +33,7 @@
 .chatWindow {
     position: absolute;
     bottom: 72px;
-    left: 0;
+    right: 0;
     width: 380px;
     max-height: 500px;
     background-color: var(--color-surface-elevated);
@@ -70,6 +70,35 @@
 .context {
     font-size: var(--text-xs);
     opacity: 0.8;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--color-text-tertiary);
+}
+
+.status.online {
+    background-color: #4ade80;
+}
+
+.status.offline {
+    background-color: #ef4444;
+}
+
+.fabBadge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #4ade80;
+    border: 2px solid var(--color-primary);
 }
 
 .closeButton {
@@ -224,7 +253,7 @@
 /* Mobile responsive */
 @media (max-width: 480px) {
     .container {
-        left: var(--space-3);
+        right: var(--space-3);
         bottom: var(--space-3);
     }
 

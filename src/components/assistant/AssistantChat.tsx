@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import styles from './AssistantChat.module.css';
 
@@ -9,6 +9,13 @@ interface Message {
     role: 'user' | 'assistant';
     content: string;
     timestamp: Date;
+}
+
+interface StreamChunk {
+    message: {
+        content: string;
+    };
+    done: boolean;
 }
 
 const MODULE_CONTEXT: Record<string, { name: string; description: string }> = {
@@ -33,11 +40,26 @@ export function AssistantChat() {
     ]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'online' | 'offline'>('unknown');
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const pathname = usePathname();
 
     const currentModule = MODULE_CONTEXT[pathname] || MODULE_CONTEXT['/'];
+
+    // Check connection status on mount
+    useEffect(() => {
+        const checkConnection = async () => {
+            try {
+                const response = await fetch('/api/chat/health');
+                const data = await response.json();
+                setConnectionStatus(data.status === 'online' ? 'online' : 'offline');
+            } catch {
+                setConnectionStatus('offline');
+            }
+        };
+        checkConnection();
+    }, []);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -49,35 +71,121 @@ export function AssistantChat() {
         }
     }, [isOpen]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!input.trim() || isLoading) return;
-
+    const sendMessage = useCallback(async (userInput: string) => {
         const userMessage: Message = {
             id: Date.now().toString(),
             role: 'user',
-            content: input.trim(),
+            content: userInput,
             timestamp: new Date(),
         };
 
         setMessages((prev) => [...prev, userMessage]);
-        setInput('');
         setIsLoading(true);
 
-        // TODO: Connect to Ollama API with context
-        // For now, simulate a response
-        setTimeout(() => {
-            const assistantMessage: Message = {
-                id: (Date.now() + 1).toString(),
+        // Create placeholder for assistant response
+        const assistantId = (Date.now() + 1).toString();
+        setMessages((prev) => [
+            ...prev,
+            {
+                id: assistantId,
                 role: 'assistant',
-                content: `Ich sehe, dass du gerade im Modul "${currentModule.name}" bist (${currentModule.description}). Ich arbeite an deiner Anfrage...
-
-Die Verbindung zum AI-Server (192.168.42.2:11434) wird in der nächsten Phase implementiert. Dann kann ich dir richtig helfen!`,
+                content: '',
                 timestamp: new Date(),
-            };
-            setMessages((prev) => [...prev, assistantMessage]);
+            },
+        ]);
+
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    messages: [...messages, userMessage].filter(m => m.role !== 'assistant' || m.content).map(m => ({
+                        role: m.role,
+                        content: m.content,
+                    })),
+                    context: {
+                        module: currentModule.name,
+                        moduleDescription: currentModule.description,
+                        pathname,
+                    },
+                    stream: true,
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'API request failed');
+            }
+
+            const reader = response.body?.getReader();
+            if (!reader) throw new Error('No response body');
+
+            const decoder = new TextDecoder();
+            let fullContent = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const text = decoder.decode(value, { stream: true });
+                const lines = text.split('\n').filter(line => line.trim());
+
+                for (const line of lines) {
+                    try {
+                        const chunk: StreamChunk = JSON.parse(line);
+                        if (chunk.message?.content) {
+                            fullContent += chunk.message.content;
+                            setMessages((prev) =>
+                                prev.map((m) =>
+                                    m.id === assistantId
+                                        ? { ...m, content: fullContent }
+                                        : m
+                                )
+                            );
+                        }
+                    } catch {
+                        // Skip invalid JSON
+                    }
+                }
+            }
+
+            // Ensure we have content
+            if (!fullContent) {
+                setMessages((prev) =>
+                    prev.map((m) =>
+                        m.id === assistantId
+                            ? { ...m, content: 'Entschuldigung, ich konnte keine Antwort generieren. Bitte versuche es erneut.' }
+                            : m
+                    )
+                );
+            }
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
+            setMessages((prev) =>
+                prev.map((m) =>
+                    m.id === assistantId
+                        ? {
+                            ...m,
+                            content: `Verbindungsfehler: ${errorMessage}\n\nStelle sicher, dass Ollama unter 192.168.42.2:11434 erreichbar ist.`
+                        }
+                        : m
+                )
+            );
+            setConnectionStatus('offline');
+        } finally {
             setIsLoading(false);
-        }, 1000);
+        }
+    }, [messages, currentModule, pathname]);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!input.trim() || isLoading) return;
+
+        const userInput = input.trim();
+        setInput('');
+        await sendMessage(userInput);
     };
 
     return (
@@ -87,7 +195,10 @@ Die Verbindung zum AI-Server (192.168.42.2:11434) wird in der nächsten Phase im
                     <div className={styles.header}>
                         <div className={styles.headerInfo}>
                             <span className={styles.title}>Persönlicher Assistent</span>
-                            <span className={styles.context}>Kontext: {currentModule.name}</span>
+                            <span className={styles.context}>
+                                {currentModule.name}
+                                <span className={`${styles.status} ${styles[connectionStatus]}`} />
+                            </span>
                         </div>
                         <button
                             className={styles.closeButton}
@@ -106,18 +217,15 @@ Die Verbindung zum AI-Server (192.168.42.2:11434) wird in der nächsten Phase im
                                 key={message.id}
                                 className={`${styles.message} ${styles[message.role]}`}
                             >
-                                {message.content}
+                                {message.content || (
+                                    <span className={styles.typing}>
+                                        <span></span>
+                                        <span></span>
+                                        <span></span>
+                                    </span>
+                                )}
                             </div>
                         ))}
-                        {isLoading && (
-                            <div className={`${styles.message} ${styles.assistant}`}>
-                                <span className={styles.typing}>
-                                    <span></span>
-                                    <span></span>
-                                    <span></span>
-                                </span>
-                            </div>
-                        )}
                         <div ref={messagesEndRef} />
                     </div>
 
@@ -127,7 +235,7 @@ Die Verbindung zum AI-Server (192.168.42.2:11434) wird in der nächsten Phase im
                             type="text"
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
-                            placeholder="Schreib mir..."
+                            placeholder={connectionStatus === 'offline' ? 'AI offline...' : 'Schreib mir...'}
                             className={styles.input}
                             disabled={isLoading}
                         />
@@ -158,6 +266,9 @@ Die Verbindung zum AI-Server (192.168.42.2:11434) wird in der nächsten Phase im
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                     </svg>
+                )}
+                {connectionStatus === 'online' && !isOpen && (
+                    <span className={styles.fabBadge} />
                 )}
             </button>
         </div>
