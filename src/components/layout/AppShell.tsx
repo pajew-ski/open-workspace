@@ -15,7 +15,8 @@ interface AppShellProps {
 const SIDEBAR_COLLAPSED_KEY = 'open-workspace-sidebar-collapsed';
 
 export function AppShell({ children, title }: AppShellProps) {
-    const [isCollapsed, setIsCollapsed] = useState(true); // Default to collapsed
+    const [isCollapsed, setIsCollapsed] = useState(true); // Default to collapsed on desktop
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -32,14 +33,26 @@ export function AppShell({ children, title }: AppShellProps) {
         localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(newValue));
     };
 
+    const handleMobileToggle = () => {
+        setIsMobileMenuOpen(!isMobileMenuOpen);
+    };
+
     // During SSR, render with collapsed state to avoid hydration mismatch
     const collapsed = mounted ? isCollapsed : true;
 
     return (
-        <div className={`${styles.container} ${collapsed ? styles.collapsed : ''}`}>
-            <Sidebar isCollapsed={collapsed} onToggle={handleToggle} />
+        <div className={`${styles.container} ${collapsed ? styles.collapsed : ''} ${isMobileMenuOpen ? styles.mobileOpen : ''}`}>
+            {isMobileMenuOpen && (
+                <div className={styles.mobileOverlay} onClick={() => setIsMobileMenuOpen(false)} />
+            )}
+            <Sidebar
+                isCollapsed={collapsed}
+                onToggle={handleToggle}
+                isMobileOpen={isMobileMenuOpen}
+                onMobileClose={() => setIsMobileMenuOpen(false)}
+            />
             <div className={styles.main}>
-                <Header title={title} />
+                <Header title={title} onMobileMenuClick={handleMobileToggle} />
                 <main className={styles.content}>
                     {children}
                 </main>

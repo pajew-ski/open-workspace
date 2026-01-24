@@ -36,3 +36,25 @@
     justify-content: flex-end;
     gap: var(--space-2);
 }
+
+.mobileMenuBtn {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    padding: var(--space-2);
+    margin-right: var(--space-2);
+}
+
+@media (max-width: 768px) {
+    .mobileMenuBtn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .header {
+        padding: 0 var(--space-3);
+    }
+}

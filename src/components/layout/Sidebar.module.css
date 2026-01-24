@@ -116,15 +116,11 @@
     .sidebar {
         transform: translateX(-100%);
         width: var(--sidebar-width);
+        box-shadow: none;
     }
 
-    .sidebar.collapsed {
+    .sidebar.mobileOpen {
         transform: translateX(0);
-        width: var(--sidebar-width-collapsed);
-    }
-
-    .sidebar.expanded-mobile {
-        transform: translateX(0);
-        width: var(--sidebar-width);
+        box-shadow: var(--shadow-xl);
     }
 }
