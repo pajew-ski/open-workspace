@@ -10,7 +10,20 @@ export interface ParsedEvent {
 
 export async function parseICS(icsData: string): Promise<ParsedEvent[]> {
     const events: ParsedEvent[] = [];
-    const lines = icsData.split(/\r\n|\n|\r/);
+
+    // Unfold lines (lines starting with space connect to previous line)
+    const rawLines = icsData.split(/\r\n|\n|\r/);
+    const lines: string[] = [];
+    for (const line of rawLines) {
+        if (line.startsWith(' ')) {
+            if (lines.length > 0) {
+                lines[lines.length - 1] += line.substring(1);
+            }
+        } else {
+            lines.push(line);
+        }
+    }
+
     let currentEvent: Partial<ParsedEvent> & { dtstart?: string; dtend?: string; dtstartParams?: string } = {};
     let inEvent = false;
 
@@ -25,11 +38,11 @@ export async function parseICS(icsData: string): Promise<ParsedEvent[]> {
 
         if (line.startsWith('END:VEVENT')) {
             inEvent = false;
-            // Parse dates
+            // Parse dates only if we have DTSTART
             if (currentEvent.dtstart) {
                 const isDateOnly = currentEvent.dtstartParams?.includes('VALUE=DATE') || currentEvent.dtstart.length === 8;
                 const start = parseICALDate(currentEvent.dtstart);
-                const end = currentEvent.dtend ? parseICALDate(currentEvent.dtend) : start;
+                const end = currentEvent.dtend ? parseICALDate(currentEvent.dtend) : (isDateOnly ? start : new Date(start.getTime() + 3600000));
 
                 events.push({
                     uid: currentEvent.uid || Math.random().toString(36),
@@ -46,19 +59,29 @@ export async function parseICS(icsData: string): Promise<ParsedEvent[]> {
 
         if (!inEvent) continue;
 
-        // Simple property parsing
-        // Improvements needed: handle multiline (folding), params
-        const [keyPart, ...valueParts] = line.split(':');
-        let value = valueParts.join(':');
+        // Find the first colon to separate key and value
+        const colonIndex = line.indexOf(':');
+        if (colonIndex === -1) continue;
+
+        const keyPart = line.substring(0, colonIndex);
+        let value = line.substring(colonIndex + 1);
 
         // Handle parameters (DTSTART;VALUE=DATE:20230101)
-        const [key, params] = keyPart.split(';');
+        // Key might look like "DTSTART;TZID=Europe/Berlin"
+        const semicolonIndex = keyPart.indexOf(';');
+        let key = keyPart;
+        let params = '';
+
+        if (semicolonIndex !== -1) {
+            key = keyPart.substring(0, semicolonIndex);
+            params = keyPart.substring(semicolonIndex + 1);
+        }
 
         switch (key) {
             case 'UID': currentEvent.uid = value; break;
-            case 'SUMMARY': currentEvent.summary = value; break;
-            case 'DESCRIPTION': currentEvent.description = value.replace(/\\n/g, '\n').replace(/\\,/g, ','); break;
-            case 'LOCATION': currentEvent.location = value.replace(/\\,/g, ','); break;
+            case 'SUMMARY': currentEvent.summary = unescapeICS(value); break;
+            case 'DESCRIPTION': currentEvent.description = unescapeICS(value); break;
+            case 'LOCATION': currentEvent.location = unescapeICS(value); break;
             case 'DTSTART':
                 currentEvent.dtstart = value;
                 currentEvent.dtstartParams = params;
@@ -70,23 +93,44 @@ export async function parseICS(icsData: string): Promise<ParsedEvent[]> {
     return events;
 }
 
+function unescapeICS(value: string): string {
+    return value
+        .replace(/\\n/g, '\n')
+        .replace(/\\N/g, '\n')
+        .replace(/\\;/g, ';')
+        .replace(/\\,/g, ',')
+        .replace(/\\\\/g, '\\');
+}
+
 function parseICALDate(value: string): Date {
-    // Format: 20230101 or 20230101T120000Z
+    // Basic cleaning
+    value = value.trim();
+
+    // Format: 20230101 or 20230101T120000Z or 20230101T120000
+    if (value.length < 8) return new Date(); // Invalid
+
     const year = parseInt(value.substring(0, 4));
     const month = parseInt(value.substring(4, 6)) - 1;
     const day = parseInt(value.substring(6, 8));
 
+    // Date only
     if (value.length === 8) {
         return new Date(year, month, day);
     }
 
-    const hour = parseInt(value.substring(9, 11));
-    const minute = parseInt(value.substring(11, 13));
-    const second = parseInt(value.substring(13, 15));
+    // Date-Time
+    if (value.length >= 15) {
+        const hour = parseInt(value.substring(9, 11));
+        const minute = parseInt(value.substring(11, 13));
+        const second = parseInt(value.substring(13, 15));
 
-    if (value.endsWith('Z')) {
-        return new Date(Date.UTC(year, month, day, hour, minute, second));
+        if (value.endsWith('Z')) {
+            return new Date(Date.UTC(year, month, day, hour, minute, second));
+        }
+
+        // Local time (or Floating) - treating as local for now
+        return new Date(year, month, day, hour, minute, second);
     }
 
-    return new Date(year, month, day, hour, minute, second);
+    return new Date(year, month, day);
 }
