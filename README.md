@@ -4,7 +4,7 @@ Ein umfassender, offline-fähiger Workspace für AI-Agent-Kollaboration. Entwick
 
 ## Features
 
-- **Dashboard**: Echtzeit-Übersicht über Systemaktivität und aktuelle Elemente
+- **Übersicht (Dashboard)**: Echtzeit-Übersicht über Systemaktivität und aktuelle Elemente
 - **Wissensbasis**: Markdown-Notizen mit Professional-Editor (Toolbar) und Umbenennung
 - **Pinnwand**: Visuelle Planung mit Karten und Verbindungen
 - **Aufgaben**: Projekte und Aufgabenverwaltung im Kanban-Stil

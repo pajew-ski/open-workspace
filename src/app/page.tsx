@@ -4,7 +4,7 @@ import styles from './page.module.css';
 
 export default function DashboardPage() {
   return (
-    <AppShell title="Dashboard">
+    <AppShell title="Übersicht">
       <div className={styles.grid}>
         <Card elevated className={styles.welcome}>
           <CardHeader>

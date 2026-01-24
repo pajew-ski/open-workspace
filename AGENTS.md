@@ -117,7 +117,7 @@ Historie und Konversationen in `data/chat/conversations.json`.
 
 | Modul | Agent-Rolle | Kontext-Zugriff |
 |-------|------------|-----------------|
-| Dashboard | Übersicht-Assistent | System-Metriken, aktuelle Items |
+| Übersicht | Übersicht-Assistent | System-Metriken, aktuelle Items |
 | Wissensbasis | Recherche-Assistent | Notizen, Dokumente, Artefakte |
 | Pinnwand | Planungs-Assistent | Karten, Verbindungen, Layout |
 | Aufgaben | Projekt-Assistent | Tasks, Deadlines, Fortschritt |
