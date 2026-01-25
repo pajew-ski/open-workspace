@@ -1,5 +1,19 @@
 [
   {
+    "id": "evt-1769332280559-bbzlae2h5",
+    "type": "task_updated",
+    "entityId": "task-1769249229739-k32jmu",
+    "title": "Aufgabe aktualisiert: Staubsaugen",
+    "timestamp": "2026-01-25T09:11:20.559Z"
+  },
+  {
+    "id": "evt-1769332277967-00ilf08lk",
+    "type": "task_updated",
+    "entityId": "task-1769249229739-k32jmu",
+    "title": "Aufgabe aktualisiert: Staubsaugen",
+    "timestamp": "2026-01-25T09:11:17.967Z"
+  },
+  {
     "id": "evt-1769264993555-y3c834h2s",
     "type": "canvas_deleted",
     "entityId": "canvas-1769245485645-etmfq4",
