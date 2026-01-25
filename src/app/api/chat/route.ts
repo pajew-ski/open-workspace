@@ -15,21 +15,30 @@ export interface ChatRequestBody {
     stream?: boolean;
 }
 
+import { loadTools } from '@/lib/tools/storage';
+import { Tool } from '@/lib/tools/types';
+
 /**
- * Build system prompt with context awareness
+ * Build system prompt with context awareness and tools
  */
-function buildSystemPrompt(context: ChatRequestBody['context']): string {
+async function buildSystemPrompt(context: ChatRequestBody['context']): Promise<string> {
     let viewStateContext = '';
     if (context.viewState && Object.keys(context.viewState).length > 0) {
         viewStateContext = `\nAKTUELLE ANSICHT (Was der Nutzer sieht):\n${JSON.stringify(context.viewState, null, 2)}`;
     }
+
+    // Load available tools
+    const tools = await loadTools();
+    const toolsContext = tools.length > 0
+        ? `\nVERFÜGBARE TOOLS:\n${tools.map(t => `- ${t.name} (ID: ${t.id}): ${t.description} [${t.config.method} ${t.config.url}]`).join('\n')}\n\nUm ein Tool zu nutzen, antworte NUR mit: [[TOOL:tool_id:{"arg":"value"}]]`
+        : '';
 
     return `Du bist der Persönliche Assistent im Open Workspace. Deine Aufgaben:
 
 KONTEXT:
 - Der Nutzer befindet sich gerade im Modul: ${context.module}
 - Modul-Beschreibung: ${context.moduleDescription}
-- Aktuelle Seite: ${context.pathname}${viewStateContext}
+- Aktuelle Seite: ${context.pathname}${viewStateContext}${toolsContext}
 
 DEINE EIGENSCHAFTEN:
 - Du sprichst den Nutzer immer mit "du" an (informell, nie "Sie")
@@ -99,7 +108,7 @@ export async function POST(request: NextRequest) {
         // Build full message array with system prompt
         const systemMessage: ChatMessage = {
             role: 'system',
-            content: buildSystemPrompt(context),
+            content: await buildSystemPrompt(context),
         };
 
         const fullMessages: ChatMessage[] = [
