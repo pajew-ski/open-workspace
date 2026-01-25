@@ -158,16 +158,38 @@ export const CodeBlock = ({ props }: ComponentProps) => {
 };
 
 export const Image = ({ props }: ComponentProps) => {
-    const src = props.src?.literalString || props.src || '';
-    const alt = props.alt?.literalString || props.alt || '';
-    const caption = props.caption?.literalString || props.caption;
+    // Debug logging
+    console.log('A2UI Image Props:', props);
+
+    // Safer extraction helper
+    const getText = (val: any) => {
+        if (!val) return '';
+        if (typeof val === 'string') return val;
+        if (typeof val === 'object' && val.literalString) return val.literalString;
+        return '';
+    };
+
+    const src = getText(props.src);
+    const alt = getText(props.alt);
+    const caption = getText(props.caption);
+
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
 
+    // If no src found after extraction, show error immediately
+    if (!src) {
+        return (
+            <div className="a2ui-image-loading" style={{ color: 'red' }}>
+                Bild-Quelle fehlt
+            </div>
+        );
+    }
+
     if (error) {
         return (
-            <div className="a2ui-image-loading">
-                Bild konnte nicht geladen werden
+            <div className="a2ui-image-loading" style={{ flexDirection: 'column', gap: '4px' }}>
+                <span>Bild konnte nicht geladen werden</span>
+                <span style={{ fontSize: '10px', opacity: 0.7 }}>{src}</span>
             </div>
         );
     }
@@ -179,7 +201,11 @@ export const Image = ({ props }: ComponentProps) => {
                 src={src}
                 alt={alt}
                 onLoad={() => setLoading(false)}
-                onError={() => { setLoading(false); setError(true); }}
+                onError={(e) => {
+                    console.error('Image load error for:', src, e);
+                    setLoading(false);
+                    setError(true);
+                }}
                 style={{ display: loading ? 'none' : 'block' }}
             />
             {caption && <figcaption className="a2ui-image-caption">{caption}</figcaption>}
