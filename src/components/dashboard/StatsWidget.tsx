@@ -5,7 +5,7 @@ import { WidgetWrapper } from './WidgetWrapper';
 import styles from './Widgets.module.css';
 
 export function StatsWidget({ id, isEditing, onDelete }: any) {
-    const [stats, setStats] = useState<any>({ notes: 0, tasks: 0, canvases: 0 });
+    const [stats, setStats] = useState<any>({ docs: 0, tasks: 0, canvases: 0 });
 
     useEffect(() => {
         fetch('/api/dashboard?action=stats')
@@ -18,8 +18,8 @@ export function StatsWidget({ id, isEditing, onDelete }: any) {
         <WidgetWrapper id={id} title="Schnellübersicht" isEditing={isEditing} onDelete={onDelete}>
             <div className={styles.statGrid}>
                 <div className={styles.stat}>
-                    <span className={styles.statValue}>{stats.notes}</span>
-                    <span className={styles.statLabel}>Notizen</span>
+                    <span className={styles.statValue}>{stats.docs}</span>
+                    <span className={styles.statLabel}>Dokumente</span>
                 </div>
                 <div className={styles.stat}>
                     <span className={styles.statValue}>{stats.tasks}</span>

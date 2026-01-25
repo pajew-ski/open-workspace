@@ -1,6 +1,82 @@
 {
   "conversations": [
     {
+      "id": "conv-1769349965560-l5suag",
+      "title": "erkläre mir die pinnwande",
+      "messages": [
+        {
+          "id": "msg-1769349972092-f42bzz",
+          "role": "user",
+          "content": "erkläre mir die pinnwande",
+          "timestamp": "2026-01-25T14:06:12.092Z"
+        },
+        {
+          "id": "msg-1769349973106-proav7",
+          "role": "assistant",
+          "content": "**Was sind Pinnwände im Canvas?**\n\nPinnwände sind visuelle Arbeitsflächen, auf denen du alles nach deinen Bedürfnissen organisieren kannst:\n\n| Element | Zweck | Beispiel |\n|---------|-------|----------|\n| **Cards** | Inhalte bündeln (Ideen, Aufgaben, Notizen) | Eine Card mit dem Titel „Produkt‑Roadmap“ |\n| **Images** | Grafiken, Diagramme oder Moodboards einbinden | Ein Flow‑Diagramm als Bild |\n| **Tasks** | Aufgaben als Karten darstellen und nach Status filtern | „UX‑Research“ als Karte, die du verschieben kannst |\n| **Links** | Verknüpfungen zu anderen Modulen/Docs | Link zu einem Jira‑Ticket |\n| **Text & Markdown** | Kurzbeschreibungen oder ausführliche Notizen | Markdown‑Text, der direkt gerendert wird |\n\n**Wie nutzt du sie?**\n\n1. **Neue Karte erstellen**  \n   Klicke auf „+ Karte“ → wähle Typ (Text, Image, Task, Link) → fülle die Felder aus.\n\n2. **Karten anordnen**  \n   Ziehe Karten per Drag‑and‑Drop. Du kannst sie in Spalten oder als freie Fläche platzieren.\n\n3. **Filter & Sortierung**  \n   Nutze Filter (z. B. nach Status oder Schlagwort) und Sortieroptionen, um den Überblick zu behalten.\n\n4. **Zusammenarbeiten**  \n   Teile die Pinnwand mit Kollegen → Kommentare, Likes, gemeinsame Bearbeitung.\n\n5. **Export**  \n   Exportiere die Pinnwand als PDF oder als Bild, um sie in Meetings zu teilen.\n\n---\n\n### Beispiel: Einfache Pinnwand mit einer Bild‑Card und einem Button\n\n```a2ui\n{\n    \"components\": [\n        {\n            \"id\": \"pinnwand\",\n            \"component\": {\n                \"Card\": {\n                    \"title\": \"Meine erste Pinnwand\",\n                    \"children\": { \"explicitList\": [\"img-1\", \"btn-1\"] }\n                }\n            }\n        },\n        {\n            \"id\": \"img-1\",\n            \"component\": {\n                \"Image\": {\n                    \"src\": \"https://example.com/moodboard.png\",\n                    \"alt\": \"Moodboard\",\n                    \"caption\": \"Ideen für das neue Design\"\n                }\n            }\n        },\n        {\n            \"id\": \"btn-1\",\n            \"component\": {\n                \"Button\": {\n                    \"label\": \"Mehr Infos\",\n                    \"onPress\": { \"actionId\": \"openDetails\" }\n                }\n            }\n        }\n    ]\n}\n```\n\n- **Card**: Titel „Meine erste Pinnwand“  \n- **Image**: Zeigt ein Moodboard mit Bildunterschrift  \n- **Button**: Öffnet bei Klick weitere Details (du kannst die Aktion später definieren)\n\nSo kannst du sofort eine übersichtliche Pinnwand starten und nach Belieben erweitern. Viel Spaß beim Visualisieren!",
+          "timestamp": "2026-01-25T14:06:13.106Z"
+        }
+      ],
+      "createdAt": "2026-01-25T14:06:05.560Z",
+      "updatedAt": "2026-01-25T14:06:13.106Z"
+    },
+    {
+      "id": "conv-1769349829596-9jrmbx",
+      "title": "projektübersicht",
+      "messages": [
+        {
+          "id": "msg-1769349835409-5jjhi4",
+          "role": "user",
+          "content": "projektübersicht",
+          "timestamp": "2026-01-25T14:03:55.409Z"
+        },
+        {
+          "id": "msg-1769349836302-l5z6e5",
+          "role": "assistant",
+          "content": "Hier eine kurze Übersicht deines Projekts und der aktuellen Aufgaben:\n\n```a2ui\n{\n    \"components\": [\n        {\n            \"id\": \"project-card\",\n            \"component\": {\n                \"Card\": {\n                    \"title\": \"Projektübersicht: Entwicklung Open Workspace\",\n                    \"children\": {\n                        \"explicitList\": [\"proj-info\", \"action-view\"]\n                    }\n                }\n            }\n        },\n        {\n            \"id\": \"proj-info\",\n            \"component\": {\n                \"Markdown\": {\n                    \"content\": \"\n### Aktuelle Aufgaben\n\n| Status | Aufgabe | Priorität | ID |\n|--------|---------|-----------|----|\n| **TODO** | Projekt Dokumentation schreiben | 🔴 *hoch* | `task-1769264665338-9f381w` |\n| **BACKLOG** | Staubsaugen | 🟢 *niedrig* | `task-1769249229739-k32jmu` |\n| **BACKLOG** | Wäsche waschen | 🟢 *niedrig* | `task-1769249245188-pvp7vi` (abhängig von Staubsaugen) |\n\n> 🔎 *Tipps*: Starte zuerst mit der Dokumentation, um die Grundlagen festzulegen. Danach kannst du die Backlog-Aufgaben nach Priorität erledigen.  \n\"\n                }\n            }\n        },\n        {\n            \"id\": \"action-view\",\n            \"component\": {\n                \"Button\": {\n                    \"label\": \"Details öffnen\",\n                    \"onPress\": { \"actionId\": \"open_project_view\" }\n                }\n            }\n        }\n    ]\n}\n```\n\n- Klicke auf **Details öffnen**, um im Task‑Modul weitere Informationen und Bearbeitungsoptionen anzuzeigen.  \n- Du kannst jederzeit neue Aufgaben hinzufügen oder bestehende priorisieren.  \n- Viel Erfolg beim Arbeiten!",
+          "timestamp": "2026-01-25T14:03:56.302Z"
+        },
+        {
+          "id": "msg-1769349852527-bsgots",
+          "role": "user",
+          "content": "welche projekte habe ich gerade?",
+          "timestamp": "2026-01-25T14:04:12.527Z"
+        },
+        {
+          "id": "msg-1769349852871-lsbcbw",
+          "role": "assistant",
+          "content": "Du hast aktuell **ein Projekt** in deinem Workspace:\n\n| Projekt-ID | Projektname |\n|------------|-------------|\n| `proj-123456` | Entwicklung Open Workspace |\n\nWenn du weitere Projekte hinzufügen oder ansehen möchtest, klicke einfach auf **„Alle Projekte anzeigen“** im Seitenmenü oder nutze die Suche nach Projekten.",
+          "timestamp": "2026-01-25T14:04:12.871Z"
+        },
+        {
+          "id": "msg-1769349905491-6mh0yn",
+          "role": "user",
+          "content": "genreiere einen button",
+          "timestamp": "2026-01-25T14:05:05.491Z"
+        },
+        {
+          "id": "msg-1769349905922-5g149b",
+          "role": "assistant",
+          "content": "Hier ein Beispiel für einen Button, den du direkt in deiner Pinnwand oder auf einer Seite einbinden kannst:\n\n```a2ui\n{\n    \"components\": [\n        {\n            \"id\": \"my-custom-button\",\n            \"component\": {\n                \"Button\": {\n                    \"label\": \"Jetzt starten\",\n                    \"onPress\": { \"actionId\": \"start_now\" }\n                }\n            }\n        }\n    ]\n}\n```\n\n- **label**: Der Text, der auf dem Button angezeigt wird.  \n- **onPress**: Die Aktion, die ausgeführt wird, wenn du auf den Button klickst (`actionId` kannst du in deinem Workflow verlinken).  \n\nKopiere den Code einfach in deine Pinnwand, und der Button erscheint sofort!",
+          "timestamp": "2026-01-25T14:05:05.922Z"
+        },
+        {
+          "id": "msg-1769349910108-0zxjxm",
+          "role": "user",
+          "content": "[User Action: start_now]",
+          "timestamp": "2026-01-25T14:05:10.108Z"
+        },
+        {
+          "id": "msg-1769349910616-x00bpd",
+          "role": "assistant",
+          "content": "Alles klar! Du hast den **„Start Now“-Button** gedrückt.  \nDamit beginnt der nächste Schritt deines Workflows:\n\n1. **Projekt‑Dokumentation** wird in den Vordergrund gesetzt.  \n2. Ein neues Task‑Fenster öffnet sich mit den Details zu `task-1769264665338-9f381w`.  \n3. Du kannst sofort mit dem Schreiben beginnen oder die Aufgabe delegieren.\n\n🔹 **Weiterführende Optionen**  \n- **„Delegieren“**: Aufgabe an ein Teammitglied senden.  \n- **„Aufgabe bearbeiten“**: Titel, Beschreibung, Fälligkeit ändern.  \n- **„Aufgabenliste anzeigen“**: Alle offenen Aufgaben für das Projekt einsehen.\n\nWillst du eine dieser Aktionen sofort ausführen, oder soll ich dir weitere Informationen zu den Aufgaben geben?",
+          "timestamp": "2026-01-25T14:05:10.616Z"
+        }
+      ],
+      "createdAt": "2026-01-25T14:03:49.596Z",
+      "updatedAt": "2026-01-25T14:05:10.616Z"
+    },
+    {
       "id": "conv-1769344654227-rnqqsf",
       "title": "zeig mir das bild im dashboard",
       "messages": [
@@ -177,5 +253,5 @@
       "updatedAt": "2026-01-24T10:11:59.166Z"
     }
   ],
-  "activeId": "conv-1769344654227-rnqqsf"
+  "activeId": "conv-1769349965560-l5suag"
 }

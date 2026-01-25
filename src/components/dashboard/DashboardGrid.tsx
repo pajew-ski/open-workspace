@@ -6,6 +6,7 @@ import { WelcomeWidget } from './WelcomeWidget';
 import { StatsWidget } from './StatsWidget';
 import { ActivityWidget } from './ActivityWidget';
 import { ImageWidget } from './ImageWidget';
+import { QuickAccessWidget } from './QuickAccessWidget';
 import { Plus, GripHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui';
 import styles from './DashboardGrid.module.css';
@@ -152,6 +153,9 @@ export function DashboardGrid({ widgets, isEditing, setWidgets }: DashboardGridP
                         )}
                         {widget.type === 'image' && (
                             <ImageWidget {...widget} isEditing={isEditing} onDelete={removeWidget} onUpdate={updateWidget} />
+                        )}
+                        {widget.type === 'quick-access' && (
+                            <QuickAccessWidget {...widget} isEditing={isEditing} onDelete={removeWidget} />
                         )}
                     </div>
                 ))}

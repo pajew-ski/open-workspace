@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getNote, updateNote, deleteNote } from '@/lib/storage';
+import { getDoc, updateDoc, deleteDoc } from '@/lib/storage/docs';
 
 interface RouteParams {
     params: Promise<{ id: string }>;
@@ -8,20 +8,20 @@ interface RouteParams {
 export async function GET(request: NextRequest, { params }: RouteParams) {
     try {
         const { id } = await params;
-        const note = await getNote(id);
+        const doc = await getDoc(id);
 
-        if (!note) {
+        if (!doc) {
             return NextResponse.json(
-                { error: 'Notiz nicht gefunden' },
+                { error: 'Dokument nicht gefunden' },
                 { status: 404 }
             );
         }
 
-        return NextResponse.json({ note });
+        return NextResponse.json({ doc });
     } catch (error) {
-        console.error('Note get error:', error);
+        console.error('Doc get error:', error);
         return NextResponse.json(
-            { error: 'Notiz konnte nicht geladen werden' },
+            { error: 'Dokument konnte nicht geladen werden' },
             { status: 500 }
         );
     }
@@ -32,28 +32,30 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         const { id } = await params;
         const body = await request.json();
 
-        const note = await updateNote(id, {
+        const doc = await updateDoc(id, {
             title: body.title,
             content: body.content,
             category: body.category,
             tags: body.tags,
+            type: body.type,
+            slug: body.slug,
         });
 
-        if (!note) {
+        if (!doc) {
             return NextResponse.json(
-                { error: 'Notiz nicht gefunden' },
+                { error: 'Dokument nicht gefunden' },
                 { status: 404 }
             );
         }
 
         const { logActivity } = await import('@/lib/activity');
-        await logActivity('note_updated', note.id, `Notiz bearbeitet: ${note.title}`);
+        await logActivity('doc_updated', doc.id, `Dokument bearbeitet: ${doc.title}`);
 
-        return NextResponse.json({ note });
+        return NextResponse.json({ doc });
     } catch (error) {
-        console.error('Note update error:', error);
+        console.error('Doc update error:', error);
         return NextResponse.json(
-            { error: 'Notiz konnte nicht aktualisiert werden' },
+            { error: 'Dokument konnte nicht aktualisiert werden' },
             { status: 500 }
         );
     }
@@ -62,26 +64,26 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
     try {
         const { id } = await params;
-        const note = await getNote(id);
-        const success = await deleteNote(id);
+        const doc = await getDoc(id);
+        const success = await deleteDoc(id);
 
         if (!success) {
             return NextResponse.json(
-                { error: 'Notiz nicht gefunden' },
+                { error: 'Dokument nicht gefunden' },
                 { status: 404 }
             );
         }
 
-        if (note) {
+        if (doc) {
             const { logActivity } = await import('@/lib/activity');
-            await logActivity('note_deleted', id, `Notiz gelöscht: ${note.title}`);
+            await logActivity('doc_deleted', id, `Dokument gelöscht: ${doc.title}`);
         }
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error('Note delete error:', error);
+        console.error('Doc delete error:', error);
         return NextResponse.json(
-            { error: 'Notiz konnte nicht gelöscht werden' },
+            { error: 'Dokument konnte nicht gelöscht werden' },
             { status: 500 }
         );
     }

@@ -11,6 +11,10 @@ Open Workspace ist eine **Local-First Kognitions-Architektur**. Es handelt sich 
 
 - **Übersicht (Dashboard)**: Echtzeit-Übersicht mit adaptivem **Masonry-Layout** für optimale Platznutzung
 - **Wissensbasis**: Markdown-Notizen mit Professional-Editor (Toolbar) und Umbenennung
+- **Agent2Agent Protocol**: Standardisierte Kommunikation zwischen AI-Agenten
+- **Agent2UI**: Dynamische UI-Generierung durch Agenten
+- **Semantic Data Layer**: JSON-LD Knowledge Graph (Schema.org compliant)
+- **Model Context Protocol (MCP)**: Integration externer Tools und Datenquellenansicht
 - **Pinnwand**: Visuelle Planung mit Karten und Verbindungen
 - **Aufgaben**: Projekte und Aufgabenverwaltung im Kanban-Stil
 - **Kalender**: ICS/iCal Integration mit Monats-/Wochenansicht

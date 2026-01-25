@@ -112,10 +112,17 @@ open-workspace/
 
 ## Data Layer
 
-### Notizen (Markdown)
-Gespeichert als `.md` Dateien mit YAML Frontmatter in `data/notes/` für GitHub-Synchronisation.
+### Documents (Markdown + JSON-LD)
+Refactored from "Notes". Stored as `.md` files in `data/docs/`.
+- **Structure**: Markdown with YAML Frontmatter
+- **Ontology**: Schema.org compliant JSON-LD injected automatically.
+  - `TechArticle`, `BlogPosting`, `HowTo`, `DefinedTerm`.
+  - Polymorphic typing based on tags and content.
+  - Internal links `[[Link]]` are resolved to Graph edges (`mentions`).
+  - **Single Source of Truth**: All Knowledge is here.
+- **Multilingual**: URLs are English slugs, Content is German, `inLanguage: de`.
 
-### Aufgaben (JSON)
+### Tasks (JSON)
 Gespeichert in `data/tasks/tasks.json` mit Kanban-Status (open/in-progress/done).
 
 ### Kalender (ICS/JSON)

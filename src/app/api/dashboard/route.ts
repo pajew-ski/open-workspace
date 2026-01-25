@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
 import { getActivities } from '@/lib/activity';
-import { listNotes, listTasks, listCanvases } from '@/lib/storage';
+import { listDocs, listTasks, listCanvases } from '@/lib/storage';
 
 const DASHBOARD_FILE = path.join(process.cwd(), 'data', 'dashboard.json');
 
@@ -13,15 +13,15 @@ export async function GET(request: NextRequest) {
 
         // Stats action
         if (action === 'stats') {
-            const [notes, tasks, canvases] = await Promise.all([
-                listNotes(),
+            const [docs, tasks, canvases] = await Promise.all([
+                listDocs(),
                 listTasks({}),
                 listCanvases()
             ]);
 
             return NextResponse.json({
                 stats: {
-                    notes: notes.length,
+                    docs: docs.length,
                     tasks: tasks.length,
                     canvases: canvases.length,
                     artifacts: 0 // Placeholder

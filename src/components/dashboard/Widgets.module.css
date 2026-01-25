@@ -225,3 +225,38 @@
     border: none;
     font-weight: 500;
 }
+
+/* Quick Access */
+.quickAccessGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 12px;
+}
+
+.quickAccessItem {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 16px;
+    background: var(--color-surface-sunken);
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    color: var(--color-text-primary);
+    transition: background-color 0.2s, transform 0.2s;
+}
+
+.quickAccessItem:hover {
+    background: var(--color-surface-hover);
+    transform: translateY(-2px);
+}
+
+.quickAccessIcon {
+    color: var(--color-primary);
+}
+
+.quickAccessLabel {
+    font-size: 13px;
+    font-weight: 500;
+}

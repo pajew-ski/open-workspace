@@ -1,24 +1,17 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { AppShell } from '@/components/layout';
-import { Card, CardHeader, CardContent, Button, Input, FloatingActionButton } from '@/components/ui';
+import { Card, CardContent, Button, Input, FloatingActionButton } from '@/components/ui';
 import { MarkdownEditor } from '@/components/markdown';
+import { JsonLdScript } from '@/components/seo/JsonLdScript';
+import { generateDocJsonLd } from '@/lib/ontology/generator';
+import { Doc } from '@/types/doc';
 import styles from './page.module.css';
 
-interface Note {
-    id: string;
-    title: string;
-    content: string;
-    category?: string;
-    tags: string[];
-    createdAt: string;
-    updatedAt: string;
-}
-
-export default function KnowledgePage() {
-    const [notes, setNotes] = useState<Note[]>([]);
-    const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+export default function DocsPage() {
+    const [docs, setDocs] = useState<Doc[]>([]);
+    const [selectedDoc, setSelectedDoc] = useState<Doc | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
     const [newTitle, setNewTitle] = useState('');
@@ -26,55 +19,55 @@ export default function KnowledgePage() {
     const [renameTitle, setRenameTitle] = useState('');
     const [hasChanges, setHasChanges] = useState(false);
 
-    // Fetch notes on mount
+    // Fetch docs on mount
     useEffect(() => {
-        fetchNotes();
+        fetchDocs();
     }, []);
 
-    const fetchNotes = async () => {
+    const fetchDocs = async () => {
         try {
-            const response = await fetch('/api/notes');
+            const response = await fetch('/api/docs');
             const data = await response.json();
-            setNotes(data.notes || []);
+            setDocs(data.docs || []);
         } catch (error) {
-            console.error('Fehler beim Laden der Notizen:', error);
+            console.error('Fehler beim Laden der Dokumente:', error);
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleSelectNote = (note: Note) => {
-        if (hasChanges && selectedNote) {
-            // Auto-save current note
-            handleSaveNote();
+    const handleSelectDoc = (doc: Doc) => {
+        if (hasChanges && selectedDoc) {
+            // Auto-save current doc
+            handleSaveDoc();
         }
-        setSelectedNote(note);
+        setSelectedDoc(doc);
         setHasChanges(false);
     };
 
     const handleContentChange = useCallback((content: string) => {
-        if (selectedNote) {
-            setSelectedNote({ ...selectedNote, content });
+        if (selectedDoc) {
+            setSelectedDoc({ ...selectedDoc, content });
             setHasChanges(true);
         }
-    }, [selectedNote]);
+    }, [selectedDoc]);
 
-    const handleSaveNote = async () => {
-        if (!selectedNote) return;
+    const handleSaveDoc = async () => {
+        if (!selectedDoc) return;
 
         try {
-            await fetch(`/api/notes/${selectedNote.id}`, {
+            await fetch(`/api/docs/${selectedDoc.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    title: selectedNote.title,
-                    content: selectedNote.content,
-                    category: selectedNote.category,
-                    tags: selectedNote.tags,
+                    title: selectedDoc.title,
+                    content: selectedDoc.content,
+                    category: selectedDoc.category,
+                    tags: selectedDoc.tags,
                 }),
             });
             setHasChanges(false);
-            fetchNotes();
+            fetchDocs();
         } catch (error) {
             console.error('Fehler beim Speichern:', error);
         }
@@ -86,30 +79,30 @@ export default function KnowledgePage() {
         if (!renameId || !renameTitle.trim()) return;
 
         try {
-            const noteToUpdate = notes.find(n => n.id === renameId);
-            if (!noteToUpdate) return;
+            const docToUpdate = docs.find(n => n.id === renameId);
+            if (!docToUpdate) return;
 
-            await fetch(`/api/notes/${renameId}`, {
+            await fetch(`/api/docs/${renameId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...noteToUpdate, title: renameTitle }),
+                body: JSON.stringify({ ...docToUpdate, title: renameTitle }),
             });
 
             setRenameId(null);
-            fetchNotes();
-            if (selectedNote?.id === renameId) {
-                setSelectedNote({ ...selectedNote!, title: renameTitle });
+            fetchDocs();
+            if (selectedDoc?.id === renameId) {
+                setSelectedDoc({ ...selectedDoc!, title: renameTitle });
             }
         } catch (error) {
             console.error('Fehler beim Umbenennen:', error);
         }
     };
 
-    const handleCreateNote = async () => {
+    const handleCreateDoc = async () => {
         if (!newTitle.trim()) return;
 
         try {
-            const response = await fetch('/api/notes', {
+            const response = await fetch('/api/docs', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -120,21 +113,21 @@ export default function KnowledgePage() {
             const data = await response.json();
             setNewTitle('');
             setIsCreating(false);
-            await fetchNotes();
-            setSelectedNote(data.note);
+            await fetchDocs();
+            setSelectedDoc(data.doc);
         } catch (error) {
             console.error('Fehler beim Erstellen:', error);
         }
     };
 
-    const handleDeleteNote = async () => {
-        if (!selectedNote) return;
-        if (!confirm('Möchtest du diese Notiz wirklich löschen?')) return;
+    const handleDeleteDoc = async () => {
+        if (!selectedDoc) return;
+        if (!confirm('Möchtest du dieses Dokument wirklich löschen?')) return;
 
         try {
-            await fetch(`/api/notes/${selectedNote.id}`, { method: 'DELETE' });
-            setSelectedNote(null);
-            fetchNotes();
+            await fetch(`/api/docs/${selectedDoc.id}`, { method: 'DELETE' });
+            setSelectedDoc(null);
+            fetchDocs();
         } catch (error) {
             console.error('Fehler beim Löschen:', error);
         }
@@ -148,22 +141,29 @@ export default function KnowledgePage() {
         });
     };
 
+    // Generate JSON-LD
+    const jsonLdData = useMemo(() => {
+        if (!selectedDoc) return null;
+        return generateDocJsonLd(selectedDoc);
+    }, [selectedDoc]);
+
     return (
         <AppShell
-            title="Wissensbasis"
+            title="Dokumente"
             actions={
                 <FloatingActionButton
                     icon={<span style={{ fontSize: '24px' }}>+</span>}
                     onClick={() => setIsCreating(true)}
-                    label="Neue Notiz"
+                    label="Neues Dokument"
                 />
             }
         >
+            <JsonLdScript data={jsonLdData} />
             <div className={styles.container}>
-                {/* Sidebar with note list */}
+                {/* Sidebar with doc list */}
                 <div className={styles.sidebar}>
                     <div className={styles.sidebarHeader}>
-                        <h3>Notizen</h3>
+                        <h3>Dokumente</h3>
                         <Button variant="primary" size="sm" onClick={() => setIsCreating(true)}>
                             +
                         </Button>
@@ -172,16 +172,16 @@ export default function KnowledgePage() {
                     {isCreating && (
                         <div className={styles.createForm}>
                             <Input
-                                placeholder="Titel der neuen Notiz..."
+                                placeholder="Titel des neuen Dokuments..."
                                 value={newTitle}
                                 onChange={(e) => setNewTitle(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleCreateNote()}
+                                onKeyDown={(e) => e.key === 'Enter' && handleCreateDoc()}
                             />
                             <div className={styles.createActions}>
                                 <Button variant="ghost" size="sm" onClick={() => setIsCreating(false)}>
                                     Abbrechen
                                 </Button>
-                                <Button variant="primary" size="sm" onClick={handleCreateNote}>
+                                <Button variant="primary" size="sm" onClick={handleCreateDoc}>
                                     Erstellen
                                 </Button>
                             </div>
@@ -191,12 +191,12 @@ export default function KnowledgePage() {
                     <div className={styles.noteList}>
                         {isLoading ? (
                             <p className={styles.loading}>Laden...</p>
-                        ) : notes.length === 0 ? (
-                            <p className={styles.empty}>Keine Notizen vorhanden</p>
+                        ) : docs.length === 0 ? (
+                            <p className={styles.empty}>Keine Dokumente vorhanden</p>
                         ) : (
-                            notes.map((note) => (
-                                <div key={note.id} className={`${styles.noteItemWrapper} ${selectedNote?.id === note.id ? styles.active : ''}`}>
-                                    {renameId === note.id ? (
+                            docs.map((doc) => (
+                                <div key={doc.id} className={`${styles.noteItemWrapper} ${selectedDoc?.id === doc.id ? styles.active : ''}`}>
+                                    {renameId === doc.id ? (
                                         <form className={styles.renameForm} onSubmit={handleRenameSubmit} onClick={e => e.stopPropagation()}>
                                             <input
                                                 className={styles.renameInput}
@@ -207,17 +207,17 @@ export default function KnowledgePage() {
                                             />
                                         </form>
                                     ) : (
-                                        <div className={styles.noteItemContent} onClick={() => handleSelectNote(note)}>
+                                        <div className={styles.noteItemContent} onClick={() => handleSelectDoc(doc)}>
                                             <div className={styles.noteInfo}>
-                                                <span className={styles.noteTitle}>{note.title}</span>
-                                                <span className={styles.noteDate}>{formatDate(note.updatedAt)}</span>
+                                                <span className={styles.noteTitle}>{doc.title}</span>
+                                                <span className={styles.noteDate}>{formatDate(doc.updatedAt)}</span>
                                             </div>
                                             <button
                                                 className={styles.renameBtn}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    setRenameId(note.id);
-                                                    setRenameTitle(note.title);
+                                                    setRenameId(doc.id);
+                                                    setRenameTitle(doc.title);
                                                 }}
                                                 title="Umbenennen"
                                             >
@@ -233,15 +233,15 @@ export default function KnowledgePage() {
 
                 {/* Editor area */}
                 <div className={styles.editorArea}>
-                    {selectedNote ? (
+                    {selectedDoc ? (
                         <>
                             <div className={styles.editorHeader}>
                                 <input
                                     type="text"
                                     className={styles.titleInput}
-                                    value={selectedNote.title}
+                                    value={selectedDoc.title}
                                     onChange={(e) => {
-                                        setSelectedNote({ ...selectedNote, title: e.target.value });
+                                        setSelectedDoc({ ...selectedDoc, title: e.target.value });
                                         setHasChanges(true);
                                     }}
                                 />
@@ -249,16 +249,16 @@ export default function KnowledgePage() {
                                     {hasChanges && (
                                         <span className={styles.unsaved}>Ungespeichert</span>
                                     )}
-                                    <Button variant="secondary" size="sm" onClick={handleSaveNote}>
+                                    <Button variant="secondary" size="sm" onClick={handleSaveDoc}>
                                         Speichern
                                     </Button>
-                                    <Button variant="ghost" size="sm" onClick={handleDeleteNote}>
+                                    <Button variant="ghost" size="sm" onClick={handleDeleteDoc}>
                                         Löschen
                                     </Button>
                                 </div>
                             </div>
                             <MarkdownEditor
-                                content={selectedNote.content}
+                                content={selectedDoc.content}
                                 onChange={handleContentChange}
                                 defaultMode="read"
                             />
@@ -268,13 +268,16 @@ export default function KnowledgePage() {
                             <CardContent>
                                 <div className={styles.emptyContent}>
                                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                        <polyline points="14 2 14 8 20 8" />
+                                        <line x1="16" y1="13" x2="8" y2="13" />
+                                        <line x1="16" y1="17" x2="8" y2="17" />
+                                        <polyline points="10 9 9 9 8 9" />
                                     </svg>
-                                    <h3>Keine Notiz ausgewählt</h3>
-                                    <p>Wähle eine Notiz aus der Liste oder erstelle eine neue.</p>
+                                    <h3>Kein Dokument ausgewählt</h3>
+                                    <p>Wähle ein Dokument aus der Liste oder erstelle ein neues.</p>
                                     <Button variant="primary" onClick={() => setIsCreating(true)}>
-                                        Neue Notiz erstellen
+                                        Neues Dokument erstellen
                                     </Button>
                                 </div>
                             </CardContent>

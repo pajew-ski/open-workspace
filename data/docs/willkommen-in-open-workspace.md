@@ -1,7 +1,11 @@
 ---
 id: "note-welcome-1"
+slug: "willkommen-in-open-workspace"
 title: "Willkommen in Open Workspace"
 category: "Einführung"
+author: "michael-pajewski"
+type: "CreativeWork"
+inLanguage: "de"
 tags: ["willkommen", "start"]
 createdAt: "2026-01-24T09:00:00.000Z"
 updatedAt: "2026-01-24T10:52:27.895Z"

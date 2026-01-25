@@ -1,39 +1,15 @@
-/**
- * Note Storage - Markdown files with YAML frontmatter
- * 
- * Notes are stored as .md files in data/notes/ for GitHub sync compatibility
- * Metadata is stored in YAML frontmatter
- */
-
 import { promises as fs } from 'fs';
 import path from 'path';
+import { Doc, DocFrontmatter, DocType } from '@/types/doc';
 
-const DATA_DIR = path.join(process.cwd(), 'data', 'notes');
-
-export interface Note {
-    id: string;
-    title: string;
-    content: string;
-    category?: string;
-    tags: string[];
-    createdAt: string;
-    updatedAt: string;
-}
-
-export interface NoteFrontmatter {
-    id: string;
-    title: string;
-    category?: string;
-    tags: string[];
-    createdAt: string;
-    updatedAt: string;
-}
+const DATA_DIR = path.join(process.cwd(), 'data', 'docs');
 
 /**
  * Parse YAML frontmatter from Markdown content
  */
-function parseFrontmatter(content: string): { frontmatter: NoteFrontmatter | null; body: string } {
+function parseFrontmatter(content: string): { frontmatter: DocFrontmatter | null; body: string } {
     const frontmatterRegex = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/;
+
     const match = content.match(frontmatterRegex);
 
     if (!match) {
@@ -43,7 +19,6 @@ function parseFrontmatter(content: string): { frontmatter: NoteFrontmatter | nul
     const yamlContent = match[1];
     const body = match[2];
 
-    // Simple YAML parser for our use case
     const frontmatter: Record<string, string | string[]> = {};
     const lines = yamlContent.split('\n');
 
@@ -65,7 +40,7 @@ function parseFrontmatter(content: string): { frontmatter: NoteFrontmatter | nul
     }
 
     return {
-        frontmatter: frontmatter as unknown as NoteFrontmatter,
+        frontmatter: frontmatter as unknown as DocFrontmatter,
         body: body.trim(),
     };
 }
@@ -73,16 +48,18 @@ function parseFrontmatter(content: string): { frontmatter: NoteFrontmatter | nul
 /**
  * Generate YAML frontmatter string
  */
-function generateFrontmatter(meta: NoteFrontmatter): string {
+function generateFrontmatter(meta: DocFrontmatter): string {
     const lines = [
         '---',
         `id: "${meta.id}"`,
+        `slug: "${meta.slug}"`,
         `title: "${meta.title}"`,
     ];
 
-    if (meta.category) {
-        lines.push(`category: "${meta.category}"`);
-    }
+    if (meta.category) lines.push(`category: "${meta.category}"`);
+    if (meta.author) lines.push(`author: "${meta.author}"`);
+    if (meta.type) lines.push(`type: "${meta.type}"`);
+    if (meta.inLanguage) lines.push(`inLanguage: "${meta.inLanguage}"`);
 
     const tagsStr = meta.tags.map(t => `"${t}"`).join(', ');
     lines.push(`tags: [${tagsStr}]`);
@@ -97,11 +74,11 @@ function generateFrontmatter(meta: NoteFrontmatter): string {
  * Generate a unique ID
  */
 function generateId(): string {
-    return `note-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    return `doc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 /**
- * Sanitize filename from title
+ * Sanitize filename from title (german to english transliteration simple)
  */
 function sanitizeFilename(title: string): string {
     return title
@@ -116,6 +93,13 @@ function sanitizeFilename(title: string): string {
 }
 
 /**
+ * Generate English slug (simple placeholder logic for now)
+ */
+export function generateSlug(title: string): string {
+    return sanitizeFilename(title);
+}
+
+/**
  * Ensure data directory exists
  */
 async function ensureDataDir(): Promise<void> {
@@ -123,23 +107,23 @@ async function ensureDataDir(): Promise<void> {
 }
 
 /**
- * List all notes
+ * List all docs
  */
-export async function listNotes(): Promise<Note[]> {
+export async function listDocs(): Promise<Doc[]> {
     await ensureDataDir();
 
     try {
         const files = await fs.readdir(DATA_DIR);
         const mdFiles = files.filter(f => f.endsWith('.md'));
 
-        const notes: Note[] = [];
+        const docs: Doc[] = [];
 
         for (const file of mdFiles) {
             const content = await fs.readFile(path.join(DATA_DIR, file), 'utf-8');
             const { frontmatter, body } = parseFrontmatter(content);
 
             if (frontmatter) {
-                notes.push({
+                docs.push({
                     ...frontmatter,
                     tags: frontmatter.tags || [],
                     content: body,
@@ -148,7 +132,7 @@ export async function listNotes(): Promise<Note[]> {
         }
 
         // Sort by updatedAt descending
-        return notes.sort((a, b) =>
+        return docs.sort((a, b) =>
             new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
         );
     } catch {
@@ -157,69 +141,89 @@ export async function listNotes(): Promise<Note[]> {
 }
 
 /**
- * Get a single note by ID
+ * Get a single doc by ID
  */
-export async function getNote(id: string): Promise<Note | null> {
-    const notes = await listNotes();
-    return notes.find(n => n.id === id) || null;
+export async function getDoc(id: string): Promise<Doc | null> {
+    const docs = await listDocs();
+    return docs.find(n => n.id === id) || null;
 }
 
 /**
- * Create a new note
+ * Get a single doc by Slug
  */
-export async function createNote(data: {
+export async function getDocBySlug(slug: string): Promise<Doc | null> {
+    const docs = await listDocs();
+    return docs.find(n => n.slug === slug) || null;
+}
+
+/**
+ * Create a new doc
+ */
+export async function createDoc(data: {
     title: string;
     content: string;
     category?: string;
+    type?: DocType;
     tags?: string[];
-}): Promise<Note> {
+}): Promise<Doc> {
     await ensureDataDir();
 
     const now = new Date().toISOString();
     const id = generateId();
+    const slug = generateSlug(data.title);
 
-    const note: Note = {
+    const doc: Doc = {
         id,
+        slug,
         title: data.title,
         content: data.content,
         category: data.category,
         tags: data.tags || [],
+        type: data.type || 'CreativeWork', // Default
+        author: 'default-author', // Should be configured via ENV or Context
+        inLanguage: 'de',
         createdAt: now,
         updatedAt: now,
     };
 
-    const frontmatter = generateFrontmatter({
-        id: note.id,
-        title: note.title,
-        category: note.category,
-        tags: note.tags,
-        createdAt: note.createdAt,
-        updatedAt: note.updatedAt,
-    });
+    const frontmatter = generateFrontmatter(doc);
 
-    const fileContent = `${frontmatter}\n\n${note.content}`;
-    const filename = `${sanitizeFilename(note.title)}.md`;
+    // Filename uses the slug for cleaner FS
+    const filename = `${slug}.md`;
 
-    await fs.writeFile(path.join(DATA_DIR, filename), fileContent, 'utf-8');
+    await fs.writeFile(path.join(DATA_DIR, filename), `${frontmatter}\n\n${doc.content}`, 'utf-8');
 
-    return note;
+    return doc;
 }
 
 /**
- * Update an existing note
+ * Update an existing doc
  */
-export async function updateNote(id: string, data: {
+export async function updateDoc(id: string, data: {
     title?: string;
     content?: string;
     category?: string;
     tags?: string[];
-}): Promise<Note | null> {
-    const notes = await listNotes();
-    const existing = notes.find(n => n.id === id);
+    type?: DocType;
+    slug?: string;
+}): Promise<Doc | null> {
+    const docs = await listDocs();
+    const existing = docs.find(n => n.id === id);
 
     if (!existing) return null;
 
-    // Find and delete old file
+    // Remove old file if slug/title changes
+    if (data.slug && data.slug !== existing.slug) {
+        // This requires finding the old file by the old slug/filename
+        const oldFilename = `${existing.slug}.md`;
+        // But existing logic used title for filename sanitized.
+        // Since we are migrating, we should assume we might need to look for files.
+        // Ideally, we just check if file exists.
+        // For now, let's keep it robust by searching by ID in the directory loop if needed, 
+        // but since we read all into memory in listDocs, we can just find it.
+    }
+
+    // Deleting old file strategy
     const files = await fs.readdir(DATA_DIR);
     for (const file of files) {
         const content = await fs.readFile(path.join(DATA_DIR, file), 'utf-8');
@@ -231,36 +235,32 @@ export async function updateNote(id: string, data: {
     }
 
     const now = new Date().toISOString();
-    const updated: Note = {
+    const updated: Doc = {
         ...existing,
         title: data.title ?? existing.title,
         content: data.content ?? existing.content,
         category: data.category ?? existing.category,
         tags: data.tags ?? existing.tags,
+        type: data.type ?? existing.type,
+        slug: data.slug ?? existing.slug,
         updatedAt: now,
     };
 
-    const frontmatter = generateFrontmatter({
-        id: updated.id,
-        title: updated.title,
-        category: updated.category,
-        tags: updated.tags,
-        createdAt: updated.createdAt,
-        updatedAt: updated.updatedAt,
-    });
+    const frontmatter = generateFrontmatter(updated);
 
-    const fileContent = `${frontmatter}\n\n${updated.content}`;
-    const filename = `${sanitizeFilename(updated.title)}.md`;
+    // We prefer using slug for filename if we can, but we need to ensure backward compatibility or migration
+    // For new system: always use slug
+    const filename = `${updated.slug}.md`;
 
-    await fs.writeFile(path.join(DATA_DIR, filename), fileContent, 'utf-8');
+    await fs.writeFile(path.join(DATA_DIR, filename), `${frontmatter}\n\n${updated.content}`, 'utf-8');
 
     return updated;
 }
 
 /**
- * Delete a note
+ * Delete a doc
  */
-export async function deleteNote(id: string): Promise<boolean> {
+export async function deleteDoc(id: string): Promise<boolean> {
     try {
         const files = await fs.readdir(DATA_DIR);
 

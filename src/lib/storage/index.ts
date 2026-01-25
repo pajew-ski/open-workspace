@@ -1,4 +1,4 @@
-export * from './notes';
+export * from './docs';
 export * from './tasks';
 export * from './canvas';
 export * from './chat';

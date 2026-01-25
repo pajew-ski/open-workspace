@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
-import { listNotes } from '@/lib/storage/notes';
+import { listDocs } from '@/lib/storage/docs';
 import { listTasks } from '@/lib/storage/tasks';
 import { listProjects } from '@/lib/storage/projects';
 import { listConversations } from '@/lib/storage/chat';
 import { getEvents } from '@/lib/storage/calendar';
+
+// ... (Levenshtein headers omitted for brevity in thought, but need to be careful with replace)
+// Actually I should just import listDocs and replace usages.
 
 // Simple Levenshtein for server-side fuzzy match
 const getLevenshteinDistance = (a: string, b: string): number => {
@@ -54,8 +57,8 @@ export async function GET(request: Request) {
     }
 
     try {
-        const [notes, tasks, projects, conversations, events] = await Promise.all([
-            listNotes(),
+        const [docs, tasks, projects, conversations, events] = await Promise.all([
+            listDocs(),
             listTasks(),
             listProjects().catch(() => []), // Fallback if not impl
             listConversations().catch(() => []),
@@ -66,17 +69,17 @@ export async function GET(request: Request) {
 
         const results = [];
 
-        // Search Notes
-        if (!typeFilter || typeFilter === 'note') {
-            for (const note of notes) {
-                if (isFuzzyMatch(note.title, query) || note.content.toLowerCase().includes(query)) {
+        // Search Docs
+        if (!typeFilter || typeFilter === 'doc' || typeFilter === 'note') {
+            for (const doc of docs) {
+                if (isFuzzyMatch(doc.title, query) || doc.content.toLowerCase().includes(query)) {
                     results.push({
-                        type: 'note',
-                        id: note.id,
-                        title: note.title,
-                        subtitle: `Notiz • ${new Date(note.updatedAt).toLocaleDateString('de-DE')}`,
-                        url: `/knowledge?id=${note.id}`,
-                        matchScore: note.title.toLowerCase().startsWith(query) ? 3 : (note.title.toLowerCase().includes(query) ? 2 : 1)
+                        type: 'doc',
+                        id: doc.id,
+                        title: doc.title,
+                        subtitle: `Dokument • ${new Date(doc.updatedAt).toLocaleDateString('de-DE')}`,
+                        url: `/docs`,
+                        matchScore: doc.title.toLowerCase().startsWith(query) ? 3 : (doc.title.toLowerCase().includes(query) ? 2 : 1)
                     });
                 }
             }

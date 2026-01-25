@@ -91,12 +91,12 @@
       "id": "card-1769264906035-leols9",
       "type": "note",
       "title": "Projektmanagement",
-      "x": 320,
+      "x": 400,
       "y": 240,
       "width": 240,
       "height": 180,
       "createdAt": "2026-01-24T14:28:26.034Z",
-      "updatedAt": "2026-01-24T14:28:51.948Z",
+      "updatedAt": "2026-01-25T17:36:53.952Z",
       "color": "#00674F"
     }
   ],
@@ -150,5 +150,5 @@
     "zoom": 1
   },
   "createdAt": "2026-01-24T14:24:48.921Z",
-  "updatedAt": "2026-01-24T14:29:04.714Z"
+  "updatedAt": "2026-01-25T17:36:53.952Z"
 }

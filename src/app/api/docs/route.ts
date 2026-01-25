@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { listNotes, createNote } from '@/lib/storage';
+import { listDocs, createDoc } from '@/lib/storage/docs';
 
 export async function GET() {
     try {
-        const notes = await listNotes();
-        return NextResponse.json({ notes });
+        const docs = await listDocs();
+        return NextResponse.json({ docs });
     } catch (error) {
-        console.error('Notes list error:', error);
+        console.error('Docs list error:', error);
         return NextResponse.json(
-            { error: 'Notizen konnten nicht geladen werden' },
+            { error: 'Dokumente konnten nicht geladen werden' },
             { status: 500 }
         );
     }
@@ -25,21 +25,22 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const note = await createNote({
+        const doc = await createDoc({
             title: body.title,
             content: body.content || '',
             category: body.category,
             tags: body.tags || [],
+            type: body.type, // Polymorphism support
         });
 
         const { logActivity } = await import('@/lib/activity');
-        await logActivity('note_created', note.id, `Notiz erstellt: ${note.title}`);
+        await logActivity('doc_created', doc.id, `Dokument erstellt: ${doc.title}`);
 
-        return NextResponse.json({ note }, { status: 201 });
+        return NextResponse.json({ doc }, { status: 201 });
     } catch (error) {
-        console.error('Note create error:', error);
+        console.error('Doc create error:', error);
         return NextResponse.json(
-            { error: 'Notiz konnte nicht erstellt werden' },
+            { error: 'Dokument konnte nicht erstellt werden' },
             { status: 500 }
         );
     }

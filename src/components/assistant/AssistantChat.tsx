@@ -34,7 +34,7 @@ interface StreamChunk {
 
 const MODULE_CONTEXT: Record<string, { name: string; description: string }> = {
     '/': { name: 'Dashboard', description: 'Übersicht und Schnellzugriff' },
-    '/knowledge': { name: 'Wissensbasis', description: 'Notizen und Dokumente' },
+    '/docs': { name: 'Dokumente', description: 'Notizen und Dokumente (Wissensbasis)' },
     '/canvas': { name: 'Canvas', description: 'Visuelle Planung' },
     '/tasks': { name: 'Aufgaben', description: 'Projekt- und Aufgabenverwaltung' },
     '/calendar': { name: 'Kalender', description: 'Termine und Zeitplanung' },

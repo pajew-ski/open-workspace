@@ -17,7 +17,7 @@ export function ActivityWidget({ id, title, isEditing, onDelete }: any) {
     }, []);
 
     const getIcon = (type: string) => {
-        if (type.startsWith('note')) return <FileText size={16} />;
+        if (type.startsWith('note') || type.startsWith('doc')) return <FileText size={16} />;
         if (type.startsWith('task')) return <CheckSquare size={16} />;
         if (type.startsWith('canvas')) return <Layout size={16} />;
         return <Box size={16} />;
