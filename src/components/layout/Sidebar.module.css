@@ -123,4 +123,17 @@
         transform: translateX(0);
         box-shadow: var(--shadow-xl);
     }
+
+    /* Force full width and content visibility when open on mobile, even if "collapsed" */
+    .sidebar.mobileOpen.collapsed {
+        width: var(--sidebar-width);
+    }
+
+    .sidebar.mobileOpen.collapsed .navLabel {
+        display: block;
+    }
+
+    .sidebar.mobileOpen.collapsed .navItem {
+        justify-content: flex-start;
+    }
 }
