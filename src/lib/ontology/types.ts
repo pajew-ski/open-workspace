@@ -1,7 +1,7 @@
 
-import { WithContext, TechArticle, BlogPosting, DefinedTerm, HowTo, CreativeWork, Person } from 'schema-dts';
+import { WithContext, TechArticle, BlogPosting, DefinedTerm, HowTo, CreativeWork, Person, Project, Action, ItemList } from 'schema-dts';
 
-export type SchemaOrgDoc = TechArticle | BlogPosting | DefinedTerm | HowTo | CreativeWork;
+export type SchemaOrgDoc = TechArticle | BlogPosting | DefinedTerm | HowTo | CreativeWork | Project | Action | ItemList;
 
 export interface OntologyConfig {
     baseUrl: string; // e.g. https://exocortex.local

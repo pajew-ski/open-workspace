@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { AppShell } from '@/components/layout';
 import { Card, CardContent, Button, Input, ConfirmDialog, FloatingActionButton } from '@/components/ui';
+import { JsonLdScript } from '@/components/seo/JsonLdScript';
+import { generateCanvasListJsonLd } from '@/lib/ontology/generator-canvas';
+import { useMemo } from 'react';
 import styles from './page.module.css';
 
 interface CanvasItem {
@@ -85,6 +88,11 @@ export default function CanvasOverviewPage() {
             minute: '2-digit',
         });
     };
+
+    const jsonLdData = useMemo(() => {
+        if (isLoading) return null;
+        return generateCanvasListJsonLd(canvases);
+    }, [canvases, isLoading]);
 
     return (
         <AppShell
@@ -188,6 +196,7 @@ export default function CanvasOverviewPage() {
                 onConfirm={() => deleteConfirm && deleteCanvas(deleteConfirm.id)}
                 onCancel={() => setDeleteConfirm(null)}
             />
+            {jsonLdData && <JsonLdScript data={jsonLdData} />}
         </AppShell>
     );
 }

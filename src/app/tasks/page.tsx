@@ -7,6 +7,8 @@ import { TaskCard, Task } from '@/components/tasks/TaskCard';
 import { TaskModal } from '@/components/tasks/TaskModal';
 import { ProjectForm } from '@/components/tasks/ProjectForm';
 import { useToast } from '@/components/ui/Toast';
+import { JsonLdScript } from '@/components/seo/JsonLdScript';
+import { generateTaskListJsonLd } from '@/lib/ontology/generator-tasks';
 import styles from './page.module.css';
 
 interface Project {
@@ -138,6 +140,12 @@ export default function TasksPage() {
         return swimlanes;
     }, [projects, groupedTasks]);
 
+    const jsonLdData = useMemo(() => {
+        if (isLoading) return null;
+        // Map UI Project type to Generator ProjectData type if needed (interfaces seem compatible enough or cast)
+        return generateTaskListJsonLd(projects as any, tasks as any);
+    }, [projects, tasks, isLoading]);
+
     return (
         <AppShell
             title="Aufgaben"
@@ -233,6 +241,7 @@ export default function TasksPage() {
                     onSave={fetchData}
                 />
             )}
+            {jsonLdData && <JsonLdScript data={jsonLdData} />}
         </AppShell>
     );
 }

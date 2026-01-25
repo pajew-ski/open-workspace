@@ -122,8 +122,15 @@ Refactored from "Notes". Stored as `.md` files in `data/docs/`.
   - **Single Source of Truth**: All Knowledge is here.
 - **Multilingual**: URLs are English slugs, Content is German, `inLanguage: de`.
 
-### Tasks (JSON)
-Gespeichert in `data/tasks/tasks.json` mit Kanban-Status (open/in-progress/done).
+### Tasks (JSON + JSON-LD)
+Stored in `data/tasks/tasks.json`.
+- **Ontology**: Mapped to `schema.org/Project` (Projects) and `schema.org/Action` (Tasks).
+- **Status**: Mapped to `ActiveActionStatus`, `CompletedActionStatus`.
+
+### Canvas (JSON + JSON-LD)
+Stored in `data/canvas/`.
+- **Ontology**: Mapped to `schema.org/CreativeWork` (VisualArtwork).
+- **Graph**: Diagram nodes represent `hasPart`.
 
 ### Kalender (ICS/JSON)
 Provider-Konfiguration in `data/calendar/providers.json`. Gecachte Events in `data/calendar/events.json`.
