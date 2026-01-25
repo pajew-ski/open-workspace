@@ -83,11 +83,12 @@ open-workspace/
 - Deklarative UI-Komponenten-Beschreibungen
 - Streaming JSON (JSONL) für progressive Darstellung innerhalb des Chats
 - **Verfügbare Komponenten**:
-  - `Text`: Einfacher Text
-  - `Card`: Container mit Titel und Rahmen
-  - `Button`: Interaktive Elemente mit Actions
-  - `Column` / `Row`: Layout-Container
-  - `Divider`: Trennlinie
+  - **Basis**: `Text`, `Card`, `Button`, `Divider`
+  - **Layout**: `Column`, `Row`
+  - **Display**: `Markdown`, `CodeBlock`, `Image`, `Link`, `Alert`
+  - **Struktur**: `List`, `ListItem`, `Table`
+  - **Status**: `Progress`, `Chip`, `Badge`
+  - **Input**: `Input`, `Select`, `Checkbox`
 - Interaktionen werden als `UserAction` zurück an den Agenten gesendet
 - Secure by Design (keine Code-Ausführung)
 

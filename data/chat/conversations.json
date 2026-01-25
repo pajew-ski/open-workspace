@@ -1,6 +1,38 @@
 {
   "conversations": [
     {
+      "id": "conv-1769334482689-fcglqp",
+      "title": "rendere eine liste",
+      "messages": [
+        {
+          "id": "msg-1769334491040-1603la",
+          "role": "user",
+          "content": "rendere eine liste",
+          "timestamp": "2026-01-25T09:48:11.040Z"
+        },
+        {
+          "id": "msg-1769334491995-g14e0f",
+          "role": "assistant",
+          "content": "Hier ein Beispiel, wie du eine einfache Liste mit der dynamischen UI‑Render‑Funktion („Agent2UI“) darstellen kannst:\n\n```a2ui\n{\n    \"components\": [\n        {\n            \"id\": \"my-card\",\n            \"component\": {\n                \"Card\": {\n                    \"title\": \"Liste\",\n                    \"children\": {\n                        \"explicitList\": [\"item-1\", \"item-2\", \"item-3\"]\n                    }\n                }\n            }\n        },\n        {\n            \"id\": \"item-1\",\n            \"component\": {\n                \"Text\": { \"content\": \"Erstes Element\" }\n            }\n        },\n        {\n            \"id\": \"item-2\",\n            \"component\": {\n                \"Text\": { \"content\": \"Zweites Element\" }\n            }\n        },\n        {\n            \"id\": \"item-3\",\n            \"component\": {\n                \"Text\": { \"content\": \"Drittes Element\" }\n            }\n        }\n    ]\n}\n```\n\nDu kannst die Texte oder die Anzahl der Elemente ganz nach Bedarf anpassen. 🚀",
+          "timestamp": "2026-01-25T09:48:11.995Z"
+        },
+        {
+          "id": "msg-1769334500277-qzrmex",
+          "role": "user",
+          "content": "rendere eine liste mit fünf elementen",
+          "timestamp": "2026-01-25T09:48:20.277Z"
+        },
+        {
+          "id": "msg-1769334500931-siq3zw",
+          "role": "assistant",
+          "content": "Hier ein Beispiel, wie du eine Liste mit fünf Elementen mit Agent2UI darstellen kannst:\n\n```a2ui\n{\n    \"components\": [\n        {\n            \"id\": \"list-card\",\n            \"component\": {\n                \"Card\": {\n                    \"title\": \"Meine Liste\",\n                    \"children\": {\n                        \"explicitList\": [\"item-1\", \"item-2\", \"item-3\", \"item-4\", \"item-5\"]\n                    }\n                }\n            }\n        },\n        {\n            \"id\": \"item-1\",\n            \"component\": {\n                \"Text\": { \"content\": \"Erstes Element\" }\n            }\n        },\n        {\n            \"id\": \"item-2\",\n            \"component\": {\n                \"Text\": { \"content\": \"Zweites Element\" }\n            }\n        },\n        {\n            \"id\": \"item-3\",\n            \"component\": {\n                \"Text\": { \"content\": \"Drittes Element\" }\n            }\n        },\n        {\n            \"id\": \"item-4\",\n            \"component\": {\n                \"Text\": { \"content\": \"Viertes Element\" }\n            }\n        },\n        {\n            \"id\": \"item-5\",\n            \"component\": {\n                \"Text\": { \"content\": \"Fünftes Element\" }\n            }\n        }\n    ]\n}\n```\n\nWenn du weitere Anpassungen brauchst (Farben, Buttons etc.), sag einfach Bescheid!",
+          "timestamp": "2026-01-25T09:48:20.931Z"
+        }
+      ],
+      "createdAt": "2026-01-25T09:48:02.689Z",
+      "updatedAt": "2026-01-25T09:48:20.931Z"
+    },
+    {
       "id": "conv-1769333141981-hg3x5q",
       "title": "wie kannst du mir helfen? welche funktionen hast d...",
       "messages": [
@@ -129,10 +161,94 @@
           "role": "assistant",
           "content": "Hier ein kurzes Beispiel für ein **Mermaid‑Diagramm** (Flussdiagramm). Kopiere den Code in den Mermaid‑Editor deines Workspace und du siehst das Diagramm sofort:\n\n```mermaid\nflowchart TD\n    A[Start] --> B{Entscheidung}\n    B -- Ja --> C[Aktion 1]\n    B -- Nein --> D[Aktion 2]\n    C --> E[Ende]\n    D --> E\n```\n\nDas Diagramm zeigt einen einfachen Entscheidungsprozess mit zwei möglichen Aktionen. Viel Spaß beim Anpassen!",
           "timestamp": "2026-01-25T09:32:32.943Z"
+        },
+        {
+          "id": "msg-1769334003238-m3m7a4",
+          "role": "user",
+          "content": "[User Action: btn-9-pressed]",
+          "timestamp": "2026-01-25T09:40:03.238Z"
+        },
+        {
+          "id": "msg-1769334004758-mhefyl",
+          "role": "assistant",
+          "content": "🎉 **Button 9 gedrückt!**  \n\nHier eine kurze Bestätigung, die du direkt auf deine Pinnwand setzen kannst:\n\n```a2ui\n{\n    \"components\": [\n        {\n            \"id\": \"msg-9\",\n            \"component\": {\n                \"Card\": {\n                    \"title\": \"Button 9 gedrückt\",\n                    \"children\": { \"explicitList\": [\"txt-9\"] }\n                }\n            }\n        },\n        {\n            \"id\": \"txt-9\",\n            \"component\": {\n                \"Text\": { \"text\": \"Du hast den Button 9 gedrückt. Wie möchtest du weitermachen?\" }\n            }\n        }\n    ]\n}\n```\n\nKopiere einfach den Block in deinen Workspace‑Editor und die Karte erscheint sofort. Wenn du etwas Bestimmtes erledigen willst – z. B. einen Task anlegen, eine Notiz speichern oder ein weiteres UI‑Element anzeigen – sag mir einfach Bescheid!",
+          "timestamp": "2026-01-25T09:40:04.758Z"
+        },
+        {
+          "id": "msg-1769334342301-4oifcg",
+          "role": "user",
+          "content": "zeig mir welche neuen komponenten du jetzt rendern kannst. ein beispiel je komponente",
+          "timestamp": "2026-01-25T09:45:42.301Z"
+        },
+        {
+          "id": "msg-1769334344218-06ae54",
+          "role": "assistant",
+          "content": "Hier findest du ein Kurz‑„Demo‑Set“: je eine **Beispiel‑a2ui‑Box** für alle Komponenten, die du im Open Workspace dynamisch rendern kannst.  \nKopiere einfach den Block in dein Editor‑Fenster – du siehst sofort das Ergebnis.\n\n---\n\n## 1. Text  \nEinfache Text‑Anzeige (ohne weitere Layout‑Komponenten).\n\n```a2ui\n{\n    \"components\": [\n        {\n            \"id\": \"txt\",\n            \"component\": {\n                \"Text\": {\n                    \"text\": \"Hallo, ich bin ein Text‑Element.\"\n                }\n            }\n        }\n    ]\n}\n```\n\n---\n\n## 2. Card  \nEine visuelle Box mit optionalem Header und beliebigem Inhalt.\n\n```a2ui\n{\n    \"components\": [\n        {\n            \"id\": \"card\",\n            \"component\": {\n                \"Card\": {\n                    \"title\": \"Beispiel‑Card\",\n                    \"children\": { \"explicitList\": [\"txt-card\"] }\n                }\n            }\n        },\n        {\n            \"id\": \"txt-card\",\n            \"component\": {\n                \"Text\": {\n                    \"text\": \"Inhalt der Card – du kannst weitere Komponenten hinzufügen.\"\n                }\n            }\n        }\n    ]\n}\n```\n\n---\n\n## 3. Button  \nKlickbares Element, das eine Aktion auslöst.\n\n```a2ui\n{\n    \"components\": [\n        {\n            \"id\": \"btn\",\n            \"component\": {\n                \"Button\": {\n                    \"label\": \"Klick mich\",\n                    \"onPress\": { \"actionId\": \"button-clicked\" }\n                }\n            }\n        }\n    ]\n}\n```\n\n---\n\n## 4. Column  \nVertikale Anordnung mehrerer Komponenten.\n\n```a2ui\n{\n    \"components\": [\n        {\n            \"id\": \"col\",\n            \"component\": {\n                \"Column\": {\n                    \"children\": { \"explicitList\": [\"txt1\", \"txt2\", \"btn\"] }\n                }\n            }\n        },\n        {\n            \"id\": \"txt1\",\n            \"component\": { \"Text\": { \"text\": \"Erste Zeile\" } }\n        },\n        {\n            \"id\": \"txt2\",\n            \"component\": { \"Text\": { \"text\": \"Zweite Zeile\" } }\n        },\n        {\n            \"id\": \"btn\",\n            \"component\": { \"Button\": { \"label\": \"Klick\", \"onPress\": { \"actionId\": \"col-btn\" } } }\n        }\n    ]\n}\n```\n\n---\n\n## 5. Row  \nHorizontale Anordnung mehrerer Komponenten.\n\n```a2ui\n{\n    \"components\": [\n        {\n            \"id\": \"row\",\n            \"component\": {\n                \"Row\": {\n                    \"children\": { \"explicitList\": [\"txtA\", \"txtB\", \"btnA\"] }\n                }\n            }\n        },\n        {\n            \"id\": \"txtA\",\n            \"component\": { \"Text\": { \"text\": \"Links\" } }\n        },\n        {\n            \"id\": \"txtB\",\n            \"component\": { \"Text\": { \"text\": \"Rechts\" } }\n        },\n        {\n            \"id\": \"btnA\",\n            \"component\": { \"Button\": { \"label\": \"Go\", \"onPress\": { \"actionId\": \"row-btn\" } } }\n        }\n    ]\n}\n```\n\n---\n\n## 6. Divider  \nEin Trenner (horizontal/vertikal) – hier horizontal.\n\n```a2ui\n{\n    \"components\": [\n        {\n            \"id\": \"div\",\n            \"component\": { \"Divider\": {} }\n        }\n    ]\n}\n```\n\n---\n\n## Kombination: 3×3‑Grid (zusammengefasst)\n\n```a2ui\n{\n    \"components\": [\n        {\n            \"id\": \"grid\",\n            \"component\": {\n                \"Column\": {\n                    \"children\": { \"explicitList\": [\"row-1\", \"row-2\", \"row-3\"] }\n                }\n            }\n        },\n        {\n            \"id\": \"row-1\",\n            \"component\": { \"Row\": { \"children\": { \"explicitList\": [\"btn-1\",\"btn-2\",\"btn-3\"] } } }\n        },\n        {\n            \"id\": \"row-2\",\n            \"component\": { \"Row\": { \"children\": { \"explicitList\": [\"btn-4\",\"btn-5\",\"btn-6\"] } } }\n        },\n        {\n            \"id\": \"row-3\",\n            \"component\": { \"Row\": { \"children\": { \"explicitList\": [\"btn-7\",\"btn-8\",\"btn-9\"] } } }\n        },\n        {\"id\":\"btn-1\",\"component\":{\"Button\":{\"label\":\"1\",\"onPress\":{\"actionId\":\"btn-1-pressed\"}}}},\n        {\"id\":\"btn-2\",\"component\":{\"Button\":{\"label\":\"2\",\"onPress\":{\"actionId\":\"btn-2-pressed\"}}}},\n        {\"id\":\"btn-3\",\"component\":{\"Button\":{\"label\":\"3\",\"onPress\":{\"actionId\":\"btn-3-pressed\"}}}},\n        {\"id\":\"btn-4\",\"component\":{\"Button\":{\"label\":\"4\",\"onPress\":{\"actionId\":\"btn-4-pressed\"}}}},\n        {\"id\":\"btn-5\",\"component\":{\"Button\":{\"label\":\"5\",\"onPress\":{\"actionId\":\"btn-5-pressed\"}}}},\n        {\"id\":\"btn-6\",\"component\":{\"Button\":{\"label\":\"6\",\"onPress\":{\"actionId\":\"btn-6-pressed\"}}}},\n        {\"id\":\"btn-7\",\"component\":{\"Button\":{\"label\":\"7\",\"onPress\":{\"actionId\":\"btn-7-pressed\"}}}},\n        {\"id\":\"btn-8\",\"component\":{\"Button\":{\"label\":\"8\",\"onPress\":{\"actionId\":\"btn-8-pressed\"}}}},\n        {\"id\":\"btn-9\",\"component\":{\"Button\":{\"label\":\"9\",\"onPress\":{\"actionId\":\"btn-9-pressed\"}}}}\n    ]\n}\n```\n\n---\n\n**Tipps**  \n- Kombiniere `Column` und `Row`, um beliebige Layouts zu bauen.  \n- Verwende `Divider`, um Inhalte visuell zu trennen.  \n- Jedes Element kann eigene Aktionen haben, die du später im Workspace definierst.  \n\nViel Spaß beim Experimentieren! 🚀",
+          "timestamp": "2026-01-25T09:45:44.218Z"
+        },
+        {
+          "id": "msg-1769334391728-ywkr54",
+          "role": "user",
+          "content": "das hat nicht funktioniert. muss wohl in einen einzigen rutsch gerendert werden?",
+          "timestamp": "2026-01-25T09:46:31.728Z"
+        },
+        {
+          "id": "msg-1769334393785-s5wmak",
+          "role": "assistant",
+          "content": "Entschuldige die Verwirrung – in Open Workspace muss der komplette **`a2ui`‑Block** in **einem** Code‑Fence liegen.  \nHier die **komplette** 3×3‑Grid‑Definition in einem einzigen Block. Kopiere ihn einfach in dein Editor‑Fenster (z. B. in ein Pinnwand‑Widget) und er sollte sofort gerendert werden.\n\n```a2ui\n{\n  \"components\": [\n    {\n      \"id\": \"grid\",\n      \"component\": {\n        \"Column\": {\n          \"children\": { \"explicitList\": [\"row-1\", \"row-2\", \"row-3\"] }\n        }\n      }\n    },\n    {\n      \"id\": \"row-1\",\n      \"component\": { \"Row\": { \"children\": { \"explicitList\": [\"btn-1\",\"btn-2\",\"btn-3\"] } } }\n    },\n    {\n      \"id\": \"row-2\",\n      \"component\": { \"Row\": { \"children\": { \"explicitList\": [\"btn-4\",\"btn-5\",\"btn-6\"] } } }\n    },\n    {\n      \"id\": \"row-3\",\n      \"component\": { \"Row\": { \"children\": { \"explicitList\": [\"btn-7\",\"btn-8\",\"btn-9\"] } } }\n    },\n    { \"id\":\"btn-1\",\"component\":{\"Button\":{\"label\":\"1\",\"onPress\":{\"actionId\":\"btn-1-pressed\"}}}},\n    { \"id\":\"btn-2\",\"component\":{\"Button\":{\"label\":\"2\",\"onPress\":{\"actionId\":\"btn-2-pressed\"}}}},\n    { \"id\":\"btn-3\",\"component\":{\"Button\":{\"label\":\"3\",\"onPress\":{\"actionId\":\"btn-3-pressed\"}}}},\n    { \"id\":\"btn-4\",\"component\":{\"Button\":{\"label\":\"4\",\"onPress\":{\"actionId\":\"btn-4-pressed\"}}}},\n    { \"id\":\"btn-5\",\"component\":{\"Button\":{\"label\":\"5\",\"onPress\":{\"actionId\":\"btn-5-pressed\"}}}},\n    { \"id\":\"btn-6\",\"component\":{\"Button\":{\"label\":\"6\",\"onPress\":{\"actionId\":\"btn-6-pressed\"}}}},\n    { \"id\":\"btn-7\",\"component\":{\"Button\":{\"label\":\"7\",\"onPress\":{\"actionId\":\"btn-7-pressed\"}}}},\n    { \"id\":\"btn-8\",\"component\":{\"Button\":{\"label\":\"8\",\"onPress\":{\"actionId\":\"btn-8-pressed\"}}}},\n    { \"id\":\"btn-9\",\"component\":{\"Button\":{\"label\":\"9\",\"onPress\":{\"actionId\":\"btn-9-pressed\"}}}}\n  ]\n}\n```\n\n**Hinweis:**  \n- Alle IDs müssen eindeutig sein.  \n- Jede Button‑Aktion (`actionId`) kannst du später im Workspace definieren (z. B. einen Task anlegen, ein Popup öffnen usw.).  \n\nWenn du den Block kopierst, sollte das UI sofort erscheinen. Probiere es aus und sag mir, ob alles funktioniert! 🚀",
+          "timestamp": "2026-01-25T09:46:33.785Z"
+        },
+        {
+          "id": "msg-1769334404583-8wl10o",
+          "role": "user",
+          "content": "das grid habe ich jetzt gesehen",
+          "timestamp": "2026-01-25T09:46:44.583Z"
+        },
+        {
+          "id": "msg-1769334405161-i5ihy9",
+          "role": "assistant",
+          "content": "Super, dass du das Grid jetzt siehst! 🎉  \n\nWas möchtest du damit machen?\n\n- **Buttons konfigurieren**: Jede Taste kann eine eigene Aktion auslösen (z. B. Task anlegen, Notiz speichern, ein Pop‑up öffnen).\n- **Layout anpassen**: Du kannst Farben, Schriftgrößen oder zusätzliche Icons hinzufügen.\n- **Mehrere Grids**: Wenn du mehrere 3×3‑Sätze brauchst, kannst du sie untereinander oder nebeneinander platzieren.\n\nMöchtest du ein konkretes Beispiel, wie die Buttons Aktionen auslösen, oder hast du ein anderes Feature im Kopf? Lass es mich wissen! 🚀",
+          "timestamp": "2026-01-25T09:46:45.161Z"
+        },
+        {
+          "id": "msg-1769334438271-43atua",
+          "role": "user",
+          "content": "zeig mir ein anderes beispiel. liste",
+          "timestamp": "2026-01-25T09:47:18.271Z"
+        },
+        {
+          "id": "msg-1769334439354-tfmr5k",
+          "role": "assistant",
+          "content": "Hier ein weiteres Beispiel: ein **Liste‑Layout** mit drei Einträgen.  \nJeder Eintrag ist eine Card mit Titel, Beschreibung und einem Button, der eine eigene Aktion auslöst.\n\n```a2ui\n{\n  \"components\": [\n    {\n      \"id\": \"list\",\n      \"component\": {\n        \"Column\": {\n          \"children\": { \"explicitList\": [\"item-1\", \"item-2\", \"item-3\"] }\n        }\n      }\n    },\n\n    {\n      \"id\": \"item-1\",\n      \"component\": {\n        \"Card\": {\n          \"title\": \"Aufgabe 1\",\n          \"children\": { \"explicitList\": [\"txt-1\", \"btn-1\"] }\n        }\n      }\n    },\n    {\n      \"id\": \"txt-1\",\n      \"component\": { \"Text\": { \"text\": \"Beschreibung der ersten Aufgabe.\" } }\n    },\n    {\n      \"id\": \"btn-1\",\n      \"component\": { \"Button\": { \"label\": \"Starten\", \"onPress\": { \"actionId\": \"start-1\" } } }\n    },\n\n    {\n      \"id\": \"item-2\",\n      \"component\": {\n        \"Card\": {\n          \"title\": \"Aufgabe 2\",\n          \"children\": { \"explicitList\": [\"txt-2\", \"btn-2\"] }\n        }\n      }\n    },\n    {\n      \"id\": \"txt-2\",\n      \"component\": { \"Text\": { \"text\": \"Beschreibung der zweiten Aufgabe.\" } }\n    },\n    {\n      \"id\": \"btn-2\",\n      \"component\": { \"Button\": { \"label\": \"Starten\", \"onPress\": { \"actionId\": \"start-2\" } } }\n    },\n\n    {\n      \"id\": \"item-3\",\n      \"component\": {\n        \"Card\": {\n          \"title\": \"Aufgabe 3\",\n          \"children\": { \"explicitList\": [\"txt-3\", \"btn-3\"] }\n        }\n      }\n    },\n    {\n      \"id\": \"txt-3\",\n      \"component\": { \"Text\": { \"text\": \"Beschreibung der dritten Aufgabe.\" } }\n    },\n    {\n      \"id\": \"btn-3\",\n      \"component\": { \"Button\": { \"label\": \"Starten\", \"onPress\": { \"actionId\": \"start-3\" } } }\n    }\n  ]\n}\n```\n\n**So funktioniert es**\n\n1. **Column** legt die Einträge vertikal an.  \n2. Jeder Eintrag ist eine **Card** mit Titel, Text und Button.  \n3. Beim Klicken eines Buttons wird die entsprechende `actionId` (z. B. `start-1`) ausgelöst – du kannst diese Aktion später im Workspace definieren.\n\nKopiere den Block einfach in deinen Workspace‑Editor und die Liste erscheint sofort. Viel Spaß beim Experimentieren! 🚀",
+          "timestamp": "2026-01-25T09:47:19.354Z"
+        },
+        {
+          "id": "msg-1769334448001-g5dzkw",
+          "role": "user",
+          "content": "dropdown",
+          "timestamp": "2026-01-25T09:47:28.001Z"
+        },
+        {
+          "id": "msg-1769334449466-0zrpew",
+          "role": "assistant",
+          "content": "Hier ein **statisches “Dropdown‑Layout”** mit den verfügbaren Komponenten.  \nDu bekommst ein Card‑Element mit einem Button „Auswählen“. Unter dem Button liegen drei weitere Buttons, die die einzelnen Optionen darstellen.\n\n```a2ui\n{\n  \"components\": [\n    {\n      \"id\": \"dropdown-card\",\n      \"component\": {\n        \"Card\": {\n          \"title\": \"Dropdown‑Demo\",\n          \"children\": { \"explicitList\": [\"btn-select\", \"opt-row\"] }\n        }\n      }\n    },\n\n    {\n      \"id\": \"btn-select\",\n      \"component\": {\n        \"Button\": {\n          \"label\": \"Auswählen\",\n          \"onPress\": { \"actionId\": \"dropdown-open\" }   // optional: Aktion, z. B. Pop‑up öffnen\n        }\n      }\n    },\n\n    {\n      \"id\": \"opt-row\",\n      \"component\": {\n        \"Row\": {\n          \"children\": { \"explicitList\": [\"opt-1\", \"opt-2\", \"opt-3\"] }\n        }\n      }\n    },\n\n    {\n      \"id\": \"opt-1\",\n      \"component\": {\n        \"Button\": {\n          \"label\": \"Option 1\",\n          \"onPress\": { \"actionId\": \"select-opt-1\" }\n        }\n      }\n    },\n\n    {\n      \"id\": \"opt-2\",\n      \"component\": {\n        \"Button\": {\n          \"label\": \"Option 2\",\n          \"onPress\": { \"actionId\": \"select-opt-2\" }\n        }\n      }\n    },\n\n    {\n      \"id\": \"opt-3\",\n      \"component\": {\n        \"Button\": {\n          \"label\": \"Option 3\",\n          \"onPress\": { \"actionId\": \"select-opt-3\" }\n        }\n      }\n    }\n  ]\n}\n```\n\n**So kannst du es nutzen**\n\n1. **Kopiere** den Block in deinen Workspace‑Editor (z. B. in einen Pinnwand‑Widget).  \n2. Du erhältst eine Card mit dem Button „Auswählen“ und drei Options‑Buttons.  \n3. Jedes Options‑Button‑Element löst eine eigene `actionId` aus – damit kannst du z. B. einen Task anlegen oder eine Nachricht anzeigen lassen.\n\n> **Hinweis**  \n> Der Workspace bietet derzeit keine interaktive Zustands‑Logik (z. B. “Dropdown öffnen/Schließen”), aber du kannst die Optionen als eigene Buttons darstellen und ggf. mit einer `actionId` verbinden, die später im Workspace definiert wird.\n\nWenn du lieber ein echtes, dynamisches Dropdown (mit ausklappender Liste) brauchst, sag Bescheid – ich kann dir zeigen, wie du mit mehreren Cards und einer Aktion die Sichtbarkeit steuern könntest. 🚀",
+          "timestamp": "2026-01-25T09:47:29.466Z"
+        },
+        {
+          "id": "msg-1769334458293-iuzyav",
+          "role": "user",
+          "content": "dropdown hat nicht funktioniert",
+          "timestamp": "2026-01-25T09:47:38.293Z"
+        },
+        {
+          "id": "msg-1769334470705-tra1c2",
+          "role": "user",
+          "content": "dropdown hat nicht funktioniert",
+          "timestamp": "2026-01-25T09:47:50.705Z"
         }
       ],
       "createdAt": "2026-01-25T09:25:41.981Z",
-      "updatedAt": "2026-01-25T09:32:32.943Z"
+      "updatedAt": "2026-01-25T09:47:50.705Z"
     },
     {
       "id": "conv-1769249450680-1ok3xk",
@@ -291,5 +407,5 @@
       "updatedAt": "2026-01-24T10:11:59.166Z"
     }
   ],
-  "activeId": "conv-1769333141981-hg3x5q"
+  "activeId": "conv-1769334482689-fcglqp"
 }
