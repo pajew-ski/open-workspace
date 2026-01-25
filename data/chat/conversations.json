@@ -1,24 +1,24 @@
 {
   "conversations": [
     {
-      "id": "conv-1769344013724-kltqjg",
-      "title": "zeig mir das bild der galaxi",
+      "id": "conv-1769344654227-rnqqsf",
+      "title": "zeig mir das bild im dashboard",
       "messages": [
         {
-          "id": "msg-1769344021223-00c2ix",
+          "id": "msg-1769344658570-6bj6m1",
           "role": "user",
-          "content": "zeig mir das bild der galaxi",
-          "timestamp": "2026-01-25T12:27:01.223Z"
+          "content": "zeig mir das bild im dashboard",
+          "timestamp": "2026-01-25T12:37:38.570Z"
         },
         {
-          "id": "msg-1769344022137-5k4a9e",
+          "id": "msg-1769344659101-93rcml",
           "role": "assistant",
-          "content": "Hier ist die gewünschte Galaxie:\n\n```a2ui\n{\n    \"components\": [\n        {\n            \"id\": \"galaxy-card\",\n            \"component\": {\n                \"Card\": {\n                    \"title\": \"Galaxie NGC 4414\",\n                    \"children\": { \"explicitList\": [\"galaxy-text\"] }\n                }\n            }\n        },\n        {\n            \"id\": \"galaxy-text\",\n            \"component\": {\n                \"Text\": {\n                    \"content\": \"<img src=\\\"https://upload.wikimedia.org/wikipedia/commons/c/c3/NGC_4414_%28NASA-med%29.jpg\\\" alt=\\\"Galaxie\\\" style=\\\"max-width:100%;\\\">\"\n                }\n            }\n        }\n    ]\n}\n```",
-          "timestamp": "2026-01-25T12:27:02.137Z"
+          "content": "Hier ist das Bild aus deinem Dashboard:\n\n```a2ui\n{\n  \"components\": [\n    {\n      \"id\": \"image-card\",\n      \"component\": {\n        \"Card\": {\n          \"title\": \"Bild aus dem Dashboard\",\n          \"children\": { \"explicitList\": [\"image-1\"] }\n        }\n      }\n    },\n    {\n      \"id\": \"image-1\",\n      \"component\": {\n        \"Image\": {\n          \"src\": \"https://upload.wikimedia.org/wikipedia/commons/c/c3/NGC_4414_%28NASA-med%29.jpg\",\n          \"alt\": \"NGC 4414\",\n          \"caption\": \"Ein Bild des Spiralgalaxien NGC 4414.\"\n        }\n      }\n    }\n  ]\n}\n```",
+          "timestamp": "2026-01-25T12:37:39.101Z"
         }
       ],
-      "createdAt": "2026-01-25T12:26:53.724Z",
-      "updatedAt": "2026-01-25T12:27:02.137Z"
+      "createdAt": "2026-01-25T12:37:34.227Z",
+      "updatedAt": "2026-01-25T12:37:39.101Z"
     },
     {
       "id": "conv-1769249450680-1ok3xk",
@@ -177,5 +177,5 @@
       "updatedAt": "2026-01-24T10:11:59.166Z"
     }
   ],
-  "activeId": "conv-1769344013724-kltqjg"
+  "activeId": "conv-1769344654227-rnqqsf"
 }

@@ -52,22 +52,38 @@ DEINE FÄHIGKEITEN:
             {
                 "id": "my-card",
                 "component": {
-                    "Card": {
-                        "title": "Titel",
-                        "children": { "explicitList": ["btn-1"] }
+                    "Card": { "title": "Titel", "children": { "explicitList": ["img-1", "btn-1"] } }
+                }
+            },
+            {
+                "id": "img-1",
+                "component": {
+                    "Image": {
+                        "src": "https://example.com/image.jpg",
+                        "alt": "Beschreibung",
+                        "caption": "Bildunterschrift"
                     }
                 }
             },
             {
                 "id": "btn-1",
                 "component": {
-                    "Button": { "label": "Klick mich", "onPress": { "actionId": "clicked" } }
+                    "Button": { "label": "Aktion", "onPress": { "actionId": "clicked" } }
                 }
             }
         ]
     }
     \`\`\`
-  Verfügbare Komponenten: Text, Card, Button, Column, Row, Divider.
+  Verfügbare Komponenten & Props:
+  - **Text**: \`text\` (string), \`style\` (object)
+  - **Card**: \`title\` (string), \`children\` ({ explicitList: string[] })
+  - **Button**: \`label\` (string), \`onPress\` ({ actionId: string })
+  - **Image**: \`src\` (string URL), \`alt\` (string), \`caption\` (string)
+  - **Markdown**: \`content\` (string markdown)
+  - **CodeBlock**: \`code\` (string), \`language\` (string)
+  - **Input**: \`label\`, \`value\`, \`placeholder\`, \`onChange\` ({ actionId })
+  - **Layout**: \`Column\`, \`Row\` (\`gap\`, \`children\`)
+  - **Alert**: \`title\`, \`message\`, \`variant\` ('info'|'warning'|'error'|'success')
 
 HINWEIS: Das Modul "Canvas" wird im UI als "Pinnwand" bezeichnet.
 
