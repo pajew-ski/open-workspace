@@ -47,6 +47,8 @@ const MIN_WIDTH = 320;
 const MIN_HEIGHT = 400;
 const DEFAULT_WIDTH = 380;
 const DEFAULT_HEIGHT = 500;
+const DEFAULT_INPUT_HEIGHT = 44;
+const MIN_INPUT_HEIGHT = 44;
 
 export function AssistantChat() {
     // UI State - use lazy initialization to read from localStorage synchronously
@@ -100,6 +102,14 @@ export function AssistantChat() {
     const [messages, setMessages] = useState<Message[]>([]);
 
     // Input State
+    const [inputHeight, setInputHeight] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('assistant-input-height');
+            // Allow up to a reasonable max height initially, dynamic limit applied on resize
+            if (saved) return Math.max(MIN_INPUT_HEIGHT, parseInt(saved));
+        }
+        return DEFAULT_INPUT_HEIGHT;
+    });
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'online' | 'offline'>('unknown');
@@ -114,9 +124,11 @@ export function AssistantChat() {
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
+    const inputResizeRef = useRef<{ startY: number; startH: number } | null>(null);
     const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
     const shouldScrollToBottomRef = useRef(false);
     const scrollRestoredRef = useRef(false);
+    const lastInputResizeClickRef = useRef(0);
     const pathname = usePathname();
     const { viewState } = useAssistantContext();
 
@@ -137,6 +149,11 @@ export function AssistantChat() {
 
     // Note: Loading of persisted state is now done via lazy initialization in useState
     // This prevents flash of default values on page navigation
+
+    // Save input height
+    useEffect(() => {
+        localStorage.setItem('assistant-input-height', String(inputHeight));
+    }, [inputHeight]);
 
     // Save open state
     useEffect(() => {
@@ -708,8 +725,51 @@ export function AssistantChat() {
     // Reset position to default (bottom-right)
     const resetPosition = () => {
         setPosition(null);
+        setWidth(DEFAULT_WIDTH);
+        setHeight(DEFAULT_HEIGHT);
+        setInputHeight(DEFAULT_INPUT_HEIGHT);
         localStorage.removeItem('assistant-position');
+        localStorage.removeItem('assistant-width');
+        localStorage.removeItem('assistant-height');
+        localStorage.removeItem('assistant-input-height');
     };
+
+
+    // Input Resize Logic
+    const handleInputResizeStart = (e: React.MouseEvent) => {
+        const now = Date.now();
+        if (now - lastInputResizeClickRef.current < 300) { // 300ms threshold for double click
+            // Double click detected - Reset
+            setInputHeight(DEFAULT_INPUT_HEIGHT);
+            return;
+        }
+        lastInputResizeClickRef.current = now;
+
+        e.preventDefault();
+        inputResizeRef.current = { startY: e.clientY, startH: inputHeight };
+        document.addEventListener('mousemove', handleInputResizeMove);
+        document.addEventListener('mouseup', handleInputResizeEnd);
+    };
+
+    const handleInputResizeMove = useCallback((e: MouseEvent) => {
+        if (!inputResizeRef.current) return;
+        const deltaY = inputResizeRef.current.startY - e.clientY;
+
+        // Calculate dynamic max height: 50% of current chat window height
+        const currentWindowHeight = isFullscreen ? window.innerHeight : height;
+        const dynamicMaxHeight = currentWindowHeight * 0.5;
+
+        const newHeight = Math.max(MIN_INPUT_HEIGHT, Math.min(dynamicMaxHeight, inputResizeRef.current.startH + deltaY));
+        setInputHeight(newHeight);
+    }, [height, isFullscreen]);
+
+    const handleInputResizeEnd = useCallback(() => {
+        inputResizeRef.current = null;
+        document.removeEventListener('mousemove', handleInputResizeMove);
+        document.removeEventListener('mouseup', handleInputResizeEnd);
+    }, [handleInputResizeMove]);
+
+
 
     const toggleFullscreen = useCallback(() => {
         if (!isFullscreen) {
@@ -883,12 +943,24 @@ export function AssistantChat() {
                     </div>
 
                     {/* Input */}
-                    <form onSubmit={handleSubmit} className={styles.inputForm}>
-                        <input
-                            ref={inputRef}
-                            type="text"
+                    <form onSubmit={handleSubmit} className={`${styles.inputForm} ${isMobile ? styles.inputFormMobile : ''}`} style={{ height: isMobile ? 'auto' : inputHeight }}>
+                        {!isMobile && (
+                            <div
+                                className={styles.inputResizeHandle}
+                                onMouseDown={handleInputResizeStart}
+                                title="Größe ändern"
+                            />
+                        )}
+                        <textarea
+                            ref={inputRef as any}
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleSubmit(e);
+                                }
+                            }}
                             placeholder={connectionStatus === 'offline' ? 'AI offline...' : 'Schreib mir...'}
                             className={styles.input}
                             disabled={isLoading || connectionStatus === 'offline'}

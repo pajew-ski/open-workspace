@@ -517,22 +517,54 @@
 
 /* Input */
 .inputForm {
+    border-top: 1px solid var(--color-border);
+    padding: var(--space-3);
+    background-color: var(--color-surface);
     display: flex;
     gap: var(--space-2);
-    padding: var(--space-3);
-    border-top: 1px solid var(--color-border);
-    background-color: var(--color-surface);
+    position: relative;
+    flex-shrink: 0;
+    min-height: 76px;
+    align-items: flex-start;
+}
+
+.inputFormMobile {
+    height: auto !important;
+    min-height: auto;
+}
+
+.inputResizeHandle {
+    position: absolute;
+    top: -4px;
+    left: 0;
+    right: 0;
+    height: 8px;
+    cursor: ns-resize;
+    z-index: 10;
+    /* Transparent but catch events */
+    background: transparent;
+}
+
+.inputResizeHandle:hover {
+    background: rgba(0, 0, 0, 0.05);
 }
 
 .input {
     flex: 1;
-    padding: var(--space-2) var(--space-3);
+    min-width: 0;
+    padding: var(--space-2);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
-    font-size: var(--text-sm);
+    font-size: var(--text-base);
     background-color: var(--color-surface-elevated);
     color: var(--color-text-primary);
     outline: none;
+    transition: border-color var(--transition-fast);
+    /* Make textarea fill the form height */
+    height: 100%;
+    resize: none;
+    font-family: inherit;
+    line-height: 1.5;
 }
 
 .input:focus {
