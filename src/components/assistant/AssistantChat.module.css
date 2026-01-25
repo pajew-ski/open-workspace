@@ -213,6 +213,21 @@
     cursor: grabbing;
 }
 
+/* Fullscreen mode */
+.fullscreen {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+    transform: none !important;
+    max-height: none !important;
+}
+
+.actionButton,
 .resetPositionButton {
     width: 28px;
     height: 28px;
@@ -229,6 +244,7 @@
     transition: all 0.2s;
 }
 
+.actionButton:hover,
 .resetPositionButton:hover {
     opacity: 1;
     background: rgba(255, 255, 255, 0.25);

@@ -705,10 +705,31 @@ export function AssistantChat() {
     }, [handleDragMove]);
 
     // Reset position to default (bottom-right)
+    // Reset position to default (bottom-right)
     const resetPosition = () => {
         setPosition(null);
         localStorage.removeItem('assistant-position');
     };
+
+    const toggleFullscreen = useCallback(() => {
+        if (!isFullscreen) {
+            // Enter fullscreen: save current state
+            setSavedWindowState({
+                width,
+                height,
+                position
+            });
+            setIsFullscreen(true);
+        } else {
+            // Exit fullscreen: restore state
+            if (savedWindowState) {
+                setWidth(savedWindowState.width);
+                setHeight(savedWindowState.height);
+                setPosition(savedWindowState.position);
+            }
+            setIsFullscreen(false);
+        }
+    }, [isFullscreen, width, height, position, savedWindowState]);
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
@@ -728,8 +749,8 @@ export function AssistantChat() {
         <div className={styles.container}>
             {isOpen && (
                 <div
-                    className={`${styles.chatWindow} ${isMobile ? styles.mobile : ''} ${showSidebar ? styles.showSidebar : ''} ${isDragging ? styles.dragging : ''}`}
-                    style={!isMobile ? {
+                    className={`${styles.chatWindow} ${isMobile ? styles.mobile : ''} ${showSidebar ? styles.showSidebar : ''} ${isDragging ? styles.dragging : ''} ${isFullscreen ? styles.fullscreen : ''}`}
+                    style={(!isMobile && !isFullscreen) ? {
                         width,
                         height,
                         ...(position ? {
@@ -740,8 +761,8 @@ export function AssistantChat() {
                         } : {})
                     } : undefined}
                 >
-                    {/* Resize handles - all edges and corners */}
-                    {!isMobile && (
+                    {/* Resize handles - all edges and corners (disabled in fullscreen) */}
+                    {(!isMobile && !isFullscreen) && (
                         <>
                             <div className={`${styles.resizeHandle} ${styles.resizeN}`} onMouseDown={handleResizeStart('n')} />
                             <div className={`${styles.resizeHandle} ${styles.resizeS}`} onMouseDown={handleResizeStart('s')} />
@@ -754,10 +775,11 @@ export function AssistantChat() {
                         </>
                     )}
 
-                    {/* Header - draggable */}
+                    {/* Header - draggable (disabled in fullscreen) */}
                     <div
-                        className={`${styles.header} ${!isMobile ? styles.draggable : ''}`}
-                        onMouseDown={!isMobile ? handleDragStart : undefined}
+                        className={`${styles.header} ${(!isMobile && !isFullscreen) ? styles.draggable : ''}`}
+                        onMouseDown={(!isMobile && !isFullscreen) ? handleDragStart : undefined}
+                        onDoubleClick={toggleFullscreen}
                     >
                         <button className={styles.menuButton} onClick={(e) => { e.stopPropagation(); setShowSidebar(!showSidebar); }}>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -771,7 +793,20 @@ export function AssistantChat() {
                                 <span className={`${styles.status} ${styles[connectionStatus]}`} />
                             </span>
                         </div>
-                        {position && (
+                        {!isMobile && (
+                            <button className={styles.actionButton} onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} title={isFullscreen ? "Fenster wiederherstellen" : "Vollbild"}>
+                                {isFullscreen ? (
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+                                    </svg>
+                                ) : (
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+                                    </svg>
+                                )}
+                            </button>
+                        )}
+                        {(position && !isFullscreen) && (
                             <button className={styles.resetPositionButton} onClick={(e) => { e.stopPropagation(); resetPosition(); }} title="Position zurucksetzen">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                     <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
