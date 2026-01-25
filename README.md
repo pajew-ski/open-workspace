@@ -1,6 +1,14 @@
 # Open Workspace
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE)
+[![Stack: Next.js 16](https://img.shields.io/badge/Stack-Next.js_16-black)](https://nextjs.org/)
+[![Protocol: A2A](https://img.shields.io/badge/Protocol-A2A-00674F)](https://github.com/a2aproject/A2A)
+[![Protocol: A2UI](https://img.shields.io/badge/Protocol-A2UI-00674F)](https://github.com/google/A2UI)
+[![Protocol: MCP](https://img.shields.io/badge/Protocol-MCP-white)](https://modelcontextprotocol.io/)
 
-Ein umfassender, offline-fähiger Workspace für AI-Agent-Kollaboration. Entwickelt mit Next.js, implementiert Agent2Agent (A2A) und Agent2UI (A2UI) Protokolle.
+> **System-Status:** `OPERATIONAL`
+> **Philosophie:** Digital Zen Garden (Low-Entropy UI)
+
+Open Workspace ist eine **Local-First Kognitions-Architektur**. Es handelt sich um eine Offline-PWA, die als kollaborativer Partner agiert. Durch die strikte Implementierung der offenen Standards **Agent2Agent (A2A)** und **Agent2UI (A2UI)** verschmilzt die Grenze zwischen statischem Interface und generativer AI-Interaktion.
 
 ## Features
 

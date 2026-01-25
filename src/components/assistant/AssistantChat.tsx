@@ -87,6 +87,12 @@ export function AssistantChat() {
     });
     const [isMobile, setIsMobile] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [savedWindowState, setSavedWindowState] = useState<{
+        width: number;
+        height: number;
+        position: { x: number; y: number } | null;
+    } | null>(null);
 
     // Conversations State
     const [conversations, setConversations] = useState<Conversation[]>([]);
