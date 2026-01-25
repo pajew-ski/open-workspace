@@ -1,0 +1,85 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background-color: var(--color-surface-elevated);
+    border: 1px dashed var(--color-primary);
+    border-radius: var(--radius-md);
+    margin-bottom: 8px;
+    animation: fadeIn 0.2s;
+}
+
+.addButtons {
+    display: flex;
+    gap: 8px;
+}
+
+/* Grid Layout */
+.grid {
+    column-width: 350px;
+    column-gap: 16px;
+    padding-bottom: 16px;
+    /* Space for the last item's margin */
+}
+
+.gridItem {
+    position: relative;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    break-inside: avoid;
+    margin-bottom: 16px;
+    /* Fix for some browsers clipping shadow */
+    transform: translateZ(0);
+}
+
+/* Drag Styling */
+.draggable {
+    cursor: grab;
+    opacity: 0.9;
+}
+
+.draggable:active {
+    cursor: grabbing;
+    /* transform: scale(0.98); Removed to prevent flicker */
+}
+
+.beingDragged {
+    opacity: 0.5;
+    border: 2px dashed var(--color-primary);
+}
+
+.dragOverlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+    /* Only visible when needed, though existing header has handle too */
+    pointer-events: none;
+    /* Let clicks pass through usually, but for drag? */
+}
+
+/* On mobile, stack them */
+/* Mobile behavior handled by column-width */
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

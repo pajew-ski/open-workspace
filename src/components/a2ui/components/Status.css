@@ -1,0 +1,174 @@
+/* A2UI Status Components */
+
+/* Progress */
+.a2ui-progress {
+    margin: 8px 0;
+}
+
+.a2ui-progress-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-size: 13px;
+    color: var(--color-text-secondary);
+}
+
+.a2ui-progress-track {
+    height: 8px;
+    background: var(--color-surface);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.a2ui-progress-bar {
+    height: 100%;
+    background: var(--color-primary);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.a2ui-progress--indeterminate .a2ui-progress-bar {
+    width: 30%;
+    animation: progress-indeterminate 1.5s infinite ease-in-out;
+}
+
+@keyframes progress-indeterminate {
+    0% {
+        transform: translateX(-100%);
+    }
+
+    100% {
+        transform: translateX(400%);
+    }
+}
+
+/* Chip */
+.a2ui-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    font-size: 13px;
+    color: var(--color-text);
+    white-space: nowrap;
+}
+
+.a2ui-chip--primary {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: white;
+}
+
+.a2ui-chip--success {
+    background: #e8f5e9;
+    border-color: #a5d6a7;
+    color: #2e7d32;
+}
+
+.a2ui-chip--warning {
+    background: #fff3e0;
+    border-color: #ffcc80;
+    color: #ef6c00;
+}
+
+.a2ui-chip--error {
+    background: #ffebee;
+    border-color: #ef9a9a;
+    color: #c62828;
+}
+
+.a2ui-chip-icon {
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.a2ui-chip-remove {
+    margin-left: 2px;
+    padding: 2px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.a2ui-chip-remove:hover {
+    opacity: 1;
+}
+
+/* Badge */
+.a2ui-badge-wrapper {
+    position: relative;
+    display: inline-flex;
+}
+
+.a2ui-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    background: var(--color-primary);
+    color: white;
+    border-radius: 9px;
+    font-size: 11px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.a2ui-badge--dot {
+    min-width: 10px;
+    width: 10px;
+    height: 10px;
+    padding: 0;
+    top: -2px;
+    right: -2px;
+}
+
+.a2ui-badge--inline {
+    position: static;
+    margin-left: 8px;
+}
+
+.a2ui-badge--success {
+    background: #4caf50;
+}
+
+.a2ui-badge--warning {
+    background: #ff9800;
+}
+
+.a2ui-badge--error {
+    background: #f44336;
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+    .a2ui-chip--success {
+        background: rgba(76, 175, 80, 0.15);
+        border-color: rgba(76, 175, 80, 0.3);
+        color: #a5d6a7;
+    }
+
+    .a2ui-chip--warning {
+        background: rgba(255, 152, 0, 0.15);
+        border-color: rgba(255, 152, 0, 0.3);
+        color: #ffcc80;
+    }
+
+    .a2ui-chip--error {
+        background: rgba(244, 67, 54, 0.15);
+        border-color: rgba(244, 67, 54, 0.3);
+        color: #ef9a9a;
+    }
+}

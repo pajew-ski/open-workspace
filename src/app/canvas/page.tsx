@@ -1,0 +1,202 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { AppShell } from '@/components/layout';
+import { Card, CardContent, Button, Input, ConfirmDialog, FloatingActionButton } from '@/components/ui';
+import { JsonLdScript } from '@/components/seo/JsonLdScript';
+import { generateCanvasListJsonLd } from '@/lib/ontology/generator-canvas';
+import { useMemo } from 'react';
+import styles from './page.module.css';
+
+interface CanvasItem {
+    id: string;
+    name: string;
+    description?: string;
+    cardCount: number;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export default function CanvasOverviewPage() {
+    const [canvases, setCanvases] = useState<CanvasItem[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isCreating, setIsCreating] = useState(false);
+    const [newName, setNewName] = useState('');
+    const [newDescription, setNewDescription] = useState('');
+    const [deleteConfirm, setDeleteConfirm] = useState<CanvasItem | null>(null);
+
+    useEffect(() => {
+        fetchCanvases();
+    }, []);
+
+    const fetchCanvases = async () => {
+        try {
+            const response = await fetch('/api/canvas');
+            const data = await response.json();
+            setCanvases(data.canvases || []);
+        } catch (error) {
+            console.error('Fehler beim Laden:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const createCanvas = async () => {
+        if (!newName.trim()) return;
+
+        try {
+            const response = await fetch('/api/canvas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'create',
+                    name: newName,
+                    description: newDescription,
+                }),
+            });
+            const data = await response.json();
+            setCanvases([data.canvas, ...canvases]);
+            setNewName('');
+            setNewDescription('');
+            setIsCreating(false);
+        } catch (error) {
+            console.error('Fehler beim Erstellen:', error);
+        }
+    };
+
+    const deleteCanvas = async (id: string) => {
+        try {
+            await fetch('/api/canvas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'delete', id }),
+            });
+            setCanvases(canvases.filter(c => c.id !== id));
+            setDeleteConfirm(null);
+        } catch (error) {
+            console.error('Fehler beim Löschen:', error);
+        }
+    };
+
+    const formatDate = (dateStr: string) => {
+        return new Date(dateStr).toLocaleDateString('de-DE', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    };
+
+    const jsonLdData = useMemo(() => {
+        if (isLoading) return null;
+        return generateCanvasListJsonLd(canvases);
+    }, [canvases, isLoading]);
+
+    return (
+        <AppShell
+            title="Pinnwand"
+            actions={
+                <FloatingActionButton
+                    icon={<span style={{ fontSize: '24px' }}>+</span>}
+                    onClick={() => setIsCreating(true)}
+                    label="Neue Pinnwand"
+                />
+            }
+        >
+            <div className={styles.container}>
+                <div className={styles.header}>
+                    <div>
+                        <h1>Pinnwand Übersicht</h1>
+                        <p className={styles.subtitle}>Erstelle und verwalte deine visuellen Planungen</p>
+                    </div>
+                </div>
+
+                {isCreating && (
+                    <Card className={styles.createForm}>
+                        <CardContent>
+                            <div className={styles.formFields}>
+                                <Input
+                                    placeholder="Name der Pinnwand..."
+                                    value={newName}
+                                    onChange={(e) => setNewName(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && createCanvas()}
+                                    autoFocus
+                                />
+                                <Input
+                                    placeholder="Beschreibung (optional)..."
+                                    value={newDescription}
+                                    onChange={(e) => setNewDescription(e.target.value)}
+                                />
+                                <div className={styles.formActions}>
+                                    <Button variant="ghost" onClick={() => setIsCreating(false)}>Abbrechen</Button>
+                                    <Button variant="primary" onClick={createCanvas}>Erstellen</Button>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {isLoading ? (
+                    <p className={styles.loading}>Laden...</p>
+                ) : canvases.length === 0 ? (
+                    <Card className={styles.emptyState}>
+                        <CardContent>
+                            <div className={styles.emptyContent}>
+                                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                                    <path d="M3 9h18" />
+                                    <path d="M9 21V9" />
+                                </svg>
+                                <h3>Noch keine Pinnwände</h3>
+                                <p>Erstelle deine erste Pinnwand für visuelle Planung</p>
+                                <Button variant="primary" onClick={() => setIsCreating(true)}>
+                                    + Erste Pinnwand erstellen
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    <div className={styles.grid}>
+                        {canvases.map((canvas) => (
+                            <Link key={canvas.id} href={`/canvas/${canvas.id}`} className={styles.canvasCard}>
+                                <div className={styles.cardPreview}>
+                                    <span className={styles.cardCount}>{canvas.cardCount} Karten</span>
+                                </div>
+                                <div className={styles.cardInfo}>
+                                    <h3>{canvas.name}</h3>
+                                    {canvas.description && <p>{canvas.description}</p>}
+                                    <span className={styles.cardDate}>
+                                        Aktualisiert: {formatDate(canvas.updatedAt)}
+                                    </span>
+                                </div>
+                                <button
+                                    className={styles.deleteButton}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        setDeleteConfirm(canvas);
+                                    }}
+                                >
+                                    ×
+                                </button>
+                            </Link>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            <ConfirmDialog
+                isOpen={deleteConfirm !== null}
+                title="Pinnwand löschen?"
+                message={`Möchtest du "${deleteConfirm?.name}" wirklich löschen? Alle Karten und Verbindungen werden unwiderruflich entfernt.`}
+                confirmText="Löschen"
+                cancelText="Abbrechen"
+                variant="danger"
+                onConfirm={() => deleteConfirm && deleteCanvas(deleteConfirm.id)}
+                onCancel={() => setDeleteConfirm(null)}
+            />
+            {jsonLdData && <JsonLdScript data={jsonLdData} />}
+        </AppShell>
+    );
+}

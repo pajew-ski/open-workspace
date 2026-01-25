@@ -1,0 +1,78 @@
+/* A2UI Structure Components */
+
+/* List */
+.a2ui-list {
+    margin: 8px 0;
+    padding-left: 24px;
+}
+
+.a2ui-list--ordered {
+    list-style-type: decimal;
+}
+
+.a2ui-list--unordered {
+    list-style-type: disc;
+}
+
+.a2ui-list--none {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+/* ListItem */
+.a2ui-list-item {
+    padding: 4px 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--color-text);
+}
+
+.a2ui-list-item::marker {
+    color: var(--color-text-secondary);
+}
+
+/* Table */
+.a2ui-table-container {
+    margin: 8px 0;
+    overflow-x: auto;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+}
+
+.a2ui-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.a2ui-table th,
+.a2ui-table td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.a2ui-table th {
+    background: var(--color-surface);
+    font-weight: 600;
+    color: var(--color-text);
+    white-space: nowrap;
+}
+
+.a2ui-table tr:last-child td {
+    border-bottom: none;
+}
+
+.a2ui-table tbody tr:hover {
+    background: var(--color-surface-hover);
+}
+
+.a2ui-table--striped tbody tr:nth-child(even) {
+    background: var(--color-surface);
+}
+
+.a2ui-table--compact th,
+.a2ui-table--compact td {
+    padding: 6px 10px;
+    font-size: 13px;
+}

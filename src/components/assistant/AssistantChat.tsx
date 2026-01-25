@@ -1,0 +1,1033 @@
+'use client';
+
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
+import { usePathname } from 'next/navigation';
+import { ConfirmDialog } from '@/components/ui';
+import { useAssistantContext } from '@/lib/assistant/context';
+import { A2UIRenderer } from '../a2ui/A2UIRenderer';
+import { A2UINode } from '../a2ui/types';
+import { MessageContent } from './MessageContent';
+import './MessageContent.css';
+import styles from './AssistantChat.module.css';
+
+interface Message {
+    id: string;
+    role: 'user' | 'assistant';
+    content: string;
+    uiComponents?: A2UINode[];
+    timestamp: string;
+}
+
+interface Conversation {
+    id: string;
+    title: string;
+    messages: Message[];
+    createdAt: string;
+    updatedAt: string;
+}
+
+interface StreamChunk {
+    message?: { content: string };
+    surfaceUpdate?: { components: A2UINode[] };
+    done?: boolean;
+}
+
+const MODULE_CONTEXT: Record<string, { name: string; description: string }> = {
+    '/': { name: 'Dashboard', description: 'Übersicht und Schnellzugriff' },
+    '/docs': { name: 'Dokumente', description: 'Notizen und Dokumente (Wissensbasis)' },
+    '/canvas': { name: 'Canvas', description: 'Visuelle Planung' },
+    '/tasks': { name: 'Aufgaben', description: 'Projekt- und Aufgabenverwaltung' },
+    '/calendar': { name: 'Kalender', description: 'Termine und Zeitplanung' },
+    '/agents': { name: 'Agenten', description: 'A2A Agent-Konfiguration' },
+    '/communication': { name: 'Kommunikation', description: 'Matrix Chat' },
+    '/settings': { name: 'Einstellungen', description: 'App-Konfiguration' },
+};
+
+const MIN_WIDTH = 320;
+const MIN_HEIGHT = 400;
+const DEFAULT_WIDTH = 380;
+const DEFAULT_HEIGHT = 500;
+const DEFAULT_INPUT_HEIGHT = 44;
+const MIN_INPUT_HEIGHT = 44;
+
+export function AssistantChat() {
+    // UI State - use lazy initialization to read from localStorage synchronously
+    const [isOpen, setIsOpen] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('assistant-open') === 'true';
+        }
+        return false;
+    });
+    const [showSidebar, setShowSidebar] = useState(false);
+    const [width, setWidth] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('assistant-width');
+            if (saved) return Math.max(MIN_WIDTH, parseInt(saved));
+        }
+        return DEFAULT_WIDTH;
+    });
+    const [height, setHeight] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('assistant-height');
+            if (saved) return Math.max(MIN_HEIGHT, parseInt(saved));
+        }
+        return DEFAULT_HEIGHT;
+    });
+    const [position, setPosition] = useState<{ x: number; y: number } | null>(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('assistant-position');
+            if (saved) {
+                try {
+                    const pos = JSON.parse(saved);
+                    if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
+                        return pos;
+                    }
+                } catch { /* ignore */ }
+            }
+        }
+        return null;
+    });
+    const [isMobile, setIsMobile] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [savedWindowState, setSavedWindowState] = useState<{
+        width: number;
+        height: number;
+        position: { x: number; y: number } | null;
+    } | null>(null);
+
+    // Conversations State
+    const [conversations, setConversations] = useState<Conversation[]>([]);
+    const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
+    const [messages, setMessages] = useState<Message[]>([]);
+
+    // Input State
+    const [inputHeight, setInputHeight] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('assistant-input-height');
+            // Allow up to a reasonable max height initially, dynamic limit applied on resize
+            if (saved) return Math.max(MIN_INPUT_HEIGHT, parseInt(saved));
+        }
+        return DEFAULT_INPUT_HEIGHT;
+    });
+    const [input, setInput] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'online' | 'offline'>('unknown');
+
+    // Dialogs
+    const [deleteConfirm, setDeleteConfirm] = useState<Conversation | null>(null);
+    const [renameConv, setRenameConv] = useState<Conversation | null>(null);
+    const [renameValue, setRenameValue] = useState('');
+
+    // Refs
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const messagesContainerRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
+    const inputResizeRef = useRef<{ startY: number; startH: number } | null>(null);
+    const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
+    const shouldScrollToBottomRef = useRef(false);
+    const scrollRestoredRef = useRef(false);
+    const lastInputResizeClickRef = useRef(0);
+    const pathname = usePathname();
+    const { viewState } = useAssistantContext();
+
+    // Improved context matching
+    const currentModule = useMemo(() => {
+        const routes = Object.keys(MODULE_CONTEXT).sort((a, b) => b.length - a.length);
+        const match = routes.find(r => pathname === r || (r !== '/' && pathname.startsWith(r)));
+        return match ? MODULE_CONTEXT[match] : MODULE_CONTEXT['/'];
+    }, [pathname]);
+
+    // Check mobile
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
+    // Note: Loading of persisted state is now done via lazy initialization in useState
+    // This prevents flash of default values on page navigation
+
+    // Save input height
+    useEffect(() => {
+        localStorage.setItem('assistant-input-height', String(inputHeight));
+    }, [inputHeight]);
+
+    // Save open state
+    useEffect(() => {
+        localStorage.setItem('assistant-open', String(isOpen));
+    }, [isOpen]);
+
+    // Save size and position
+    useEffect(() => {
+        localStorage.setItem('assistant-width', String(width));
+        localStorage.setItem('assistant-height', String(height));
+    }, [width, height]);
+
+    useEffect(() => {
+        if (position) {
+            localStorage.setItem('assistant-position', JSON.stringify(position));
+        }
+    }, [position]);
+
+    // Check connection
+    useEffect(() => {
+        const checkConnection = async () => {
+            try {
+                const response = await fetch('/api/chat/health');
+                const data = await response.json();
+                setConnectionStatus(data.status === 'online' ? 'online' : 'offline');
+            } catch {
+                setConnectionStatus('offline');
+            }
+        };
+        checkConnection();
+    }, []);
+
+    // Load conversations
+    useEffect(() => {
+        loadConversations();
+    }, []);
+
+    // Scroll to bottom only when explicitly requested (e.g., after sending a message)
+    // This prevents unwanted scrolling on page navigation
+    useEffect(() => {
+        if (shouldScrollToBottomRef.current && messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+            shouldScrollToBottomRef.current = false;
+        }
+    }, [messages]);
+
+    // Helper function to find the first visible message element
+    const findFirstVisibleMessage = useCallback(() => {
+        const container = messagesContainerRef.current;
+        if (!container) return null;
+
+        const messageElements = container.querySelectorAll('[data-message-id]');
+        for (const el of messageElements) {
+            const rect = el.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+            // Check if element is at least partially visible
+            if (rect.top >= containerRect.top - 50 && rect.top < containerRect.bottom) {
+                return {
+                    id: el.getAttribute('data-message-id'),
+                    offsetFromTop: rect.top - containerRect.top
+                };
+            }
+        }
+        return null;
+    }, []);
+
+    // Helper to check if scrolled to bottom
+    const isAtBottom = useCallback(() => {
+        const container = messagesContainerRef.current;
+        if (!container) return false;
+        // Consider "at bottom" if within 50px of the end
+        return container.scrollHeight - container.scrollTop - container.clientHeight < 50;
+    }, []);
+
+    // Restore scroll position using anchor-based approach
+    // This survives content height changes from async Code/Mermaid rendering
+    useLayoutEffect(() => {
+        const container = messagesContainerRef.current;
+        if (!container || messages.length === 0) return;
+
+        if (!scrollRestoredRef.current) {
+            const savedAnchor = localStorage.getItem('assistant-scroll-anchor');
+            if (savedAnchor) {
+                try {
+                    const parsed = JSON.parse(savedAnchor);
+
+                    // Special case: was at bottom - restore to bottom
+                    if (parsed.isAtBottom) {
+                        container.scrollTop = container.scrollHeight;
+                    } else if (parsed.id) {
+                        // Normal case: find anchor element and restore position
+                        const anchorElement = container.querySelector(`[data-message-id="${parsed.id}"]`);
+                        if (anchorElement) {
+                            const containerRect = container.getBoundingClientRect();
+                            const elementRect = anchorElement.getBoundingClientRect();
+                            const currentOffset = elementRect.top - containerRect.top;
+                            container.scrollTop += currentOffset - parsed.offsetFromTop;
+                        }
+                    }
+                } catch { /* ignore parse errors */ }
+            }
+            scrollRestoredRef.current = true;
+        }
+    }, [messages, pathname]);
+
+    // Save scroll anchor on scroll (debounced)
+    useEffect(() => {
+        const container = messagesContainerRef.current;
+        if (!container) return;
+
+        let timeoutId: ReturnType<typeof setTimeout>;
+        const handleScroll = () => {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => {
+                // Check if at bottom first
+                if (isAtBottom()) {
+                    localStorage.setItem('assistant-scroll-anchor', JSON.stringify({ isAtBottom: true }));
+                } else {
+                    const anchor = findFirstVisibleMessage();
+                    if (anchor) {
+                        localStorage.setItem('assistant-scroll-anchor', JSON.stringify({ ...anchor, isAtBottom: false }));
+                    }
+                }
+            }, 100); // Debounce 100ms
+        };
+
+        container.addEventListener('scroll', handleScroll, { passive: true });
+        return () => {
+            clearTimeout(timeoutId);
+            container.removeEventListener('scroll', handleScroll);
+        };
+    }, [isOpen, findFirstVisibleMessage, isAtBottom]);
+
+    // Reset scroll restored flag when pathname changes
+    useEffect(() => {
+        scrollRestoredRef.current = false;
+    }, [pathname]);
+
+    // Focus input
+    useEffect(() => {
+        if (isOpen && inputRef.current) inputRef.current.focus();
+    }, [isOpen, activeConversation]);
+
+    // Keyboard shortcut
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'a') {
+                e.preventDefault();
+                setIsOpen(prev => !prev);
+            }
+            if ((e.metaKey || e.ctrlKey) && e.key === 'n' && isOpen) {
+                e.preventDefault();
+                createNewConversation();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen]);
+
+    const loadConversations = async () => {
+        try {
+            const response = await fetch('/api/chat/conversations');
+            const data = await response.json();
+            setConversations(data.conversations || []);
+
+            if (data.activeId) {
+                const active = data.conversations?.find((c: Conversation) => c.id === data.activeId);
+                if (active) {
+                    setActiveConversation(active);
+                    setMessages(active.messages || []);
+                }
+            }
+
+            // Create default if none exist
+            if (!data.conversations?.length) {
+                await createNewConversation();
+            }
+        } catch (error) {
+            console.error('Failed to load conversations:', error);
+        }
+    };
+
+    const createNewConversation = async () => {
+        try {
+            const response = await fetch('/api/chat/conversations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'create' }),
+            });
+            const data = await response.json();
+            setConversations(prev => [data.conversation, ...prev]);
+            setActiveConversation(data.conversation);
+            setMessages([]);
+            setShowSidebar(false);
+        } catch (error) {
+            console.error('Failed to create conversation:', error);
+        }
+    };
+
+    const selectConversation = async (conv: Conversation) => {
+        setActiveConversation(conv);
+        setMessages(conv.messages || []);
+        setShowSidebar(false);
+
+        await fetch('/api/chat/conversations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'setActive', id: conv.id }),
+        });
+    };
+
+    const handleRename = async () => {
+        if (!renameConv || !renameValue.trim()) return;
+
+        try {
+            await fetch('/api/chat/conversations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'rename', id: renameConv.id, title: renameValue }),
+            });
+
+            setConversations(prev => prev.map(c =>
+                c.id === renameConv.id ? { ...c, title: renameValue } : c
+            ));
+            if (activeConversation?.id === renameConv.id) {
+                setActiveConversation(prev => prev ? { ...prev, title: renameValue } : prev);
+            }
+            setRenameConv(null);
+        } catch (error) {
+            console.error('Failed to rename:', error);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!deleteConfirm) return;
+
+        try {
+            await fetch('/api/chat/conversations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'delete', id: deleteConfirm.id }),
+            });
+
+            setConversations(prev => prev.filter(c => c.id !== deleteConfirm.id));
+            if (activeConversation?.id === deleteConfirm.id) {
+                const remaining = conversations.filter(c => c.id !== deleteConfirm.id);
+                if (remaining.length > 0) {
+                    selectConversation(remaining[0]);
+                } else {
+                    await createNewConversation();
+                }
+            }
+            setDeleteConfirm(null);
+        } catch (error) {
+            console.error('Failed to delete:', error);
+        }
+    };
+
+    const sendMessage = useCallback(async (userInput: string) => {
+        if (!activeConversation) return;
+
+        const userMessage: Message = {
+            id: `msg-${Date.now()}`,
+            role: 'user',
+            content: userInput,
+            timestamp: new Date().toISOString(),
+        };
+
+        setMessages(prev => [...prev, userMessage]);
+        setIsLoading(true);
+        shouldScrollToBottomRef.current = true; // Scroll after sending message
+
+        // Save user message
+        await fetch('/api/chat/conversations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'addMessage',
+                conversationId: activeConversation.id,
+                role: 'user',
+                content: userInput,
+            }),
+        });
+
+        // Create placeholder
+        const assistantId = `msg-${Date.now() + 1}`;
+        setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: '', timestamp: new Date().toISOString() }]);
+
+        try {
+            // Fetch calendar events if on calendar page
+            let additionalContext = '';
+            if (pathname === '/calendar') {
+                try {
+                    const start = new Date();
+                    const end = new Date();
+                    end.setDate(end.getDate() + 7); // Next 7 days
+
+                    const res = await fetch(`/api/calendar?action=events&start=${start.toISOString()}&end=${end.toISOString()}`);
+                    const data = await res.json();
+                    if (data.events && data.events.length > 0) {
+                        additionalContext = `\nAKTUELLE TERMINE (nächste 7 Tage):\n${data.events.map((e: any) =>
+                            `- ${new Date(e.startDate).toLocaleString('de-DE')}: ${e.title} ${e.location ? `(${e.location})` : ''}`
+                        ).join('\n')}`;
+                    } else {
+                        additionalContext = '\nAKTUELLE TERMINE: Keine Termine in den nächsten 7 Tagen gefunden.';
+                    }
+                } catch (e) {
+                    console.error('Failed to fetch calendar context', e);
+                }
+            }
+
+            // Fetch tasks and projects if on tasks page
+            if (pathname === '/tasks') {
+                try {
+                    const [tasksRes, projsRes] = await Promise.all([
+                        fetch('/api/tasks'),
+                        fetch('/api/projects')
+                    ]);
+                    const [tasksData, projsData] = await Promise.all([
+                        tasksRes.json(),
+                        projsRes.json()
+                    ]);
+
+                    if (tasksData.tasks) {
+                        const projectMap: Record<string, string> = {};
+                        (projsData.projects || []).forEach((p: any) => projectMap[p.id] = p.title);
+
+                        const taskMap: Record<string, string> = {};
+                        tasksData.tasks.forEach((t: any) => taskMap[t.id] = t.title);
+
+                        additionalContext = `\nAKTUELLE AUFGABEN & PROJEKTE:\n`;
+                        additionalContext += `Projekte: ${(projsData.projects || []).map((p: any) => p.title).join(', ') || 'Keine Projekte'}\n`;
+                        additionalContext += `Aufgaben:\n${tasksData.tasks.slice(0, 20).map((t: any) => {
+                            let info = `- [${t.status.toUpperCase()}] ${t.title} (ID: ${t.id})`;
+                            if (t.projectId) info += ` [Proj: ${projectMap[t.projectId] || t.projectId}]`;
+                            if (t.priority) info += ` [Prio: ${t.priority}]`;
+
+                            // Add dependencies if any
+                            if (t.dependencies && t.dependencies.length > 0) {
+                                const deps = t.dependencies.map((d: any) => {
+                                    const depTitle = taskMap[d.id] || d.id;
+                                    return `${d.type}: "${depTitle}"`;
+                                }).join(', ');
+                                info += ` [Abhängig von: ${deps}]`;
+                            }
+                            return info;
+                        }).join('\n')}`;
+
+                        if (tasksData.tasks.length > 20) additionalContext += `\n... und ${tasksData.tasks.length - 20} weitere Aufgaben.`;
+                    }
+                } catch (e) {
+                    console.error('Failed to fetch tasks context', e);
+                }
+            }
+
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messages: [...messages, userMessage].filter(m => m.role !== 'assistant' || m.content).map(m => ({
+                        role: m.role,
+                        content: m.content,
+                    })),
+                    context: {
+                        module: currentModule.name,
+                        moduleDescription: currentModule.description + additionalContext,
+                        pathname,
+                        viewState // Pass the dynamic view state
+                    },
+                    stream: true,
+                }),
+            });
+
+            if (!response.ok) throw new Error('API request failed');
+
+            const reader = response.body?.getReader();
+            if (!reader) throw new Error('No response body');
+
+            const decoder = new TextDecoder();
+            let fullContent = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const text = decoder.decode(value, { stream: true });
+                const lines = text.split('\n').filter(line => line.trim());
+
+                for (const line of lines) {
+                    try {
+                        const chunk: StreamChunk = JSON.parse(line);
+
+                        // Handle Text Content
+                        if (chunk.message?.content) {
+                            fullContent += chunk.message.content;
+                        }
+
+                        // Handle UI Updates
+                        let uiUpdates: A2UINode[] | undefined;
+                        if (chunk.surfaceUpdate?.components) {
+                            uiUpdates = chunk.surfaceUpdate.components;
+                        }
+
+                        // Fallback: Check for A2UI markdown blocks
+                        if (!uiUpdates) {
+                            const a2uiMatch = fullContent.match(/```a2ui\s*([\s\S]*?)\s*```/);
+                            if (a2uiMatch) {
+                                try {
+                                    const json = JSON.parse(a2uiMatch[1]);
+                                    // Support both direct array or surfaceUpdate wrapper
+                                    if (Array.isArray(json)) {
+                                        uiUpdates = json;
+                                    } else if (json.surfaceUpdate?.components) {
+                                        uiUpdates = json.surfaceUpdate.components;
+                                    } else if (json.components) {
+                                        uiUpdates = json.components;
+                                    }
+                                } catch { /* incomplete json */ }
+                            }
+                        }
+
+                        setMessages(prev => prev.map(m => {
+                            if (m.id === assistantId) {
+                                return {
+                                    ...m,
+                                    content: fullContent, // Keep content so user sees the raw block via markdown renderer if needed, or we filter it out later
+                                    uiComponents: uiUpdates || m.uiComponents
+                                };
+                            }
+                            return m;
+                        }));
+
+                    } catch { /* skip */ }
+                }
+            }
+
+            // Save assistant response
+            if (fullContent) {
+                await fetch('/api/chat/conversations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'addMessage',
+                        conversationId: activeConversation.id,
+                        role: 'assistant',
+                        content: fullContent,
+                    }),
+                });
+
+                // Update conversation title if first message
+                if (messages.length === 0) {
+                    setConversations(prev => prev.map(c =>
+                        c.id === activeConversation.id ? { ...c, title: userInput.slice(0, 50) + (userInput.length > 50 ? '...' : '') } : c
+                    ));
+                }
+            }
+
+            if (!fullContent) {
+                setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: 'Keine Antwort erhalten.' } : m));
+            }
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
+            setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: `Fehler: ${errorMessage}` } : m));
+            setConnectionStatus('offline');
+        } finally {
+            setIsLoading(false);
+        }
+    }, [messages, activeConversation, currentModule, pathname, viewState]);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!input.trim() || isLoading) return;
+        const userInput = input.trim();
+        setInput('');
+        await sendMessage(userInput);
+    };
+
+    // Resize handlers - supports all edges and corners
+    type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
+    const resizeDirectionRef = useRef<ResizeDirection | null>(null);
+
+    const handleResizeStart = (direction: ResizeDirection) => (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const currentX = position?.x ?? (window.innerWidth - width - 20);
+        const currentY = position?.y ?? (window.innerHeight - height - 90);
+        resizeRef.current = { startX: e.clientX, startY: e.clientY, startW: width, startH: height };
+        resizeDirectionRef.current = direction;
+        // Store position for adjustment during resize
+        (resizeRef.current as any).startPosX = currentX;
+        (resizeRef.current as any).startPosY = currentY;
+        document.addEventListener('mousemove', handleResizeMove);
+        document.addEventListener('mouseup', handleResizeEnd);
+    };
+
+    const handleResizeMove = useCallback((e: MouseEvent) => {
+        if (!resizeRef.current || !resizeDirectionRef.current) return;
+        const dir = resizeDirectionRef.current;
+        const deltaX = e.clientX - resizeRef.current.startX;
+        const deltaY = e.clientY - resizeRef.current.startY;
+        const startData = resizeRef.current as any;
+
+        let newWidth = startData.startW;
+        let newHeight = startData.startH;
+        let newX = startData.startPosX;
+        let newY = startData.startPosY;
+
+        // Handle horizontal resize
+        if (dir.includes('e')) {
+            newWidth = Math.max(MIN_WIDTH, startData.startW + deltaX);
+        } else if (dir.includes('w')) {
+            newWidth = Math.max(MIN_WIDTH, startData.startW - deltaX);
+            newX = startData.startPosX + (startData.startW - newWidth);
+        }
+
+        // Handle vertical resize
+        if (dir.includes('s')) {
+            newHeight = Math.max(MIN_HEIGHT, startData.startH + deltaY);
+        } else if (dir.includes('n')) {
+            newHeight = Math.max(MIN_HEIGHT, startData.startH - deltaY);
+            newY = startData.startPosY + (startData.startH - newHeight);
+        }
+
+        setWidth(newWidth);
+        setHeight(newHeight);
+        setPosition({ x: newX, y: newY });
+    }, []);
+
+    const handleResizeEnd = useCallback(() => {
+        resizeRef.current = null;
+        resizeDirectionRef.current = null;
+        document.removeEventListener('mousemove', handleResizeMove);
+        document.removeEventListener('mouseup', handleResizeEnd);
+    }, [handleResizeMove]);
+
+    // Drag handlers for moving the chat window
+    const handleDragStart = (e: React.MouseEvent) => {
+        // Don't start drag if clicking on a button
+        const target = e.target as HTMLElement;
+        if (target.closest('button')) {
+            return; // Let the button handle the click
+        }
+        e.preventDefault();
+        const currentX = position?.x ?? (window.innerWidth - width - 20);
+        const currentY = position?.y ?? (window.innerHeight - height - 90);
+        dragRef.current = { startX: e.clientX, startY: e.clientY, startPosX: currentX, startPosY: currentY };
+        setIsDragging(true);
+        document.addEventListener('mousemove', handleDragMove);
+        document.addEventListener('mouseup', handleDragEnd);
+    };
+
+    const handleDragMove = useCallback((e: MouseEvent) => {
+        if (!dragRef.current) return;
+        const deltaX = e.clientX - dragRef.current.startX;
+        const deltaY = e.clientY - dragRef.current.startY;
+        const newX = Math.max(0, Math.min(window.innerWidth - width, dragRef.current.startPosX + deltaX));
+        const newY = Math.max(0, Math.min(window.innerHeight - height, dragRef.current.startPosY + deltaY));
+        setPosition({ x: newX, y: newY });
+    }, [width, height]);
+
+    const handleDragEnd = useCallback(() => {
+        dragRef.current = null;
+        setIsDragging(false);
+        document.removeEventListener('mousemove', handleDragMove);
+        document.removeEventListener('mouseup', handleDragEnd);
+    }, [handleDragMove]);
+
+    // Reset position to default (bottom-right)
+    // Reset position to default (bottom-right)
+    const resetPosition = () => {
+        setPosition(null);
+        setWidth(DEFAULT_WIDTH);
+        setHeight(DEFAULT_HEIGHT);
+        setInputHeight(DEFAULT_INPUT_HEIGHT);
+        localStorage.removeItem('assistant-position');
+        localStorage.removeItem('assistant-width');
+        localStorage.removeItem('assistant-height');
+        localStorage.removeItem('assistant-input-height');
+    };
+
+
+    // Input Resize Logic
+    const handleInputResizeStart = (e: React.MouseEvent) => {
+        const now = Date.now();
+        if (now - lastInputResizeClickRef.current < 300) { // 300ms threshold for double click
+            // Double click detected - Reset
+            setInputHeight(DEFAULT_INPUT_HEIGHT);
+            return;
+        }
+        lastInputResizeClickRef.current = now;
+
+        e.preventDefault();
+        inputResizeRef.current = { startY: e.clientY, startH: inputHeight };
+        document.addEventListener('mousemove', handleInputResizeMove);
+        document.addEventListener('mouseup', handleInputResizeEnd);
+    };
+
+    const handleInputResizeMove = useCallback((e: MouseEvent) => {
+        if (!inputResizeRef.current) return;
+        const deltaY = inputResizeRef.current.startY - e.clientY;
+
+        // Calculate dynamic max height: 50% of current chat window height
+        const currentWindowHeight = isFullscreen ? window.innerHeight : height;
+        const dynamicMaxHeight = currentWindowHeight * 0.5;
+
+        const newHeight = Math.max(MIN_INPUT_HEIGHT, Math.min(dynamicMaxHeight, inputResizeRef.current.startH + deltaY));
+        setInputHeight(newHeight);
+    }, [height, isFullscreen]);
+
+    const handleInputResizeEnd = useCallback(() => {
+        inputResizeRef.current = null;
+        document.removeEventListener('mousemove', handleInputResizeMove);
+        document.removeEventListener('mouseup', handleInputResizeEnd);
+    }, [handleInputResizeMove]);
+
+
+
+    const toggleFullscreen = useCallback(() => {
+        if (!isFullscreen) {
+            // Enter fullscreen: save current state
+            setSavedWindowState({
+                width,
+                height,
+                position
+            });
+            setIsFullscreen(true);
+        } else {
+            // Exit fullscreen: restore state
+            if (savedWindowState) {
+                setWidth(savedWindowState.width);
+                setHeight(savedWindowState.height);
+                setPosition(savedWindowState.position);
+            }
+            setIsFullscreen(false);
+        }
+    }, [isFullscreen, width, height, position, savedWindowState]);
+
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text);
+    };
+
+    const formatTime = (timestamp: string) => {
+        return new Date(timestamp).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    };
+
+    const handleUserAction = useCallback(async (actionId: string, payload?: any) => {
+        // Send user action back to the chat as a system/hidden message or trigger a new flow
+        // For now, we simulate a user message describing the action to keep context
+        await sendMessage(`[User Action: ${actionId}]`);
+    }, [sendMessage]);
+
+    return (
+        <div className={styles.container}>
+            {isOpen && (
+                <div
+                    className={`${styles.chatWindow} ${isMobile ? styles.mobile : ''} ${showSidebar ? styles.showSidebar : ''} ${isDragging ? styles.dragging : ''} ${isFullscreen ? styles.fullscreen : ''}`}
+                    style={(!isMobile && !isFullscreen) ? {
+                        width,
+                        height,
+                        ...(position ? {
+                            left: position.x,
+                            top: position.y,
+                            right: 'auto',
+                            bottom: 'auto'
+                        } : {})
+                    } : undefined}
+                >
+                    {/* Resize handles - all edges and corners (disabled in fullscreen) */}
+                    {(!isMobile && !isFullscreen) && (
+                        <>
+                            <div className={`${styles.resizeHandle} ${styles.resizeN}`} onMouseDown={handleResizeStart('n')} />
+                            <div className={`${styles.resizeHandle} ${styles.resizeS}`} onMouseDown={handleResizeStart('s')} />
+                            <div className={`${styles.resizeHandle} ${styles.resizeE}`} onMouseDown={handleResizeStart('e')} />
+                            <div className={`${styles.resizeHandle} ${styles.resizeW}`} onMouseDown={handleResizeStart('w')} />
+                            <div className={`${styles.resizeHandle} ${styles.resizeNE}`} onMouseDown={handleResizeStart('ne')} />
+                            <div className={`${styles.resizeHandle} ${styles.resizeNW}`} onMouseDown={handleResizeStart('nw')} />
+                            <div className={`${styles.resizeHandle} ${styles.resizeSE}`} onMouseDown={handleResizeStart('se')} />
+                            <div className={`${styles.resizeHandle} ${styles.resizeSW}`} onMouseDown={handleResizeStart('sw')} />
+                        </>
+                    )}
+
+                    {/* Header - draggable (disabled in fullscreen) */}
+                    <div
+                        className={`${styles.header} ${(!isMobile && !isFullscreen) ? styles.draggable : ''}`}
+                        onMouseDown={(!isMobile && !isFullscreen) ? handleDragStart : undefined}
+                        onDoubleClick={toggleFullscreen}
+                    >
+                        <button className={styles.menuButton} onClick={(e) => { e.stopPropagation(); setShowSidebar(!showSidebar); }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
+                            </svg>
+                        </button>
+                        <div className={styles.headerInfo}>
+                            <span className={styles.title}>{activeConversation?.title || 'Neuer Chat'}</span>
+                            <span className={styles.context}>
+                                {currentModule.name}
+                                <span className={`${styles.status} ${styles[connectionStatus]}`} />
+                            </span>
+                        </div>
+                        {!isMobile && (
+                            <button className={styles.actionButton} onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} title={isFullscreen ? "Fenster wiederherstellen" : "Vollbild"}>
+                                {isFullscreen ? (
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+                                    </svg>
+                                ) : (
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+                                    </svg>
+                                )}
+                            </button>
+                        )}
+                        {(position && !isFullscreen) && (
+                            <button className={styles.resetPositionButton} onClick={(e) => { e.stopPropagation(); resetPosition(); }} title="Position zurucksetzen">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                                    <path d="M3 3v5h5" />
+                                </svg>
+                            </button>
+                        )}
+                        <button className={styles.newChatButton} onClick={(e) => { e.stopPropagation(); createNewConversation(); }} title="Neuer Chat (Cmd+N)">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                        </button>
+                        <button className={styles.closeButton} onClick={() => setIsOpen(false)}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M18 6L6 18M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    {/* Sidebar */}
+                    <div className={`${styles.sidebar} ${showSidebar ? styles.open : ''}`}>
+                        <div className={styles.sidebarHeader}>
+                            <span>Konversationen</span>
+                            <button onClick={createNewConversation}>+ Neu</button>
+                        </div>
+                        <div className={styles.conversationList}>
+                            {conversations.map(conv => (
+                                <div
+                                    key={conv.id}
+                                    className={`${styles.conversationItem} ${conv.id === activeConversation?.id ? styles.active : ''}`}
+                                    onClick={() => selectConversation(conv)}
+                                >
+                                    <span className={styles.convTitle}>{conv.title}</span>
+                                    <div className={styles.convActions}>
+                                        <button onClick={(e) => { e.stopPropagation(); setRenameConv(conv); setRenameValue(conv.title); }} title="Umbenennen">Edit</button>
+                                        <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(conv); }} title="Löschen">Del</button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Messages */}
+                    <div ref={messagesContainerRef} className={styles.messages} onClick={() => showSidebar && setShowSidebar(false)}>
+                        {messages.length === 0 ? (
+                            <div className={styles.emptyChat}>
+                                <p>Wie kann ich dir helfen?</p>
+                                <p className={styles.hint}>Druecke Cmd+Shift+A zum Oeffnen/Schliessen</p>
+                            </div>
+                        ) : (
+                            messages.map(message => (
+                                <div key={message.id} data-message-id={message.id} className={`${styles.message} ${styles[message.role]}`}>
+                                    {message.role === 'user' ? (
+                                        <div>{message.content}</div>
+                                    ) : message.content ? (
+                                        <MessageContent content={message.content} />
+                                    ) : null}
+                                    {message.uiComponents && (
+                                        <div className={styles.uiContainer}>
+                                            <A2UIRenderer components={message.uiComponents} onAction={handleUserAction} />
+                                        </div>
+                                    )}
+                                    {(!message.content && !message.uiComponents && message.role === 'assistant') && <span className={styles.typing}><span></span><span></span><span></span></span>}
+                                    <div className={styles.messageFooter}>
+                                        <span className={styles.timestamp}>{formatTime(message.timestamp)}</span>
+                                        {message.role === 'assistant' && message.content && (
+                                            <button className={styles.copyButton} onClick={() => copyToClipboard(message.content)} title="Kopieren">Copy</button>
+                                        )}
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                        <div ref={messagesEndRef} />
+                    </div>
+
+                    {/* Input */}
+                    <form onSubmit={handleSubmit} className={`${styles.inputForm} ${isMobile ? styles.inputFormMobile : ''}`} style={{ height: isMobile ? 'auto' : inputHeight }}>
+                        {!isMobile && (
+                            <div
+                                className={styles.inputResizeHandle}
+                                onMouseDown={handleInputResizeStart}
+                                title="Größe ändern"
+                            />
+                        )}
+                        <textarea
+                            ref={inputRef as any}
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleSubmit(e);
+                                }
+                            }}
+                            placeholder={connectionStatus === 'offline' ? 'AI offline...' : 'Schreib mir...'}
+                            className={styles.input}
+                            disabled={isLoading || connectionStatus === 'offline'}
+                            autoComplete="off"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck="false"
+                            name="assistant-chat-input"
+                            id="assistant-chat-input"
+                            data-lpignore="true"
+                            data-1p-ignore="true"
+                            data-form-type="other"
+                            data-bwignore="true"
+                            aria-autocomplete="none"
+                        />
+                        <button type="submit" className={styles.sendButton} disabled={!input.trim() || isLoading}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                            </svg>
+                        </button>
+                    </form>
+                </div>
+            )}
+
+            {/* FAB - hide in fullscreen */}
+            {!isFullscreen && (
+                <button className={`${styles.fab} ${isOpen ? styles.fabActive : ''}`} onClick={() => setIsOpen(!isOpen)} title="⌘+Shift+A">
+                    {isOpen ? (
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                    ) : (
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                    )}
+                    {connectionStatus === 'online' && !isOpen && <span className={styles.fabBadge} />}
+                </button>
+            )}
+
+            {/* Rename Dialog */}
+            {renameConv && (
+                <div className={styles.dialogOverlay} onClick={() => setRenameConv(null)}>
+                    <div className={styles.renameDialog} onClick={e => e.stopPropagation()}>
+                        <h3>Chat umbenennen</h3>
+                        <input
+                            type="text"
+                            value={renameValue}
+                            onChange={(e) => setRenameValue(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleRename()}
+                            autoFocus
+                        />
+                        <div className={styles.dialogButtons}>
+                            <button onClick={() => setRenameConv(null)}>Abbrechen</button>
+                            <button onClick={handleRename} className={styles.primary}>Speichern</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirm */}
+            <ConfirmDialog
+                isOpen={deleteConfirm !== null}
+                title="Chat löschen?"
+                message={`Möchtest du "${deleteConfirm?.title}" wirklich löschen?`}
+                confirmText="Löschen"
+                cancelText="Abbrechen"
+                variant="danger"
+                onConfirm={handleDelete}
+                onCancel={() => setDeleteConfirm(null)}
+            />
+        </div>
+    );
+}

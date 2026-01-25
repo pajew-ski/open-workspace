@@ -1,0 +1,219 @@
+.container {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: var(--space-4);
+    height: calc(100vh - var(--header-height) - var(--space-10));
+}
+
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--color-surface-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.sidebarHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.sidebarHeader h3 {
+    margin: 0;
+    font-size: var(--text-base);
+    font-weight: var(--font-semibold);
+}
+
+.createForm {
+    padding: var(--space-3);
+    border-bottom: 1px solid var(--color-border-subtle);
+    background-color: var(--color-surface-sunken);
+}
+
+.createActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+}
+
+.noteList {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-2);
+}
+
+.loading,
+.empty {
+    padding: var(--space-4);
+    text-align: center;
+    color: var(--color-text-tertiary);
+    font-size: var(--text-sm);
+}
+
+.noteItemWrapper {
+    width: 100%;
+    margin-bottom: var(--space-1);
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+}
+
+.noteItemWrapper:hover {
+    background-color: var(--color-surface-sunken);
+}
+
+.noteItemWrapper.active {
+    background-color: var(--color-primary-subtle);
+}
+
+.noteItemContent {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-3);
+    cursor: pointer;
+}
+
+.noteInfo {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.noteItemWrapper:hover .renameBtn {
+    opacity: 1;
+}
+
+.renameBtn {
+    opacity: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+    padding: 0 var(--space-2);
+    font-size: 14px;
+    transition: opacity 0.2s;
+}
+
+.renameBtn:hover {
+    color: var(--color-primary);
+}
+
+.renameForm {
+    padding: var(--space-2);
+}
+
+.renameInput {
+    width: 100%;
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+}
+
+.noteTitle {
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--color-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.noteDate {
+    font-size: var(--text-xs);
+    color: var(--color-text-tertiary);
+    margin-top: var(--space-1);
+}
+
+.editorArea {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.editorHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    margin-bottom: var(--space-3);
+}
+
+.titleInput {
+    flex: 1;
+    font-size: var(--text-xl);
+    font-weight: var(--font-semibold);
+    border: none;
+    background: transparent;
+    color: var(--color-text-primary);
+    outline: none;
+    padding: var(--space-2) 0;
+}
+
+.titleInput:focus {
+    border-bottom: 2px solid var(--color-primary);
+}
+
+.editorActions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.unsaved {
+    font-size: var(--text-xs);
+    color: var(--color-warning);
+    background-color: var(--color-warning-subtle);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+}
+
+.emptyState {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.emptyContent {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    color: var(--color-text-tertiary);
+}
+
+.emptyContent svg {
+    margin-bottom: var(--space-4);
+    opacity: 0.5;
+}
+
+.emptyContent h3 {
+    margin: 0 0 var(--space-2) 0;
+    color: var(--color-text-secondary);
+}
+
+.emptyContent p {
+    margin: 0 0 var(--space-4) 0;
+    max-width: 300px;
+}
+
+@media (max-width: 768px) {
+    .container {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+
+    .sidebar {
+        max-height: 300px;
+    }
+
+    .editorArea {
+        min-height: 400px;
+    }
+}

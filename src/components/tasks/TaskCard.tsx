@@ -1,0 +1,123 @@
+'use client';
+
+import { format } from 'date-fns';
+import { de } from 'date-fns/locale';
+import { Link, Calendar, Clock, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui';
+import styles from './TaskCard.module.css';
+
+export interface Task {
+    id: string;
+    title: string;
+    description?: string;
+    status: string;
+    priority: 'low' | 'medium' | 'high' | 'urgent';
+    type: 'task' | 'bug' | 'feature' | 'milestone';
+    dueDate?: string;
+    startDate?: string;
+    deferredUntil?: string;
+    projectId?: string;
+    tags: string[];
+    dependencies?: { id: string; type: 'FS' | 'SS' | 'FF' | 'SF' }[];
+}
+
+interface TaskCardProps {
+    task: Task;
+    onClick: () => void;
+    onMoveStatus?: (newStatus: string) => void;
+}
+
+const PRIORITY_LABELS: Record<string, string> = {
+    low: 'Niedrig',
+    medium: 'Mittel',
+    high: 'Hoch',
+    urgent: 'Dringend'
+};
+
+const TYPE_LABELS: Record<string, string> = {
+    task: 'Aufgabe',
+    bug: 'Bug',
+    feature: 'Feature',
+    milestone: 'Meilenstein'
+};
+
+const NEXT_STATUS: Record<string, string | null> = {
+    'backlog': 'todo',
+    'todo': 'in-progress',
+    'in-progress': 'review',
+    'review': 'done',
+    'done': null
+};
+
+const PREV_STATUS: Record<string, string | null> = {
+    'backlog': null,
+    'todo': 'backlog',
+    'in-progress': 'todo',
+    'review': 'in-progress',
+    'done': 'review'
+};
+
+export function TaskCard({ task, onClick, onMoveStatus }: TaskCardProps) {
+    const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'done';
+    const isDeferred = task.status === 'on-hold' && task.deferredUntil;
+
+    return (
+        <div className={styles.cardContainer} onClick={onClick}>
+            <Card className={`${styles.card} ${styles[task.priority]}`}>
+                <div className={styles.statusActions} onClick={e => e.stopPropagation()}>
+                    {PREV_STATUS[task.status] && (
+                        <button className={styles.statusBtn} onClick={() => onMoveStatus?.(PREV_STATUS[task.status]!)}>
+                            <ArrowLeft size={12} />
+                        </button>
+                    )}
+                    {NEXT_STATUS[task.status] && (
+                        <button className={styles.statusBtn} onClick={() => onMoveStatus?.(NEXT_STATUS[task.status]!)}>
+                            <ArrowRight size={12} />
+                        </button>
+                    )}
+                </div>
+                <CardContent className={styles.content}>
+                    <div className={styles.header}>
+                        <div className={styles.headerLeft}>
+                            <span className={styles.typeLabel}>{TYPE_LABELS[task.type] || 'Dokument'}</span>
+                            {task.dependencies && task.dependencies.length > 0 && (
+                                <span className={styles.depIndicator} title={`${task.dependencies.length} Abhängigkeiten`}>
+                                    <Link size={10} /> {task.dependencies.length}
+                                </span>
+                            )}
+                        </div>
+                        <span className={styles.title}>{task.title}</span>
+                    </div>
+
+                    {task.description && (
+                        <p className={styles.description}>{task.description.substring(0, 60)}{task.description.length > 60 ? '...' : ''}</p>
+                    )}
+
+                    <div className={styles.meta}>
+                        <div className={styles.badges}>
+                            <span className={`${styles.badge} ${styles[`priority-${task.priority}`]}`}>
+                                {PRIORITY_LABELS[task.priority]}
+                            </span>
+                            {task.tags.map(tag => (
+                                <span key={tag} className={styles.tag}>#{tag}</span>
+                            ))}
+                        </div>
+
+                        <div className={styles.dates}>
+                            {task.dueDate && (
+                                <span className={`${styles.date} ${isOverdue ? styles.overdue : ''}`}>
+                                    <Calendar size={10} /> {format(new Date(task.dueDate), 'd. MMM', { locale: de })}
+                                </span>
+                            )}
+                            {isDeferred && (
+                                <span className={styles.deferred}>
+                                    <Clock size={10} /> {format(new Date(task.deferredUntil!), 'd. MMM', { locale: de })}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+    );
+}

@@ -1,0 +1,32 @@
+.fab {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: none;
+    background-color: var(--color-primary);
+    color: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    pointer-events: auto;
+}
+
+.fab:hover {
+    background-color: var(--color-primary-dark);
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.fab:active {
+    transform: scale(0.95);
+}
+
+@media (max-width: 768px) {
+    .fab {
+        width: 48px;
+        height: 48px;
+    }
+}

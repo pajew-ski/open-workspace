@@ -1,0 +1,89 @@
+.container {
+    display: flex;
+    min-height: 100vh;
+}
+
+.main {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    display: flex;
+    flex-direction: column;
+    transition: margin-left var(--transition-base);
+}
+
+.container.collapsed .main {
+    margin-left: var(--sidebar-width-collapsed);
+}
+
+.content {
+    flex: 1;
+    padding: var(--space-5);
+    max-width: var(--content-max-width);
+    width: 100%;
+    margin: 0 auto;
+}
+
+.content.fluid {
+    max-width: none;
+}
+
+/* Responsive: Mobile */
+@media (max-width: 768px) {
+    .main {
+        margin-left: 0;
+    }
+
+    .container.collapsed .main {
+        margin-left: 0;
+    }
+
+    .content {
+        padding: var(--space-4);
+    }
+}
+
+@media (max-width: 480px) {
+    .content {
+        padding: var(--space-3);
+    }
+}
+
+.mobileOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: calc(var(--z-sticky) - 1);
+    backdrop-filter: blur(2px);
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.floatingActionContainer {
+    position: fixed;
+    bottom: 20px;
+    right: 140px;
+    z-index: 50;
+    display: flex;
+    gap: 12px;
+}
+
+@media (max-width: 768px) {
+    .floatingActionContainer {
+        bottom: 16px;
+        /* Match mobile space-4 */
+        right: 140px;
+        /* Keep consistent with Finder/Chat stacking */
+    }
+}

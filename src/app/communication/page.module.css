@@ -1,0 +1,152 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.header h2 {
+    margin: 0 0 var(--space-1) 0;
+    font-size: var(--text-2xl);
+}
+
+.header p {
+    margin: 0;
+    color: var(--color-text-secondary);
+}
+
+.content {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: var(--space-4);
+    min-height: 400px;
+}
+
+.roomList h3 {
+    margin: 0;
+    font-size: var(--text-base);
+}
+
+.roomHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.rooms {
+    min-height: 200px;
+}
+
+.roomEmpty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    gap: var(--space-3);
+    padding: var(--space-6);
+    color: var(--color-text-tertiary);
+}
+
+.roomEmpty p {
+    margin: 0;
+    font-size: var(--text-sm);
+}
+
+.chatArea {
+    display: flex;
+    flex-direction: column;
+}
+
+.chatEmpty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 300px;
+    text-align: center;
+    color: var(--color-text-tertiary);
+    padding: var(--space-6);
+}
+
+.chatEmpty svg {
+    margin-bottom: var(--space-4);
+    opacity: 0.4;
+}
+
+.chatEmpty h3 {
+    margin: 0 0 var(--space-2) 0;
+    color: var(--color-text-secondary);
+    font-size: var(--text-xl);
+}
+
+.chatEmpty p {
+    margin: 0 0 var(--space-5) 0;
+    max-width: 400px;
+    line-height: var(--leading-relaxed);
+}
+
+.chatActions {
+    display: flex;
+    gap: var(--space-3);
+}
+
+.configGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-4);
+}
+
+.configItem {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.configLabel {
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--color-text-secondary);
+}
+
+.input {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-surface-elevated);
+    color: var(--color-text-primary);
+}
+
+.input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-subtle);
+}
+
+.statusBadge {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm);
+    background-color: var(--color-surface-sunken);
+    border-radius: var(--radius-md);
+    color: var(--color-text-tertiary);
+}
+
+@media (max-width: 768px) {
+    .content {
+        grid-template-columns: 1fr;
+    }
+
+    .configGrid {
+        grid-template-columns: 1fr;
+    }
+}
