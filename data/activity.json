@@ -1,5 +1,145 @@
 [
   {
+    "id": "evt-1769364893813-i2fkfyh7a",
+    "type": "task_updated",
+    "entityId": "task-1769264665338-9f381w",
+    "title": "Aufgabe aktualisiert: Projekt Dokumentation schreiben",
+    "timestamp": "2026-01-25T18:14:53.813Z"
+  },
+  {
+    "id": "evt-1769364889063-wbhofcvgn",
+    "type": "task_updated",
+    "entityId": "task-1769364820507-hj7ndz",
+    "title": "Aufgabe aktualisiert: Code für Open Workspace vibecoden",
+    "timestamp": "2026-01-25T18:14:49.063Z"
+  },
+  {
+    "id": "evt-1769364883014-32xvbn9rc",
+    "type": "task_updated",
+    "entityId": "task-1769364863355-0xne25",
+    "title": "Aufgabe aktualisiert: Anforderungen für Open Workspace aufschreiben und an Coding Agent übergeben",
+    "timestamp": "2026-01-25T18:14:43.014Z"
+  },
+  {
+    "id": "evt-1769364875564-elt3l8urv",
+    "type": "project_updated",
+    "entityId": "proj-1769264639258-lxhg49",
+    "title": "Projekt aktualisiert: Entwicklung Open Workspace",
+    "timestamp": "2026-01-25T18:14:35.564Z"
+  },
+  {
+    "id": "evt-1769364869632-v830hksd2",
+    "type": "task_updated",
+    "entityId": "task-1769364863355-0xne25",
+    "title": "Aufgabe aktualisiert: Anforderungen für Open Workspace aufschreiben und an Coding Agent übergeben",
+    "timestamp": "2026-01-25T18:14:29.632Z"
+  },
+  {
+    "id": "evt-1769364867559-mnfe7299s",
+    "type": "task_updated",
+    "entityId": "task-1769364863355-0xne25",
+    "title": "Aufgabe aktualisiert: Anforderungen für Open Workspace aufschreiben und an Coding Agent übergeben",
+    "timestamp": "2026-01-25T18:14:27.559Z"
+  },
+  {
+    "id": "evt-1769364866041-l08e6sxg5",
+    "type": "task_updated",
+    "entityId": "task-1769364863355-0xne25",
+    "title": "Aufgabe aktualisiert: Anforderungen für Open Workspace aufschreiben und an Coding Agent übergeben",
+    "timestamp": "2026-01-25T18:14:26.041Z"
+  },
+  {
+    "id": "evt-1769364863357-hdf38fdse",
+    "type": "task_created",
+    "entityId": "task-1769364863355-0xne25",
+    "title": "Aufgabe erstellt: Anforderungen für Open Workspace aufschreiben und an Coding Agent übergeben",
+    "timestamp": "2026-01-25T18:14:23.357Z"
+  },
+  {
+    "id": "evt-1769364838123-ac7x6s8z2",
+    "type": "task_updated",
+    "entityId": "task-1769364820507-hj7ndz",
+    "title": "Aufgabe aktualisiert: Code für Open Workspace vibecoden",
+    "timestamp": "2026-01-25T18:13:58.123Z"
+  },
+  {
+    "id": "evt-1769364828196-2mowyb2yj",
+    "type": "task_updated",
+    "entityId": "task-1769364820507-hj7ndz",
+    "title": "Aufgabe aktualisiert: Code für Open Workspace vibecoden",
+    "timestamp": "2026-01-25T18:13:48.196Z"
+  },
+  {
+    "id": "evt-1769364820508-vh8apwegt",
+    "type": "task_created",
+    "entityId": "task-1769364820507-hj7ndz",
+    "title": "Aufgabe erstellt: Code für Open Workspace vibecoden",
+    "timestamp": "2026-01-25T18:13:40.508Z"
+  },
+  {
+    "id": "evt-1769364774600-lwvk48ql0",
+    "type": "task_updated",
+    "entityId": "task-1769364756728-5gjk7c",
+    "title": "Aufgabe aktualisiert: Wäsche aufräumen",
+    "timestamp": "2026-01-25T18:12:54.600Z"
+  },
+  {
+    "id": "evt-1769364756731-9u1qaxpci",
+    "type": "task_created",
+    "entityId": "task-1769364756728-5gjk7c",
+    "title": "Aufgabe erstellt: Wäsche aufräumen",
+    "timestamp": "2026-01-25T18:12:36.731Z"
+  },
+  {
+    "id": "evt-1769364724914-jne417ytb",
+    "type": "task_updated",
+    "entityId": "task-1769364668423-p9rrqn",
+    "title": "Aufgabe aktualisiert: Wäsche aufhängen zum trocknen",
+    "timestamp": "2026-01-25T18:12:04.914Z"
+  },
+  {
+    "id": "evt-1769364711640-4ywqhqs0o",
+    "type": "task_updated",
+    "entityId": "task-1769364705977-un5mvo",
+    "title": "Aufgabe aktualisiert: Wäsche waschen",
+    "timestamp": "2026-01-25T18:11:51.640Z"
+  },
+  {
+    "id": "evt-1769364710293-oufkse8zt",
+    "type": "task_updated",
+    "entityId": "task-1769364668423-p9rrqn",
+    "title": "Aufgabe aktualisiert: Wäsche aufhängen zum trocknen",
+    "timestamp": "2026-01-25T18:11:50.293Z"
+  },
+  {
+    "id": "evt-1769364707978-g4ha1lmk4",
+    "type": "task_updated",
+    "entityId": "task-1769364668423-p9rrqn",
+    "title": "Aufgabe aktualisiert: Wäsche aufhängen zum trocknen",
+    "timestamp": "2026-01-25T18:11:47.978Z"
+  },
+  {
+    "id": "evt-1769364705979-3ifvwwnej",
+    "type": "task_created",
+    "entityId": "task-1769364705977-un5mvo",
+    "title": "Aufgabe erstellt: Wäsche waschen",
+    "timestamp": "2026-01-25T18:11:45.979Z"
+  },
+  {
+    "id": "evt-1769364686914-pkq5bra4q",
+    "type": "task_deleted",
+    "entityId": "task-1769249245188-pvp7vi",
+    "title": "Aufgabe gelöscht: Wäsche waschen",
+    "timestamp": "2026-01-25T18:11:26.914Z"
+  },
+  {
+    "id": "evt-1769364668427-by0cg0xu9",
+    "type": "task_created",
+    "entityId": "task-1769364668423-p9rrqn",
+    "title": "Aufgabe erstellt: Wäsche aufhängen zum trocknen",
+    "timestamp": "2026-01-25T18:11:08.427Z"
+  },
+  {
     "id": "evt-1769332280559-bbzlae2h5",
     "type": "task_updated",
     "entityId": "task-1769249229739-k32jmu",

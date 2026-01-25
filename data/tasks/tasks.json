@@ -14,35 +14,90 @@
       "startDate": "2026-01-24T00:00:00.000Z"
     },
     {
-      "id": "task-1769249245188-pvp7vi",
-      "title": "Wäsche waschen",
-      "description": "",
-      "status": "backlog",
-      "priority": "low",
-      "type": "task",
-      "tags": [],
-      "dependencies": [
-        {
-          "id": "task-1769249229739-k32jmu",
-          "type": "FS"
-        }
-      ],
-      "createdAt": "2026-01-24T10:07:25.188Z",
-      "updatedAt": "2026-01-24T10:50:16.816Z",
-      "startDate": "2026-01-24T00:00:00.000Z"
-    },
-    {
       "id": "task-1769264665338-9f381w",
       "title": "Projekt Dokumentation schreiben",
       "description": "",
       "status": "todo",
-      "priority": "high",
+      "priority": "urgent",
       "type": "task",
       "projectId": "proj-1769264639258-lxhg49",
       "tags": [],
       "dependencies": [],
       "createdAt": "2026-01-24T14:24:25.338Z",
-      "updatedAt": "2026-01-24T14:24:25.338Z"
+      "updatedAt": "2026-01-25T18:14:53.811Z"
+    },
+    {
+      "id": "task-1769364668423-p9rrqn",
+      "title": "Wäsche aufhängen zum trocknen",
+      "description": "",
+      "status": "todo",
+      "priority": "medium",
+      "type": "task",
+      "tags": [],
+      "dependencies": [
+        {
+          "id": "task-1769364705977-un5mvo",
+          "type": "FS"
+        }
+      ],
+      "createdAt": "2026-01-25T18:11:08.423Z",
+      "updatedAt": "2026-01-25T18:12:04.912Z"
+    },
+    {
+      "id": "task-1769364705977-un5mvo",
+      "title": "Wäsche waschen",
+      "description": "",
+      "status": "in-progress",
+      "priority": "medium",
+      "type": "task",
+      "tags": [],
+      "dependencies": [],
+      "createdAt": "2026-01-25T18:11:45.977Z",
+      "updatedAt": "2026-01-25T18:11:51.637Z"
+    },
+    {
+      "id": "task-1769364756728-5gjk7c",
+      "title": "Wäsche aufräumen",
+      "description": "",
+      "status": "todo",
+      "priority": "medium",
+      "type": "task",
+      "tags": [],
+      "dependencies": [
+        {
+          "id": "task-1769364668423-p9rrqn",
+          "type": "FS"
+        }
+      ],
+      "createdAt": "2026-01-25T18:12:36.728Z",
+      "updatedAt": "2026-01-25T18:12:54.595Z"
+    },
+    {
+      "id": "task-1769364820507-hj7ndz",
+      "title": "Code für Open Workspace vibecoden",
+      "description": "",
+      "status": "in-progress",
+      "priority": "high",
+      "type": "task",
+      "tags": [],
+      "dependencies": [],
+      "createdAt": "2026-01-25T18:13:40.507Z",
+      "updatedAt": "2026-01-25T18:14:49.061Z",
+      "projectId": "proj-1769264639258-lxhg49"
+    },
+    {
+      "id": "task-1769364863355-0xne25",
+      "title": "Anforderungen für Open Workspace aufschreiben und an Coding Agent übergeben",
+      "description": "",
+      "status": "done",
+      "priority": "high",
+      "type": "task",
+      "projectId": "proj-1769264639258-lxhg49",
+      "tags": [],
+      "dependencies": [],
+      "createdAt": "2026-01-25T18:14:23.355Z",
+      "updatedAt": "2026-01-25T18:14:43.012Z",
+      "completedAt": "2026-01-25T18:14:29.631Z"
     }
   ],
   "version": 1
