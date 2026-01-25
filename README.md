@@ -19,7 +19,8 @@ Open Workspace ist eine **Local-First Kognitions-Architektur**. Es handelt sich 
 - **Aufgaben**: Projekte und Aufgabenverwaltung im Kanban-Stil
 - **Kalender**: ICS/iCal Integration mit Monats-/Wochenansicht
 - **Global Finder**: Smarte Suche (`Cmd+F`) mit Modifiers (`@task`, `@note`) und Fuzzy-Matching
-- **Agenten**: A2A Agent-Verwaltung und Koordination
+- **Werkzeuge (Tools)**: Management von MCP-Servern und externen APIs
+- **Agenten**: Dynamische Verwaltung von A2A Agenten (Lokal & Remote) mit Credential-Anbindung
 - **Kommunikation**: Matrix-Protokoll Chat für Team-Kommunikation
 - **Persönlicher Assistent**: Kontext-bewusster AI-Assistent mit **Dynamic UI Generation** (A2UI) und Chat-Historie
 - **Mobile First**: Voll responsive UI mit Overlay-Sidebar und Burger-Menü
@@ -67,6 +68,13 @@ INFERENCE_MODEL=gpt-oss:20b
 
 **Digital Zen Garden**: Ruhige, fokussierte Oberfläche mit minimalen Ablenkungen. Neutrale Töne mit #00674F Teal-Akzent. Hell- und Dunkelmodus mit System-Präferenz-Erkennung.
 
+## Sicherheit & Credentials
+
+Open Workspace implementiert ein **Professional Credential Management System**:
+- **Verschlüsselung**: Lokale Secrets werden mit AES-256-GCM verschlüsselt (`data/secure/`).
+- **Verbindungen**: Zentrale Verwaltung von Auth-Daten (Bearer, API Key, Basic) getrennt von Tools.
+- **Enterprise Ready**: Unterstützung für Environment-Variablen (`ENV:MY_VAR`) statt lokaler Speicherung.
+
 ## Projekt-Struktur
 
 ```
@@ -97,10 +105,14 @@ data/
 | `GET/PUT/DELETE /api/tasks/[id]` | Aufgabe bearbeiten |
 | `GET /api/finder` | Globaler Such-Endpunkt (Fuzzy + Smart Modifiers) |
 | `GET/POST /api/calendar` | Kalender-Provider & Sync |
+| `GET/POST/DELETE /api/tools` | Tool-Konfiguration (MCP/API) |
+| `GET/POST/DELETE /api/connections` | Secure Connection Management |
+| `GET/POST/DELETE /api/agents` | Agent Management (Lokal/Remote) |
 
 ## Dokumentation
 
 - [AGENTS.md](./AGENTS.md) - AI-Agent Protokoll und Architektur
+- [architecture_agents.md](docs/architecture_agents.md) - Plan für Skalierbares Agenten-Ökosystem
 - [TODO.md](./TODO.md) - Entwicklungs-Roadmap
 
 ## Lizenz

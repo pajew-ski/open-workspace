@@ -1,0 +1,118 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.info {
+    display: flex;
+    flex-direction: column;
+}
+
+.label {
+    font-weight: var(--font-semibold);
+    font-size: var(--text-base);
+    color: var(--color-text-primary);
+}
+
+.description {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+}
+
+.editCard {
+    background-color: var(--color-surface-elevated);
+    border: 1px solid var(--color-border);
+}
+
+.formGrid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.field label {
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--color-text-secondary);
+}
+
+.labelRow {
+    display: flex;
+    justify-content: space-between;
+}
+
+.checkbox {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
+    cursor: pointer;
+}
+
+.select {
+    padding: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
+}
+
+.actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-3);
+    background-color: var(--color-surface-sunken);
+    border-radius: var(--radius-md);
+}
+
+.itemInfo {
+    display: flex;
+    flex-direction: column;
+}
+
+.meta {
+    font-size: var(--text-xs);
+    color: var(--color-text-tertiary);
+}
+
+.secureTag {
+    font-size: var(--text-xs);
+    color: var(--color-success);
+    background-color: var(--color-success-subtle);
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+}
+
+.empty {
+    text-align: center;
+    padding: var(--space-4);
+    color: var(--color-text-tertiary);
+    font-size: var(--text-sm);
+}

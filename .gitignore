@@ -40,4 +40,9 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
+
+# Security & User Data
+data/secure/
+data/connections/
+data/tools/
+data/agents/

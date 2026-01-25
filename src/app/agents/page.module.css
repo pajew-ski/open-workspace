@@ -1,42 +1,43 @@
 .container {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-5);
+    padding: var(--space-4);
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
 .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
+    margin-bottom: var(--space-6);
 }
 
 .header h2 {
-    margin: 0 0 var(--space-1) 0;
-    font-size: var(--text-2xl);
+    margin: 0;
+    font-size: var(--text-xl);
+    font-weight: var(--font-bold);
+    color: var(--color-text-primary);
 }
 
 .header p {
-    margin: 0;
+    margin: var(--space-2) 0 0;
     color: var(--color-text-secondary);
 }
 
 .grid {
     display: grid;
     grid-template-columns: 2fr 1fr;
-    gap: var(--space-5);
+    gap: var(--space-4);
 }
 
-.grid>*:first-child {
-    grid-row: span 2;
+@media (max-width: 768px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .empty {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    padding: var(--space-10);
     text-align: center;
+    padding: var(--space-8) var(--space-4);
     color: var(--color-text-tertiary);
 }
 
@@ -46,22 +47,20 @@
 }
 
 .empty h4 {
-    margin: 0 0 var(--space-2) 0;
-    color: var(--color-text-secondary);
-    font-size: var(--text-lg);
+    margin: 0 0 var(--space-2);
+    color: var(--color-text-primary);
 }
 
 .empty p {
-    margin: 0 0 var(--space-4) 0;
-    max-width: 400px;
+    margin: 0 0 var(--space-6);
+    max-width: 300px;
 }
 
 .configItem {
     display: flex;
     justify-content: space-between;
-    padding: var(--space-2) 0;
-    border-bottom: 1px solid var(--color-border-subtle);
-    font-size: var(--text-sm);
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--color-border);
 }
 
 .configItem:last-child {
@@ -74,7 +73,7 @@
 
 .configValue {
     font-weight: var(--font-medium);
-    color: var(--color-primary);
+    color: var(--color-text-primary);
 }
 
 .capabilities {
@@ -85,22 +84,57 @@
 
 .capabilities li {
     padding: var(--space-2) 0;
-    border-bottom: 1px solid var(--color-border-subtle);
-    font-size: var(--text-sm);
+    border-bottom: 1px dashed var(--color-border);
     color: var(--color-text-secondary);
-    margin: 0;
 }
 
 .capabilities li:last-child {
     border-bottom: none;
 }
 
-@media (max-width: 768px) {
-    .grid {
-        grid-template-columns: 1fr;
-    }
+/* Agent List Styles */
+.agentList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
 
-    .grid>*:first-child {
-        grid-row: auto;
-    }
+.agentItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-3);
+    background-color: var(--color-surface-sunken);
+    border-radius: var(--radius-md);
+}
+
+.agentInfo {
+    display: flex;
+    flex-direction: column;
+}
+
+.meta {
+    font-size: var(--text-xs);
+    color: var(--color-text-tertiary);
+    margin-bottom: 4px;
+}
+
+.description {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+
+.status {
+    display: flex;
+    align-items: center;
+}
+
+.badge {
+    background-color: var(--color-success-subtle);
+    color: var(--color-success);
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    font-size: var(--text-xs);
+    font-weight: var(--font-bold);
 }

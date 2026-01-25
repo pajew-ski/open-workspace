@@ -12,6 +12,7 @@ export interface Tool {
     name: string;
     description: string;
     type: ToolType;
+    connectionId?: string; // Link to a saved Connection
     config: ToolConfig;
     enabled: boolean;
     createdAt: string;
