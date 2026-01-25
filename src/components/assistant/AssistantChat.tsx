@@ -6,6 +6,8 @@ import { ConfirmDialog } from '@/components/ui';
 import { useAssistantContext } from '@/lib/assistant/context';
 import { A2UIRenderer } from '../a2ui/A2UIRenderer';
 import { A2UINode } from '../a2ui/types';
+import { MessageContent } from './MessageContent';
+import './MessageContent.css';
 import styles from './AssistantChat.module.css';
 
 interface Message {
@@ -71,8 +73,10 @@ export function AssistantChat() {
 
     // Refs
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const messagesContainerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
+    const shouldScrollToBottomRef = useRef(false);
     const pathname = usePathname();
     const { viewState } = useAssistantContext();
 
@@ -132,9 +136,13 @@ export function AssistantChat() {
         loadConversations();
     }, []);
 
-    // Scroll to bottom
+    // Scroll to bottom only when explicitly requested (e.g., after sending a message)
+    // This prevents unwanted scrolling on page navigation
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        if (shouldScrollToBottomRef.current && messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+            shouldScrollToBottomRef.current = false;
+        }
     }, [messages]);
 
     // Focus input
@@ -269,6 +277,7 @@ export function AssistantChat() {
 
         setMessages(prev => [...prev, userMessage]);
         setIsLoading(true);
+        shouldScrollToBottomRef.current = true; // Scroll after sending message
 
         // Save user message
         await fetch('/api/chat/conversations', {
@@ -571,22 +580,26 @@ export function AssistantChat() {
                     </div>
 
                     {/* Messages */}
-                    <div className={styles.messages} onClick={() => showSidebar && setShowSidebar(false)}>
+                    <div ref={messagesContainerRef} className={styles.messages} onClick={() => showSidebar && setShowSidebar(false)}>
                         {messages.length === 0 ? (
                             <div className={styles.emptyChat}>
                                 <p>Wie kann ich dir helfen?</p>
-                                <p className={styles.hint}>Drücke ⌘+Shift+A zum Öffnen/Schließen</p>
+                                <p className={styles.hint}>Druecke Cmd+Shift+A zum Oeffnen/Schliessen</p>
                             </div>
                         ) : (
                             messages.map(message => (
                                 <div key={message.id} className={`${styles.message} ${styles[message.role]}`}>
-                                    {message.content && <div>{message.content}</div>}
+                                    {message.role === 'user' ? (
+                                        <div>{message.content}</div>
+                                    ) : message.content ? (
+                                        <MessageContent content={message.content} />
+                                    ) : null}
                                     {message.uiComponents && (
                                         <div className={styles.uiContainer}>
                                             <A2UIRenderer components={message.uiComponents} onAction={handleUserAction} />
                                         </div>
                                     )}
-                                    {(!message.content && !message.uiComponents) && <span className={styles.typing}><span></span><span></span><span></span></span>}
+                                    {(!message.content && !message.uiComponents && message.role === 'assistant') && <span className={styles.typing}><span></span><span></span><span></span></span>}
                                     <div className={styles.messageFooter}>
                                         <span className={styles.timestamp}>{formatTime(message.timestamp)}</span>
                                         {message.role === 'assistant' && message.content && (

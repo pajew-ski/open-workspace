@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ActionHandler } from '../types';
 
 import './Display.css';
@@ -101,34 +101,33 @@ export const Button = ({ props, onAction }: ComponentProps) => {
 export const Markdown = ({ props }: ComponentProps) => {
     const content = props.content?.literalString || props.content || '';
 
-    // Simple markdown rendering - in production you'd use react-markdown
-    const renderMarkdown = (md: string) => {
-        // Basic transformations
-        let html = md
-            // Headers
-            .replace(/^### (.*$)/gm, '<h3>$1</h3>')
-            .replace(/^## (.*$)/gm, '<h2>$1</h2>')
-            .replace(/^# (.*$)/gm, '<h1>$1</h1>')
-            // Bold
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            // Italic
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            // Code
-            .replace(/`([^`]+)`/g, '<code>$1</code>')
-            // Links
-            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
-            // Line breaks
-            .replace(/\n\n/g, '</p><p>')
-            .replace(/\n/g, '<br/>');
+    // Use dynamic import to load ReactMarkdown and remarkGfm
+    const [ReactMarkdownLib, setReactMarkdownLib] = useState<{ default: typeof import('react-markdown').default } | null>(null);
+    const [remarkGfm, setRemarkGfm] = useState<any>(null);
 
-        return `<p>${html}</p>`;
-    };
+    useEffect(() => {
+        Promise.all([
+            import('react-markdown'),
+            import('remark-gfm')
+        ]).then(([md, gfm]) => {
+            setReactMarkdownLib(md);
+            setRemarkGfm(() => gfm.default);
+        });
+    }, []);
+
+    if (!ReactMarkdownLib) {
+        // Fallback to simple text while loading
+        return <div className="a2ui-markdown">{content}</div>;
+    }
+
+    const ReactMarkdown = ReactMarkdownLib.default;
 
     return (
-        <div
-            className="a2ui-markdown"
-            dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}
-        />
+        <div className="a2ui-markdown">
+            <ReactMarkdown remarkPlugins={remarkGfm ? [remarkGfm] : []}>
+                {content}
+            </ReactMarkdown>
+        </div>
     );
 };
 

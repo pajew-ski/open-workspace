@@ -27,10 +27,34 @@
           "role": "assistant",
           "content": "Hier ein Beispiel, wie du eine Liste mit fünf Elementen mit Agent2UI darstellen kannst:\n\n```a2ui\n{\n    \"components\": [\n        {\n            \"id\": \"list-card\",\n            \"component\": {\n                \"Card\": {\n                    \"title\": \"Meine Liste\",\n                    \"children\": {\n                        \"explicitList\": [\"item-1\", \"item-2\", \"item-3\", \"item-4\", \"item-5\"]\n                    }\n                }\n            }\n        },\n        {\n            \"id\": \"item-1\",\n            \"component\": {\n                \"Text\": { \"content\": \"Erstes Element\" }\n            }\n        },\n        {\n            \"id\": \"item-2\",\n            \"component\": {\n                \"Text\": { \"content\": \"Zweites Element\" }\n            }\n        },\n        {\n            \"id\": \"item-3\",\n            \"component\": {\n                \"Text\": { \"content\": \"Drittes Element\" }\n            }\n        },\n        {\n            \"id\": \"item-4\",\n            \"component\": {\n                \"Text\": { \"content\": \"Viertes Element\" }\n            }\n        },\n        {\n            \"id\": \"item-5\",\n            \"component\": {\n                \"Text\": { \"content\": \"Fünftes Element\" }\n            }\n        }\n    ]\n}\n```\n\nWenn du weitere Anpassungen brauchst (Farben, Buttons etc.), sag einfach Bescheid!",
           "timestamp": "2026-01-25T09:48:20.931Z"
+        },
+        {
+          "id": "msg-1769334837221-5s65rf",
+          "role": "user",
+          "content": "Zeig mir ein Beispiel mit Markdown (Fett, Kursiv), einem Code-Block und einem Mermaid-Diagramm.",
+          "timestamp": "2026-01-25T09:53:57.221Z"
+        },
+        {
+          "id": "msg-1769334837867-rsg6ey",
+          "role": "assistant",
+          "content": "Hier ein kompakter Markdown‑Beispiel, das **Fett** und *Kursiv* nutzt, einen Code‑Block enthält und ein Mermaid‑Diagramm darstellt:\n\n---\n\n## Beispieltext\n\n**Dies ist fett**, *und das ist kursiv*.\n\n### Code‑Block\n\n```python\ndef hallo_welt():\n    print(\"Hallo, Welt!\")\n```\n\n### Mermaid‑Diagramm\n\n```mermaid\ngraph TD\n    A[Start] --> B{Bedingung?}\n    B -->|Ja| C[Aktion 1]\n    B -->|Nein| D[Aktion 2]\n    C --> E[Ende]\n    D --> E\n```\n\n---\n\nViel Spaß beim Ausprobieren!",
+          "timestamp": "2026-01-25T09:53:57.867Z"
+        },
+        {
+          "id": "msg-1769335368526-hxf5tb",
+          "role": "user",
+          "content": "Zeig mir bitte Markdown mit **fett** und *kursiv*, eine Liste, einen Code-Block mit Python und ein Mermaid-Diagramm",
+          "timestamp": "2026-01-25T10:02:48.526Z"
+        },
+        {
+          "id": "msg-1769335369527-840ccu",
+          "role": "assistant",
+          "content": "Hier ein Beispiel‑Markdown, das alle gewünschten Elemente enthält:\n\n```markdown\n# Mein Beispiel\n\n**Dies ist fett** und *dies ist kursiv*.\n\n## 1. Liste\n\n- Erstes Element\n- Zweites Element\n- Drittes Element\n\n## 2. Code‑Block (Python)\n\n```python\ndef begruessung(name: str) -> str:\n    \"\"\"Erstellt eine freundliche Begrüßung.\"\"\"\n    return f\"Hallo, {name}!\"\n\nprint(begruessung(\"Max\"))\n```\n\n## 3. Mermaid‑Diagramm\n\n```mermaid\nflowchart TD\n    A[Start] --> B{Ist das Wetter schön?}\n    B -->|Ja| C[Ausgehen]\n    B -->|Nein| D[Drinnen bleiben]\n    C --> E[Abendessen]\n    D --> E\n```\n```\n\nKopiere den gesamten Block in einen Markdown‑Editor oder in deine Workspace‑Seite, und du siehst die fett‑/kursiven Texte, die Liste, den Python‑Codeblock und das Mermaid‑Diagramm. Viel Spaß!",
+          "timestamp": "2026-01-25T10:02:49.527Z"
         }
       ],
       "createdAt": "2026-01-25T09:48:02.689Z",
-      "updatedAt": "2026-01-25T09:48:20.931Z"
+      "updatedAt": "2026-01-25T10:02:49.527Z"
     },
     {
       "id": "conv-1769333141981-hg3x5q",
