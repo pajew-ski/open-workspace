@@ -49,12 +49,44 @@ const DEFAULT_WIDTH = 380;
 const DEFAULT_HEIGHT = 500;
 
 export function AssistantChat() {
-    // UI State
-    const [isOpen, setIsOpen] = useState(false);
+    // UI State - use lazy initialization to read from localStorage synchronously
+    const [isOpen, setIsOpen] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('assistant-open') === 'true';
+        }
+        return false;
+    });
     const [showSidebar, setShowSidebar] = useState(false);
-    const [width, setWidth] = useState(DEFAULT_WIDTH);
-    const [height, setHeight] = useState(DEFAULT_HEIGHT);
+    const [width, setWidth] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('assistant-width');
+            if (saved) return Math.max(MIN_WIDTH, parseInt(saved));
+        }
+        return DEFAULT_WIDTH;
+    });
+    const [height, setHeight] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('assistant-height');
+            if (saved) return Math.max(MIN_HEIGHT, parseInt(saved));
+        }
+        return DEFAULT_HEIGHT;
+    });
+    const [position, setPosition] = useState<{ x: number; y: number } | null>(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('assistant-position');
+            if (saved) {
+                try {
+                    const pos = JSON.parse(saved);
+                    if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
+                        return pos;
+                    }
+                } catch { /* ignore */ }
+            }
+        }
+        return null;
+    });
     const [isMobile, setIsMobile] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
 
     // Conversations State
     const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -76,6 +108,7 @@ export function AssistantChat() {
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
+    const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
     const shouldScrollToBottomRef = useRef(false);
     const scrollRestoredRef = useRef(false);
     const pathname = usePathname();
@@ -96,27 +129,25 @@ export function AssistantChat() {
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    // Load persisted state
-    useEffect(() => {
-        const savedOpen = localStorage.getItem('assistant-open');
-        const savedWidth = localStorage.getItem('assistant-width');
-        const savedHeight = localStorage.getItem('assistant-height');
-
-        if (savedOpen === 'true') setIsOpen(true);
-        if (savedWidth) setWidth(Math.max(MIN_WIDTH, parseInt(savedWidth)));
-        if (savedHeight) setHeight(Math.max(MIN_HEIGHT, parseInt(savedHeight)));
-    }, []);
+    // Note: Loading of persisted state is now done via lazy initialization in useState
+    // This prevents flash of default values on page navigation
 
     // Save open state
     useEffect(() => {
         localStorage.setItem('assistant-open', String(isOpen));
     }, [isOpen]);
 
-    // Save size
+    // Save size and position
     useEffect(() => {
         localStorage.setItem('assistant-width', String(width));
         localStorage.setItem('assistant-height', String(height));
     }, [width, height]);
+
+    useEffect(() => {
+        if (position) {
+            localStorage.setItem('assistant-position', JSON.stringify(position));
+        }
+    }, [position]);
 
     // Check connection
     useEffect(() => {
@@ -146,35 +177,92 @@ export function AssistantChat() {
         }
     }, [messages]);
 
-    // Restore scroll position BEFORE browser paints to prevent visible scroll animation
-    // useLayoutEffect runs synchronously after DOM mutations but before paint
+    // Helper function to find the first visible message element
+    const findFirstVisibleMessage = useCallback(() => {
+        const container = messagesContainerRef.current;
+        if (!container) return null;
+
+        const messageElements = container.querySelectorAll('[data-message-id]');
+        for (const el of messageElements) {
+            const rect = el.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+            // Check if element is at least partially visible
+            if (rect.top >= containerRect.top - 50 && rect.top < containerRect.bottom) {
+                return {
+                    id: el.getAttribute('data-message-id'),
+                    offsetFromTop: rect.top - containerRect.top
+                };
+            }
+        }
+        return null;
+    }, []);
+
+    // Helper to check if scrolled to bottom
+    const isAtBottom = useCallback(() => {
+        const container = messagesContainerRef.current;
+        if (!container) return false;
+        // Consider "at bottom" if within 50px of the end
+        return container.scrollHeight - container.scrollTop - container.clientHeight < 50;
+    }, []);
+
+    // Restore scroll position using anchor-based approach
+    // This survives content height changes from async Code/Mermaid rendering
     useLayoutEffect(() => {
         const container = messagesContainerRef.current;
         if (!container || messages.length === 0) return;
 
-        // Only restore once per route change
         if (!scrollRestoredRef.current) {
-            const savedScrollTop = localStorage.getItem('assistant-scroll-top');
-            if (savedScrollTop) {
-                // Set immediately - useLayoutEffect runs before paint so no animation visible
-                container.scrollTop = parseInt(savedScrollTop, 10);
+            const savedAnchor = localStorage.getItem('assistant-scroll-anchor');
+            if (savedAnchor) {
+                try {
+                    const parsed = JSON.parse(savedAnchor);
+
+                    // Special case: was at bottom - restore to bottom
+                    if (parsed.isAtBottom) {
+                        container.scrollTop = container.scrollHeight;
+                    } else if (parsed.id) {
+                        // Normal case: find anchor element and restore position
+                        const anchorElement = container.querySelector(`[data-message-id="${parsed.id}"]`);
+                        if (anchorElement) {
+                            const containerRect = container.getBoundingClientRect();
+                            const elementRect = anchorElement.getBoundingClientRect();
+                            const currentOffset = elementRect.top - containerRect.top;
+                            container.scrollTop += currentOffset - parsed.offsetFromTop;
+                        }
+                    }
+                } catch { /* ignore parse errors */ }
             }
             scrollRestoredRef.current = true;
         }
     }, [messages, pathname]);
 
-    // Save scroll position on scroll
+    // Save scroll anchor on scroll (debounced)
     useEffect(() => {
         const container = messagesContainerRef.current;
         if (!container) return;
 
+        let timeoutId: ReturnType<typeof setTimeout>;
         const handleScroll = () => {
-            localStorage.setItem('assistant-scroll-top', String(container.scrollTop));
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => {
+                // Check if at bottom first
+                if (isAtBottom()) {
+                    localStorage.setItem('assistant-scroll-anchor', JSON.stringify({ isAtBottom: true }));
+                } else {
+                    const anchor = findFirstVisibleMessage();
+                    if (anchor) {
+                        localStorage.setItem('assistant-scroll-anchor', JSON.stringify({ ...anchor, isAtBottom: false }));
+                    }
+                }
+            }, 100); // Debounce 100ms
         };
 
         container.addEventListener('scroll', handleScroll, { passive: true });
-        return () => container.removeEventListener('scroll', handleScroll);
-    }, [isOpen]); // Re-attach when chat opens
+        return () => {
+            clearTimeout(timeoutId);
+            container.removeEventListener('scroll', handleScroll);
+        };
+    }, [isOpen, findFirstVisibleMessage, isAtBottom]);
 
     // Reset scroll restored flag when pathname changes
     useEffect(() => {
@@ -520,27 +608,101 @@ export function AssistantChat() {
         await sendMessage(userInput);
     };
 
-    // Resize handlers
-    const handleResizeStart = (e: React.MouseEvent) => {
+    // Resize handlers - supports all edges and corners
+    type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
+    const resizeDirectionRef = useRef<ResizeDirection | null>(null);
+
+    const handleResizeStart = (direction: ResizeDirection) => (e: React.MouseEvent) => {
         e.preventDefault();
+        e.stopPropagation();
+        const currentX = position?.x ?? (window.innerWidth - width - 20);
+        const currentY = position?.y ?? (window.innerHeight - height - 90);
         resizeRef.current = { startX: e.clientX, startY: e.clientY, startW: width, startH: height };
+        resizeDirectionRef.current = direction;
+        // Store position for adjustment during resize
+        (resizeRef.current as any).startPosX = currentX;
+        (resizeRef.current as any).startPosY = currentY;
         document.addEventListener('mousemove', handleResizeMove);
         document.addEventListener('mouseup', handleResizeEnd);
     };
 
     const handleResizeMove = useCallback((e: MouseEvent) => {
-        if (!resizeRef.current) return;
-        const deltaX = resizeRef.current.startX - e.clientX;
-        const deltaY = resizeRef.current.startY - e.clientY;
-        setWidth(Math.max(MIN_WIDTH, resizeRef.current.startW + deltaX));
-        setHeight(Math.max(MIN_HEIGHT, resizeRef.current.startH + deltaY));
+        if (!resizeRef.current || !resizeDirectionRef.current) return;
+        const dir = resizeDirectionRef.current;
+        const deltaX = e.clientX - resizeRef.current.startX;
+        const deltaY = e.clientY - resizeRef.current.startY;
+        const startData = resizeRef.current as any;
+
+        let newWidth = startData.startW;
+        let newHeight = startData.startH;
+        let newX = startData.startPosX;
+        let newY = startData.startPosY;
+
+        // Handle horizontal resize
+        if (dir.includes('e')) {
+            newWidth = Math.max(MIN_WIDTH, startData.startW + deltaX);
+        } else if (dir.includes('w')) {
+            newWidth = Math.max(MIN_WIDTH, startData.startW - deltaX);
+            newX = startData.startPosX + (startData.startW - newWidth);
+        }
+
+        // Handle vertical resize
+        if (dir.includes('s')) {
+            newHeight = Math.max(MIN_HEIGHT, startData.startH + deltaY);
+        } else if (dir.includes('n')) {
+            newHeight = Math.max(MIN_HEIGHT, startData.startH - deltaY);
+            newY = startData.startPosY + (startData.startH - newHeight);
+        }
+
+        setWidth(newWidth);
+        setHeight(newHeight);
+        setPosition({ x: newX, y: newY });
     }, []);
 
     const handleResizeEnd = useCallback(() => {
         resizeRef.current = null;
+        resizeDirectionRef.current = null;
         document.removeEventListener('mousemove', handleResizeMove);
         document.removeEventListener('mouseup', handleResizeEnd);
     }, [handleResizeMove]);
+
+    // Drag handlers for moving the chat window
+    const handleDragStart = (e: React.MouseEvent) => {
+        // Don't start drag if clicking on a button
+        const target = e.target as HTMLElement;
+        if (target.closest('button')) {
+            return; // Let the button handle the click
+        }
+        e.preventDefault();
+        const currentX = position?.x ?? (window.innerWidth - width - 20);
+        const currentY = position?.y ?? (window.innerHeight - height - 90);
+        dragRef.current = { startX: e.clientX, startY: e.clientY, startPosX: currentX, startPosY: currentY };
+        setIsDragging(true);
+        document.addEventListener('mousemove', handleDragMove);
+        document.addEventListener('mouseup', handleDragEnd);
+    };
+
+    const handleDragMove = useCallback((e: MouseEvent) => {
+        if (!dragRef.current) return;
+        const deltaX = e.clientX - dragRef.current.startX;
+        const deltaY = e.clientY - dragRef.current.startY;
+        const newX = Math.max(0, Math.min(window.innerWidth - width, dragRef.current.startPosX + deltaX));
+        const newY = Math.max(0, Math.min(window.innerHeight - height, dragRef.current.startPosY + deltaY));
+        setPosition({ x: newX, y: newY });
+    }, [width, height]);
+
+    const handleDragEnd = useCallback(() => {
+        dragRef.current = null;
+        setIsDragging(false);
+        document.removeEventListener('mousemove', handleDragMove);
+        document.removeEventListener('mouseup', handleDragEnd);
+    }, [handleDragMove]);
+
+    // Reset position to default (bottom-right)
+    const resetPosition = () => {
+        setPosition(null);
+        localStorage.removeItem('assistant-position');
+    };
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
@@ -560,15 +722,38 @@ export function AssistantChat() {
         <div className={styles.container}>
             {isOpen && (
                 <div
-                    className={`${styles.chatWindow} ${isMobile ? styles.mobile : ''} ${showSidebar ? styles.showSidebar : ''}`}
-                    style={!isMobile ? { width, height } : undefined}
+                    className={`${styles.chatWindow} ${isMobile ? styles.mobile : ''} ${showSidebar ? styles.showSidebar : ''} ${isDragging ? styles.dragging : ''}`}
+                    style={!isMobile ? {
+                        width,
+                        height,
+                        ...(position ? {
+                            left: position.x,
+                            top: position.y,
+                            right: 'auto',
+                            bottom: 'auto'
+                        } : {})
+                    } : undefined}
                 >
-                    {/* Resize handle */}
-                    {!isMobile && <div className={styles.resizeHandle} onMouseDown={handleResizeStart} />}
+                    {/* Resize handles - all edges and corners */}
+                    {!isMobile && (
+                        <>
+                            <div className={`${styles.resizeHandle} ${styles.resizeN}`} onMouseDown={handleResizeStart('n')} />
+                            <div className={`${styles.resizeHandle} ${styles.resizeS}`} onMouseDown={handleResizeStart('s')} />
+                            <div className={`${styles.resizeHandle} ${styles.resizeE}`} onMouseDown={handleResizeStart('e')} />
+                            <div className={`${styles.resizeHandle} ${styles.resizeW}`} onMouseDown={handleResizeStart('w')} />
+                            <div className={`${styles.resizeHandle} ${styles.resizeNE}`} onMouseDown={handleResizeStart('ne')} />
+                            <div className={`${styles.resizeHandle} ${styles.resizeNW}`} onMouseDown={handleResizeStart('nw')} />
+                            <div className={`${styles.resizeHandle} ${styles.resizeSE}`} onMouseDown={handleResizeStart('se')} />
+                            <div className={`${styles.resizeHandle} ${styles.resizeSW}`} onMouseDown={handleResizeStart('sw')} />
+                        </>
+                    )}
 
-                    {/* Header */}
-                    <div className={styles.header}>
-                        <button className={styles.menuButton} onClick={() => setShowSidebar(!showSidebar)}>
+                    {/* Header - draggable */}
+                    <div
+                        className={`${styles.header} ${!isMobile ? styles.draggable : ''}`}
+                        onMouseDown={!isMobile ? handleDragStart : undefined}
+                    >
+                        <button className={styles.menuButton} onClick={(e) => { e.stopPropagation(); setShowSidebar(!showSidebar); }}>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
                             </svg>
@@ -580,7 +765,15 @@ export function AssistantChat() {
                                 <span className={`${styles.status} ${styles[connectionStatus]}`} />
                             </span>
                         </div>
-                        <button className={styles.newChatButton} onClick={createNewConversation} title="Neuer Chat (⌘N)">
+                        {position && (
+                            <button className={styles.resetPositionButton} onClick={(e) => { e.stopPropagation(); resetPosition(); }} title="Position zurucksetzen">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                                    <path d="M3 3v5h5" />
+                                </svg>
+                            </button>
+                        )}
+                        <button className={styles.newChatButton} onClick={(e) => { e.stopPropagation(); createNewConversation(); }} title="Neuer Chat (Cmd+N)">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
                             </svg>
@@ -624,7 +817,7 @@ export function AssistantChat() {
                             </div>
                         ) : (
                             messages.map(message => (
-                                <div key={message.id} className={`${styles.message} ${styles[message.role]}`}>
+                                <div key={message.id} data-message-id={message.id} className={`${styles.message} ${styles[message.role]}`}>
                                     {message.role === 'user' ? (
                                         <div>{message.content}</div>
                                     ) : message.content ? (

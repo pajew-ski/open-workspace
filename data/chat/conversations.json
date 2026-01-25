@@ -1,6 +1,20 @@
 {
   "conversations": [
     {
+      "id": "conv-1769338415112-1tkw3m",
+      "title": "Chat 25.1.2026",
+      "messages": [],
+      "createdAt": "2026-01-25T10:53:35.112Z",
+      "updatedAt": "2026-01-25T10:53:35.112Z"
+    },
+    {
+      "id": "conv-1769338401158-ybqo6q",
+      "title": "Chat 25.1.2026",
+      "messages": [],
+      "createdAt": "2026-01-25T10:53:21.158Z",
+      "updatedAt": "2026-01-25T10:53:21.158Z"
+    },
+    {
       "id": "conv-1769334482689-fcglqp",
       "title": "rendere eine liste",
       "messages": [
@@ -443,5 +457,5 @@
       "updatedAt": "2026-01-24T10:11:59.166Z"
     }
   ],
-  "activeId": "conv-1769334482689-fcglqp"
+  "activeId": "conv-1769338415112-1tkw3m"
 }

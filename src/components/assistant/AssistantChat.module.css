@@ -75,32 +75,104 @@
     animation: fadeIn var(--transition-fast);
 }
 
-/* Resize Handle */
+/* Resize Handles - all edges and corners */
 .resizeHandle {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 16px;
-    height: 16px;
-    cursor: nw-resize;
     z-index: 10;
 }
 
-.resizeHandle::before {
-    content: '';
-    position: absolute;
-    top: 4px;
-    left: 4px;
-    width: 8px;
-    height: 8px;
-    border-left: 2px solid var(--color-border);
-    border-top: 2px solid var(--color-border);
-    opacity: 0;
-    transition: opacity var(--transition-fast);
+/* Edge handles */
+.resizeN {
+    top: 0;
+    left: 12px;
+    right: 12px;
+    height: 6px;
+    cursor: n-resize;
 }
 
-.chatWindow:hover .resizeHandle::before {
-    opacity: 0.5;
+.resizeS {
+    bottom: 0;
+    left: 12px;
+    right: 12px;
+    height: 6px;
+    cursor: s-resize;
+}
+
+.resizeE {
+    right: 0;
+    top: 12px;
+    bottom: 12px;
+    width: 6px;
+    cursor: e-resize;
+}
+
+.resizeW {
+    left: 0;
+    top: 12px;
+    bottom: 12px;
+    width: 6px;
+    cursor: w-resize;
+}
+
+/* Corner handles */
+.resizeNE {
+    top: 0;
+    right: 0;
+    width: 12px;
+    height: 12px;
+    cursor: ne-resize;
+}
+
+.resizeNW {
+    top: 0;
+    left: 0;
+    width: 12px;
+    height: 12px;
+    cursor: nw-resize;
+}
+
+.resizeSE {
+    bottom: 0;
+    right: 0;
+    width: 12px;
+    height: 12px;
+    cursor: se-resize;
+}
+
+.resizeSW {
+    bottom: 0;
+    left: 0;
+    width: 12px;
+    height: 12px;
+    cursor: sw-resize;
+}
+
+/* Visual indicator on hover */
+.chatWindow:hover .resizeHandle {
+    background: transparent;
+}
+
+.chatWindow:hover .resizeNW::before,
+.chatWindow:hover .resizeSE::before {
+    content: '';
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    opacity: 0.4;
+}
+
+.chatWindow:hover .resizeNW::before {
+    top: 2px;
+    left: 2px;
+    border-left: 2px solid var(--color-text-secondary);
+    border-top: 2px solid var(--color-text-secondary);
+}
+
+.chatWindow:hover .resizeSE::before {
+    bottom: 2px;
+    right: 2px;
+    border-right: 2px solid var(--color-text-secondary);
+    border-bottom: 2px solid var(--color-text-secondary);
 }
 
 /* Header */
@@ -116,6 +188,50 @@
     flex-shrink: 0;
     /* Important: Don't squish */
     min-height: 52px;
+}
+
+.header.draggable {
+    cursor: grab;
+    user-select: none;
+}
+
+.header.draggable:active {
+    cursor: grabbing;
+}
+
+.chatWindow.dragging {
+    transition: none !important;
+    user-select: none;
+}
+
+.chatWindow.dragging * {
+    pointer-events: none;
+}
+
+.chatWindow.dragging .header {
+    pointer-events: auto;
+    cursor: grabbing;
+}
+
+.resetPositionButton {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    opacity: 0.7;
+    transition: all 0.2s;
+}
+
+.resetPositionButton:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.25);
 }
 
 .menuButton,
