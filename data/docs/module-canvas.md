@@ -1,19 +1,19 @@
 ---
-id: sys-doc-003
-slug: module-canvas
+id: "sys-doc-003"
+slug: "module-canvas"
 title: "Modul: Canvas Visualisierung"
-author: michael-pajewski
-type: TechArticle
-tags: [modules, visualization, creative-work]
-createdAt: 2026-01-25T18:10:00Z
-updatedAt: 2026-01-25T18:10:00Z
+author: "michael-pajewski"
+type: "TechArticle"
+tags: ["modules", "visualization", "creative-work"]
+createdAt: "2026-01-25T18:10:00Z"
+updatedAt: "2026-01-25T18:52:16.026Z"
 ---
 
 # Canvas Visualisierung
 
 Der Canvas ist deine unendliche digitale Weißwandfläche. Hierarchische Listen reichen oft nicht aus, um komplexe Systeme zu verstehen – dafür gibt es den Canvas.
 
-## 🎨 Anwendungsfälle
+## Anwendungsfälle
 
 ### 1. System-Architektur
 Zeichne Server, Datenbanken und deren Verbindungen. Nutze **Card Nodes** für Komponenten und **Edges** für Datenflüsse.
@@ -25,7 +25,7 @@ Starte mit einem zentralen Thema in der Mitte. Erstelle Äste zu verwandten Idee
 ### 3. Prozess-Modellierung
 Visualisiere Workflows: "Wenn X passiert -> dann tue Y".
 
-## 🛠 Anleitung: Arbeiten mit dem Canvas
+## Anleitung: Arbeiten mit dem Canvas
 
 ### Navigation
 - **Pan**: Halte die Leertaste gedrückt und ziehe mit der Maus, um dich zu bewegen.

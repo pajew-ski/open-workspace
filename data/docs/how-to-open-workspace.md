@@ -1,19 +1,19 @@
 ---
-id: sys-doc-001
-slug: how-to-open-workspace
+id: "sys-doc-001"
+slug: "how-to-open-workspace"
 title: "HowTo: Open Workspace nutzen"
-author: michael-pajewski
-type: HowTo
-tags: [system, guide, documentation, howto]
-createdAt: 2026-01-25T18:00:00Z
-updatedAt: 2026-01-25T18:00:00Z
+author: "michael-pajewski"
+type: "HowTo"
+tags: ["system", "guide", "documentation", "howto"]
+createdAt: "2026-01-25T18:00:00Z"
+updatedAt: "2026-01-25T18:51:45.056Z"
 ---
 
 # Open Workspace System-Dokumentation
 
 Willkommen im **Open Workspace**. Dies ist dein zentraler Hub für AI-gestützte Produktivität, Wissensmanagement und Projektplanung.
 
-## 🚀 Erste Schritte
+## Erste Schritte
 
 Der Workspace ist in spezialisierte Module unterteilt, die zusammen ein "Second Brain" bilden.
 

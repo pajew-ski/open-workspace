@@ -11,11 +11,12 @@ interface AppShellProps {
     children: ReactNode;
     title?: string;
     actions?: ReactNode;
+    fluid?: boolean;
 }
 
 const SIDEBAR_COLLAPSED_KEY = 'open-workspace-sidebar-collapsed';
 
-export function AppShell({ children, title, actions }: AppShellProps) {
+export function AppShell({ children, title, actions, fluid = false }: AppShellProps) {
     const [isCollapsed, setIsCollapsed] = useState(true); // Default to collapsed on desktop
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
@@ -54,7 +55,7 @@ export function AppShell({ children, title, actions }: AppShellProps) {
             />
             <div className={styles.main}>
                 <Header title={title} onMobileMenuClick={handleMobileToggle} />
-                <main className={styles.content}>
+                <main className={`${styles.content} ${fluid ? styles.fluid : ''}`}>
                     {children}
                 </main>
             </div>

@@ -1,5 +1,26 @@
 [
   {
+    "id": "evt-1769367136028-8papch5k0",
+    "type": "doc_updated",
+    "entityId": "sys-doc-003",
+    "title": "Dokument bearbeitet: Modul: Canvas Visualisierung",
+    "timestamp": "2026-01-25T18:52:16.028Z"
+  },
+  {
+    "id": "evt-1769367115662-xglsjytmy",
+    "type": "doc_updated",
+    "entityId": "sys-doc-002",
+    "title": "Dokument bearbeitet: Modul: Aufgaben & Projekte",
+    "timestamp": "2026-01-25T18:51:55.662Z"
+  },
+  {
+    "id": "evt-1769367105057-54qillx00",
+    "type": "doc_updated",
+    "entityId": "sys-doc-001",
+    "title": "Dokument bearbeitet: HowTo: Open Workspace nutzen",
+    "timestamp": "2026-01-25T18:51:45.057Z"
+  },
+  {
     "id": "evt-1769364893813-i2fkfyh7a",
     "type": "task_updated",
     "entityId": "task-1769264665338-9f381w",

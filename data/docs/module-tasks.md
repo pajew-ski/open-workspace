@@ -1,19 +1,19 @@
 ---
-id: sys-doc-002
-slug: module-tasks
+id: "sys-doc-002"
+slug: "module-tasks"
 title: "Modul: Aufgaben & Projekte"
-author: michael-pajewski
-type: TechArticle
-tags: [modules, documentation, architecture]
-createdAt: 2026-01-25T18:05:00Z
-updatedAt: 2026-01-25T18:05:00Z
+author: "michael-pajewski"
+type: "TechArticle"
+tags: ["modules", "documentation", "architecture"]
+createdAt: "2026-01-25T18:05:00Z"
+updatedAt: "2026-01-25T18:51:55.661Z"
 ---
 
 # Aufgaben & Projekte
 
 Das Task-Management-System ist darauf ausgelegt, Fokus zu schaffen und Fortschritt sichtbar zu machen.
 
-## 📋 Features & Konzepte
+## Features & Konzepte
 
 ### Projekte
 Ein Projekt ist ein Container für Aufgaben. Es hat einen **Titel**, eine **Farbe** und einen **Status**.
@@ -28,7 +28,7 @@ Die Aufgaben werden in Spalten organisiert, die den Fortschritt darstellen:
 4.  **Review**: Warten auf Feedback oder Überprüfung.
 5.  **Erledigt**: Abschluss.
 
-## 🛠 Anleitung: Projektmanagement
+## Anleitung: Projektmanagement
 
 ### Neues Projekt anlegen
 1. Klicke auf `/tasks` oben rechts auf den **"P"** Button (Floating Action Button).

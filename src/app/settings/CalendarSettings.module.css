@@ -96,6 +96,12 @@
     flex-direction: column;
     gap: 2px;
     overflow: hidden;
+    flex: 1;
+    /* Take available space */
+    min-width: 0;
+    /* Crucial for text-overflow to work in flex child */
+    margin-right: var(--space-3);
+    /* Add space before actions */
 }
 
 .providerName {

@@ -12,6 +12,7 @@
 
 .input {
     width: 100%;
+    max-width: 100%;
     padding: var(--space-2) var(--space-3);
     font-family: var(--font-sans);
     font-size: var(--text-base);

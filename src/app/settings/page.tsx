@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 
 export default function SettingsPage() {
     return (
-        <AppShell title="Einstellungen">
+        <AppShell title="Einstellungen" fluid={true}>
             <div className={styles.container}>
                 <Card>
                     <CardHeader>

@@ -149,6 +149,7 @@ export default function TasksPage() {
     return (
         <AppShell
             title="Aufgaben"
+            fluid={true}
             actions={
                 <>
                     <FloatingActionButton
@@ -190,6 +191,7 @@ export default function TasksPage() {
                                 <div className={styles.gridRow}>
                                     {STATUS_COLUMNS.map(col => (
                                         <div key={col.id} className={styles.cell}>
+                                            <div className={styles.mobileColumnHeader}>{col.label}</div>
                                             {(groupedTasks[project.id] || [])
                                                 .filter(t => t.status === col.id)
                                                 .map(task => (

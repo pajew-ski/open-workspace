@@ -23,6 +23,10 @@
     margin: 0 auto;
 }
 
+.content.fluid {
+    max-width: none;
+}
+
 /* Responsive: Mobile */
 @media (max-width: 768px) {
     .main {
