@@ -1,4 +1,5 @@
 import { Tool } from './types';
+import { getConnectionWithSecrets } from '@/lib/connections/manager';
 
 interface ToolExecutionResult {
     success: boolean;
@@ -19,7 +20,35 @@ export async function executeTool(tool: Tool, args: Record<string, any> = {}): P
         let url = tool.config.url || '';
         const method = tool.config.method || 'GET';
         let body = tool.config.body;
-        const headers = { ...tool.config.headers };
+        let headers = { ...tool.config.headers };
+
+        // Resolve Connection logic
+        if (tool.connectionId) {
+            const connection = await getConnectionWithSecrets(tool.connectionId);
+            if (connection) {
+                // Prepend base URL if tool URL is relative path
+                if (connection.baseUrl && !url.startsWith('http')) {
+                    // Normalize slash
+                    const base = connection.baseUrl.replace(/\/$/, '');
+                    const path = url.replace(/^\//, '');
+                    url = `${base}/${path}`;
+                } else if (connection.baseUrl && url.startsWith('/')) {
+                    // If tool url is path, join
+                    const base = connection.baseUrl.replace(/\/$/, '');
+                    url = `${base}${url}`;
+                }
+
+                // Inject Auth Headers
+                if (connection.auth.type === 'bearer' && connection.auth.token) {
+                    headers['Authorization'] = `Bearer ${connection.auth.token}`;
+                } else if (connection.auth.type === 'basic' && connection.auth.username && connection.auth.password) {
+                    const creds = Buffer.from(`${connection.auth.username}:${connection.auth.password}`).toString('base64');
+                    headers['Authorization'] = `Basic ${creds}`;
+                } else if (connection.auth.type === 'apikey' && connection.auth.apiKey && connection.auth.headerName) {
+                    headers[connection.auth.headerName] = connection.auth.apiKey;
+                }
+            }
+        }
 
         // Replace placeholders in URL: {key} -> value
         Object.entries(args).forEach(([key, value]) => {

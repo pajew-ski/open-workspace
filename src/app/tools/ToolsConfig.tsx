@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, Button } from '@/components/ui';
 import { AddApiToolDialog } from '@/components/tools/AddApiToolDialog';
+import { ConnectionManager } from '@/app/tools/connections/ConnectionManager';
 import styles from './ToolsConfig.module.css';
 
 export function ToolsConfig() {
+    const [activeTab, setActiveTab] = useState<'tools' | 'connections'>('tools');
     const [tools, setTools] = useState<any[]>([]);
     const [isAdding, setIsAdding] = useState(false);
 
@@ -36,64 +38,85 @@ export function ToolsConfig() {
 
     return (
         <div className={styles.container}>
-            {isAdding && (
-                <AddApiToolDialog
-                    onClose={() => setIsAdding(false)}
-                    onAdd={handleAddApi}
-                />
-            )}
-
-            <div className={styles.header}>
-                <div className={styles.info}>
-                    <span className={styles.label}>MCP Server</span>
-                    <span className={styles.description}>
-                        Konfiguriere Model Context Protocol (MCP) Server für erweiterte Agenten-Funktionen.
-                    </span>
-                </div>
-                <Button variant="primary" size="sm" disabled>+ Server verbinden</Button>
+            <div className={styles.tabs}>
+                <button
+                    className={`${styles.tab} ${activeTab === 'tools' ? styles.activeTab : ''}`}
+                    onClick={() => setActiveTab('tools')}
+                >
+                    Tools
+                </button>
+                <button
+                    className={`${styles.tab} ${activeTab === 'connections' ? styles.activeTab : ''}`}
+                    onClick={() => setActiveTab('connections')}
+                >
+                    Verbindungen
+                </button>
             </div>
 
-            <Card className={styles.serverList}>
-                <CardContent>
-                    <div className={styles.emptyState}>
-                        <p>Keine MCP Server konfiguriert.</p>
-                        <p className={styles.emptySub}>Verbinde einen Server, um Tools bereitzustellen.</p>
-                    </div>
-                </CardContent>
-            </Card>
-
-            <div className={styles.header} style={{ marginTop: 'var(--space-6)' }}>
-                <div className={styles.info}>
-                    <span className={styles.label}>API Integrationen</span>
-                    <span className={styles.description}>
-                        Verbinde externe APIs (z.B. OpenAI, Anthropic, Search), um sie als Tools zu nutzen.
-                    </span>
-                </div>
-                <Button variant="primary" size="sm" onClick={() => setIsAdding(true)}>+ API verbinden</Button>
-            </div>
-
-            <Card className={styles.serverList}>
-                <CardContent>
-                    {tools.filter(t => t.type === 'api').length === 0 ? (
-                        <div className={styles.emptyState}>
-                            <p>Keine APIs konfiguriert.</p>
-                            <p className={styles.emptySub}>Füge API-Keys hinzu, um externe Dienste anzubinden.</p>
-                        </div>
-                    ) : (
-                        <div className={styles.toolList}>
-                            {tools.filter(t => t.type === 'api').map(tool => (
-                                <div key={tool.id} className={styles.toolItem}>
-                                    <div>
-                                        <strong>{tool.name}</strong>
-                                        <div style={{ fontSize: '0.8em', color: '#666' }}>{tool.config.url}</div>
-                                    </div>
-                                    <div className={styles.toolBadge}>{tool.config.method}</div>
-                                </div>
-                            ))}
-                        </div>
+            {activeTab === 'connections' ? (
+                <ConnectionManager />
+            ) : (
+                <>
+                    {isAdding && (
+                        <AddApiToolDialog
+                            onClose={() => setIsAdding(false)}
+                            onAdd={handleAddApi}
+                        />
                     )}
-                </CardContent>
-            </Card>
+
+                    <div className={styles.header}>
+                        <div className={styles.info}>
+                            <span className={styles.label}>MCP Server</span>
+                            <span className={styles.description}>
+                                Konfiguriere Model Context Protocol (MCP) Server für erweiterte Agenten-Funktionen.
+                            </span>
+                        </div>
+                        <Button variant="primary" size="sm" disabled>+ Server verbinden</Button>
+                    </div>
+
+                    <Card className={styles.serverList}>
+                        <CardContent>
+                            <div className={styles.emptyState}>
+                                <p>Keine MCP Server konfiguriert.</p>
+                                <p className={styles.emptySub}>Verbinde einen Server, um Tools bereitzustellen.</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <div className={styles.header} style={{ marginTop: 'var(--space-6)' }}>
+                        <div className={styles.info}>
+                            <span className={styles.label}>API Integrationen</span>
+                            <span className={styles.description}>
+                                Verbinde externe APIs (z.B. OpenAI, Anthropic, Search), um sie als Tools zu nutzen.
+                            </span>
+                        </div>
+                        <Button variant="primary" size="sm" onClick={() => setIsAdding(true)}>+ API verbinden</Button>
+                    </div>
+
+                    <Card className={styles.serverList}>
+                        <CardContent>
+                            {tools.filter(t => t.type === 'api').length === 0 ? (
+                                <div className={styles.emptyState}>
+                                    <p>Keine APIs konfiguriert.</p>
+                                    <p className={styles.emptySub}>Füge API-Keys hinzu, um externe Dienste anzubinden.</p>
+                                </div>
+                            ) : (
+                                <div className={styles.toolList}>
+                                    {tools.filter(t => t.type === 'api').map(tool => (
+                                        <div key={tool.id} className={styles.toolItem}>
+                                            <div>
+                                                <strong>{tool.name}</strong>
+                                                <div style={{ fontSize: '0.8em', color: '#666' }}>{tool.config.url}</div>
+                                            </div>
+                                            <div className={styles.toolBadge}>{tool.config.method}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </>
+            )}
         </div>
     );
 }

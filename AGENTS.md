@@ -99,7 +99,16 @@ open-workspace/
 
 ### Agent Tools
 - Verfügbare Tools sind in [TOOLS.md](./TOOLS.md) dokumentiert.
-- Standard-Tool: `workspace_finder` (Global Finder)
+- **Dynamic Tool Discovery**: Der Agent erhält verfügbare Tools via System-Prompt.
+- **Tool Protocol**:
+  Um ein Tool auszuführen, muss der Agent eine spezifische Syntax verwenden:
+  `[[TOOL:tool_id:{"arg":"value"}]]`
+  
+  Beispiel:
+  - User: "Wie ist das Wetter in Berlin?"
+  - Agent (Output): `Ich prüfe das Wetter. [[TOOL:weather:{"latitude":52.52,"longitude":13.41}]]`
+  
+- **Standard-Tool**: `workspace_finder` (Global Finder)
   - Unterstützt Fuzzy-Suche (Levenshtein) für Inhalte und Befehle
   - Smart Modifiers: `@task`, `@note`, `@termin`, `@chat`, `@projekt`
   - Findet auch Aufgaben ohne Projektzuordnung via `@projekt`
@@ -139,6 +148,13 @@ Provider-Konfiguration in `data/calendar/providers.json`. Gecachte Events in `da
 Historie und Konversationen in `data/chat/conversations.json`.
 
 ## Modul-Agenten
+
+Die Anwendung unterstützt nun **Dynamisches Agenten-Management**:
+- **Lokal**: Agenten, die im System-Context laufen (definiert durch System Prompt).
+- **Remote (A2A)**: Agenten, die extern laufen und via HTTP/A2A kommunizieren.
+- **Connections**: Remote Agenten können mit sicheren Credentials (z.B. Bearer Token) verknüpft werden.
+
+Siehe [architecture_agents.md](docs/architecture_agents.md) für die detaillierte Architektur-Vision.
 
 | Modul | Agent-Rolle | Kontext-Zugriff |
 |-------|------------|-----------------|
