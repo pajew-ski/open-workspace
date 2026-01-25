@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { ConfirmDialog } from '@/components/ui';
 import { useAssistantContext } from '@/lib/assistant/context';
@@ -77,6 +77,7 @@ export function AssistantChat() {
     const inputRef = useRef<HTMLInputElement>(null);
     const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
     const shouldScrollToBottomRef = useRef(false);
+    const scrollRestoredRef = useRef(false);
     const pathname = usePathname();
     const { viewState } = useAssistantContext();
 
@@ -144,6 +145,41 @@ export function AssistantChat() {
             shouldScrollToBottomRef.current = false;
         }
     }, [messages]);
+
+    // Restore scroll position BEFORE browser paints to prevent visible scroll animation
+    // useLayoutEffect runs synchronously after DOM mutations but before paint
+    useLayoutEffect(() => {
+        const container = messagesContainerRef.current;
+        if (!container || messages.length === 0) return;
+
+        // Only restore once per route change
+        if (!scrollRestoredRef.current) {
+            const savedScrollTop = localStorage.getItem('assistant-scroll-top');
+            if (savedScrollTop) {
+                // Set immediately - useLayoutEffect runs before paint so no animation visible
+                container.scrollTop = parseInt(savedScrollTop, 10);
+            }
+            scrollRestoredRef.current = true;
+        }
+    }, [messages, pathname]);
+
+    // Save scroll position on scroll
+    useEffect(() => {
+        const container = messagesContainerRef.current;
+        if (!container) return;
+
+        const handleScroll = () => {
+            localStorage.setItem('assistant-scroll-top', String(container.scrollTop));
+        };
+
+        container.addEventListener('scroll', handleScroll, { passive: true });
+        return () => container.removeEventListener('scroll', handleScroll);
+    }, [isOpen]); // Re-attach when chat opens
+
+    // Reset scroll restored flag when pathname changes
+    useEffect(() => {
+        scrollRestoredRef.current = false;
+    }, [pathname]);
 
     // Focus input
     useEffect(() => {
@@ -623,9 +659,16 @@ export function AssistantChat() {
                             className={styles.input}
                             disabled={isLoading || connectionStatus === 'offline'}
                             autoComplete="off"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck="false"
                             name="assistant-chat-input"
+                            id="assistant-chat-input"
                             data-lpignore="true"
                             data-1p-ignore="true"
+                            data-form-type="other"
+                            data-bwignore="true"
+                            aria-autocomplete="none"
                         />
                         <button type="submit" className={styles.sendButton} disabled={!input.trim() || isLoading}>
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

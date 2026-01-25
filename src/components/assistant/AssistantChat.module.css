@@ -287,6 +287,11 @@
     flex-direction: column;
     gap: var(--space-3);
     min-height: 0;
+    /* No scroll-behavior: smooth here - it causes visible animation on position restore */
+}
+
+/* Only apply smooth scroll when explicitly enabled (e.g., after sending a message) */
+.messages.smoothScroll {
     scroll-behavior: smooth;
 }
 
