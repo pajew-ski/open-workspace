@@ -1,0 +1,48 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.info {
+    display: flex;
+    flex-direction: column;
+}
+
+.label {
+    font-weight: var(--font-semibold);
+    font-size: var(--text-base);
+    color: var(--color-text-primary);
+}
+
+.description {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+}
+
+.serverList {
+    min-height: 200px;
+}
+
+.emptyState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: var(--space-8);
+    color: var(--color-text-secondary);
+    text-align: center;
+    gap: var(--space-2);
+}
+
+.emptySub {
+    font-size: var(--text-sm);
+    color: var(--color-text-tertiary);
+}
