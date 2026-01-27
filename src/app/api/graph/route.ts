@@ -102,7 +102,7 @@ export async function GET() {
                 const targetId = slugToIdMap.get(targetSlug);
 
                 if (targetId) {
-                    mentions.push({ '@id': targetId });
+                    mentions.push({ '@type': 'TechArticle', '@id': targetId });
                 }
             }
             if (mentions.length > 0) {
@@ -117,7 +117,7 @@ export async function GET() {
                 d.tags.forEach(tag => {
                     const tagId = `${BASE_URL}/tags/${tag}`;
                     // check if tag node exists, if not add it (simple check)
-                    if (!graphNodes.find(n => n['@id'] === tagId)) {
+                    if (!graphNodes.find((n: any) => n['@id'] === tagId)) {
                         graphNodes.push({
                             '@type': 'DefinedTerm',
                             '@id': tagId,

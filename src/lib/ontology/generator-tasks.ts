@@ -54,7 +54,7 @@ export function generateProjectJsonLd(project: ProjectData, tasks: Task[]): With
             actionStatus: mapStatus(task.status),
             agent: CONFIG.person
         }))
-    };
+    } as any;
 }
 
 export function generateTaskListJsonLd(projects: ProjectData[], tasks: Task[]): WithContext<ItemList> {
