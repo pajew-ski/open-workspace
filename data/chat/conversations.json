@@ -1,6 +1,38 @@
 {
   "conversations": [
     {
+      "id": "conv-1769376374899-ktr7rt",
+      "title": "auf welche tools hast du zugriff?",
+      "messages": [
+        {
+          "id": "msg-1769376382525-pcqeij",
+          "role": "user",
+          "content": "auf welche tools hast du zugriff?",
+          "timestamp": "2026-01-25T21:26:22.525Z"
+        },
+        {
+          "id": "msg-1769376383872-6i2842",
+          "role": "assistant",
+          "content": "Du hast Zugang zu folgendem Tool:\n\n- **Wetter** (ID: 002f36e4-cd0c-408f-8dde-9cef7e19c475) – Liefert aktuelle Wetterdaten für Berlin (Latitude 52.52, Longitude 13.41).",
+          "timestamp": "2026-01-25T21:26:23.872Z"
+        },
+        {
+          "id": "msg-1769376392529-vt1y3l",
+          "role": "user",
+          "content": "wie ist das wetter?",
+          "timestamp": "2026-01-25T21:26:32.529Z"
+        },
+        {
+          "id": "msg-1769376400845-1shymp",
+          "role": "user",
+          "content": "nutze das tool",
+          "timestamp": "2026-01-25T21:26:40.845Z"
+        }
+      ],
+      "createdAt": "2026-01-25T21:26:14.899Z",
+      "updatedAt": "2026-01-25T21:26:40.845Z"
+    },
+    {
       "id": "conv-1769349965560-l5suag",
       "title": "erkläre mir die pinnwande",
       "messages": [
@@ -253,5 +285,5 @@
       "updatedAt": "2026-01-24T10:11:59.166Z"
     }
   ],
-  "activeId": "conv-1769349965560-l5suag"
+  "activeId": "conv-1769376374899-ktr7rt"
 }
