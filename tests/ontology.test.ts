@@ -1,5 +1,5 @@
 
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect } from 'vitest';
 import { generateDocJsonLd } from '../src/lib/ontology/generator';
 import { Doc } from '../src/types/doc';
 
