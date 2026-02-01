@@ -197,36 +197,44 @@ export function AssistantChat() {
     }, []);
 
     // Simplified Scroll Logic
+    // Smart Scroll Logic: "Fill then Stop"
     const useChatScroll = (messages: ChatMessage[]) => {
         useLayoutEffect(() => {
+            const container = messagesContainerRef.current;
+            if (!container) return;
+
+            const lastMessage = messages[messages.length - 1];
             const hasNewMessage = messages.length > lastMessageCountRef.current;
             lastMessageCountRef.current = messages.length;
 
-            if (messagesContainerRef.current) {
-                // Case 1: New Message
-                if (hasNewMessage) {
-                    const lastMessage = messages[messages.length - 1];
+            // 1. User Message: Always scroll to bottom
+            if (lastMessage?.role === 'user') {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+                return;
+            }
 
-                    if (lastMessage?.role === 'user') {
-                        // User sent a message: Always scroll to bottom instantly
-                        messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
-                    } else if (lastMessage?.role === 'assistant') {
-                        // Assistant started replying: Scroll to the TOP of the response
-                        if (lastMessage.id !== lastScrolledMessageIdRef.current) {
-                            const msgEl = messagesContainerRef.current.querySelector(`[data-message-id="${lastMessage.id}"]`);
-                            if (msgEl) {
-                                msgEl.scrollIntoView({ behavior: 'auto', block: 'start' });
-                                lastScrolledMessageIdRef.current = lastMessage.id;
-                            }
-                        }
+            // 2. Assistant Message (Streaming or New)
+            if (lastMessage?.role === 'assistant') {
+                // Find the message element
+                const msgEl = container.querySelector(`[data-message-id="${lastMessage.id}"]`);
+
+                if (msgEl) {
+                    const msgHeight = msgEl.getBoundingClientRect().height;
+                    const containerHeight = container.clientHeight;
+
+                    // "Fill the reading area":
+                    // If message is smaller than viewport, follow the bottom (Terminal Mode).
+                    // This pushes the User Message up naturally.
+                    if (msgHeight < containerHeight) {
+                        // Only force if we were already at bottom or it's brand new
+                        // But user request implies forced "fill" animation
+                        container.scrollTop = container.scrollHeight;
                     }
-                }
-                // Case 2: History Load / Chat Switch (No "new" message but different content)
-                else if (messages.length > 0 && !hasNewMessage) {
-                    // If we just loaded history (and it wasn't a resize/re-render), we generally want to be at the bottom
-                    // OR specific saved position (handled by the other useLayoutEffect).
-                    // For now, let's trust the "restore scroll" logic or default to bottom if at zero.
-                    // The other restore logic handles the specific anchor. 
+                    // If message is taller than viewport, STOP scrolling (Reading Mode).
+                    // The top remains anchored, new text flows off-screen.
+                } else if (hasNewMessage) {
+                    // Fallback for first render of message
+                    container.scrollTop = container.scrollHeight;
                 }
             }
         }, [messages]);
