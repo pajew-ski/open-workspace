@@ -99,6 +99,7 @@ export function AssistantChat() {
     const lastInputResizeClickRef = useRef(0);
     const lastMessageCountRef = useRef(0);
     const isAtBottomRef = useRef(true); // Track if user is at bottom
+    const lastScrolledMessageIdRef = useRef<string | null>(null); // Track which messages triggered scroll-to-top
     const pathname = usePathname();
 
     // Get viewState for dashboard and module-specific context
@@ -195,38 +196,43 @@ export function AssistantChat() {
         loadConversations();
     }, []);
 
-    // Scroll Logic
-    useEffect(() => {
-        const hasNewMessage = messages.length > lastMessageCountRef.current;
-        lastMessageCountRef.current = messages.length;
+    // Simplified Scroll Logic
+    const useChatScroll = (messages: ChatMessage[]) => {
+        useLayoutEffect(() => {
+            const hasNewMessage = messages.length > lastMessageCountRef.current;
+            lastMessageCountRef.current = messages.length;
 
-        if (messagesContainerRef.current) {
-            const lastMessage = messages[messages.length - 1];
+            if (messagesContainerRef.current) {
+                // Case 1: New Message
+                if (hasNewMessage) {
+                    const lastMessage = messages[messages.length - 1];
 
-            // Check if we should scroll
-            // 1. Explicit request (e.g. user sent message)
-            // 2. New message AND we were previously at bottom
-            const shouldScroll = shouldScrollToBottomRef.current || (hasNewMessage && isAtBottomRef.current);
-            shouldScrollToBottomRef.current = false; // Reset request
-
-            if (shouldScroll) {
-                if (lastMessage?.role === 'assistant') {
-                    // For AI messages, align top of message to top of view
-                    // This allows reading from start while it streams
-                    const msgEl = messagesContainerRef.current.querySelector(`[data-message-id="${lastMessage.id}"]`);
-                    if (msgEl) {
-                        msgEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    } else {
-                        // Fallback
-                        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                    if (lastMessage?.role === 'user') {
+                        // User sent a message: Always scroll to bottom instantly
+                        messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+                    } else if (lastMessage?.role === 'assistant') {
+                        // Assistant started replying: Scroll to the TOP of the response
+                        if (lastMessage.id !== lastScrolledMessageIdRef.current) {
+                            const msgEl = messagesContainerRef.current.querySelector(`[data-message-id="${lastMessage.id}"]`);
+                            if (msgEl) {
+                                msgEl.scrollIntoView({ behavior: 'auto', block: 'start' });
+                                lastScrolledMessageIdRef.current = lastMessage.id;
+                            }
+                        }
                     }
-                } else {
-                    // For User messages, scroll to bottom
-                    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                }
+                // Case 2: History Load / Chat Switch (No "new" message but different content)
+                else if (messages.length > 0 && !hasNewMessage) {
+                    // If we just loaded history (and it wasn't a resize/re-render), we generally want to be at the bottom
+                    // OR specific saved position (handled by the other useLayoutEffect).
+                    // For now, let's trust the "restore scroll" logic or default to bottom if at zero.
+                    // The other restore logic handles the specific anchor. 
                 }
             }
-        }
-    }, [messages]);
+        }, [messages]);
+    };
+
+    useChatScroll(messages);
 
     // Helper function to find the first visible message element
     const findFirstVisibleMessage = useCallback(() => {
@@ -252,8 +258,8 @@ export function AssistantChat() {
     const isAtBottom = useCallback(() => {
         const container = messagesContainerRef.current;
         if (!container) return false;
-        // Consider "at bottom" if within 50px of the end
-        return container.scrollHeight - container.scrollTop - container.clientHeight < 50;
+        // Consider "at bottom" if within 150px of the end (increased tolerance)
+        return Math.abs(container.scrollHeight - container.scrollTop - container.clientHeight) < 150;
     }, []);
 
     // Restore scroll position using anchor-based approach
@@ -318,10 +324,7 @@ export function AssistantChat() {
         };
     }, [isOpen, findFirstVisibleMessage, isAtBottom]);
 
-    // Reset scroll restored flag when pathname changes
-    useEffect(() => {
-        scrollRestoredRef.current = false;
-    }, [pathname]);
+
 
     // Focus input
     useEffect(() => {
@@ -355,6 +358,8 @@ export function AssistantChat() {
                 if (active) {
                     setActiveConversation(active);
                     setMessages(active.messages || []);
+                    lastMessageCountRef.current = active.messages?.length || 0; // Sync count to prevent "new message" false positive
+                    lastScrolledMessageIdRef.current = null; // Reset scroll tracker
                 }
             }
 
@@ -387,6 +392,12 @@ export function AssistantChat() {
     const selectConversation = async (conv: Conversation) => {
         setActiveConversation(conv);
         setMessages(conv.messages || []);
+        lastMessageCountRef.current = conv.messages?.length || 0;
+        lastScrolledMessageIdRef.current = null;
+        // Prevent auto-scroll to top for existing messages
+        if (conv.messages?.length > 0 && conv.messages[conv.messages.length - 1].role === 'assistant') {
+            lastScrolledMessageIdRef.current = conv.messages[conv.messages.length - 1].id;
+        }
         setShowSidebar(false);
 
         await fetch('/api/chat/conversations', {
@@ -455,7 +466,7 @@ export function AssistantChat() {
 
         setMessages(prev => [...prev, userMessage]);
         setIsLoading(true);
-        shouldScrollToBottomRef.current = true;
+        // shouldScrollToBottomRef.current = true; // Removed legacy trigger
 
         // Save user message
         await fetch('/api/chat/conversations', {
@@ -471,6 +482,7 @@ export function AssistantChat() {
 
         // Create placeholder
         const assistantId = `msg-${Date.now() + 1}`;
+        // shouldScrollToBottomRef.current = true; // Removed legacy trigger
         setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: '', timestamp: new Date().toISOString() }]);
 
         try {
@@ -945,10 +957,9 @@ export function AssistantChat() {
                             ))
                         )}
 
-                        {/* Spacer to allow scrolling to top of last AI message */}
-                        {messages.length > 0 && messages[messages.length - 1].role === 'assistant' && (
-                            <div style={{ height: '85vh', flexShrink: 0, width: '100%' }} aria-hidden="true" />
-                        )}
+
+
+
 
                         <div ref={messagesEndRef} />
                     </div>

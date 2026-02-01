@@ -212,6 +212,12 @@ bun run build  # Produktion
 - **Themes**: Light / Dark / System-auto
 - **Komponenten**: Material Design 3 inspiriert
 
+### Chat Widget Protocol (A2A Interface)
+- **Single Source of Truth**: The behavior of the Assistant Chat is strictly defined in `CHAT_WIDGET_SPEC.md` in the root directory.
+- **Compliance**: All agents modifying the Chat Widget MUST consult and adhere to this specification.
+- **No Guesswork**: Do not "guess" scroll behavior or persistence logic. Use the spec.
+- **Persistence**: The widget MUST persist state (open/close, size, scroll) across client-side navigation.
+
 ---
 
 *Dieses Dokument wird von AI-Agenten und Menschen kollaborativ gepflegt.*
