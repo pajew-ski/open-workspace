@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { ThemeProvider } from "@/components/providers";
 import { ToastContainer } from "@/components/ui";
 import { AssistantProvider } from "@/lib/assistant/context";
+import { CopilotKit } from "@copilotkit/react-core";
+import { CopilotStateProvider } from "@/components/copilot";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -33,12 +35,17 @@ export default function RootLayout({
     <html lang="de" suppressHydrationWarning>
       <body>
         <ThemeProvider>
-          <AssistantProvider>
-            {children}
-            <ToastContainer />
-          </AssistantProvider>
+          <CopilotKit runtimeUrl="/api/copilotkit">
+            <AssistantProvider>
+              <CopilotStateProvider>
+                {children}
+              </CopilotStateProvider>
+              <ToastContainer />
+            </AssistantProvider>
+          </CopilotKit>
         </ThemeProvider>
       </body>
     </html>
   );
 }
+
