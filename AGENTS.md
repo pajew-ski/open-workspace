@@ -89,8 +89,9 @@ open-workspace/
   - **Struktur**: `List`, `ListItem`, `Table`
   - **Status**: `Progress`, `Chip`, `Badge`
   - **Input**: `Input`, `Select`, `Checkbox`
-- Interaktionen werden als `UserAction` zurück an den Agenten gesendet
-- Secure by Design (keine Code-Ausführung)
+- Interaktionen werden als `UserAction` zuruck an den Agenten gesendet
+- Secure by Design (keine Code-Ausfuhrung)
+- **Tests**: 25 Unit Tests mit Vitest (`bun test`)
 
 ### Model Context Protocol (MCP)
 - Tool und Resource Exposure für Agenten
@@ -169,8 +170,9 @@ Siehe [architecture_agents.md](docs/architecture_agents.md) für die detailliert
 ## Entwicklung
 
 ```bash
-bun install    # Abhängigkeiten
+bun install    # Abhangigkeiten
 bun run dev    # Entwicklung
+bun test       # Unit Tests (Vitest)
 bun run build  # Produktion
 ```
 

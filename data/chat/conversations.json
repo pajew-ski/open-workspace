@@ -1,6 +1,38 @@
 {
   "conversations": [
     {
+      "id": "conv-1769934018148-sigytu",
+      "title": "Benutze das A2UI Protokoll um mir eine Demo deiner...",
+      "messages": [
+        {
+          "id": "msg-1769934028765-lkwwfv",
+          "role": "user",
+          "content": "Benutze das A2UI Protokoll um mir eine Demo deiner UI-F",
+          "timestamp": "2026-02-01T08:20:28.765Z"
+        },
+        {
+          "id": "msg-1769934030093-4q8f4h",
+          "role": "assistant",
+          "content": "Hier ein kurzer Demo‑Aufbau mit dem A2UI‑Protokoll:\n\n```a2ui\n{\n    \"components\": [\n        {\n            \"id\": \"demo-card\",\n            \"component\": {\n                \"Card\": {\n                    \"title\": \"Demo UI\",\n                    \"children\": {\n                        \"explicitList\": [\"txt-1\", \"btn-1\", \"alert-1\"]\n                    }\n                }\n            }\n        },\n        {\n            \"id\": \"txt-1\",\n            \"component\": {\n                \"Text\": {\n                    \"text\": \"Willkommen zur A2UI‑Demo! Hier kannst du interaktive Elemente testen.\",\n                    \"style\": { \"fontSize\": 14 }\n                }\n            }\n        },\n        {\n            \"id\": \"btn-1\",\n            \"component\": {\n                \"Button\": {\n                    \"label\": \"Klick mich\",\n                    \"onPress\": { \"actionId\": \"demoClicked\" }\n                }\n            }\n        },\n        {\n            \"id\": \"alert-1\",\n            \"component\": {\n                \"Alert\": {\n                    \"title\": \"Hinweis\",\n                    \"message\": \"Dies ist ein Beispiel‑Alert.\",\n                    \"variant\": \"info\"\n                }\n            }\n        }\n    ]\n}\n```",
+          "timestamp": "2026-02-01T08:20:30.093Z"
+        },
+        {
+          "id": "msg-1769934071695-grpbeu",
+          "role": "user",
+          "content": "[User Action: demoClicked]",
+          "timestamp": "2026-02-01T08:21:11.695Z"
+        },
+        {
+          "id": "msg-1769934072712-kez6w6",
+          "role": "assistant",
+          "content": "Der Button wurde geklickt! 🎉 Hier ein aktualisiertes UI‑Beispiel, das einen Bestätigungs‑Alert anzeigt:\n\n```a2ui\n{\n    \"components\": [\n        {\n            \"id\": \"demo-card\",\n            \"component\": {\n                \"Card\": {\n                    \"title\": \"Demo UI – Ergebnis\",\n                    \"children\": {\n                        \"explicitList\": [\"txt-1\", \"alert-success\"]\n                    }\n                }\n            }\n        },\n        {\n            \"id\": \"txt-1\",\n            \"component\": {\n                \"Text\": {\n                    \"text\": \"Du hast den Button erfolgreich betätigt. Was möchtest du als Nächstes machen?\",\n                    \"style\": { \"fontSize\": 14 }\n                }\n            }\n        },\n        {\n            \"id\": \"alert-success\",\n            \"component\": {\n                \"Alert\": {\n                    \"title\": \"Erfolg\",\n                    \"message\": \"Der Button‑Klick wurde registriert.\",\n                    \"variant\": \"success\"\n                }\n            }\n        }\n    ]\n}\n```",
+          "timestamp": "2026-02-01T08:21:12.712Z"
+        }
+      ],
+      "createdAt": "2026-02-01T08:20:18.148Z",
+      "updatedAt": "2026-02-01T08:21:12.712Z"
+    },
+    {
       "id": "conv-1769376374899-ktr7rt",
       "title": "auf welche tools hast du zugriff?",
       "messages": [
@@ -27,10 +59,22 @@
           "role": "user",
           "content": "nutze das tool",
           "timestamp": "2026-01-25T21:26:40.845Z"
+        },
+        {
+          "id": "msg-1769933899970-5g89sa",
+          "role": "user",
+          "content": "Zeige mir alle A2UI Komponenten als Demo",
+          "timestamp": "2026-02-01T08:18:19.970Z"
+        },
+        {
+          "id": "msg-1769933902738-rgtegf",
+          "role": "assistant",
+          "content": "Hier ein komplettes Demo‑Layout, das **alle** verfügbaren A2UI‑Komponenten zeigt:\n\n```a2ui\n{\n  \"components\": [\n    {\n      \"id\": \"layout-root\",\n      \"component\": {\n        \"Layout\": {\n          \"Column\": {\n            \"gap\": \"16px\",\n            \"children\": [\n              \"txt-1\",\n              \"card-1\",\n              \"btn-1\",\n              \"img-1\",\n              \"md-1\",\n              \"code-1\",\n              \"input-1\",\n              \"alert-1\",\n              \"row-1\"\n            ]\n          }\n        }\n      }\n    },\n\n    /* Text */\n    {\n      \"id\": \"txt-1\",\n      \"component\": {\n        \"Text\": {\n          \"text\": \"🚀 Das ist ein **Text**‑Element. Es kann einfach formatierten Text anzeigen.\",\n          \"style\": { \"fontSize\": \"16px\", \"color\": \"#333\" }\n        }\n      }\n    },\n\n    /* Card (enthält Text und Image) */\n    {\n      \"id\": \"card-1\",\n      \"component\": {\n        \"Card\": {\n          \"title\": \"Beispiel‑Karte\",\n          \"children\": {\n            \"explicitList\": [\"txt-card\", \"img-card\"]\n          }\n        }\n      }\n    },\n    {\n      \"id\": \"txt-card\",\n      \"component\": {\n        \"Text\": {\n          \"text\": \"In einer Karte kannst du beliebige Inhalte bündeln.\",\n          \"style\": { \"marginBottom\": \"8px\" }\n        }\n      }\n    },\n    {\n      \"id\": \"img-card\",\n      \"component\": {\n        \"Image\": {\n          \"src\": \"https://upload.wikimedia.org/wikipedia/commons/c/c3/NGC_4414_%28NASA-med%29.jpg\",\n          \"alt\": \"Spiralgalaxie\",\n          \"caption\": \"NGC 4414 – Spiralgalaxie\"\n        }\n      }\n    },\n\n    /* Button */\n    {\n      \"id\": \"btn-1\",\n      \"component\": {\n        \"Button\": {\n          \"label\": \"Klick mich!\",\n          \"onPress\": { \"actionId\": \"buttonClicked\" }\n        }\n      }\n    },\n\n    /* Image (einzeln) */\n    {\n      \"id\": \"img-1\",\n      \"component\": {\n        \"Image\": {\n          \"src\": \"https://upload.wikimedia.org/wikipedia/commons/6/6b/Bitmap_VS_SVG.svg\",\n          \"alt\": \"Raster‑ vs. Vektorgrafik\",\n          \"caption\": \"Raster‑ vs. Vektorgrafik\"\n        }\n      }\n    },\n\n    /* Markdown */\n    {\n      \"id\": \"md-1\",\n      \"component\": {\n        \"Markdown\": {\n          \"content\": \"## Markdown‑Komponente\\n* Aufzählungspunkt 1\\n* Aufzählungspunkt 2\\n\\n[Mehr erfahren](https://de.wikipedia.org/wiki/Markdown)\"\n        }\n      }\n    },\n\n    /* CodeBlock */\n    {\n      \"id\": \"code-1\",\n      \"component\": {\n        \"CodeBlock\": {\n          \"code\": \"function hello(name) {\\n  return `Hallo, ${name}!`;\\n}\",\n          \"language\": \"javascript\"\n        }\n      }\n    },\n\n    /* Input */\n    {\n      \"id\": \"input-1\",\n      \"component\": {\n        \"Input\": {\n          \"label\": \"Dein Name\",\n          \"value\": \"\",\n          \"placeholder\": \"z. B. Anna\",\n          \"onChange\": { \"actionId\": \"nameChanged\" }\n        }\n      }\n    },\n\n    /* Alert */\n    {\n      \"id\": \"alert-1\",\n      \"component\": {\n        \"Alert\": {\n          \"title\": \"Hinweis\",\n          \"message\": \"Dies ist eine **Alert**‑Komponente mit dem Variant *info*.\",\n          \"variant\": \"info\"\n        }\n      }\n    },\n\n    /* Row‑Layout mit zwei Buttons */\n    {\n      \"id\": \"row-1\",\n      \"component\": {\n        \"Layout\": {\n          \"Row\": {\n            \"gap\": \"12px\",\n            \"children\": [\"btn-row-1\", \"btn-row-2\"]\n          }\n        }\n      }\n    },\n    {\n      \"id\": \"btn-row-1\",\n      \"component\": {\n        \"Button\": {\n          \"label\": \"Ja\",\n          \"onPress\": { \"actionId\": \"yesClicked\" }\n        }\n      }\n    },\n    {\n      \"id\": \"btn-row-2\",\n      \"component\": {\n        \"Button\": {\n          \"label\": \"Nein\",\n          \"onPress\": { \"actionId\": \"noClicked\" }\n        }\n      }\n    }\n  ]\n}\n```",
+          "timestamp": "2026-02-01T08:18:22.738Z"
         }
       ],
       "createdAt": "2026-01-25T21:26:14.899Z",
-      "updatedAt": "2026-01-25T21:26:40.845Z"
+      "updatedAt": "2026-02-01T08:18:22.738Z"
     },
     {
       "id": "conv-1769349965560-l5suag",
@@ -285,5 +329,5 @@
       "updatedAt": "2026-01-24T10:11:59.166Z"
     }
   ],
-  "activeId": "conv-1769376374899-ktr7rt"
+  "activeId": "conv-1769934018148-sigytu"
 }
