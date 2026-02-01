@@ -198,6 +198,8 @@ export function AssistantChat() {
 
     // Simplified Scroll Logic
     // Smart Scroll Logic: "Fill then Stop"
+    // Simplified Scroll Logic
+    // Smart Scroll Logic: "Fill then Stop"
     const useChatScroll = (messages: ChatMessage[]) => {
         useLayoutEffect(() => {
             const container = messagesContainerRef.current;
@@ -219,21 +221,28 @@ export function AssistantChat() {
                 const msgEl = container.querySelector(`[data-message-id="${lastMessage.id}"]`);
 
                 if (msgEl) {
-                    const msgHeight = msgEl.getBoundingClientRect().height;
+                    const htmlMsgEl = msgEl as HTMLElement;
+                    const msgHeight = htmlMsgEl.getBoundingClientRect().height;
                     const containerHeight = container.clientHeight;
 
-                    // "Fill the reading area":
-                    // If message is smaller than viewport, follow the bottom (Terminal Mode).
-                    // This pushes the User Message up naturally.
+                    // Strategy: "Fill then Anchor"
                     if (msgHeight < containerHeight) {
-                        // Only force if we were already at bottom or it's brand new
-                        // But user request implies forced "fill" animation
+                        // Case A: Message fits in viewport -> Follow the bottom (Chat style)
                         container.scrollTop = container.scrollHeight;
+                    } else {
+                        // Case B: Message is taller than viewport -> Anchor to top (Document style)
+                        // This ensures we never lose the start of the text.
+                        // "End exactly at bottom of user message" = Align Top of Assistant Message to Top of Viewport
+
+                        // We strictly verify if we are currently "below" the start point (cutting it off)
+                        // If so, we snap back up.
+                        // We use a small threshold (5px) to prevent fighting with manual micro-scrolls
+                        if (container.scrollTop > htmlMsgEl.offsetTop - 20) {
+                            container.scrollTop = htmlMsgEl.offsetTop - 20;
+                        }
                     }
-                    // If message is taller than viewport, STOP scrolling (Reading Mode).
-                    // The top remains anchored, new text flows off-screen.
                 } else if (hasNewMessage) {
-                    // Fallback for first render of message
+                    // Fallback for first render
                     container.scrollTop = container.scrollHeight;
                 }
             }
@@ -595,8 +604,12 @@ export function AssistantChat() {
                         }
                     } catch (e) {
                         // If it's the error we just threw, rethrow it to stop the loop
-                        if (e instanceof Error && e.message.includes('429')) throw e;
-                        if (chunk.error) throw new Error(chunk.error);
+                        if (e instanceof Error) {
+                            if (e.message.includes('429') || e.message.startsWith('Rate Limit')) throw e;
+                            // If it was an explicit error signal from the chunk
+                            const castedError = e as Error;
+                            if (castedError.message && !castedError.message.includes('JSON')) throw e;
+                        }
                     }
                 }
 
