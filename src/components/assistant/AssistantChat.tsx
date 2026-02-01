@@ -465,6 +465,7 @@ export function AssistantChat() {
     const sendMessage = useCallback(async (userInput: string) => {
         if (!activeConversation) return;
 
+        // User Message
         const userMessage: ChatMessage = {
             id: `msg-${Date.now()}`,
             role: 'user',
@@ -474,34 +475,34 @@ export function AssistantChat() {
 
         setMessages(prev => [...prev, userMessage]);
         setIsLoading(true);
-        // shouldScrollToBottomRef.current = true; // Removed legacy trigger
 
-        // Save user message
-        await fetch('/api/chat/conversations', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'addMessage',
-                conversationId: activeConversation.id,
-                role: 'user',
-                content: userInput,
-            }),
-        });
+        try {
+            await fetch('/api/chat/conversations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'addMessage',
+                    conversationId: activeConversation.id,
+                    role: 'user',
+                    content: userInput,
+                }),
+            });
+        } catch (e) { console.error('Failed to save user message', e); }
 
-        // Create placeholder
+        // Assistant Placeholder
         const assistantId = `msg-${Date.now() + 1}`;
-        // shouldScrollToBottomRef.current = true; // Removed legacy trigger
         setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: '', timestamp: new Date().toISOString() }]);
 
         try {
-            // Fetch calendar events if on calendar page
+            // Context Logic
             let additionalContext = '';
+
+            // Re-implementing Context fetching
             if (pathname === '/calendar') {
                 try {
                     const start = new Date();
                     const end = new Date();
                     end.setDate(end.getDate() + 7);
-
                     const res = await fetch(`/api/calendar?action=events&start=${start.toISOString()}&end=${end.toISOString()}`);
                     const data = await res.json();
                     if (data.events && data.events.length > 0) {
@@ -509,37 +510,22 @@ export function AssistantChat() {
                             `- ${new Date(e.startDate).toLocaleString('de-DE')}: ${e.title} ${e.location ? `(${e.location})` : ''}`
                         ).join('\n')}`;
                     }
-                } catch (e) {
-                    console.error('Failed to fetch calendar context', e);
-                }
+                } catch { /* ignore */ }
             }
-
-            // Fetch tasks if on tasks page
             if (pathname === '/tasks') {
                 try {
-                    const [tasksRes, projsRes] = await Promise.all([
-                        fetch('/api/tasks'),
-                        fetch('/api/projects')
-                    ]);
-                    const [tasksData, projsData] = await Promise.all([
-                        tasksRes.json(),
-                        projsRes.json()
-                    ]);
-
+                    const [tasksRes, projsRes] = await Promise.all([fetch('/api/tasks'), fetch('/api/projects')]);
+                    const [tasksData, projsData] = await Promise.all([tasksRes.json(), projsRes.json()]);
                     if (tasksData.tasks) {
                         const projectMap: Record<string, string> = {};
                         (projsData.projects || []).forEach((p: any) => projectMap[p.id] = p.title);
-
-                        additionalContext += `\nAKTUELLE AUFGABEN:\n`;
-                        additionalContext += tasksData.tasks.slice(0, 20).map((t: any) => {
+                        additionalContext += `\nAKTUELLE AUFGABEN:\n` + tasksData.tasks.slice(0, 20).map((t: any) => {
                             let info = `- [${t.status.toUpperCase()}] ${t.title}`;
                             if (t.projectId) info += ` [${projectMap[t.projectId] || t.projectId}]`;
                             return info;
                         }).join('\n');
                     }
-                } catch (e) {
-                    console.error('Failed to fetch tasks context', e);
-                }
+                } catch { /* ignore */ }
             }
 
             const response = await fetch('/api/chat', {
@@ -560,13 +546,26 @@ export function AssistantChat() {
                 }),
             });
 
-            if (!response.ok) throw new Error('API request failed');
+            if (!response.ok) {
+                let errorMsg = `Fehler: ${response.status}`;
+                try {
+                    const errData = await response.json();
+                    // Handle rate limits specifically
+                    if (errData.details?.includes('429') || response.status === 429) {
+                        errorMsg = 'Rate Limit erreicht (zu viele Anfragen). Bitte warte einen Moment.';
+                    } else {
+                        errorMsg = errData.error || errData.details || errorMsg;
+                    }
+                } catch { }
+                throw new Error(errorMsg);
+            }
 
             const reader = response.body?.getReader();
             if (!reader) throw new Error('No response body');
 
             const decoder = new TextDecoder();
             let fullContent = '';
+            let currentUiComponents: A2UINode[] | undefined = undefined;
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -575,60 +574,57 @@ export function AssistantChat() {
                 const text = decoder.decode(value, { stream: true });
                 const lines = text.split('\n').filter(line => line.trim());
 
-                let chunkHasUpdates = false;
-                let latestUiUpdates: A2UINode[] | undefined = undefined;
+                let hasUpdates = false;
 
                 for (const line of lines) {
                     try {
-                        const chunk: StreamChunk = JSON.parse(line);
+                        const chunk: StreamChunk & { error?: string } = JSON.parse(line);
+
+                        // Handle backend stream errors nicely
+                        if (chunk.error) {
+                            throw new Error(chunk.error);
+                        }
 
                         if (chunk.message?.content) {
                             fullContent += chunk.message.content;
-                            chunkHasUpdates = true;
+                            hasUpdates = true;
                         }
-
                         if (chunk.surfaceUpdate?.components) {
-                            latestUiUpdates = chunk.surfaceUpdate.components;
-                            chunkHasUpdates = true;
+                            currentUiComponents = chunk.surfaceUpdate.components;
+                            hasUpdates = true;
                         }
-                    } catch { /* skip */ }
-                }
-
-                // Fallback: Check for embedded A2UI if no explicit updates yet
-                if (!latestUiUpdates) {
-                    const a2uiMatch = fullContent.match(/```a2ui\s*([\s\S]*?)\s*```/);
-                    if (a2uiMatch) {
-                        try {
-                            const json = JSON.parse(a2uiMatch[1]);
-                            if (Array.isArray(json)) {
-                                latestUiUpdates = json;
-                                chunkHasUpdates = true;
-                            } else if (json.components) {
-                                latestUiUpdates = json.components;
-                                chunkHasUpdates = true;
-                            }
-                        } catch { /* incomplete json */ }
+                    } catch (e) {
+                        // If it's the error we just threw, rethrow it to stop the loop
+                        if (e instanceof Error && e.message.includes('429')) throw e;
+                        if (chunk.error) throw new Error(chunk.error);
                     }
                 }
 
-                if (chunkHasUpdates) {
-                    setMessages(prev => prev.map(m => {
-                        if (m.id === assistantId) {
-                            // Preserve existing uiComponents if no new ones
-                            return {
-                                ...m,
-                                content: fullContent,
-                                uiComponents: latestUiUpdates || m.uiComponents
-                            };
-                        }
-                        return m;
-                    }));
+                if (!currentUiComponents) {
+                    const match = fullContent.match(/```a2ui\s*([\s\S]*?)\s*```/);
+                    if (match) {
+                        try {
+                            const json = JSON.parse(match[1]);
+                            const comps = Array.isArray(json) ? json : json.components;
+                            if (comps) {
+                                currentUiComponents = comps;
+                                hasUpdates = true;
+                            }
+                        } catch { }
+                    }
+                }
+
+                if (hasUpdates) {
+                    setMessages(prev => prev.map(m =>
+                        m.id === assistantId
+                            ? { ...m, content: fullContent, uiComponents: currentUiComponents || m.uiComponents }
+                            : m
+                    ));
                 }
             }
 
             // Save assistant response
             if (fullContent) {
-                // ... save logic
                 await fetch('/api/chat/conversations', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -642,17 +638,16 @@ export function AssistantChat() {
 
                 if (messages.length === 0) {
                     setConversations(prev => prev.map(c =>
-                        c.id === activeConversation.id ? { ...c, title: userInput.slice(0, 50) + (userInput.length > 50 ? '...' : '') } : c
+                        c.id === activeConversation.id ? { ...c, title: userInput.slice(0, 50) } : c
                     ));
                 }
-            }
-
-            if (!fullContent) {
+            } else {
                 setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: 'Keine Antwort erhalten.' } : m));
             }
+
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
-            setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: `Fehler: ${errorMessage}` } : m));
+            setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: ` ${errorMessage}` } : m));
             setConnectionStatus('offline');
         } finally {
             setIsLoading(false);
@@ -664,6 +659,10 @@ export function AssistantChat() {
         if (!input.trim() || isLoading) return;
         const userInput = input.trim();
         setInput('');
+
+        // Keep focus for rapid chatting
+        setTimeout(() => inputRef.current?.focus(), 0);
+
         await sendMessage(userInput);
     };
 
@@ -1004,7 +1003,7 @@ export function AssistantChat() {
                             }}
                             placeholder={connectionStatus === 'offline' ? 'AI offline...' : 'Schreib mir...'}
                             className={styles.input}
-                            disabled={isLoading || connectionStatus === 'offline'}
+                            disabled={connectionStatus === 'offline'}
                             autoComplete="off"
                             autoCorrect="off"
                             autoCapitalize="off"
