@@ -52,45 +52,19 @@ const DEFAULT_INPUT_HEIGHT = 44;
 const MIN_INPUT_HEIGHT = 44;
 
 export function AssistantChat() {
-    // UI State - use lazy initialization to read from localStorage synchronously
-    const [isOpen, setIsOpen] = useState(() => {
-        if (typeof window !== 'undefined') {
-            return localStorage.getItem('assistant-open') === 'true';
-        }
-        return false;
-    });
+    // UI State - Initialize with defaults for SSR consistency
+    const [isOpen, setIsOpen] = useState(false);
     const [showSidebar, setShowSidebar] = useState(false);
-    const [width, setWidth] = useState(() => {
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('assistant-width');
-            if (saved) return Math.max(MIN_WIDTH, parseInt(saved));
-        }
-        return DEFAULT_WIDTH;
-    });
-    const [height, setHeight] = useState(() => {
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('assistant-height');
-            if (saved) return Math.max(MIN_HEIGHT, parseInt(saved));
-        }
-        return DEFAULT_HEIGHT;
-    });
-    const [position, setPosition] = useState<{ x: number; y: number } | null>(() => {
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('assistant-position');
-            if (saved) {
-                try {
-                    const pos = JSON.parse(saved);
-                    if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
-                        return pos;
-                    }
-                } catch { /* ignore */ }
-            }
-        }
-        return null;
-    });
+    const [width, setWidth] = useState(DEFAULT_WIDTH);
+    const [height, setHeight] = useState(DEFAULT_HEIGHT);
+    const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
     const [isMobile, setIsMobile] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
+
+    // Flag to indicate when settings are loaded from localStorage
+    const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
+
     const [savedWindowState, setSavedWindowState] = useState<{
         width: number;
         height: number;
@@ -103,14 +77,7 @@ export function AssistantChat() {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
 
     // Input State
-    const [inputHeight, setInputHeight] = useState(() => {
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('assistant-input-height');
-            // Allow up to a reasonable max height initially, dynamic limit applied on resize
-            if (saved) return Math.max(MIN_INPUT_HEIGHT, parseInt(saved));
-        }
-        return DEFAULT_INPUT_HEIGHT;
-    });
+    const [inputHeight, setInputHeight] = useState(DEFAULT_INPUT_HEIGHT);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'online' | 'offline'>('unknown');
@@ -130,13 +97,41 @@ export function AssistantChat() {
     const shouldScrollToBottomRef = useRef(false);
     const scrollRestoredRef = useRef(false);
     const lastInputResizeClickRef = useRef(0);
+    const lastMessageCountRef = useRef(0);
+    const isAtBottomRef = useRef(true); // Track if user is at bottom
     const pathname = usePathname();
 
     // Get viewState for dashboard and module-specific context
     const { viewState } = useAssistantContext();
 
-    // Note: CopilotKit context (useCopilotReadable) is exposed at app level in CopilotStateProvider
-    // This makes all page context available to CopilotKit actions automatically
+    // Load settings from localStorage on mount (Client-side only)
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const savedOpen = localStorage.getItem('assistant-open');
+            if (savedOpen) setIsOpen(savedOpen === 'true');
+
+            const savedWidth = localStorage.getItem('assistant-width');
+            if (savedWidth) setWidth(Math.max(MIN_WIDTH, parseInt(savedWidth)));
+
+            const savedHeight = localStorage.getItem('assistant-height');
+            if (savedHeight) setHeight(Math.max(MIN_HEIGHT, parseInt(savedHeight)));
+
+            const savedPos = localStorage.getItem('assistant-position');
+            if (savedPos) {
+                try {
+                    const pos = JSON.parse(savedPos);
+                    if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
+                        setPosition(pos);
+                    }
+                } catch { /* ignore */ }
+            }
+
+            const savedInputHeight = localStorage.getItem('assistant-input-height');
+            if (savedInputHeight) setInputHeight(Math.max(MIN_INPUT_HEIGHT, parseInt(savedInputHeight)));
+
+            setIsSettingsLoaded(true);
+        }
+    }, []);
 
     // Improved context matching
     const currentModule = useMemo(() => {
@@ -153,30 +148,33 @@ export function AssistantChat() {
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    // Note: Loading of persisted state is now done via lazy initialization in useState
-    // This prevents flash of default values on page navigation
-
     // Save input height
     useEffect(() => {
-        localStorage.setItem('assistant-input-height', String(inputHeight));
-    }, [inputHeight]);
+        if (isSettingsLoaded) {
+            localStorage.setItem('assistant-input-height', String(inputHeight));
+        }
+    }, [inputHeight, isSettingsLoaded]);
 
     // Save open state
     useEffect(() => {
-        localStorage.setItem('assistant-open', String(isOpen));
-    }, [isOpen]);
+        if (isSettingsLoaded) {
+            localStorage.setItem('assistant-open', String(isOpen));
+        }
+    }, [isOpen, isSettingsLoaded]);
 
     // Save size and position
     useEffect(() => {
-        localStorage.setItem('assistant-width', String(width));
-        localStorage.setItem('assistant-height', String(height));
-    }, [width, height]);
+        if (isSettingsLoaded) {
+            localStorage.setItem('assistant-width', String(width));
+            localStorage.setItem('assistant-height', String(height));
+        }
+    }, [width, height, isSettingsLoaded]);
 
     useEffect(() => {
-        if (position) {
+        if (isSettingsLoaded && position) {
             localStorage.setItem('assistant-position', JSON.stringify(position));
         }
-    }, [position]);
+    }, [position, isSettingsLoaded]);
 
     // Check connection
     useEffect(() => {
@@ -197,12 +195,36 @@ export function AssistantChat() {
         loadConversations();
     }, []);
 
-    // Scroll to bottom only when explicitly requested (e.g., after sending a message)
-    // This prevents unwanted scrolling on page navigation
+    // Scroll Logic
     useEffect(() => {
-        if (shouldScrollToBottomRef.current && messagesEndRef.current) {
-            messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-            shouldScrollToBottomRef.current = false;
+        const hasNewMessage = messages.length > lastMessageCountRef.current;
+        lastMessageCountRef.current = messages.length;
+
+        if (messagesContainerRef.current) {
+            const lastMessage = messages[messages.length - 1];
+
+            // Check if we should scroll
+            // 1. Explicit request (e.g. user sent message)
+            // 2. New message AND we were previously at bottom
+            const shouldScroll = shouldScrollToBottomRef.current || (hasNewMessage && isAtBottomRef.current);
+            shouldScrollToBottomRef.current = false; // Reset request
+
+            if (shouldScroll) {
+                if (lastMessage?.role === 'assistant') {
+                    // For AI messages, align top of message to top of view
+                    // This allows reading from start while it streams
+                    const msgEl = messagesContainerRef.current.querySelector(`[data-message-id="${lastMessage.id}"]`);
+                    if (msgEl) {
+                        msgEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } else {
+                        // Fallback
+                        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                    }
+                } else {
+                    // For User messages, scroll to bottom
+                    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                }
+            }
         }
     }, [messages]);
 
@@ -265,13 +287,16 @@ export function AssistantChat() {
         }
     }, [messages, pathname]);
 
-    // Save scroll anchor on scroll (debounced)
+    // Save scroll anchor on scroll (debounced) & Track isAtBottom
     useEffect(() => {
         const container = messagesContainerRef.current;
         if (!container) return;
 
         let timeoutId: ReturnType<typeof setTimeout>;
         const handleScroll = () => {
+            // Update tracking ref immediately
+            isAtBottomRef.current = isAtBottom();
+
             clearTimeout(timeoutId);
             timeoutId = setTimeout(() => {
                 // Check if at bottom first
@@ -563,12 +588,16 @@ export function AssistantChat() {
                             }
                             return m;
                         }));
+
+                        // Auto-scroll disabled during generation to allow reading from top
+                        // shouldScrollToBottomRef.current = true;
                     } catch { /* skip */ }
                 }
             }
 
             // Save assistant response
             if (fullContent) {
+                // ... save logic
                 await fetch('/api/chat/conversations', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -915,6 +944,12 @@ export function AssistantChat() {
                                 </div>
                             ))
                         )}
+
+                        {/* Spacer to allow scrolling to top of last AI message */}
+                        {messages.length > 0 && messages[messages.length - 1].role === 'assistant' && (
+                            <div style={{ height: '85vh', flexShrink: 0, width: '100%' }} aria-hidden="true" />
+                        )}
+
                         <div ref={messagesEndRef} />
                     </div>
 
