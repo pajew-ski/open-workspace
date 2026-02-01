@@ -3,8 +3,6 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
-import { AssistantChat } from '@/components/assistant';
-import { GlobalFinder } from '@/components/finder/GlobalFinder';
 import styles from './AppShell.module.css';
 
 interface AppShellProps {
@@ -67,8 +65,7 @@ export function AppShell({ children, title, actions, fluid = false }: AppShellPr
                 </div>
             )}
 
-            <AssistantChat />
-            <GlobalFinder />
+
         </div>
     );
 }
