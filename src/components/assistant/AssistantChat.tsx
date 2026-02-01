@@ -575,43 +575,54 @@ export function AssistantChat() {
                 const text = decoder.decode(value, { stream: true });
                 const lines = text.split('\n').filter(line => line.trim());
 
+                let chunkHasUpdates = false;
+                let latestUiUpdates: A2UINode[] | undefined = undefined;
+
                 for (const line of lines) {
                     try {
                         const chunk: StreamChunk = JSON.parse(line);
 
                         if (chunk.message?.content) {
                             fullContent += chunk.message.content;
+                            chunkHasUpdates = true;
                         }
 
-                        let uiUpdates: A2UINode[] | undefined;
                         if (chunk.surfaceUpdate?.components) {
-                            uiUpdates = chunk.surfaceUpdate.components;
+                            latestUiUpdates = chunk.surfaceUpdate.components;
+                            chunkHasUpdates = true;
                         }
-
-                        if (!uiUpdates) {
-                            const a2uiMatch = fullContent.match(/```a2ui\s*([\s\S]*?)\s*```/);
-                            if (a2uiMatch) {
-                                try {
-                                    const json = JSON.parse(a2uiMatch[1]);
-                                    if (Array.isArray(json)) {
-                                        uiUpdates = json;
-                                    } else if (json.components) {
-                                        uiUpdates = json.components;
-                                    }
-                                } catch { /* incomplete json */ }
-                            }
-                        }
-
-                        setMessages(prev => prev.map(m => {
-                            if (m.id === assistantId) {
-                                return { ...m, content: fullContent, uiComponents: uiUpdates || m.uiComponents };
-                            }
-                            return m;
-                        }));
-
-                        // Auto-scroll disabled during generation to allow reading from top
-                        // shouldScrollToBottomRef.current = true;
                     } catch { /* skip */ }
+                }
+
+                // Fallback: Check for embedded A2UI if no explicit updates yet
+                if (!latestUiUpdates) {
+                    const a2uiMatch = fullContent.match(/```a2ui\s*([\s\S]*?)\s*```/);
+                    if (a2uiMatch) {
+                        try {
+                            const json = JSON.parse(a2uiMatch[1]);
+                            if (Array.isArray(json)) {
+                                latestUiUpdates = json;
+                                chunkHasUpdates = true;
+                            } else if (json.components) {
+                                latestUiUpdates = json.components;
+                                chunkHasUpdates = true;
+                            }
+                        } catch { /* incomplete json */ }
+                    }
+                }
+
+                if (chunkHasUpdates) {
+                    setMessages(prev => prev.map(m => {
+                        if (m.id === assistantId) {
+                            // Preserve existing uiComponents if no new ones
+                            return {
+                                ...m,
+                                content: fullContent,
+                                uiComponents: latestUiUpdates || m.uiComponents
+                            };
+                        }
+                        return m;
+                    }));
                 }
             }
 
