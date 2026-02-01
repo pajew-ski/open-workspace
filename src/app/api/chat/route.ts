@@ -131,7 +131,15 @@ export async function POST(request: NextRequest) {
                         }
                         controller.close();
                     } catch (error) {
-                        controller.error(error);
+                        // Send error as a special chunk so client can display it
+                        // instead of the stream just dying with "Failed to fetch"
+                        const errorMessage = error instanceof Error ? error.message : 'Unknown stream error';
+                        const errorChunk = JSON.stringify({
+                            error: errorMessage,
+                            done: true
+                        }) + '\n';
+                        controller.enqueue(encoder.encode(errorChunk));
+                        controller.close();
                     }
                 },
             });
