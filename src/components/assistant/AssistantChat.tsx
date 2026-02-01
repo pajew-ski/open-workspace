@@ -2,15 +2,15 @@
 
 import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
-import { ConfirmDialog } from '@/components/ui';
 import { useAssistantContext } from '@/lib/assistant/context';
+import { ConfirmDialog } from '@/components/ui';
 import { A2UIRenderer } from '../a2ui/A2UIRenderer';
 import { A2UINode } from '../a2ui/types';
 import { MessageContent } from './MessageContent';
 import './MessageContent.css';
 import styles from './AssistantChat.module.css';
 
-interface Message {
+interface ChatMessage {
     id: string;
     role: 'user' | 'assistant';
     content: string;
@@ -21,7 +21,7 @@ interface Message {
 interface Conversation {
     id: string;
     title: string;
-    messages: Message[];
+    messages: ChatMessage[];
     createdAt: string;
     updatedAt: string;
 }
@@ -33,7 +33,7 @@ interface StreamChunk {
 }
 
 const MODULE_CONTEXT: Record<string, { name: string; description: string }> = {
-    '/': { name: 'Dashboard', description: 'Übersicht und Schnellzugriff' },
+    '/': { name: 'Dashboard', description: 'Ubersicht und Schnellzugriff' },
     '/docs': { name: 'Dokumente', description: 'Notizen und Dokumente (Wissensbasis)' },
     '/canvas': { name: 'Canvas', description: 'Visuelle Planung' },
     '/tasks': { name: 'Aufgaben', description: 'Projekt- und Aufgabenverwaltung' },
@@ -41,6 +41,7 @@ const MODULE_CONTEXT: Record<string, { name: string; description: string }> = {
     '/agents': { name: 'Agenten', description: 'A2A Agent-Konfiguration' },
     '/communication': { name: 'Kommunikation', description: 'Matrix Chat' },
     '/settings': { name: 'Einstellungen', description: 'App-Konfiguration' },
+    '/graph': { name: 'Ontologie', description: 'Wissensvisualisierung' },
 };
 
 const MIN_WIDTH = 320;
@@ -99,7 +100,7 @@ export function AssistantChat() {
     // Conversations State
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
-    const [messages, setMessages] = useState<Message[]>([]);
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
 
     // Input State
     const [inputHeight, setInputHeight] = useState(() => {
@@ -130,7 +131,12 @@ export function AssistantChat() {
     const scrollRestoredRef = useRef(false);
     const lastInputResizeClickRef = useRef(0);
     const pathname = usePathname();
+
+    // Get viewState for dashboard and module-specific context
     const { viewState } = useAssistantContext();
+
+    // Note: CopilotKit context (useCopilotReadable) is exposed at app level in CopilotStateProvider
+    // This makes all page context available to CopilotKit actions automatically
 
     // Improved context matching
     const currentModule = useMemo(() => {
@@ -415,7 +421,7 @@ export function AssistantChat() {
     const sendMessage = useCallback(async (userInput: string) => {
         if (!activeConversation) return;
 
-        const userMessage: Message = {
+        const userMessage: ChatMessage = {
             id: `msg-${Date.now()}`,
             role: 'user',
             content: userInput,
@@ -424,7 +430,7 @@ export function AssistantChat() {
 
         setMessages(prev => [...prev, userMessage]);
         setIsLoading(true);
-        shouldScrollToBottomRef.current = true; // Scroll after sending message
+        shouldScrollToBottomRef.current = true;
 
         // Save user message
         await fetch('/api/chat/conversations', {
@@ -449,23 +455,21 @@ export function AssistantChat() {
                 try {
                     const start = new Date();
                     const end = new Date();
-                    end.setDate(end.getDate() + 7); // Next 7 days
+                    end.setDate(end.getDate() + 7);
 
                     const res = await fetch(`/api/calendar?action=events&start=${start.toISOString()}&end=${end.toISOString()}`);
                     const data = await res.json();
                     if (data.events && data.events.length > 0) {
-                        additionalContext = `\nAKTUELLE TERMINE (nächste 7 Tage):\n${data.events.map((e: any) =>
+                        additionalContext += `\nAKTUELLE TERMINE (nachste 7 Tage):\n${data.events.map((e: any) =>
                             `- ${new Date(e.startDate).toLocaleString('de-DE')}: ${e.title} ${e.location ? `(${e.location})` : ''}`
                         ).join('\n')}`;
-                    } else {
-                        additionalContext = '\nAKTUELLE TERMINE: Keine Termine in den nächsten 7 Tagen gefunden.';
                     }
                 } catch (e) {
                     console.error('Failed to fetch calendar context', e);
                 }
             }
 
-            // Fetch tasks and projects if on tasks page
+            // Fetch tasks if on tasks page
             if (pathname === '/tasks') {
                 try {
                     const [tasksRes, projsRes] = await Promise.all([
@@ -481,28 +485,12 @@ export function AssistantChat() {
                         const projectMap: Record<string, string> = {};
                         (projsData.projects || []).forEach((p: any) => projectMap[p.id] = p.title);
 
-                        const taskMap: Record<string, string> = {};
-                        tasksData.tasks.forEach((t: any) => taskMap[t.id] = t.title);
-
-                        additionalContext = `\nAKTUELLE AUFGABEN & PROJEKTE:\n`;
-                        additionalContext += `Projekte: ${(projsData.projects || []).map((p: any) => p.title).join(', ') || 'Keine Projekte'}\n`;
-                        additionalContext += `Aufgaben:\n${tasksData.tasks.slice(0, 20).map((t: any) => {
-                            let info = `- [${t.status.toUpperCase()}] ${t.title} (ID: ${t.id})`;
-                            if (t.projectId) info += ` [Proj: ${projectMap[t.projectId] || t.projectId}]`;
-                            if (t.priority) info += ` [Prio: ${t.priority}]`;
-
-                            // Add dependencies if any
-                            if (t.dependencies && t.dependencies.length > 0) {
-                                const deps = t.dependencies.map((d: any) => {
-                                    const depTitle = taskMap[d.id] || d.id;
-                                    return `${d.type}: "${depTitle}"`;
-                                }).join(', ');
-                                info += ` [Abhängig von: ${deps}]`;
-                            }
+                        additionalContext += `\nAKTUELLE AUFGABEN:\n`;
+                        additionalContext += tasksData.tasks.slice(0, 20).map((t: any) => {
+                            let info = `- [${t.status.toUpperCase()}] ${t.title}`;
+                            if (t.projectId) info += ` [${projectMap[t.projectId] || t.projectId}]`;
                             return info;
-                        }).join('\n')}`;
-
-                        if (tasksData.tasks.length > 20) additionalContext += `\n... und ${tasksData.tasks.length - 20} weitere Aufgaben.`;
+                        }).join('\n');
                     }
                 } catch (e) {
                     console.error('Failed to fetch tasks context', e);
@@ -521,7 +509,7 @@ export function AssistantChat() {
                         module: currentModule.name,
                         moduleDescription: currentModule.description + additionalContext,
                         pathname,
-                        viewState // Pass the dynamic view state
+                        viewState: JSON.stringify(viewState),
                     },
                     stream: true,
                 }),
@@ -546,28 +534,22 @@ export function AssistantChat() {
                     try {
                         const chunk: StreamChunk = JSON.parse(line);
 
-                        // Handle Text Content
                         if (chunk.message?.content) {
                             fullContent += chunk.message.content;
                         }
 
-                        // Handle UI Updates
                         let uiUpdates: A2UINode[] | undefined;
                         if (chunk.surfaceUpdate?.components) {
                             uiUpdates = chunk.surfaceUpdate.components;
                         }
 
-                        // Fallback: Check for A2UI markdown blocks
                         if (!uiUpdates) {
                             const a2uiMatch = fullContent.match(/```a2ui\s*([\s\S]*?)\s*```/);
                             if (a2uiMatch) {
                                 try {
                                     const json = JSON.parse(a2uiMatch[1]);
-                                    // Support both direct array or surfaceUpdate wrapper
                                     if (Array.isArray(json)) {
                                         uiUpdates = json;
-                                    } else if (json.surfaceUpdate?.components) {
-                                        uiUpdates = json.surfaceUpdate.components;
                                     } else if (json.components) {
                                         uiUpdates = json.components;
                                     }
@@ -577,15 +559,10 @@ export function AssistantChat() {
 
                         setMessages(prev => prev.map(m => {
                             if (m.id === assistantId) {
-                                return {
-                                    ...m,
-                                    content: fullContent, // Keep content so user sees the raw block via markdown renderer if needed, or we filter it out later
-                                    uiComponents: uiUpdates || m.uiComponents
-                                };
+                                return { ...m, content: fullContent, uiComponents: uiUpdates || m.uiComponents };
                             }
                             return m;
                         }));
-
                     } catch { /* skip */ }
                 }
             }
@@ -603,7 +580,6 @@ export function AssistantChat() {
                     }),
                 });
 
-                // Update conversation title if first message
                 if (messages.length === 0) {
                     setConversations(prev => prev.map(c =>
                         c.id === activeConversation.id ? { ...c, title: userInput.slice(0, 50) + (userInput.length > 50 ? '...' : '') } : c
