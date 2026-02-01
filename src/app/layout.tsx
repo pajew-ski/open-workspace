@@ -35,7 +35,7 @@ export default function RootLayout({
     <html lang="de" suppressHydrationWarning>
       <body>
         <ThemeProvider>
-          <CopilotKit runtimeUrl="/api/copilotkit">
+          <CopilotKit runtimeUrl="/api/copilotkit" showDevConsole={false}>
             <AssistantProvider>
               <CopilotStateProvider>
                 {children}

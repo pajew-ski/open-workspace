@@ -318,6 +318,16 @@ th {
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
   }
+}
+
+/* CopilotKit - Hide Developer Console/Badge */
+cpk-web-inspector,
+button[aria-label="Web Inspector"],
+.console-button {
+  display: none !important;
+}
+
+div.announcement-preview {
+  display: none !important;
 }
