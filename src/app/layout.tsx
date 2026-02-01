@@ -4,6 +4,8 @@ import { ToastContainer } from "@/components/ui";
 import { AssistantProvider } from "@/lib/assistant/context";
 import { CopilotKit } from "@copilotkit/react-core";
 import { CopilotStateProvider } from "@/components/copilot";
+import { AssistantChat } from "@/components/assistant";
+import { GlobalFinder } from "@/components/finder/GlobalFinder";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -39,6 +41,8 @@ export default function RootLayout({
             <AssistantProvider>
               <CopilotStateProvider>
                 {children}
+                <AssistantChat />
+                <GlobalFinder />
               </CopilotStateProvider>
               <ToastContainer />
             </AssistantProvider>
