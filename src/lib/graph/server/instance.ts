@@ -23,7 +23,7 @@ import { OxigraphStore } from '../store/oxigraph';
 import { createIriFactory, isValidInstanceBase, urnInstanceBase, type IriFactory } from '../iri';
 import { createNodeFileSystem } from '@/lib/platform/runtime/node-fs';
 import { parseRdf } from '../serialize/io';
-import { restoreSnapshot } from '../serialize/snapshot';
+import { restoreSnapshot, writeSnapshot, type SnapshotReport } from '../serialize/snapshot';
 import { buildWorkspaceQuads, type MigrationCounts, type WorkspaceSnapshotInput } from '../migrate/from-files';
 import { namedNode } from '../rdf';
 import { listDocs } from '@/lib/storage/docs';
@@ -150,6 +150,18 @@ export async function getServerGraph(): Promise<ServerGraph> {
     const state = await getState();
     await syncWorkspaceFromFiles(state);
     return { store: state.store, iri: state.iri };
+}
+
+/**
+ * Persistiert den Store nach `data/graph/` (SPEC §8.1). Wird nach
+ * Connector-Mutationen (Anlegen, Sync, Löschen) aufgerufen, damit
+ * `graph/meta` und `graph/<u>/import/*` einen Neustart überleben —
+ * ein Connector, der seine Importe beim Neustart vergisst, wäre eine
+ * Attrappe. Deterministisch (RDFC-1.0), daher git-tauglich.
+ */
+export async function persistServerGraphSnapshot(): Promise<SnapshotReport> {
+    const state = await getState();
+    return writeSnapshot(state.store, createNodeFileSystem(), GRAPH_DIR(), state.iri.instanceBase);
 }
 
 /** Nur für Tests: Singleton zurücksetzen. */

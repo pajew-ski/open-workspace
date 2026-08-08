@@ -136,3 +136,17 @@
     margin-top: 4px;
     accent-color: var(--color-primary);
 }
+.sourcesLink {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: var(--touch-target);
+    font-size: 13px;
+    color: var(--color-primary-text);
+    text-decoration: none;
+}
+
+.sourcesLink:hover,
+.sourcesLink:focus-visible {
+    text-decoration: underline;
+}
