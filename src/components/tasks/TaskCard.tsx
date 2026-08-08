@@ -66,13 +66,21 @@ export function TaskCard({ task, onClick, onMoveStatus }: TaskCardProps) {
             <Card className={`${styles.card} ${styles[task.priority]}`}>
                 <div className={styles.statusActions} onClick={e => e.stopPropagation()}>
                     {PREV_STATUS[task.status] && (
-                        <button className={styles.statusBtn} onClick={() => onMoveStatus?.(PREV_STATUS[task.status]!)}>
-                            <ArrowLeft size={12} />
+                        <button
+                            className={styles.statusBtn}
+                            onClick={() => onMoveStatus?.(PREV_STATUS[task.status]!)}
+                            aria-label={`"${task.title}" einen Status zurück`}
+                        >
+                            <ArrowLeft size={14} aria-hidden="true" />
                         </button>
                     )}
                     {NEXT_STATUS[task.status] && (
-                        <button className={styles.statusBtn} onClick={() => onMoveStatus?.(NEXT_STATUS[task.status]!)}>
-                            <ArrowRight size={12} />
+                        <button
+                            className={styles.statusBtn}
+                            onClick={() => onMoveStatus?.(NEXT_STATUS[task.status]!)}
+                            aria-label={`"${task.title}" einen Status weiter`}
+                        >
+                            <ArrowRight size={14} aria-hidden="true" />
                         </button>
                     )}
                 </div>

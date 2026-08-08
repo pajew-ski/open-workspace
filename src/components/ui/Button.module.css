@@ -20,7 +20,7 @@
 /* Variants */
 .primary {
     background-color: var(--color-primary);
-    color: var(--color-text-inverse);
+    color: var(--color-on-primary);
 }
 
 .primary:hover:not(:disabled) {

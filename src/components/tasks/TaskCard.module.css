@@ -17,7 +17,7 @@
 
 .statusActions {
     position: absolute;
-    top: -12px;
+    top: -14px;
     right: 4px;
     display: flex;
     gap: 4px;
@@ -25,16 +25,27 @@
     transition: opacity 0.2s;
 }
 
-.card:hover .statusActions {
+/* Auch bei Tastatur-Fokus zeigen — unsichtbare fokussierte Buttons sind
+   ein A11y-Fehler */
+.card:hover .statusActions,
+.cardContainer:focus-within .statusActions {
     opacity: 1;
 }
 
+/* Touch kennt kein Hover: Aktionen dauerhaft anzeigen */
+@media (pointer: coarse) {
+    .statusActions {
+        opacity: 1;
+    }
+}
+
 .statusBtn {
-    width: 20px;
-    height: 20px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     border: 1px solid var(--color-border);
     background: var(--color-surface-elevated);
+    color: var(--color-text-secondary);
     cursor: pointer;
     font-size: 10px;
     display: flex;
@@ -150,7 +161,7 @@
 
 .priority-medium {
     background-color: var(--color-primary-subtle);
-    color: var(--color-primary);
+    color: var(--color-primary-text);
 }
 
 .priority-high {
