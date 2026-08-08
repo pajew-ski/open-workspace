@@ -27,6 +27,9 @@ export const viewport: Viewport = {
   ],
   width: "device-width",
   initialScale: 1,
+  // Layout bis unter Notch/Home-Indicator; Abstände via env(safe-area-inset-*).
+  // Bewusst KEIN maximumScale/userScalable — Pinch-Zoom ist Accessibility.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

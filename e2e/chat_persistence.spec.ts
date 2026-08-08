@@ -7,7 +7,13 @@ import { test, expect } from '@playwright/test';
  * navigation) is tested without any LLM. The conversational test at the
  * bottom needs a reachable inference endpoint and skips itself when the
  * health endpoint reports offline.
+ *
+ * Desktop-only: die Navigation läuft hier über die permanente Sidebar,
+ * die es auf Mobile bewusst nicht gibt (dort: Drawer, siehe
+ * mobile-navigation.spec.ts).
  */
+
+test.skip(({ isMobile }) => Boolean(isMobile), 'Navigiert über die Desktop-Sidebar');
 
 test('chat window opens and survives client-side navigation', async ({ page }) => {
     await page.goto('/');

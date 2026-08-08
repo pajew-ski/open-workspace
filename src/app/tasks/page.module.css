@@ -94,18 +94,23 @@
 
 .editProjBtn {
     margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    min-height: 28px;
     background: none;
     border: none;
+    border-radius: var(--radius-sm);
     cursor: pointer;
     font-size: 14px;
-    color: var(--color-text-tertiary);
-    opacity: 0.5;
-    transition: opacity 0.2s;
+    color: var(--color-text-secondary);
+    transition: color 0.2s, background-color 0.2s;
 }
 
 .editProjBtn:hover {
-    opacity: 1;
-    color: var(--color-primary);
+    color: var(--color-primary-text);
+    background-color: var(--color-primary-subtle);
 }
 
 .gridRow {

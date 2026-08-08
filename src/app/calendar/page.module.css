@@ -88,9 +88,15 @@
     min-height: 80px;
 }
 
+/* Nachbarmonat: über Farbe statt opacity abschwächen — halbierte
+   Deckkraft drückt Text und Event-Chips unter die Kontrastgrenze */
 .dimmed {
     background-color: var(--color-surface-sunken);
-    opacity: 0.5;
+}
+
+.dimmed .dayNumber {
+    color: var(--color-text-secondary);
+    font-weight: var(--font-normal);
 }
 
 .today {

@@ -9,6 +9,13 @@
   --color-primary-light: #1a7a62;
   --color-primary-dark: #004d3a;
   --color-primary-subtle: rgba(0, 103, 79, 0.1);
+  /* Text AUF Primärflächen: konstant, denn die Fläche bleibt in beiden
+     Themes dunkelgrün (text-inverse würde im Dark Mode dunkel-auf-dunkel) */
+  --color-on-primary: #FFFFFF;
+  /* Primärfarbe ALS Text (Links, Überschriften, aktive Nav): braucht im
+     Dark Mode eine hellere Stufe, sonst dunkelgrün auf dunkelgrau */
+  --color-primary-text: #00674F;
+  --color-primary-text-hover: #1a7a62;
 
   /* Neutral Palette - Light Mode */
   --color-surface: #FAFAFA;
@@ -17,17 +24,23 @@
   --color-border: #E0E0E0;
   --color-border-subtle: #EBEBEB;
 
-  /* Text Colors - Light Mode */
+  /* Text Colors - Light Mode
+     Tertiary muss auf allen Flächen (auch surface-sunken) WCAG AA
+     (4.5:1) erreichen — wird für Placeholder und Meta-Text benutzt. */
   --color-text-primary: #1A1A1A;
   --color-text-secondary: #5C5C5C;
-  --color-text-tertiary: #8A8A8A;
+  --color-text-tertiary: #6A6A6A;
   --color-text-inverse: #FFFFFF;
 
-  /* Semantic Colors */
+  /* Semantic Colors — als Textfarbe auf hellen Flächen WCAG-AA-tauglich */
   --color-success: #2E7D4A;
-  --color-warning: #B8860B;
+  --color-warning: #8F6400;
   --color-error: #C23B3B;
   --color-info: #2563A0;
+  --color-success-subtle: rgba(46, 125, 74, 0.12);
+  --color-warning-subtle: rgba(143, 100, 0, 0.12);
+  --color-error-subtle: rgba(194, 59, 59, 0.1);
+  --color-info-subtle: rgba(37, 99, 160, 0.1);
 
   /* Spacing Scale (4px base) */
   --space-1: 0.25rem;
@@ -110,6 +123,20 @@
   --sidebar-width-collapsed: 64px;
   --header-height: 56px;
   --content-max-width: 1200px;
+
+  /* Safe Areas (Notch, Home-Indicator) — 0 auf Geräten ohne */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+
+  /* Mindestgröße für Touch-Ziele (WCAG 2.5.5 / Apple HIG) */
+  --touch-target: 44px;
+
+  /* Gemeinsame Basis für die FAB-Reihe unten rechts:
+     [Aktion] [Finder] [Chat] — 48px Buttons mit 12px Abstand */
+  --fab-bottom: calc(var(--space-4) + var(--safe-bottom));
+  --fab-right: calc(var(--space-4) + var(--safe-right));
 }
 
 /* Dark Mode */
@@ -122,10 +149,22 @@
 
   --color-text-primary: #F5F5F5;
   --color-text-secondary: #A0A0A0;
-  --color-text-tertiary: #6A6A6A;
+  --color-text-tertiary: #8F8F8F;
   --color-text-inverse: #1A1A1A;
 
   --color-primary-subtle: rgba(0, 103, 79, 0.2);
+  --color-primary-text: #33A88A;
+  --color-primary-text-hover: #4DC0A0;
+
+  /* Semantic Colors — auf dunklen Flächen heller, sonst unlesbar */
+  --color-success: #4CAF6E;
+  --color-warning: #D4A017;
+  --color-error: #E06C6C;
+  --color-info: #5B9BD5;
+  --color-success-subtle: rgba(76, 175, 110, 0.16);
+  --color-warning-subtle: rgba(212, 160, 23, 0.16);
+  --color-error-subtle: rgba(224, 108, 108, 0.16);
+  --color-info-subtle: rgba(91, 155, 213, 0.16);
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
@@ -159,13 +198,43 @@ body {
   color: var(--color-text-primary);
   background-color: var(--color-surface);
   min-height: 100vh;
+  /* Dynamischer Viewport: folgt ein-/ausblendender Browser-UI auf Mobile */
+  min-height: 100dvh;
   transition: background-color var(--transition-base), color var(--transition-base);
+}
+
+/* Hintergrund-Scroll sperren, solange ein modaler Layer (Drawer) offen ist */
+body[data-scroll-locked] {
+  overflow: hidden;
 }
 
 /* Focus States */
 :focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
+}
+
+/* Touch: kein Double-Tap-Zoom-Delay auf interaktiven Elementen */
+a,
+button,
+[role="button"],
+input,
+select,
+textarea,
+label {
+  touch-action: manipulation;
+}
+
+/* iOS Safari zoomt beim Fokussieren von Feldern unter 16px in die Seite.
+   Auf Touch-/kleinen Screens deshalb nie darunter — Pinch-Zoom selbst
+   bleibt unangetastet (kein maximum-scale!). */
+@media (pointer: coarse), (max-width: 768px) {
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: max(16px, 1em) !important;
+  }
 }
 
 /* Selection */
@@ -176,13 +245,13 @@ body {
 
 /* Links */
 a {
-  color: var(--color-primary);
+  color: var(--color-primary-text);
   text-decoration: none;
   transition: color var(--transition-fast);
 }
 
 a:hover {
-  color: var(--color-primary-light);
+  color: var(--color-primary-text-hover);
 }
 
 /* Headings */
@@ -310,6 +379,29 @@ th {
   border: 0;
 }
 
+/* Skip-Link: unsichtbar bis Tastatur-Fokus, dann über allem */
+.skip-link {
+  position: fixed;
+  top: calc(var(--safe-top) + var(--space-2));
+  left: var(--space-2);
+  z-index: calc(var(--z-notification) + 1);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-primary);
+  color: var(--color-text-inverse);
+  border-radius: var(--radius-md);
+  font-weight: var(--font-medium);
+  text-decoration: none;
+}
+
+.skip-link:not(:focus):not(:active) {
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
 /* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
 
@@ -318,6 +410,8 @@ th {
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

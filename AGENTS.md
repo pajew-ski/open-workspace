@@ -8,6 +8,11 @@
 gehoben. Build, Typecheck, Lint (0 Errors) und Unit-Tests laufen grün; CI und
 Docker-Deployment stehen; PWA, Tool-Loop, API-Härtung und die generative
 Oberfläche (A2UI + native Workspace-Widgets + MCP-UI) sind implementiert.
+Mobile UX und Accessibility sind saniert (modaler Drawer, Safe-Areas,
+Touch-Targets, WCAG-AA-Kontraste) und durch ein **blockierendes E2E-Gate**
+abgesichert: `e2e/mobile-navigation`, `e2e/mobile-ux`, `e2e/a11y` (axe-core)
+laufen in CI auf Desktop- und Pixel-7-Projekt — Änderungen, die diese
+Garantien brechen, kommen nicht durch den PR-Check.
 
 **Bevor du etwas Neues baust, lies in dieser Reihenfolge:**
 1. [ANALYSE.md](./ANALYSE.md) — vollständige Bestandsaufnahme, was umgesetzt
@@ -239,6 +244,17 @@ bun run build      # Produktion
   - UI muss auf kleinen Screens perfekt funktionieren.
   - **Aktionen**: Primäre "Hinzufügen"-Aktionen (Notiz, Aufgabe etc.) MÜSSEN als **Floating Action Button (FAB)** unten rechts platziert werden.
   - Reihenfolge unten rechts: [Chat] -> [Finder] -> [Aktion].
+  - **FAB-Positionierung**: immer über die Tokens `--fab-bottom`/`--fab-right`
+    (enthalten Safe-Area-Insets), nie hartkodierte Pixel.
+  - **Touch-Targets**: Primär-Controls ≥ `--touch-target` (44px), alles ≥ 24px.
+    Hover-only-Controls sind verboten — auf Touch immer sichtbar/erreichbar
+    (`@media (pointer: coarse)`), bei Tastatur via `:focus-within`.
+  - **Z-Index**: nur die Token-Skala (`--z-*`) verwenden. Modale Layer (Drawer,
+    Dialoge) liegen auf `--z-modal`-Niveau, FABs auf `--z-dropdown` darunter.
+  - **Farben als Text**: `--color-primary-text` statt `--color-primary`
+    (Dark-Mode-Kontrast); Formularfelder nie unter 16px (iOS-Autozoom).
+  - Diese Regeln werden von `e2e/mobile-ux.spec.ts` und `e2e/a11y.spec.ts`
+    maschinell durchgesetzt (blockierender CI-Check).
 - **Navigation**: Logische Sortierung beachten (Übersicht -> Aufgaben -> Kalender...)
 
 ## Safety & UX Regeln

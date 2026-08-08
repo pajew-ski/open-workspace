@@ -1,6 +1,7 @@
 .container {
     display: flex;
     min-height: 100vh;
+    min-height: 100dvh;
 }
 
 .main {
@@ -23,6 +24,11 @@
     margin: 0 auto;
 }
 
+/* Skip-Link-Ziel: kein Fokusring auf dem Inhaltsbereich selbst */
+.content:focus {
+    outline: none;
+}
+
 .content.fluid {
     max-width: none;
 }
@@ -39,25 +45,34 @@
 
     .content {
         padding: var(--space-4);
+        /* Platz für die FAB-Reihe, damit sie den letzten Inhalt nicht verdeckt */
+        padding-bottom: calc(var(--fab-bottom) + 48px + var(--space-4));
     }
 }
 
 @media (max-width: 480px) {
     .content {
         padding: var(--space-3);
+        padding-bottom: calc(var(--fab-bottom) + 48px + var(--space-4));
     }
 }
 
+/* Muss über sticky Seiteninhalten UND Header liegen (z-sticky), sonst
+   "stanzen" Toolbar und Header durch die Abdunkelung. Kein backdrop-filter:
+   iOS Safari rendert den auf fixed Overlays als kaputte Streifen. */
 .mobileOverlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
+    inset: 0;
     background-color: rgba(0, 0, 0, 0.5);
-    z-index: calc(var(--z-sticky) - 1);
-    backdrop-filter: blur(2px);
+    z-index: calc(var(--z-modal) - 1);
     animation: fadeIn 0.2s ease-out;
+}
+
+/* Der Drawer existiert nur auf Mobile — das Overlay auch */
+@media (min-width: 769px) {
+    .mobileOverlay {
+        display: none;
+    }
 }
 
 @keyframes fadeIn {
@@ -72,18 +87,9 @@
 
 .floatingActionContainer {
     position: fixed;
-    bottom: 20px;
-    right: 140px;
-    z-index: 50;
+    bottom: var(--fab-bottom);
+    right: calc(var(--fab-right) + 120px);
+    z-index: var(--z-dropdown);
     display: flex;
     gap: 12px;
-}
-
-@media (max-width: 768px) {
-    .floatingActionContainer {
-        bottom: 16px;
-        /* Match mobile space-4 */
-        right: 140px;
-        /* Keep consistent with Finder/Chat stacking */
-    }
 }

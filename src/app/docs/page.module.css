@@ -84,14 +84,21 @@
     overflow: hidden;
 }
 
-.noteItemWrapper:hover .renameBtn {
+.noteItemWrapper:hover .renameBtn,
+.noteItemWrapper:focus-within .renameBtn {
     opacity: 1;
 }
 
 .renameBtn {
     opacity: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    min-height: 28px;
     background: none;
     border: none;
+    border-radius: var(--radius-sm);
     cursor: pointer;
     color: var(--color-text-secondary);
     padding: 0 var(--space-2);
@@ -99,8 +106,15 @@
     transition: opacity 0.2s;
 }
 
+/* Touch kennt kein Hover — Umbenennen muss direkt erreichbar sein */
+@media (pointer: coarse) {
+    .renameBtn {
+        opacity: 1;
+    }
+}
+
 .renameBtn:hover {
-    color: var(--color-primary);
+    color: var(--color-primary-text);
 }
 
 .renameForm {
