@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTask, updateTask, deleteTask } from '@/lib/storage';
+import { parseBody, updateTaskSchema } from '@/lib/api/validation';
 
 interface RouteParams {
     params: Promise<{ id: string }>;
@@ -30,9 +31,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function PUT(request: NextRequest, { params }: RouteParams) {
     try {
         const { id } = await params;
-        const body = await request.json();
+        const parsed = await parseBody(updateTaskSchema, request);
+        if (!parsed.ok) return parsed.response;
 
-        const task = await updateTask(id, body);
+        const task = await updateTask(id, parsed.data);
 
         if (!task) {
             return NextResponse.json(

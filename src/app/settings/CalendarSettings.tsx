@@ -23,10 +23,6 @@ export function CalendarSettings() {
     const [newColor, setNewColor] = useState(PRESET_COLORS[0]);
     const [isLoading, setIsLoading] = useState(false);
 
-    useEffect(() => {
-        fetchProviders();
-    }, []);
-
     const fetchProviders = async () => {
         try {
             const res = await fetch('/api/calendar');
@@ -36,6 +32,11 @@ export function CalendarSettings() {
             console.error(e);
         }
     };
+
+    useEffect(() => {
+        fetchProviders();
+    }, []);
+
 
     const handleAdd = async () => {
         if (!newName || !newUrl) return;

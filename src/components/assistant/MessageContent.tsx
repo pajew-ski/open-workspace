@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Components } from 'react-markdown';
@@ -90,17 +90,17 @@ const MermaidDiagram = ({ code }: { code: string }) => {
 // Code block component with syntax highlighting
 const CodeBlock = ({ language, code }: { language: string; code: string }) => {
     const [copied, setCopied] = useState(false);
-    const [highlighted, setHighlighted] = useState<string | null>(null);
 
-    useEffect(() => {
+    // Pure computation — deriving via useMemo avoids a setState-in-effect cascade
+    const highlighted = useMemo<string | null>(() => {
         if (Prism && language && Prism.languages[language]) {
             try {
-                const html = Prism.highlight(code, Prism.languages[language], language);
-                setHighlighted(html);
+                return Prism.highlight(code, Prism.languages[language], language);
             } catch {
-                setHighlighted(null);
+                return null;
             }
         }
+        return null;
     }, [code, language]);
 
     const handleCopy = async () => {

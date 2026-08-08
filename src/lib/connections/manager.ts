@@ -1,70 +1,122 @@
-import fs from 'fs/promises';
 import path from 'path';
-import { Connection, CreateConnectionRequest } from './types';
+import { AuthConfig, Connection, CreateConnectionRequest } from './types';
 import { encrypt, decrypt } from '@/lib/security/encryption';
 import { randomUUID } from 'crypto';
+import { readJsonSafe, withFileLock, writeJsonAtomic } from '@/lib/storage/atomic';
 
 const DATA_DIR = path.join(process.cwd(), 'data', 'connections');
 const CONNECTIONS_FILE = path.join(DATA_DIR, 'config.json');
 
-async function ensureDataDir() {
-    try {
-        await fs.access(DATA_DIR);
-    } catch {
-        await fs.mkdir(DATA_DIR, { recursive: true });
-    }
-}
+/** Placeholder the API layer uses when masking secrets in list responses. */
+export const MASKED_SECRET = '***';
+
+const SECRET_FIELDS = ['token', 'password', 'apiKey'] as const;
 
 export async function loadConnections(): Promise<Connection[]> {
-    await ensureDataDir();
-    try {
-        const data = await fs.readFile(CONNECTIONS_FILE, 'utf-8');
-        return JSON.parse(data);
-    } catch {
-        return [];
-    }
+    return readJsonSafe<Connection[]>(CONNECTIONS_FILE, []);
 }
 
 export async function saveConnections(connections: Connection[]): Promise<void> {
-    await ensureDataDir();
-    await fs.writeFile(CONNECTIONS_FILE, JSON.stringify(connections, null, 2));
+    await writeJsonAtomic(CONNECTIONS_FILE, connections);
+}
+
+/**
+ * Encrypt secret fields of an auth config for storage.
+ * - "ENV:*" references are stored verbatim.
+ * - The mask placeholder ("***") keeps the previously stored value, so a
+ *   client round-tripping a masked connection cannot destroy real secrets.
+ */
+function prepareAuthForStorage(input: AuthConfig, previous?: AuthConfig): AuthConfig {
+    const auth: AuthConfig = { ...input };
+
+    for (const field of SECRET_FIELDS) {
+        const value = auth[field];
+        if (value === undefined) continue;
+
+        if (value === MASKED_SECRET && previous?.[field]) {
+            auth[field] = previous[field];
+            continue;
+        }
+
+        if (value && !value.startsWith('ENV:')) {
+            auth[field] = encrypt(value);
+        }
+    }
+
+    return auth;
 }
 
 /**
  * Creates a new connection. Encrypts sensitive fields before saving.
  */
 export async function createConnection(input: CreateConnectionRequest): Promise<Connection> {
-    const connections = await loadConnections();
+    return withFileLock(CONNECTIONS_FILE, async () => {
+        const connections = await loadConnections();
 
-    // Encrypt sensitive fields
-    const auth = { ...input.auth };
-    if (auth.token && !auth.token.startsWith('ENV:')) auth.token = encrypt(auth.token);
-    if (auth.password && !auth.password.startsWith('ENV:')) auth.password = encrypt(auth.password);
-    if (auth.apiKey && !auth.apiKey.startsWith('ENV:')) auth.apiKey = encrypt(auth.apiKey);
+        const newConnection: Connection = {
+            id: randomUUID(),
+            ...input,
+            auth: prepareAuthForStorage(input.auth),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        };
 
-    const newConnection: Connection = {
-        id: randomUUID(),
-        ...input,
-        auth,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-    };
-
-    connections.push(newConnection);
-    await saveConnections(connections);
-    return newConnection;
+        connections.push(newConnection);
+        await saveConnections(connections);
+        return newConnection;
+    });
 }
 
 /**
- * Gets a connection with DECIPTED secrets ready for use.
+ * Updates name/description/baseUrl/auth of a connection.
+ * When auth is provided, its secrets are (re-)encrypted; masked values ("***")
+ * keep the previously stored secret.
+ */
+export async function updateConnection(
+    id: string,
+    updates: {
+        name?: string;
+        description?: string;
+        baseUrl?: string;
+        auth?: AuthConfig;
+    }
+): Promise<Connection | null> {
+    return withFileLock(CONNECTIONS_FILE, async () => {
+        const connections = await loadConnections();
+        const index = connections.findIndex(c => c.id === id);
+        if (index === -1) return null;
+
+        const existing = connections[index];
+        const updated: Connection = {
+            ...existing,
+            ...(updates.name !== undefined ? { name: updates.name } : {}),
+            ...(updates.description !== undefined ? { description: updates.description } : {}),
+            ...(updates.baseUrl !== undefined ? { baseUrl: updates.baseUrl } : {}),
+            auth: updates.auth ? prepareAuthForStorage(updates.auth, existing.auth) : existing.auth,
+            updatedAt: new Date().toISOString(),
+        };
+
+        connections[index] = updated;
+        await saveConnections(connections);
+        return updated;
+    });
+}
+
+/**
+ * Gets a connection with DECRYPTED secrets ready for use.
  * Resolves ENV: variables.
+ *
+ * SECURITY: if a stored secret cannot be decrypted (wrong/rotated master key,
+ * tampered or legacy plaintext value), the field is returned as undefined and
+ * the error is logged. The raw ciphertext is NEVER returned, so it can never
+ * leak into request headers.
  */
 export async function getConnectionWithSecrets(id: string): Promise<Connection | null> {
     const connections = await loadConnections();
     const conn = connections.find(c => c.id === id);
     if (!conn) return null;
 
-    const resolveSecret = (val?: string) => {
+    const resolveSecret = (field: string, val?: string): string | undefined => {
         if (!val) return undefined;
         if (val.startsWith('ENV:')) {
             const envVar = val.substring(4);
@@ -72,21 +124,28 @@ export async function getConnectionWithSecrets(id: string): Promise<Connection |
         }
         try {
             return decrypt(val);
-        } catch {
-            return val; // Fallback or error?
+        } catch (error) {
+            console.error(
+                `[connections] Failed to decrypt "${field}" of connection ${conn.id} (${conn.name}). ` +
+                'The secret will be treated as unavailable:',
+                error instanceof Error ? error.message : error
+            );
+            return undefined;
         }
     };
 
-    const decryptedAuth = { ...conn.auth };
-    if (decryptedAuth.token) decryptedAuth.token = resolveSecret(decryptedAuth.token);
-    if (decryptedAuth.password) decryptedAuth.password = resolveSecret(decryptedAuth.password);
-    if (decryptedAuth.apiKey) decryptedAuth.apiKey = resolveSecret(decryptedAuth.apiKey);
+    const decryptedAuth: AuthConfig = { ...conn.auth };
+    decryptedAuth.token = resolveSecret('token', conn.auth.token);
+    decryptedAuth.password = resolveSecret('password', conn.auth.password);
+    decryptedAuth.apiKey = resolveSecret('apiKey', conn.auth.apiKey);
 
     return { ...conn, auth: decryptedAuth };
 }
 
 export async function deleteConnection(id: string): Promise<void> {
-    const connections = await loadConnections();
-    const filtered = connections.filter(c => c.id !== id);
-    await saveConnections(filtered);
+    return withFileLock(CONNECTIONS_FILE, async () => {
+        const connections = await loadConnections();
+        const filtered = connections.filter(c => c.id !== id);
+        await saveConnections(filtered);
+    });
 }

@@ -1,0 +1,35 @@
+# Dependencies and build output (recreated inside the image)
+node_modules
+.next
+out
+build
+coverage
+tsconfig.tsbuildinfo
+
+# VCS / CI / agent metadata
+.git
+.github
+.agent
+
+# Tests and tooling not needed for the production build
+e2e
+tests
+scripts
+playwright-report
+test-results
+blob-report
+
+# Environment files — provide configuration at runtime instead
+.env*
+
+# Root-level docs only. Patterns without "/" match at the context root, so
+# data/docs/*.md (seed content needed in the runner stage) stays included.
+*.md
+
+# Never bake secrets or per-user runtime data into the image.
+# data/ itself must stay in the build context (seed data for the runner).
+data/secure
+
+# Docker build files themselves
+Dockerfile
+.dockerignore

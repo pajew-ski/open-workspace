@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { listTasks, createTask, getTasksByStatus } from '@/lib/storage';
+import { createTaskSchema, parseBody, taskStatusSchema } from '@/lib/api/validation';
 
 export async function GET(request: NextRequest) {
     try {
@@ -11,11 +12,15 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ tasks: grouped });
         }
 
-        const status = searchParams.get('status') as 'backlog' | 'todo' | 'in-progress' | 'review' | 'done' | 'on-hold' | null;
+        const statusParam = searchParams.get('status');
+        const status = statusParam ? taskStatusSchema.safeParse(statusParam) : null;
+        if (status && !status.success) {
+            return NextResponse.json({ error: 'Ungültiger Status-Filter' }, { status: 400 });
+        }
         const projectId = searchParams.get('projectId');
 
         const tasks = await listTasks({
-            status: status || undefined,
+            status: status?.data,
             projectId: projectId || undefined,
         });
 
@@ -31,14 +36,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     try {
-        const body = await request.json();
-
-        if (!body.title) {
-            return NextResponse.json(
-                { error: 'Titel ist erforderlich' },
-                { status: 400 }
-            );
-        }
+        const parsed = await parseBody(createTaskSchema, request);
+        if (!parsed.ok) return parsed.response;
+        const body = parsed.data;
 
         const task = await createTask({
             title: body.title,

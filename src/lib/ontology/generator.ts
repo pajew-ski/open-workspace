@@ -14,7 +14,7 @@ const CONFIG: OntologyConfig = {
  * Remove Markdown syntax and HTML tags for plaintext description
  */
 function stripMarkdown(text: string): string {
-    return text
+    const plain = text
         .replace(/!\[.*?\]\(.*?\)/g, '') // Remove images
         .replace(/\[([^\]]+)\]\(.*?\)/g, '$1') // Remove links
         .replace(/(\*\*|__)(.*?)\1/g, '$2') // Remove bold
@@ -22,10 +22,9 @@ function stripMarkdown(text: string): string {
         .replace(/^#+\s+/gm, '') // Remove header syntax (keep text)
         .replace(/<[^>]*>/g, '') // Remove HTML
         .replace(/\s+/g, ' ') // Normalize whitespace (newlines to spaces)
-        .trim()
-        .slice(0, 160);
+        .trim();
 
-    return text.length > 160 ? text + '...' : text;
+    return plain.length > 160 ? plain.slice(0, 160) + '…' : plain;
 }
 
 /**

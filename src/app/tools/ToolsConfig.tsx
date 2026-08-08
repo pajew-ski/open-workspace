@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, Button } from '@/components/ui';
 import { AddApiToolDialog } from '@/components/tools/AddApiToolDialog';
 import { ConnectionManager } from '@/app/tools/connections/ConnectionManager';
@@ -8,22 +9,17 @@ import styles from './ToolsConfig.module.css';
 
 export function ToolsConfig() {
     const [activeTab, setActiveTab] = useState<'tools' | 'connections'>('tools');
-    const [tools, setTools] = useState<any[]>([]);
     const [isAdding, setIsAdding] = useState(false);
+    const queryClient = useQueryClient();
 
-    useEffect(() => {
-        fetchTools();
-    }, []);
-
-    const fetchTools = async () => {
-        try {
+    const { data: tools = [] } = useQuery<any[]>({
+        queryKey: ['tools'],
+        queryFn: async () => {
             const res = await fetch('/api/tools');
             const data = await res.json();
-            setTools(data.tools || []);
-        } catch (e) {
-            console.error(e);
-        }
-    };
+            return data.tools || [];
+        },
+    });
 
     const handleAddApi = async (data: any) => {
         const res = await fetch('/api/tools', {
@@ -32,7 +28,7 @@ export function ToolsConfig() {
             headers: { 'Content-Type': 'application/json' }
         });
         if (res.ok) {
-            fetchTools();
+            queryClient.invalidateQueries({ queryKey: ['tools'] });
         }
     };
 
@@ -68,20 +64,11 @@ export function ToolsConfig() {
                         <div className={styles.info}>
                             <span className={styles.label}>MCP Server</span>
                             <span className={styles.description}>
-                                Konfiguriere Model Context Protocol (MCP) Server für erweiterte Agenten-Funktionen.
+                                Model Context Protocol (MCP) Anbindung ist in Entwicklung — bis dahin kannst du externe Dienste als API-Tools verbinden.
                             </span>
                         </div>
-                        <Button variant="primary" size="sm" disabled>+ Server verbinden</Button>
+                        <Button variant="primary" size="sm" disabled title="MCP-Anbindung ist in Entwicklung">Geplant</Button>
                     </div>
-
-                    <Card className={styles.serverList}>
-                        <CardContent>
-                            <div className={styles.emptyState}>
-                                <p>Keine MCP Server konfiguriert.</p>
-                                <p className={styles.emptySub}>Verbinde einen Server, um Tools bereitzustellen.</p>
-                            </div>
-                        </CardContent>
-                    </Card>
 
                     <div className={styles.header} style={{ marginTop: 'var(--space-6)' }}>
                         <div className={styles.info}>

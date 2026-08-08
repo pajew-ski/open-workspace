@@ -2,6 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { ActionHandler } from '../types';
+import {
+    WorkspaceTasks,
+    WorkspaceCalendar,
+    WorkspaceDocs,
+    WorkspaceStats,
+} from '../native/WorkspaceWidgets';
+import { UIResource } from '../native/UIResource';
 
 import './Display.css';
 import './Structure.css';
@@ -557,4 +564,11 @@ export const ComponentRegistry: Record<string, React.FC<ComponentProps>> = {
     Input,
     Select,
     Checkbox,
+    // Native workspace widgets (self-hydrating, live data)
+    WorkspaceTasks,
+    WorkspaceCalendar,
+    WorkspaceDocs,
+    WorkspaceStats,
+    // Embedded UI resources (MCP-UI standard)
+    UIResource,
 };

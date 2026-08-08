@@ -1,40 +1,52 @@
-
 import { test, expect } from '@playwright/test';
 
-test('Chat persistence and context awareness', async ({ page }) => {
-    // 1. Go to Dashboard
-    await page.goto('http://localhost:3000/');
+/**
+ * E2E: assistant chat widget behavior.
+ *
+ * The widget itself (open/close, persistence across client-side
+ * navigation) is tested without any LLM. The conversational test at the
+ * bottom needs a reachable inference endpoint and skips itself when the
+ * health endpoint reports offline.
+ */
 
-    // 2. Open Chat
-    const chatButton = page.locator('button[aria-label="Assistant öffnen"]'); // Adjust selector as needed
-    if (await chatButton.isVisible()) {
-        await chatButton.click();
-    } else {
-        // Maybe keyboard shortcut?
-        await page.keyboard.press('Control+Shift+a');
-    }
+test('chat window opens and survives client-side navigation', async ({ page }) => {
+    await page.goto('/');
 
-    // 3. Send Message "Where am I?"
-    const input = page.locator('input[placeholder="Frag mich etwas..."]'); // Adjust
-    await input.fill('Where am I?');
-    await page.keyboard.press('Enter');
+    const fab = page.getByTestId('assistant-chat-fab');
+    await expect(fab).toBeVisible();
+    await fab.click();
 
-    // 4. Wait for response containing "Dashboard"
-    await expect(page.locator('.assistant-chat-message')).toContainText(/Dashboard|Übersicht/);
-
-    // 5. Scroll up a bit (if possible) - hard to test programmatically without enough content
-
-    // 6. Navigate to /calendar
-    await page.click('a[href="/calendar"]'); // Sidebar link
-
-    // 7. Verify Chat is STILL OPEN
-    const chatWindow = page.locator('.assistant-chat-window'); // Adjust class
+    const chatWindow = page.getByTestId('assistant-chat-window');
     await expect(chatWindow).toBeVisible();
 
-    // 8. Send Message "And now?"
-    await input.fill('And now?');
-    await page.keyboard.press('Enter');
+    // Navigate to the calendar via the sidebar — the widget must stay open
+    await page.click('a[href="/calendar"]');
+    await expect(page).toHaveURL(/\/calendar/);
+    await expect(chatWindow).toBeVisible();
+});
 
-    // 9. Verify response contains "Calendar"
-    await expect(page.locator('.assistant-chat-message').last()).toContainText(/Calendar|Kalender/);
+test('chat answers with page context', async ({ page, request }) => {
+    const health = await request.get('/api/chat/health');
+    const healthData = await health.json().catch(() => ({ status: 'error' }));
+    test.skip(healthData.status !== 'online', 'No LLM endpoint reachable — skipping conversational E2E');
+
+    await page.goto('/');
+    await page.getByTestId('assistant-chat-fab').click();
+
+    const input = page.getByTestId('assistant-chat-input');
+    await input.fill('Auf welcher Seite bin ich gerade?');
+    await input.press('Enter');
+
+    await expect(page.getByTestId('assistant-chat-message-assistant').last())
+        .toContainText(/Dashboard|Übersicht/i, { timeout: 60_000 });
+
+    // Navigate and ask again — context must follow
+    await page.click('a[href="/calendar"]');
+    await expect(page.getByTestId('assistant-chat-window')).toBeVisible();
+
+    await input.fill('Und jetzt?');
+    await input.press('Enter');
+
+    await expect(page.getByTestId('assistant-chat-message-assistant').last())
+        .toContainText(/Kalender|Calendar/i, { timeout: 60_000 });
 });
