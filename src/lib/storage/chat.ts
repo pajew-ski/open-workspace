@@ -13,6 +13,12 @@ export interface ChatMessage {
     role: 'user' | 'assistant';
     content: string;
     timestamp: string;
+    /**
+     * Generative surface attached to this message (A2UI nodes).
+     * Persisted so surfaces survive reloads — the interface is a function
+     * of the conversation, so it must be reconstructable from it.
+     */
+    uiComponents?: unknown[];
 }
 
 export interface Conversation {
@@ -83,7 +89,12 @@ export async function createConversation(title?: string): Promise<Conversation> 
     });
 }
 
-export async function addMessage(conversationId: string, role: 'user' | 'assistant', content: string): Promise<ChatMessage | null> {
+export async function addMessage(
+    conversationId: string,
+    role: 'user' | 'assistant',
+    content: string,
+    uiComponents?: unknown[]
+): Promise<ChatMessage | null> {
     return withFileLock(CONVERSATIONS_FILE, async () => {
         const data = await readData();
         const conv = data.conversations.find(c => c.id === conversationId);
@@ -94,6 +105,7 @@ export async function addMessage(conversationId: string, role: 'user' | 'assista
             role,
             content,
             timestamp: new Date().toISOString(),
+            ...(uiComponents && uiComponents.length > 0 ? { uiComponents } : {}),
         };
 
         conv.messages.push(message);

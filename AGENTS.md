@@ -79,9 +79,16 @@ open-workspace/
 - Capability Discovery via Agent Cards
 - Long-running Task Support
 
-### Agent2UI (A2UI)
+### Agent2UI (A2UI) — Generative Oberfläche
 - Deklarative UI-Komponenten-Beschreibungen
 - Streaming JSON (JSONL) für progressive Darstellung innerhalb des Chats
+- **Grundprinzip**: Die Oberfläche ist eine Funktion des Gesprächsverlaufs,
+  kein festes View-Inventar. Der Dialog ist der primäre Kanal; UI
+  materialisiert sich pro Interaktion. Ein a2ui-Block **ersetzt** die
+  aktive Bühne; ein leerer Block leert sie ("blende X aus"). Der
+  Surface-Zustand fließt als Kontext zurück ans Modell (`AKTIVE BÜHNE`),
+  und Surfaces werden mit der Chat-Historie persistiert — die Oberfläche
+  ist aus dem Gespräch rekonstruierbar.
 - **Verfügbare Komponenten**:
   - **Basis**: `Text`, `Card`, `Button`, `Divider`
   - **Layout**: `Column`, `Row`
@@ -89,9 +96,18 @@ open-workspace/
   - **Struktur**: `List`, `ListItem`, `Table`
   - **Status**: `Progress`, `Chip`, `Badge`
   - **Input**: `Input`, `Select`, `Checkbox`
-- Interaktionen werden als `UserAction` zuruck an den Agenten gesendet
-- Secure by Design (keine Code-Ausfuhrung)
-- **Tests**: 25 Unit Tests mit Vitest (`bun test`)
+  - **Native Workspace-Widgets** (selbst-ladend, Live-Daten):
+    `WorkspaceTasks`, `WorkspaceCalendar`, `WorkspaceDocs`, `WorkspaceStats`.
+    Das Modell deklariert nur die Absicht (z.B. `{"status":"todo"}`),
+    Datenbindung und Refresh besitzt die native Schicht.
+  - **`UIResource`** (MCP-UI-Standard, https://mcpui.dev): rendert von
+    Tools/MCP-Servern gelieferte UI (`ui://`-URIs, `text/html` oder
+    `text/uri-list`) sandboxed im iframe; Interaktionen kommen per
+    postMessage als `mcpui:<type>`-Aktionen zurück.
+- Interaktionen werden als `UserAction` zurück an den Agenten gesendet
+- Secure by Design (A2UI: keine Code-Ausführung; UIResource: sandboxed iframe)
+- **Ganzseitige Ansicht**: `/assistant` — Dialog links, generative Bühne rechts
+- **Tests**: A2UI-Renderer + MCP-UI-Resource Unit-Tests mit Vitest (`bun run test:run`)
 
 ### Model Context Protocol (MCP)
 - Tool und Resource Exposure für Agenten

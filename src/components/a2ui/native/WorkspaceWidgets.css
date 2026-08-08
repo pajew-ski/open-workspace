@@ -1,0 +1,214 @@
+/* Native workspace widgets rendered on the generative surface */
+
+.ws-widget {
+    border: 1px solid var(--color-border, #e0e0e0);
+    border-radius: var(--radius-lg, 12px);
+    background: var(--color-surface, #fff);
+    padding: var(--space-3, 12px) var(--space-4, 16px);
+    margin: var(--space-2, 8px) 0;
+    font-size: var(--text-sm, 0.875rem);
+}
+
+.ws-widget-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3, 12px);
+    margin-bottom: var(--space-2, 8px);
+}
+
+.ws-widget-title {
+    font-weight: 600;
+    color: var(--color-text-primary, #1a1a1a);
+}
+
+.ws-widget-more {
+    font-size: var(--text-xs, 0.75rem);
+    color: var(--color-primary, #00674F);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.ws-widget-more:hover {
+    text-decoration: underline;
+}
+
+.ws-widget-state {
+    color: var(--color-text-secondary, #666);
+    font-size: var(--text-xs, 0.75rem);
+    margin: var(--space-1, 4px) 0 0;
+}
+
+/* Tasks */
+.ws-task-list,
+.ws-event-list,
+.ws-doc-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1, 4px);
+}
+
+.ws-task-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2, 8px);
+    padding: var(--space-1, 4px) 0;
+    border-bottom: 1px solid var(--color-border-subtle, var(--color-border, #eee));
+}
+
+.ws-task-item:last-child {
+    border-bottom: none;
+}
+
+.ws-task-status {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    background: var(--color-surface-variant, #f0f0f0);
+    color: var(--color-text-secondary, #555);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.ws-status-done {
+    background: var(--color-primary-subtle, #e4efea);
+    color: var(--color-primary, #00674F);
+}
+
+.ws-status-in-progress {
+    background: var(--color-warning-subtle, #f7efdc);
+    color: var(--color-warning, #8f6400);
+}
+
+.ws-task-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ws-task-due {
+    font-size: var(--text-xs, 0.75rem);
+    color: var(--color-text-secondary, #666);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+}
+
+/* Calendar */
+.ws-event-item {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2, 8px);
+    padding: var(--space-1, 4px) 0;
+}
+
+.ws-event-date {
+    font-size: var(--text-xs, 0.75rem);
+    color: var(--color-text-secondary, #666);
+    min-width: 5.2em;
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+}
+
+.ws-event-time {
+    font-size: var(--text-xs, 0.75rem);
+    color: var(--color-primary, #00674F);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+}
+
+.ws-event-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Docs */
+.ws-doc-item {
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-1, 4px) 0;
+}
+
+.ws-doc-link {
+    color: var(--color-text-primary, #1a1a1a);
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.ws-doc-link:hover {
+    color: var(--color-primary, #00674F);
+    text-decoration: underline;
+}
+
+.ws-doc-sub {
+    font-size: var(--text-xs, 0.75rem);
+    color: var(--color-text-secondary, #666);
+}
+
+/* Stats */
+.ws-stats-row {
+    display: flex;
+    gap: var(--space-4, 16px);
+}
+
+.ws-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    padding: var(--space-2, 8px);
+    border-radius: var(--radius-md, 8px);
+    background: var(--color-surface-variant, #f7f7f7);
+}
+
+.ws-stat-value {
+    font-size: 1.3rem;
+    font-weight: 650;
+    color: var(--color-primary, #00674F);
+    font-variant-numeric: tabular-nums;
+}
+
+.ws-stat-label {
+    font-size: var(--text-xs, 0.75rem);
+    color: var(--color-text-secondary, #666);
+}
+
+/* MCP-UI resource frame */
+.ws-uiresource {
+    border: 1px solid var(--color-border, #e0e0e0);
+    border-radius: var(--radius-lg, 12px);
+    overflow: hidden;
+    margin: var(--space-2, 8px) 0;
+    background: var(--color-surface, #fff);
+}
+
+.ws-uiresource iframe {
+    display: block;
+    width: 100%;
+    border: 0;
+}
+
+.ws-uiresource-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--text-xs, 0.75rem);
+    color: var(--color-text-secondary, #666);
+    padding: var(--space-1, 4px) var(--space-3, 12px);
+    border-top: 1px solid var(--color-border-subtle, var(--color-border, #eee));
+    background: var(--color-surface-variant, #fafafa);
+}
+
+.ws-uiresource-error {
+    padding: var(--space-3, 12px);
+    color: var(--color-text-secondary, #666);
+    font-size: var(--text-sm, 0.875rem);
+}

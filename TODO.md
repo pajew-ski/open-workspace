@@ -32,8 +32,12 @@
 - [x] Streaming-Chat (Ollama + OpenAI-kompatibel) mit Timeout & Fehlerbehandlung
 - [x] Kontext-Injektion pro Modul (viewState)
 - [x] A2UI-Protokoll: Parser + React-Renderer + Streaming-Updates (Tests)
+- [x] Generative Oberfläche: Surface-Ersetzung/-Leerung, Surface-Persistenz,
+      Surface-Zustand im Modell-Kontext, ganzseitige /assistant-Ansicht mit Bühne
+- [x] Native Workspace-Widgets (WorkspaceTasks/Calendar/Docs/Stats, selbst-ladend)
+- [x] MCP-UI-Standard: UIResource-Renderer (ui://, sandboxed iframe, postMessage)
 - [x] Tool-Ausführung: [[TOOL:...]]-Parser + serverseitiger Tool-Loop (max. 3 Runden)
-- [x] Chat-Historie (Konversationen, Persistenz)
+- [x] Chat-Historie (Konversationen, Persistenz inkl. Surfaces)
 - [ ] Natives Function Calling (Ollama `tools`-Parameter) mit Text-Syntax-Fallback — P1
 - [ ] A2A-Protokoll: Agent Card (/.well-known/agent.json), JSON-RPC, Task-Lifecycle — P1
 - [ ] MCP-Client (@modelcontextprotocol/sdk): externe MCP-Server als Tool-Quelle — P1
