@@ -2,6 +2,16 @@
 
 > Vollständige Bestandsaufnahme von Open Workspace (Stand 2026-08-08), durchgeführte
 > Modernisierung und priorisierte Roadmap für die verbleibenden Schritte.
+>
+> **Nachtrag (2. Ausbaustufe, 2026-08-08)**: Die AI-Plattform wurde voll
+> ausgebaut — Multi-Provider-Inference (Cloud + lokal + WebLLM im Browser),
+> Backend-Unabhängigkeit mit automatischem Browser/Server-Routing, natives
+> Tool-Calling mit Text-Fallback, MCP-Client, A2A-Protokoll (Discovery +
+> message/send), Skills-System und die neuen Oberflächen /ai und /skills.
+> Damit sind die Roadmap-Punkte **P1.5 (A2A), P1.6 (MCP), P1.7 (natives
+> Tool-Calling)** umgesetzt; P1.9 (IndexedDB-Spiegel) ist für die
+> AI-Schicht (Chats, Konfiguration, Skills) erledigt und bleibt für die
+> Content-Module offen. Architektur: [docs/ai-platform.md](./docs/ai-platform.md).
 
 ## 1. Executive Summary
 

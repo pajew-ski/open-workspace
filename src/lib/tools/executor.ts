@@ -1,5 +1,6 @@
 import { Tool } from './types';
 import { getConnectionWithSecrets } from '@/lib/connections/manager';
+import { isPrivateHostname } from '@/lib/net/private';
 
 interface ToolExecutionResult {
     success: boolean;
@@ -18,36 +19,6 @@ function localUrlsAllowed(): boolean {
     if (!flag) return false;
     const normalized = flag.trim().toLowerCase();
     return normalized !== '' && normalized !== '0' && normalized !== 'false';
-}
-
-/**
- * Best-effort check for loopback/private/link-local targets.
- * Covers 127.*, 10.*, 172.16-31.*, 192.168.*, 169.254.*, 0.*, localhost,
- * ::1, IPv6 unique-local (fc00::/7) and link-local (fe80::/10).
- */
-function isPrivateHostname(hostname: string): boolean {
-    const host = hostname.replace(/^\[|\]$/g, '').toLowerCase();
-
-    if (host === 'localhost' || host.endsWith('.localhost')) return true;
-    if (host === '::1' || host === '::') return true;
-
-    // IPv4 (including IPv4-mapped IPv6 like ::ffff:127.0.0.1)
-    const v4 = host.startsWith('::ffff:') ? host.slice(7) : host;
-    const parts = v4.split('.');
-    if (parts.length === 4 && parts.every(p => /^\d{1,3}$/.test(p))) {
-        const [a, b] = parts.map(Number);
-        if (a === 0) return true;                          // "this network" / 0.0.0.0
-        if (a === 127) return true;                        // loopback
-        if (a === 10) return true;                         // private
-        if (a === 192 && b === 168) return true;           // private
-        if (a === 172 && b >= 16 && b <= 31) return true;  // private
-        if (a === 169 && b === 254) return true;           // link-local (cloud metadata!)
-    }
-
-    // IPv6 unique-local fc00::/7 and link-local fe80::/10
-    if (/^f[cd][0-9a-f]{2}:/.test(host) || host.startsWith('fe80:')) return true;
-
-    return false;
 }
 
 /**

@@ -47,6 +47,8 @@ data/connections/
 data/tools/
 data/agents/
 data/settings.json
+# AI platform config: enthält verschlüsselte Provider-Keys/MCP-Auth
+data/ai/
 
 # playwright
 /playwright-report/
