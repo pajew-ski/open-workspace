@@ -201,6 +201,16 @@
     user-select: none;
 }
 
+/* Slim bar under the header: provider · model switcher with route badge */
+.modelBar {
+    display: flex;
+    justify-content: flex-end;
+    padding: 4px var(--space-3);
+    border-bottom: 1px solid var(--color-border-subtle);
+    background: var(--color-surface);
+    flex-shrink: 0;
+}
+
 .header.draggable:active {
     cursor: grabbing;
 }

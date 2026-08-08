@@ -1,0 +1,133 @@
+.manager {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.gpuStatus {
+    margin: 0;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    font-size: var(--text-xs);
+}
+
+.gpuOk {
+    background: var(--color-success-subtle);
+    color: var(--color-success-text);
+}
+
+.gpuFail {
+    background: var(--color-error-subtle);
+    color: var(--color-error-text);
+}
+
+.modelList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.modelItem {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    flex-wrap: wrap;
+}
+
+.modelInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+}
+
+.modelInfo strong {
+    font-size: var(--text-sm);
+    color: var(--color-text-primary);
+}
+
+.modelMeta {
+    font-size: var(--text-xs);
+    color: var(--color-text-tertiary);
+}
+
+.modelMeta code {
+    font-family: var(--font-mono);
+    font-size: 11px;
+}
+
+.modelActions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-shrink: 0;
+}
+
+.cachedTag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    background: var(--color-success-subtle);
+    color: var(--color-success-text);
+    font-size: var(--text-xs);
+}
+
+.iconAction {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--touch-target);
+    height: var(--touch-target);
+    border: none;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+}
+
+.iconAction:hover,
+.iconAction:focus-visible {
+    background: var(--color-error-subtle);
+    color: var(--color-error);
+}
+
+.progressWrap {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 4px;
+    width: 100%;
+    max-width: 360px;
+}
+
+.progressBar {
+    height: 6px;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-sunken);
+    overflow: hidden;
+}
+
+.progressFill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    background: var(--color-primary);
+    transition: width 0.3s ease;
+}
+
+.progressLabel {
+    font-size: var(--text-xs);
+    color: var(--color-text-tertiary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

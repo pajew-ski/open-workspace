@@ -1,16 +1,22 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import type { A2UINode } from '@/components/a2ui/types';
+import type { A2UINode, UIResourceContent } from '@/components/a2ui/types';
+import { runAssistantTurn } from '@/lib/ai/transport';
+import { addMessage as persistMessage } from '@/lib/chat/gateway';
+import type { ClientProviderRecord } from '@/lib/ai/store.client';
 
 /**
- * Minimal conversation + streaming hook used by the full-page assistant.
+ * Conversation + streaming hook used by the full-page assistant.
  *
  * Embodies the generative-surface model: each assistant turn may carry a
  * surface (A2UI nodes) that replaces the stage; the latest non-empty
  * surface across the conversation is exposed as `activeSurface`, and a
  * compact summary of it is sent back into model context so the model can
  * modify or dismiss what is currently shown.
+ *
+ * Transport-agnostic: runAssistantTurn decides per selected provider
+ * whether the turn runs on the server or directly in this browser.
  */
 
 export interface UIMessage {
@@ -25,6 +31,11 @@ interface ChatContext {
     module: string;
     moduleDescription: string;
     pathname: string;
+}
+
+export interface ConversationOptions {
+    provider?: ClientProviderRecord;
+    model?: string;
 }
 
 function summarizeSurface(nodes: A2UINode[] | undefined): Array<Record<string, unknown>> {
@@ -52,7 +63,19 @@ function extractSurface(content: string): A2UINode[] | undefined {
     }
 }
 
-export function useConversation(conversationId: string | null, context: ChatContext) {
+/** Tool-delivered MCP-UI resources become UIResource nodes on the surface. */
+export function uiResourceNodes(resources: UIResourceContent[]): A2UINode[] {
+    return resources.map((resource, index) => ({
+        id: `uires-${index}-${resource.uri ?? 'inline'}`,
+        component: { UIResource: { resource, height: 360 } },
+    }));
+}
+
+export function useConversation(
+    conversationId: string | null,
+    context: ChatContext,
+    options: ConversationOptions = {}
+) {
     const [messages, setMessages] = useState<UIMessage[]>([]);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -83,84 +106,50 @@ export function useConversation(conversationId: string | null, context: ChatCont
             { id: assistantId, role: 'assistant', content: '', timestamp: new Date().toISOString() },
         ]);
 
-        // Persist the user turn
-        fetch('/api/chat/conversations', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'addMessage', conversationId, role: 'user', content: text }),
-        }).catch(() => { /* non-blocking */ });
+        // Persist the user turn (server or IndexedDB — gateway decides)
+        void persistMessage(conversationId, 'user', text).catch(() => { /* non-blocking */ });
+
+        let fullContent = '';
+        let surface: A2UINode[] | undefined;
+        const collectedResources: UIResourceContent[] = [];
+
+        const applyUpdate = () => {
+            const parsed = extractSurface(fullContent);
+            const resourceNodes = uiResourceNodes(collectedResources);
+            surface = parsed !== undefined
+                ? [...parsed, ...resourceNodes]
+                : (resourceNodes.length > 0 ? resourceNodes : surface);
+            setMessages(prev => prev.map(m =>
+                m.id === assistantId ? { ...m, content: fullContent, uiComponents: surface } : m
+            ));
+        };
 
         try {
-            const response = await fetch('/api/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    messages: [...priorMessages, userMessage]
-                        .filter(m => m.role !== 'assistant' || m.content)
-                        .map(m => ({ role: m.role, content: m.content })),
-                    context: {
-                        ...context,
-                        activeSurface: summarizeSurface(activeSurface),
+            await runAssistantTurn({
+                messages: [...priorMessages, userMessage]
+                    .filter(m => m.role !== 'assistant' || m.content)
+                    .map(m => ({ role: m.role, content: m.content })),
+                context: {
+                    ...context,
+                    activeSurface: summarizeSurface(activeSurface),
+                },
+                provider: options.provider,
+                model: options.model,
+                handlers: {
+                    onText: chunk => {
+                        fullContent += chunk;
+                        applyUpdate();
                     },
-                    stream: true,
-                }),
+                    onUiResource: resource => {
+                        collectedResources.push(resource);
+                        applyUpdate();
+                    },
+                },
             });
 
-            if (!response.ok || !response.body) {
-                let msg = `Fehler: ${response.status}`;
-                try {
-                    const err = await response.json();
-                    msg = err.error || err.details || msg;
-                } catch { /* keep default */ }
-                throw new Error(msg);
-            }
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-            let fullContent = '';
-            let surface: A2UINode[] | undefined;
-
-            for (;;) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || '';
-
-                for (const line of lines) {
-                    const trimmed = line.trim();
-                    if (!trimmed) continue;
-                    try {
-                        const chunk = JSON.parse(trimmed);
-                        if (chunk.error) throw new Error(chunk.error);
-                        if (chunk.message?.content) fullContent += chunk.message.content;
-                    } catch (e) {
-                        if (e instanceof Error && !e.message.includes('JSON')) throw e;
-                    }
-                }
-
-                const parsed = extractSurface(fullContent);
-                if (parsed !== undefined) surface = parsed;
-
-                setMessages(prev => prev.map(m =>
-                    m.id === assistantId ? { ...m, content: fullContent, uiComponents: surface } : m
-                ));
-            }
-
             // Persist the assistant turn with its surface
-            if (fullContent) {
-                fetch('/api/chat/conversations', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'addMessage',
-                        conversationId,
-                        role: 'assistant',
-                        content: fullContent,
-                        uiComponents: surface,
-                    }),
-                }).catch(() => { /* non-blocking */ });
+            if (fullContent || surface) {
+                void persistMessage(conversationId, 'assistant', fullContent, surface).catch(() => { /* non-blocking */ });
             }
         } catch (error) {
             const msg = error instanceof Error ? error.message : 'Unbekannter Fehler';
@@ -170,7 +159,7 @@ export function useConversation(conversationId: string | null, context: ChatCont
         } finally {
             setIsLoading(false);
         }
-    }, [conversationId, isLoading, messages, context, activeSurface]);
+    }, [conversationId, isLoading, messages, context, activeSurface, options.provider, options.model]);
 
     return { messages, isLoading, activeSurface, sendMessage, loadMessages, setMessages };
 }

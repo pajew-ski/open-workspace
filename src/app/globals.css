@@ -41,6 +41,11 @@
   --color-warning-subtle: rgba(143, 100, 0, 0.12);
   --color-error-subtle: rgba(194, 59, 59, 0.1);
   --color-info-subtle: rgba(37, 99, 160, 0.1);
+  /* Dunklere Text-Töne für Status-TEXT auf den *-subtle-Flächen (AA ≥ 4.5:1) */
+  --color-success-text: #1D5434;
+  --color-warning-text: #6B4A00;
+  --color-error-text: #9B2C2C;
+  --color-info-text: #1E4F80;
 
   /* Spacing Scale (4px base) */
   --space-1: 0.25rem;
@@ -165,6 +170,11 @@
   --color-warning-subtle: rgba(212, 160, 23, 0.16);
   --color-error-subtle: rgba(224, 108, 108, 0.16);
   --color-info-subtle: rgba(91, 155, 213, 0.16);
+  /* Auf dunklen subtle-Flächen sind die hellen Töne selbst AA-tauglich */
+  --color-success-text: #7CC79A;
+  --color-warning-text: #E0B54A;
+  --color-error-text: #EA9999;
+  --color-info-text: #8FB8E3;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
