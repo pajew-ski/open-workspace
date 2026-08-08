@@ -2,6 +2,34 @@
 
 > Single Source of Truth für AI-Agent Interaktion mit dieser Codebase
 
+## Hier weitermachen (Einstieg für neue Sessions)
+
+**Stand 2026-08-08**: Das Projekt ist vom Prototyp auf einen belastbaren Stand
+gehoben. Build, Typecheck, Lint (0 Errors) und Unit-Tests laufen grün; CI und
+Docker-Deployment stehen; PWA, Tool-Loop, API-Härtung und die generative
+Oberfläche (A2UI + native Workspace-Widgets + MCP-UI) sind implementiert.
+
+**Bevor du etwas Neues baust, lies in dieser Reihenfolge:**
+1. [ANALYSE.md](./ANALYSE.md) — vollständige Bestandsaufnahme, was umgesetzt
+   wurde und **§5 die priorisierte Roadmap** (P0/P1/P2) mit Begründungen
+2. [TODO.md](./TODO.md) — dieselbe Roadmap als abhakbare Liste
+3. Diesen Abschnitt hier für die Architektur-Prinzipien
+
+**Nächster geplanter Schritt (P1, direkt anschlussfähig)**: MCP-Client mit
+`@modelcontextprotocol/sdk` — konfigurierte MCP-Server anbinden, deren Tools in
+den bestehenden Tool-Loop (`/api/chat`) einspeisen und deren `UIResource`-Antworten
+in die bereits vorhandene generative Bühne rendern. Der `UIResource`-Renderer
+(MCP-UI-Standard) und der Tool-Loop existieren bereits — es fehlt nur die
+Server-Anbindung. Danach kann der deaktivierte MCP-Button in den Werkzeugen scharf
+geschaltet werden.
+
+**Ebenfalls offen und klein genug für einen Einstieg (P0)**: i18n mit `next-intl`,
+Abbau der `no-explicit-any`-Warnings, CopilotKit-Entscheidung (UI rendern oder
+Stack entfernen), Frontmatter-Parser auf `yaml`/`gray-matter` umstellen.
+
+**Arbeitsprinzip dieses Repos**: Keine Attrappen. Lieber ein Feature ehrlich als
+„geplant" kennzeichnen, als tote Buttons stehen lassen.
+
 ## System Overview
 
 Open Workspace ist eine umfassende Next.js-Anwendung als einheitliche Schnittstelle für AI-Agent-Kollaboration. Das System implementiert Agent2Agent (A2A), Agent2UI (A2UI) und Model Context Protocol (MCP) für standardisierte Agent-Kommunikation.
@@ -79,9 +107,16 @@ open-workspace/
 - Capability Discovery via Agent Cards
 - Long-running Task Support
 
-### Agent2UI (A2UI)
+### Agent2UI (A2UI) — Generative Oberfläche
 - Deklarative UI-Komponenten-Beschreibungen
 - Streaming JSON (JSONL) für progressive Darstellung innerhalb des Chats
+- **Grundprinzip**: Die Oberfläche ist eine Funktion des Gesprächsverlaufs,
+  kein festes View-Inventar. Der Dialog ist der primäre Kanal; UI
+  materialisiert sich pro Interaktion. Ein a2ui-Block **ersetzt** die
+  aktive Bühne; ein leerer Block leert sie ("blende X aus"). Der
+  Surface-Zustand fließt als Kontext zurück ans Modell (`AKTIVE BÜHNE`),
+  und Surfaces werden mit der Chat-Historie persistiert — die Oberfläche
+  ist aus dem Gespräch rekonstruierbar.
 - **Verfügbare Komponenten**:
   - **Basis**: `Text`, `Card`, `Button`, `Divider`
   - **Layout**: `Column`, `Row`
@@ -89,9 +124,18 @@ open-workspace/
   - **Struktur**: `List`, `ListItem`, `Table`
   - **Status**: `Progress`, `Chip`, `Badge`
   - **Input**: `Input`, `Select`, `Checkbox`
-- Interaktionen werden als `UserAction` zuruck an den Agenten gesendet
-- Secure by Design (keine Code-Ausfuhrung)
-- **Tests**: 25 Unit Tests mit Vitest (`bun test`)
+  - **Native Workspace-Widgets** (selbst-ladend, Live-Daten):
+    `WorkspaceTasks`, `WorkspaceCalendar`, `WorkspaceDocs`, `WorkspaceStats`.
+    Das Modell deklariert nur die Absicht (z.B. `{"status":"todo"}`),
+    Datenbindung und Refresh besitzt die native Schicht.
+  - **`UIResource`** (MCP-UI-Standard, https://mcpui.dev): rendert von
+    Tools/MCP-Servern gelieferte UI (`ui://`-URIs, `text/html` oder
+    `text/uri-list`) sandboxed im iframe; Interaktionen kommen per
+    postMessage als `mcpui:<type>`-Aktionen zurück.
+- Interaktionen werden als `UserAction` zurück an den Agenten gesendet
+- Secure by Design (A2UI: keine Code-Ausführung; UIResource: sandboxed iframe)
+- **Ganzseitige Ansicht**: `/assistant` — Dialog links, generative Bühne rechts
+- **Tests**: A2UI-Renderer + MCP-UI-Resource Unit-Tests mit Vitest (`bun run test:run`)
 
 ### Model Context Protocol (MCP)
 - Tool und Resource Exposure für Agenten
@@ -101,13 +145,18 @@ open-workspace/
 ### Agent Tools
 - Verfügbare Tools sind in [TOOLS.md](./TOOLS.md) dokumentiert.
 - **Dynamic Tool Discovery**: Der Agent erhält verfügbare Tools via System-Prompt.
-- **Tool Protocol**:
-  Um ein Tool auszuführen, muss der Agent eine spezifische Syntax verwenden:
-  `[[TOOL:tool_id:{"arg":"value"}]]`
-  
+- **Tool Protocol** (implementiert in `/api/chat` + `src/lib/tools/callParser.ts`):
+  Um ein Tool auszuführen, verwendet der Agent die Syntax
+  `[[TOOL:tool_id:{"arg":"value"}]]`.
+  Der Server erkennt Aufrufe im Stream (auch über Chunk-Grenzen), blendet sie
+  aus der sichtbaren Antwort aus, führt das Tool aus (`src/lib/tools/executor.ts`)
+  und gibt das Ergebnis als `[TOOL_RESULT tool_id]`-Nachricht an das Modell
+  zurück — maximal 3 Runden pro Anfrage, Fortschritt wird im Chat angezeigt.
+
   Beispiel:
   - User: "Wie ist das Wetter in Berlin?"
   - Agent (Output): `Ich prüfe das Wetter. [[TOOL:weather:{"latitude":52.52,"longitude":13.41}]]`
+  - System führt das Tool aus → Agent fasst das Ergebnis zusammen.
   
 - **Standard-Tool**: `workspace_finder` (Global Finder)
   - Unterstützt Fuzzy-Suche (Levenshtein) für Inhalte und Befehle
@@ -170,10 +219,13 @@ Siehe [architecture_agents.md](docs/architecture_agents.md) für die detailliert
 ## Entwicklung
 
 ```bash
-bun install    # Abhangigkeiten
-bun run dev    # Entwicklung
-bun test       # Unit Tests (Vitest)
-bun run build  # Produktion
+bun install        # Abhängigkeiten
+bun run dev        # Entwicklung
+bun run lint       # ESLint (0 Errors erwartet)
+bun run typecheck  # TypeScript
+bun run test:run   # Unit Tests (Vitest)
+bun run test:e2e   # E2E (Playwright, braucht bun run build)
+bun run build      # Produktion
 ```
 
 ## Code-Konventionen

@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { ThemeProvider } from "@/components/providers";
+import { ThemeProvider, QueryProvider } from "@/components/providers";
 import { ToastContainer } from "@/components/ui";
 import { AssistantProvider } from "@/lib/assistant/context";
 import { CopilotKit } from "@copilotkit/react-core";
 import { CopilotStateProvider } from "@/components/copilot";
 import { AssistantChat } from "@/components/assistant";
 import { GlobalFinder } from "@/components/finder/GlobalFinder";
+import { ServiceWorkerRegistration } from "@/components/pwa";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -37,6 +38,7 @@ export default function RootLayout({
     <html lang="de" suppressHydrationWarning>
       <body suppressHydrationWarning>
         <ThemeProvider>
+          <QueryProvider>
           <CopilotKit runtimeUrl="/api/copilotkit" showDevConsole={false}>
             <AssistantProvider>
               <CopilotStateProvider>
@@ -45,8 +47,10 @@ export default function RootLayout({
                 <GlobalFinder />
               </CopilotStateProvider>
               <ToastContainer />
+              <ServiceWorkerRegistration />
             </AssistantProvider>
           </CopilotKit>
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>

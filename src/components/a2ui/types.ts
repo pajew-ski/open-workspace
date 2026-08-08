@@ -202,6 +202,48 @@ export interface ButtonProps {
 // Component Map Types (for type-safe component definitions)
 // ============================================================
 
+// ------------------------------------------------------------
+// Native Workspace Widgets (self-hydrating, live data)
+// ------------------------------------------------------------
+
+export interface WorkspaceTasksProps {
+    status?: string;
+    projectId?: string;
+    limit?: number;
+    title?: string;
+}
+
+export interface WorkspaceCalendarProps {
+    days?: number;
+    title?: string;
+}
+
+export interface WorkspaceDocsProps {
+    query?: string;
+    limit?: number;
+    title?: string;
+}
+
+export interface WorkspaceStatsProps {
+    title?: string;
+}
+
+// ------------------------------------------------------------
+// Embedded UI resources (MCP-UI standard, https://mcpui.dev)
+// ------------------------------------------------------------
+
+export interface UIResourceContent {
+    uri?: string;
+    mimeType?: string;
+    text?: string;
+    blob?: string;
+}
+
+export interface UIResourceProps {
+    resource: UIResourceContent;
+    height?: number;
+}
+
 export type A2UIComponentMap = {
     Text: TextProps;
     Card: CardProps;
@@ -223,6 +265,11 @@ export type A2UIComponentMap = {
     Select: SelectProps;
     Checkbox: CheckboxProps;
     Button: ButtonProps;
+    WorkspaceTasks: WorkspaceTasksProps;
+    WorkspaceCalendar: WorkspaceCalendarProps;
+    WorkspaceDocs: WorkspaceDocsProps;
+    WorkspaceStats: WorkspaceStatsProps;
+    UIResource: UIResourceProps;
 };
 
 export type A2UIComponentName = keyof A2UIComponentMap;

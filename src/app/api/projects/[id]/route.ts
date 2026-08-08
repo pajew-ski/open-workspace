@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getProject, updateProject, deleteProject } from '@/lib/storage';
+import { parseBody, updateProjectSchema } from '@/lib/api/validation';
 
 interface RouteParams {
     params: Promise<{ id: string }>;
@@ -30,9 +31,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function PUT(request: NextRequest, { params }: RouteParams) {
     try {
         const { id } = await params;
-        const body = await request.json();
+        const parsed = await parseBody(updateProjectSchema, request);
+        if (!parsed.ok) return parsed.response;
 
-        const project = await updateProject(id, body);
+        const project = await updateProject(id, parsed.data);
 
         if (!project) {
             return NextResponse.json(

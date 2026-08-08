@@ -1,15 +1,16 @@
 import { NextResponse } from 'next/server';
-import { checkHealth, getModels, DEFAULT_CONFIG } from '@/lib/inference';
+import { checkHealth, getModels, getEffectiveConfig } from '@/lib/inference';
 
 export async function GET() {
+    const config = await getEffectiveConfig();
     try {
         const isHealthy = await checkHealth();
 
         if (!isHealthy) {
             return NextResponse.json({
                 status: 'offline',
-                endpoint: DEFAULT_CONFIG.endpoint,
-                model: DEFAULT_CONFIG.model,
+                endpoint: config.endpoint,
+                model: config.model,
                 models: [],
             });
         }
@@ -18,15 +19,15 @@ export async function GET() {
 
         return NextResponse.json({
             status: 'online',
-            endpoint: DEFAULT_CONFIG.endpoint,
-            model: DEFAULT_CONFIG.model,
+            endpoint: config.endpoint,
+            model: config.model,
             models,
         });
     } catch (error) {
         return NextResponse.json({
             status: 'error',
-            endpoint: DEFAULT_CONFIG.endpoint,
-            model: DEFAULT_CONFIG.model,
+            endpoint: config.endpoint,
+            model: config.model,
             error: error instanceof Error ? error.message : 'Unknown error',
         });
     }

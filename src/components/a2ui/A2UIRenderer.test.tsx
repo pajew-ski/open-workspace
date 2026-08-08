@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { A2UIRenderer } from './A2UIRenderer'
-import { A2UINode } from './types'
+import { A2UINode, ActionHandler } from './types'
 
 // Mock CSS imports
 vi.mock('./components/Display.css', () => ({}))
@@ -10,10 +10,10 @@ vi.mock('./components/Status.css', () => ({}))
 vi.mock('./components/Input.css', () => ({}))
 
 describe('A2UIRenderer', () => {
-    let onAction: ReturnType<typeof vi.fn>
+    let onAction: ReturnType<typeof vi.fn<ActionHandler>>
 
     beforeEach(() => {
-        onAction = vi.fn()
+        onAction = vi.fn<ActionHandler>()
     })
 
     describe('Basic Display Components', () => {

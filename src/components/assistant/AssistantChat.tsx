@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } fr
 import { usePathname } from 'next/navigation';
 import { useAssistantContext } from '@/lib/assistant/context';
 import { ConfirmDialog } from '@/components/ui';
+import { useToast } from '@/components/ui/Toast';
 import { A2UIRenderer } from '../a2ui/A2UIRenderer';
 import { A2UINode } from '../a2ui/types';
 import { MessageContent } from './MessageContent';
@@ -52,6 +53,7 @@ const DEFAULT_INPUT_HEIGHT = 44;
 const MIN_INPUT_HEIGHT = 44;
 
 export function AssistantChat() {
+    const toast = useToast();
     // UI State - Initialize with defaults for SSR consistency
     const [isOpen, setIsOpen] = useState(false);
     const [showSidebar, setShowSidebar] = useState(false);
@@ -537,6 +539,24 @@ export function AssistantChat() {
                 } catch { /* ignore */ }
             }
 
+            // Surface state flows back into model context: the model must
+            // know what is currently on stage to modify or dismiss it
+            // ("hide the map"). We send a compact structural summary, not
+            // the full node tree.
+            const lastSurface = [...messages].reverse()
+                .find(m => m.role === 'assistant' && m.uiComponents?.length)?.uiComponents;
+            const activeSurface = lastSurface
+                ? lastSurface.map(node => {
+                    const type = Object.keys(node.component || {})[0] || 'Unknown';
+                    const nodeProps = (node.component as Record<string, Record<string, unknown>>)[type] || {};
+                    const summary: Record<string, unknown> = {};
+                    for (const key of ['title', 'text', 'label', 'status', 'query', 'days', 'limit', 'uri']) {
+                        if (nodeProps[key] !== undefined) summary[key] = nodeProps[key];
+                    }
+                    return { id: node.id, type, ...summary };
+                })
+                : [];
+
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -550,6 +570,7 @@ export function AssistantChat() {
                         moduleDescription: currentModule.description + additionalContext,
                         pathname,
                         viewState: JSON.stringify(viewState),
+                        activeSurface,
                     },
                     stream: true,
                 }),
@@ -646,6 +667,10 @@ export function AssistantChat() {
                         conversationId: activeConversation.id,
                         role: 'assistant',
                         content: fullContent,
+                        // Persist the generative surface with the message —
+                        // the interface must be reconstructable from the
+                        // conversation alone.
+                        uiComponents: currentUiComponents || undefined,
                     }),
                 });
 
@@ -848,15 +873,47 @@ export function AssistantChat() {
     };
 
     const handleUserAction = useCallback(async (actionId: string, payload?: any) => {
-        // Send user action back to the chat as a system/hidden message or trigger a new flow
-        // For now, we simulate a user message describing the action to keep context
+        // MCP-UI events from embedded resources (sandboxed iframes)
+        if (actionId.startsWith('mcpui:')) {
+            const kind = actionId.slice('mcpui:'.length);
+            if (kind === 'link' && typeof payload?.url === 'string' && /^https?:\/\//i.test(payload.url)) {
+                window.open(payload.url, '_blank', 'noopener,noreferrer');
+                return;
+            }
+            if (kind === 'prompt' && typeof payload?.prompt === 'string') {
+                await sendMessage(payload.prompt);
+                return;
+            }
+            if (kind === 'tool' && typeof payload?.toolName === 'string') {
+                await sendMessage(
+                    `[User Action: Führe das Tool "${payload.toolName}" aus mit Parametern ${JSON.stringify(payload.params ?? {})}]`
+                );
+                return;
+            }
+            if (kind === 'notify') {
+                toast.info(typeof payload?.message === 'string' ? payload.message : 'Hinweis aus eingebetteter UI');
+                return;
+            }
+            // intent and unknown kinds fall through as context message
+            await sendMessage(`[User Action: ${actionId} ${JSON.stringify(payload ?? {})}]`);
+            return;
+        }
+
+        // A2UI actions return to the model as a user-visible action marker
         await sendMessage(`[User Action: ${actionId}]`);
     }, [sendMessage]);
+
+    // The full-page assistant (/assistant) is the assistant on that route —
+    // don't also float the widget there.
+    if (pathname === '/assistant') {
+        return null;
+    }
 
     return (
         <div className={styles.container}>
             {isOpen && (
                 <div
+                    data-testid="assistant-chat-window"
                     className={`${styles.chatWindow} ${isMobile ? styles.mobile : ''} ${showSidebar ? styles.showSidebar : ''} ${isDragging ? styles.dragging : ''} ${isFullscreen ? styles.fullscreen : ''}`}
                     style={(!isMobile && !isFullscreen) ? {
                         width,
@@ -966,7 +1023,7 @@ export function AssistantChat() {
                             </div>
                         ) : (
                             messages.map(message => (
-                                <div key={message.id} data-message-id={message.id} className={`${styles.message} ${styles[message.role]}`}>
+                                <div key={message.id} data-message-id={message.id} data-testid={`assistant-chat-message-${message.role}`} className={`${styles.message} ${styles[message.role]}`}>
                                     {message.role === 'user' ? (
                                         <div>{message.content}</div>
                                     ) : message.content ? (
@@ -1005,6 +1062,7 @@ export function AssistantChat() {
                             />
                         )}
                         <textarea
+                            data-testid="assistant-chat-input"
                             ref={inputRef as any}
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
@@ -1040,7 +1098,7 @@ export function AssistantChat() {
 
             {/* FAB - hide in fullscreen */}
             {!isFullscreen && (
-                <button className={`${styles.fab} ${isOpen ? styles.fabActive : ''}`} onClick={() => setIsOpen(!isOpen)} title="⌘+Shift+A">
+                <button data-testid="assistant-chat-fab" aria-label={isOpen ? 'Assistant schließen' : 'Assistant öffnen'} className={`${styles.fab} ${isOpen ? styles.fabActive : ''}`} onClick={() => setIsOpen(!isOpen)} title="⌘+Shift+A">
                     {isOpen ? (
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
                     ) : (

@@ -1,8 +1,9 @@
 'use client';
 
-import { ReactNode, useState, useEffect } from 'react';
+import { ReactNode, useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { useStoredState } from '@/lib/hooks/useStoredState';
 import styles from './AppShell.module.css';
 
 interface AppShellProps {
@@ -15,30 +16,18 @@ interface AppShellProps {
 const SIDEBAR_COLLAPSED_KEY = 'open-workspace-sidebar-collapsed';
 
 export function AppShell({ children, title, actions, fluid = false }: AppShellProps) {
-    const [isCollapsed, setIsCollapsed] = useState(true); // Default to collapsed on desktop
+    // Default to collapsed on desktop; stored value wins after hydration
+    const [storedCollapsed, setStoredCollapsed] = useStoredState(SIDEBAR_COLLAPSED_KEY, 'true');
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [mounted, setMounted] = useState(false);
-
-    useEffect(() => {
-        setMounted(true);
-        const stored = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
-        if (stored !== null) {
-            setIsCollapsed(stored === 'true');
-        }
-    }, []);
+    const collapsed = storedCollapsed === 'true';
 
     const handleToggle = () => {
-        const newValue = !isCollapsed;
-        setIsCollapsed(newValue);
-        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(newValue));
+        setStoredCollapsed(String(!collapsed));
     };
 
     const handleMobileToggle = () => {
         setIsMobileMenuOpen(!isMobileMenuOpen);
     };
-
-    // During SSR, render with collapsed state to avoid hydration mismatch
-    const collapsed = mounted ? isCollapsed : true;
 
     return (
         <div className={`${styles.container} ${collapsed ? styles.collapsed : ''} ${isMobileMenuOpen ? styles.mobileOpen : ''}`}>

@@ -204,8 +204,13 @@ export default function GraphExplorerPage() {
         const activeNodes = graphData.nodes.filter(n => typeMap[n.type] ?? true);
         const activeNodeIds = new Set(activeNodes.map(n => n.id));
 
+        // react-force-graph mutates link.source/target from id strings to
+        // node objects on first render — normalize back to ids for filtering.
+        const linkId = (end: unknown): string =>
+            typeof end === 'object' && end !== null ? (end as { id: string }).id : String(end);
+
         const activeLinks = graphData.links.filter(l => {
-            if (!activeNodeIds.has(l.source) || !activeNodeIds.has(l.target)) return false;
+            if (!activeNodeIds.has(linkId(l.source)) || !activeNodeIds.has(linkId(l.target))) return false;
             if (l.type === 'blocks' || l.type === 'depends_on') return showDependencies;
             return true;
         });

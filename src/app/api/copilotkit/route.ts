@@ -9,8 +9,17 @@ import { NextRequest } from "next/server";
  * Ollama serves an OpenAI-compatible API at localhost:11434/v1
  */
 
-const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434/v1";
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "gemma3:27b";
+// Uses the same configuration source as the rest of the app; Ollama
+// exposes an OpenAI-compatible API under /v1.
+const LLM_BASE =
+    process.env.LLM_API_BASE_URL ||
+    process.env.NEXT_PUBLIC_LLM_API_BASE_URL ||
+    "http://localhost:11434";
+const OLLAMA_BASE_URL = LLM_BASE.includes("/v1") ? LLM_BASE : `${LLM_BASE.replace(/\/+$/, "")}/v1`;
+const OLLAMA_MODEL =
+    process.env.LLM_MODEL ||
+    process.env.NEXT_PUBLIC_LLM_MODEL ||
+    "gpt-oss:20b";
 
 // Create OpenAI client configured for Ollama
 const openai = new OpenAI({

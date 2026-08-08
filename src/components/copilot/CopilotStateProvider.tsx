@@ -120,7 +120,7 @@ export function CopilotStateProvider({ children }: { children: ReactNode }) {
             if (status) updates.status = status;
             if (priority) updates.priority = priority;
 
-            const res = await fetch(`/api/tasks?id=${taskId}`, {
+            const res = await fetch(`/api/tasks/${encodeURIComponent(taskId)}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updates)
@@ -137,7 +137,8 @@ export function CopilotStateProvider({ children }: { children: ReactNode }) {
             { name: "query", type: "string", description: "Search query" }
         ],
         handler: async ({ query }) => {
-            const res = await fetch(`/api/docs/search?q=${encodeURIComponent(query)}`);
+            // The global finder endpoint powers workspace-wide search
+            const res = await fetch(`/api/finder?q=${encodeURIComponent(query)}&type=doc`);
             if (res.ok) {
                 const data = await res.json();
                 return JSON.stringify(data.results || []);
