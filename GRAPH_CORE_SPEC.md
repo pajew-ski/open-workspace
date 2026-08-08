@@ -576,10 +576,11 @@ Migrator, `/api/graph` aus dem Store, Präsentations-Properties entfernt, `any` 
 Endpoint (Runtime-abhängig HTTP oder In-Process), Editor-UI, gespeicherte Queries.
 *Abnahme*: SELECT/CONSTRUCT/ASK/DESCRIBE und UPDATE über das Protokoll; Content Negotiation für mindestens SPARQL-JSON, Turtle, JSON-LD. **Protokoll erfüllt (`tests/graph/sparql-protocol.test.ts`); Editor-UI offen.**
 
-**M3 — Connector-Framework + `rdf-file` + `github-rdf`** ⬜
+**M3 — Connector-Framework + `rdf-file` + `github-rdf`** ✅
 prima-materia lässt sich per Repo-URL einbinden, commit-gepinnt, mit Provenienz. prima-materia ist der **Referenzfall** für Import und dient als mitgeliefertes Beispiel in der Onboarding-Strecke (§18).
 *Abnahme*: Import erzeugt `graph/<u>/import/<id>`, PROV-Tripel vollständig, erneuter Pull bei unveränderter Revision ist ein No-Op, bei geänderter ein sauberer Replace.
 *Zusätzliche Abnahme, weil die Quelle unreif ist*: Der Connector bricht bei fehlerhaftem Turtle, unbekannten Prädikaten, fehlenden Typen oder SHACL-Verletzungen **nicht** ab. Er importiert, was parst, quarantäniert den Rest in einem Fehlerbericht und meldet ihn in der UI. Ein Import darf nie an der Qualität der Quelle scheitern — das ist der Normalfall bei fremden Graphen, nicht die Ausnahme.
+**Erfüllt, als Tests verankert (`tests/graph/connectors.test.ts`).** Umsetzungsnotizen: Der Vertrag aus §6.1 ist um `locatorFor`/`configFromLocator` (Instanzen persistieren als Graph-Knoten mit `ow:locator`, nicht als JSON-Config — Invariante 6), `parseConfig` und den Kontext-Kanal `quarantine()` sowie einen SSRF-geschützten `fetch` erweitert; `runtime` im Kontext ist optional, bis die Adapter existieren (M6/M12). Registry unter `graph/meta`, Fehlerbericht als `schema:error` am `prov:Activity`-Lauf-Knoten, Verwaltung unter `/graph/connectors`, Persistenz nach `data/graph/` (meta + import/*).
 
 **M4 — Obsidian-Connector** ⬜
 Import + Export, Round-Trip-Test, Verlustpositionen dokumentiert.

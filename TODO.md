@@ -29,8 +29,16 @@
       Updates transaktional mit Schutz systemverwalteter Graphen
   - [ ] M2-Rest: SPARQL-Editor-UI (Syntax-Highlighting, Prefix-Vervollständigung,
         Ergebnis-als-Graph), gespeicherte Queries als Graph-Entitäten
-- [ ] **M3 Connector-Framework** + `rdf-file` + `github-rdf`
-      (prima-materia als Referenzfall, fehlertolerant mit Quarantäne-Bericht)
+- [x] **M3 Connector-Framework** + `rdf-file` + `github-rdf`
+      (`src/lib/graph/connectors/`): ein Vertrag für alles Externe (§6.1
+      inkl. Locator↔Config-Abbildung), Registry als `ow:Connector`-Knoten in
+      `graph/meta`, Sync-Runner mit Replace-Semantik, PROV pro Lauf,
+      Revision-No-Op (Inhalts-Hash bzw. Commit-SHA, commit-gepinnte Abrufe),
+      fehlertolerant mit Quarantäne-Bericht (zeilen- bzw. dateigenau,
+      als `schema:error` am Lauf-Knoten), SSRF-geschützter Fetch mit
+      Redirect-Validierung, Verwaltung unter `/graph/connectors`,
+      Persistenz nach `data/graph/` — Abnahme als Tests:
+      `tests/graph/connectors.test.ts`
 - [ ] **M4 Obsidian-Connector** (Round-Trip-Test, Verlustpositionen dokumentiert)
 - [ ] **M5 Canvas/Präsentationsschicht** (`graph/<u>/presentation`,
       JSON-Canvas 1.0, generierte Query-Views; Layout-Blacklist-Test existiert)
