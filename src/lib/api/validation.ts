@@ -475,3 +475,19 @@ export const calendarActionSchema = z.discriminatedUnion('action', [
         id: z.string().min(1).max(200),
     }),
 ]);
+
+// ---------------------------------------------------------------------------
+// Graph-Connectors (GRAPH_CORE_SPEC §6, M3)
+// ---------------------------------------------------------------------------
+
+/**
+ * Hülle für das Anlegen einer Connector-Instanz. Die kind-spezifische
+ * Konfiguration validiert der jeweilige Connector selbst
+ * (`Connector.parseConfig`, src/lib/graph/connectors/) — hier wird nur
+ * die Hülle geprüft, damit die Route den Kind nachschlagen kann.
+ */
+export const createGraphConnectorSchema = z.object({
+    kind: z.string().min(1).max(100),
+    name: z.string().min(1, 'Name ist erforderlich').max(200),
+    config: z.unknown(),
+});

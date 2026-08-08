@@ -27,6 +27,7 @@ const PAGES = [
     '/skills',
     '/tools',
     '/graph',
+    '/graph/connectors',
     '/settings',
     '/assistant',
 ];

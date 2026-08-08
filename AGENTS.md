@@ -4,7 +4,7 @@
 
 ## Hier weitermachen (Einstieg für neue Sessions)
 
-**Stand 2026-08-08 (3. Ausbaustufe, Graph Core M0–M2)**: Der **RDF-Graph ist
+**Stand 2026-08-08 (4. Ausbaustufe, Graph Core M0–M3)**: Der **RDF-Graph ist
 das kanonische Datenmodell**. Die verbindliche Spezifikation inklusive aller
 Meilensteine M0–M13 liegt in
 [GRAPH_CORE_SPEC.md](./GRAPH_CORE_SPEC.md) — **Arbeitsmodus: ein Meilenstein
@@ -38,6 +38,21 @@ Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
   wird IMMER injiziert (überschreibt `FROM`), `graph/acl` ist unerreichbar,
   `presentation`/`inferred` nur auf explizite Anforderung, Updates laufen
   transaktional mit Schutz vor Änderungen an systemverwalteten Graphen.
+- **Connector-Framework (M3)** (`src/lib/graph/connectors/`): EIN Vertrag
+  für alles Externe (SPEC §6.1, plus Locator↔Config-Abbildung — Instanzen
+  persistieren als `ow:Connector`-Knoten in `graph/meta`, nie als
+  JSON-Datei). Implementiert: `rdf-file` (RDF-Datei per URL,
+  Inhalts-Hash-Revision) und `github-rdf` (Repo/Ordner mit `.ttl`/`.jsonld`,
+  commit-gepinnt; Referenzfall prima-materia). Der Sync-Runner (`sync.ts`)
+  besitzt No-Op bei unveränderter Revision, vollständigen Replace des
+  Import-Graphen, PROV-Tripel pro Lauf und den Quarantäne-Bericht:
+  Quell-Qualität bricht einen Import NIE ab — was parst, wird importiert
+  (zeilengenau bei N-Quads/N-Triples), der Rest landet als `schema:error`
+  am Lauf-Knoten und in der UI (`/graph/connectors`). Fetch läuft
+  SSRF-geschützt mit Redirect-Validierung (`http.ts`,
+  `ALLOW_LOCAL_TOOL_URLS=1` erlaubt lokale Quellen). Nach Mutationen wird
+  `data/graph/` persistiert (meta + import/*). Abnahme:
+  `tests/graph/connectors.test.ts`.
 - **Übergangszustand** (`// MIGRATION:`-Marker): Die Dateien unter
   `data/docs|tasks|canvas` bleiben operative Quelle; der Store spiegelt sie
   inhalts-gehasht (`src/lib/graph/server/instance.ts#syncWorkspaceFromFiles`).
@@ -71,9 +86,9 @@ und backend-unabhängig** — Details in [docs/ai-platform.md](./docs/ai-platfor
 - **UI**: AI-Hub (`/ai`), Skills (`/skills`), MCP-Verwaltung in `/tools`,
   A2A-Discovery in `/agents`, ModelPicker in beiden Chat-Oberflächen.
 
-Build, Typecheck, Lint (0 Errors), 85 Unit-Tests und das **blockierende
+Build, Typecheck, Lint (0 Errors), 169 Unit-Tests und das **blockierende
 E2E-Gate** (`e2e/mobile-navigation`, `e2e/mobile-ux`, `e2e/a11y` inkl. der
-neuen Seiten `/ai` und `/skills`) laufen grün.
+Seiten `/ai`, `/skills` und `/graph/connectors`) laufen grün.
 
 **Bevor du etwas Neues baust, lies in dieser Reihenfolge:**
 1. [GRAPH_CORE_SPEC.md](./GRAPH_CORE_SPEC.md) — verbindliche Spec des
@@ -83,10 +98,11 @@ neuen Seiten `/ai` und `/skills`) laufen grün.
 4. [TODO.md](./TODO.md) — Roadmap als abhakbare Liste (inkl. Graph Core)
 5. Diesen Abschnitt hier für die Architektur-Prinzipien
 
-**Nächste sinnvolle Schritte**: Graph Core M3 (Connector-Framework +
-`rdf-file`/`github-rdf`, prima-materia als Referenzfall) und die Umstellung
-der Schreibpfade auf den Store (Rest von M1, `// MIGRATION:`-Marker
-auflösen); danach M4 Obsidian-Connector. Parallel weiter sinnvoll: i18n mit
+**Nächste sinnvolle Schritte**: Graph Core M4 (Obsidian-Connector:
+Import + Export über den bestehenden Connector-Vertrag, Round-Trip-Test,
+Verlustpositionen dokumentiert — SPEC §10) und die Umstellung der
+Schreibpfade auf den Store (Rest von M1, `// MIGRATION:`-Marker auflösen);
+offen aus M2: SPARQL-Editor-UI. Parallel weiter sinnvoll: i18n mit
 `next-intl` (P0); Abbau der `no-explicit-any`-Warnings außerhalb des
 Graph-Codes; CopilotKit-Entscheidung.
 

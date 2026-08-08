@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { AppShell } from '@/components/layout';
 import { Card, CardContent, Button, FloatingActionButton } from '@/components/ui';
-import { Settings2, X, RotateCcw } from 'lucide-react';
+import { Settings2, X, RotateCcw, CloudDownload } from 'lucide-react';
 import styles from './page.module.css';
 import { Graph } from 'schema-dts';
 
@@ -432,6 +433,13 @@ export default function GraphExplorerPage() {
                                     <label><input type="checkbox" checked={showDocs} onChange={e => setShowDocs(e.target.checked)} /> <span style={{ color: '#2563A0' }}>●</span> Dokumente</label>
                                     <label><input type="checkbox" checked={showCanvas} onChange={e => setShowCanvas(e.target.checked)} /> <span style={{ color: '#B8860B' }}>●</span> Canvas</label>
                                     <label><input type="checkbox" checked={showTags} onChange={e => setShowTags(e.target.checked)} /> <span style={{ color: '#8A8A8A' }}>●</span> Tags</label>
+                                </div>
+
+                                <div className={styles.section}>
+                                    <h4>Quellen</h4>
+                                    <Link href="/graph/connectors" className={styles.sourcesLink}>
+                                        <CloudDownload size={14} aria-hidden="true" /> Externe Quellen verwalten
+                                    </Link>
                                 </div>
                             </CardContent>
                         </Card>
