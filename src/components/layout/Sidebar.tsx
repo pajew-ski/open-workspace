@@ -25,6 +25,16 @@ const navItems: NavItem[] = [
     },
 
     {
+        href: '/assistant',
+        label: 'Assistent',
+        icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9L12 3z" />
+                <path d="M19 15l.8 2L22 17.8 20 18.6 19 21l-.8-2.4L16 17.8l2.2-.8L19 15z" />
+            </svg>
+        ),
+    },
+    {
         href: '/tasks',
         label: 'Aufgaben',
         icon: (

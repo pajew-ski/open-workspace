@@ -46,7 +46,8 @@ export async function POST(request: NextRequest) {
             }
 
             case 'addMessage': {
-                const message = await addMessage(body.conversationId, body.role, body.content);
+                const uiComponents = Array.isArray(body.uiComponents) ? body.uiComponents : undefined;
+                const message = await addMessage(body.conversationId, body.role, body.content, uiComponents);
                 if (!message) {
                     return NextResponse.json({ error: 'Konversation nicht gefunden' }, { status: 404 });
                 }

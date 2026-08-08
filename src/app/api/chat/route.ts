@@ -13,6 +13,8 @@ export interface ChatRequestBody {
         moduleDescription: string;
         pathname: string;
         viewState?: Record<string, any>;
+        /** Compact summary of the components currently on the generative surface */
+        activeSurface?: Array<Record<string, unknown>>;
     };
     stream?: boolean;
 }
@@ -29,6 +31,13 @@ async function buildSystemPrompt(context: ChatRequestBody['context']): Promise<s
         viewStateContext = `\nAKTUELLE ANSICHT (Was der Nutzer sieht):\n${JSON.stringify(context.viewState, null, 2)}`;
     }
 
+    // The surface is a function of the conversation: the model needs to
+    // know what is currently rendered to be able to change or dismiss it.
+    let surfaceContext = '';
+    if (context.activeSurface && context.activeSurface.length > 0) {
+        surfaceContext = `\nAKTIVE BÜHNE (aktuell gerenderte UI-Komponenten):\n${JSON.stringify(context.activeSurface, null, 1)}\nDein nächster a2ui-Block ERSETZT diese Bühne vollständig. Um sie zu leeren ("blende X aus"), sende einen a2ui-Block mit leerem components-Array oder ohne die betreffende Komponente.`;
+    }
+
     // Load available tools (built-in finder + user-configured API tools)
     const tools = await loadTools();
     const toolLines = [
@@ -42,7 +51,7 @@ async function buildSystemPrompt(context: ChatRequestBody['context']): Promise<s
 KONTEXT:
 - Der Nutzer befindet sich gerade im Modul: ${context.module}
 - Modul-Beschreibung: ${context.moduleDescription}
-- Aktuelle Seite: ${context.pathname}${viewStateContext}${toolsContext}
+- Aktuelle Seite: ${context.pathname}${viewStateContext}${surfaceContext}${toolsContext}
 
 DEINE EIGENSCHAFTEN:
 - Du sprichst den Nutzer immer mit "du" an (informell, nie "Sie")
@@ -50,55 +59,58 @@ DEINE EIGENSCHAFTEN:
 - Du hast Zugriff auf alle Module des Workspaces
 - Du kannst Aufgaben delegieren und koordinieren
 
+GENERATIVE UI — GRUNDPRINZIP:
+Der Dialog ist der primäre Kanal. UI materialisiert sich nur, wenn die
+Aufgabe es erfordert (Liste, Termine, Formular) — nicht als Dekoration.
+Deine UI-Ausgabe ist die "Bühne" der Konversation:
+- Ein a2ui-Block in deiner Antwort ERSETZT die aktive Bühne vollständig.
+- "Zeig mir X" -> rendere die passende Komponente.
+- "Blende X aus" / "verstecke die Liste" -> neuer a2ui-Block ohne X
+  (oder mit leerem components-Array, um alles auszublenden).
+- Beziehe dich auf die AKTIVE BÜHNE im Kontext, um gezielt zu ändern.
+
+**Dynamische UI rendern (Agent2UI)**:
+Nutze einen Markdown Code-Block mit \`a2ui\` als Sprache:
+\`\`\`a2ui
+{
+    "components": [
+        { "id": "c1", "component": { "Card": { "title": "Titel", "children": { "explicitList": ["t1", "b1"] } } } },
+        { "id": "t1", "component": { "Text": { "text": "Inhalt" } } },
+        { "id": "b1", "component": { "Button": { "label": "Aktion", "onPress": { "actionId": "clicked" } } } }
+    ]
+}
+\`\`\`
+
+NATIVE WORKSPACE-WIDGETS (selbst-ladend, immer aktuelle Live-Daten — bevorzuge sie
+gegenüber selbst abgeschriebenen Listen):
+- **WorkspaceTasks**: \`status\` ('todo'|'in-progress'|'done', optional), \`projectId\`, \`limit\`, \`title\` — Live-Aufgabenliste
+- **WorkspaceCalendar**: \`days\` (Zahl, Standard 7), \`title\` — kommende Termine
+- **WorkspaceDocs**: \`query\` (optionale Suche), \`limit\`, \`title\` — Wissensbasis-Dokumente
+- **WorkspaceStats**: \`title\` — Workspace-Kennzahlen
+Beispiel: { "id": "w1", "component": { "WorkspaceTasks": { "status": "todo", "limit": 5 } } }
+
+EINGEBETTETE UI-RESSOURCEN (MCP-UI-Standard):
+- **UIResource**: \`resource\` ({ uri: "ui://...", mimeType: "text/html"|"text/uri-list", text: "..." }), \`height\`
+  Rendert Tool-/Server-gelieferte UI sandboxed. Nur verwenden, wenn ein Tool eine UI-Ressource geliefert hat.
+
+WEITERE A2UI-KOMPONENTEN & Props:
+- **Text**: \`text\`, \`style\` | **Markdown**: \`content\` | **CodeBlock**: \`code\`, \`language\`
+- **Card**: \`title\`, \`children\` ({ explicitList: string[] }) | **Column**/**Row**: \`gap\`, \`children\`
+- **Image**: \`src\`, \`alt\`, \`caption\` | **Link**: \`text\`, \`href\`
+- **Alert**: \`title\`, \`message\`, \`variant\` ('info'|'warning'|'error'|'success')
+- **List**: \`items\` | **Table**: \`columns\`, \`rows\` | **Progress**, **Chip**, **Badge**
+- **Button**: \`label\`, \`onPress\` ({ actionId }) | **Input**: \`label\`, \`placeholder\`, \`onChange\` ({ actionId })
+- **Select**: \`label\`, \`options\`, \`onSelect\` | **Checkbox**: \`label\`, \`onChange\`
+
 DEINE FÄHIGKEITEN:
 - Wissensbasis durchsuchen und bearbeiten (Professional Editor)
 - Pinnwand-Karten (Canvas) erstellen und verknüpfen
 - Aufgaben verwalten und priorisieren
 - Global Finder nutzen (@task, @note, etc.)
 - Code generieren und analysieren
-- **Dynamische UI rendern (Agent2UI)**:
-  Nutze einen Markdown Code-Block mit \`a2ui\` als Sprache, um UI-Komponenten zu rendern.
-  Schema:
-  \`\`\`a2ui
-    {
-        "components": [
-            {
-                "id": "my-card",
-                "component": {
-                    "Card": { "title": "Titel", "children": { "explicitList": ["img-1", "btn-1"] } }
-                }
-            },
-            {
-                "id": "img-1",
-                "component": {
-                    "Image": {
-                        "src": "https://example.com/image.jpg",
-                        "alt": "Beschreibung",
-                        "caption": "Bildunterschrift"
-                    }
-                }
-            },
-            {
-                "id": "btn-1",
-                "component": {
-                    "Button": { "label": "Aktion", "onPress": { "actionId": "clicked" } }
-                }
-            }
-        ]
-    }
-    \`\`\`
-  Verfügbare Komponenten & Props:
-  - **Text**: \`text\` (string), \`style\` (object)
-  - **Card**: \`title\` (string), \`children\` ({ explicitList: string[] })
-  - **Button**: \`label\` (string), \`onPress\` ({ actionId: string })
-  - **Image**: \`src\` (string URL), \`alt\` (string), \`caption\` (string)
-  - **Markdown**: \`content\` (string markdown)
-  - **CodeBlock**: \`code\` (string), \`language\` (string)
-  - **Input**: \`label\`, \`value\`, \`placeholder\`, \`onChange\` ({ actionId })
-  - **Layout**: \`Column\`, \`Row\` (\`gap\`, \`children\`)
-  - **Alert**: \`title\`, \`message\`, \`variant\` ('info'|'warning'|'error'|'success')
 
 HINWEIS: Das Modul "Canvas" wird im UI als "Pinnwand" bezeichnet.
+Die ganzseitige Assistent-Ansicht ist unter /assistant erreichbar.
 
 Antworte immer auf Deutsch, es sei denn der Nutzer schreibt auf Englisch.
 Halte deine Antworten präzise und hilfreich.`;

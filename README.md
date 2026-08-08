@@ -21,6 +21,10 @@ konfigurierte Tools selbstständig aus.
 - **Global Finder**: Smarte Suche (`Cmd+F`) mit Modifiers (`@task`, `@doc`, …) und Fuzzy-Matching
 - **Persönlicher Assistent**: Streaming-Chat mit Seiten-Kontext, Chat-Historie,
   **Agent2UI-Rendering** und **automatischer Tool-Ausführung** (`[[TOOL:…]]`-Loop)
+- **Generative Oberfläche**: UI entsteht pro Interaktion aus dem Gespräch statt
+  aus festen Views. Native, selbst-ladende Workspace-Widgets (Aufgaben, Kalender,
+  Dokumente, Kennzahlen) und eingebettete UI nach **MCP-UI-Standard**; ganzseitig
+  unter `/assistant` mit Dialog links und generativer Bühne rechts
 - **Werkzeuge**: Externe APIs als Tools, sichere Verbindungen (AES-256-GCM at rest)
 - **Agenten**: Verwaltung lokaler und Remote-Agenten (A2A-Protokoll in Entwicklung)
 - **Benachrichtigungen**: Echtes Activity-Log mit Ungelesen-Status
