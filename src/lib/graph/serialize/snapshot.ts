@@ -1,0 +1,188 @@
+/**
+ * Snapshot-Layout `data/graph/` (SPEC §8.1) — die Serialisierung des
+ * Stores als Git-Working-Tree.
+ *
+ * Deterministisch: kanonische N-Quads pro Graph (RDFC-1.0-stabile Blank
+ * Nodes, sortierte Zeilen) und ein Manifest ohne Zeitstempel. Zweimaliges
+ * Schreiben desselben Zustands erzeugt byte-identische Dateien.
+ *
+ * Nicht persistiert werden:
+ *  - `graph/vocab` — wird beim Start aus `ontology/ow.ttl` geladen
+ *    (mitgelieferte Kopie, SPEC §3.2); eine zweite Kopie wäre doppelte
+ *    Wahrheit.
+ *  - `graph/<u>/inferred/*` — reproduzierbarer Reasoner-Output (SPEC §8.1).
+ *  - `graph/acl` — verlässt den Store nie über generische Pfade (SPEC §3.3).
+ */
+
+import type { NamedNode, Quad } from '@rdfjs/types';
+import type { GraphStore } from '../store/types';
+import type { FileSystemLike } from '@/lib/platform/runtime/types';
+import { canonicalNQuads, hashCanonical } from './canonical';
+import { parseRdf } from './io';
+import { factory } from '../rdf';
+
+export const SNAPSHOT_SCHEMA_VERSION = 1;
+
+export interface SnapshotManifest {
+    schemaVersion: number;
+    canonicalization: 'RDFC-1.0';
+    instanceBase: string;
+    graphs: Array<{ iri: string; file: string; quads: number; sha256: string }>;
+}
+
+export interface SnapshotReport {
+    written: Array<{ file: string; quads: number }>;
+    removedStale: string[];
+}
+
+/**
+ * Graph-IRI → Dateiname. Der Default-Nutzer bekommt das flache Layout aus
+ * SPEC §8.1; weitere Nutzer (M13) nisten unter `u/<id>/`.
+ */
+export function snapshotFileForGraph(graphIri: string, instanceBase: string): string | null {
+    if (!graphIri.startsWith(`${instanceBase}graph/`)) return null;
+    const rest = graphIri.slice(`${instanceBase}graph/`.length);
+    if (rest === 'meta') return 'meta.nq';
+    if (rest === 'vocab' || rest === 'acl' || rest === 'shapes') return null;
+    const userMatch = rest.match(/^u\/([^/]+)\/(.+)$/);
+    if (!userMatch) {
+        const shared = rest.match(/^shared\/(.+)$/);
+        if (shared) return `shared/${sanitizeFileSegment(shared[1])}.nq`;
+        return null;
+    }
+    const [, userId, scope] = userMatch;
+    const prefix = userId === 'default' ? '' : `u/${sanitizeFileSegment(userId)}/`;
+    if (scope === 'workspace') return `${prefix}workspace.nq`;
+    if (scope === 'public') return `${prefix}public.nq`;
+    if (scope === 'presentation') return `${prefix}presentation.nq`;
+    const importMatch = scope.match(/^import\/(.+)$/);
+    if (importMatch) return `${prefix}import/${sanitizeFileSegment(importMatch[1])}.nq`;
+    if (scope.startsWith('inferred/')) return null;
+    return null;
+}
+
+function sanitizeFileSegment(value: string): string {
+    return decodeURIComponent(value).replace(/[^A-Za-z0-9._-]+/g, '-');
+}
+
+async function collect(iterable: AsyncIterable<Quad>): Promise<Quad[]> {
+    const quads: Quad[] = [];
+    for await (const q of iterable) {
+        quads.push(q);
+    }
+    return quads;
+}
+
+function joinPath(dir: string, file: string): string {
+    return `${dir.replace(/\/$/, '')}/${file}`;
+}
+
+/**
+ * Schreibt den Snapshot des Stores nach `dir`. Entfernt `.nq`-Dateien,
+ * deren Graph nicht mehr existiert, damit der Working-Tree den Store
+ * exakt spiegelt.
+ */
+export async function writeSnapshot(
+    store: GraphStore,
+    fs: FileSystemLike,
+    dir: string,
+    instanceBase: string,
+): Promise<SnapshotReport> {
+    const graphs = await store.graphs();
+    const entries: SnapshotManifest['graphs'] = [];
+    const written: SnapshotReport['written'] = [];
+
+    await fs.mkdir(dir);
+    for (const graph of graphs) {
+        const file = snapshotFileForGraph(graph.value, instanceBase);
+        if (!file) continue;
+        const quads = await collect(store.dump(graph));
+        const canonical = await canonicalNQuads(quads);
+        const target = joinPath(dir, file);
+        const parent = target.slice(0, target.lastIndexOf('/'));
+        if (parent !== dir.replace(/\/$/, '')) {
+            await fs.mkdir(parent);
+        }
+        await fs.writeFile(target, canonical);
+        entries.push({ iri: graph.value, file, quads: quads.length, sha256: await hashCanonical(canonical) });
+        written.push({ file, quads: quads.length });
+    }
+
+    entries.sort((a, b) => (a.iri < b.iri ? -1 : 1));
+    const manifest: SnapshotManifest = {
+        schemaVersion: SNAPSHOT_SCHEMA_VERSION,
+        canonicalization: 'RDFC-1.0',
+        instanceBase,
+        graphs: entries,
+    };
+    await fs.writeFile(joinPath(dir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+
+    const removedStale = await removeStaleFiles(fs, dir, new Set(entries.map(e => e.file)));
+    return { written, removedStale };
+}
+
+async function listNqFiles(fs: FileSystemLike, dir: string, prefix = ''): Promise<string[]> {
+    if (!(await fs.exists(dir))) return [];
+    const out: string[] = [];
+    for (const name of await fs.readdir(dir)) {
+        const rel = prefix ? `${prefix}/${name}` : name;
+        const full = joinPath(dir, name);
+        if (name.endsWith('.nq')) {
+            out.push(rel);
+        } else if (!name.includes('.')) {
+            out.push(...(await listNqFiles(fs, full, rel)));
+        }
+    }
+    return out;
+}
+
+async function removeStaleFiles(fs: FileSystemLike, dir: string, keep: ReadonlySet<string>): Promise<string[]> {
+    const removed: string[] = [];
+    for (const rel of await listNqFiles(fs, dir)) {
+        if (!keep.has(rel)) {
+            await fs.rm(joinPath(dir, rel));
+            removed.push(rel);
+        }
+    }
+    return removed;
+}
+
+export async function readManifest(fs: FileSystemLike, dir: string): Promise<SnapshotManifest | null> {
+    const path = joinPath(dir, 'manifest.json');
+    if (!(await fs.exists(path))) return null;
+    const parsed: unknown = JSON.parse(await fs.readFile(path));
+    if (
+        typeof parsed !== 'object' || parsed === null ||
+        (parsed as SnapshotManifest).schemaVersion !== SNAPSHOT_SCHEMA_VERSION ||
+        !Array.isArray((parsed as SnapshotManifest).graphs)
+    ) {
+        throw new Error(`Ungültiges oder inkompatibles Snapshot-Manifest: ${path}`);
+    }
+    return parsed as SnapshotManifest;
+}
+
+export interface RestoreReport {
+    graphs: Array<{ iri: string; quads: number }>;
+}
+
+/** Lädt einen Snapshot in den Store (Replace pro Graph, manifest-getrieben). */
+export async function restoreSnapshot(
+    store: GraphStore,
+    fs: FileSystemLike,
+    dir: string,
+): Promise<RestoreReport | null> {
+    const manifest = await readManifest(fs, dir);
+    if (!manifest) return null;
+    const report: RestoreReport = { graphs: [] };
+    for (const entry of manifest.graphs) {
+        const path = joinPath(dir, entry.file);
+        if (!(await fs.exists(path))) {
+            throw new Error(`Snapshot-Datei fehlt: ${path} (im Manifest gelistet)`);
+        }
+        const quads = parseRdf(await fs.readFile(path), { format: 'application/n-quads' });
+        const graph: NamedNode = factory.namedNode(entry.iri);
+        const result = await store.load(quads, graph, { replace: true });
+        report.graphs.push({ iri: entry.iri, quads: result.added });
+    }
+    return report;
+}

@@ -8,7 +8,7 @@ import { TaskModal } from '@/components/tasks/TaskModal';
 import { ProjectForm } from '@/components/tasks/ProjectForm';
 import { useToast } from '@/components/ui/Toast';
 import { JsonLdScript } from '@/components/seo/JsonLdScript';
-import { generateTaskListJsonLd } from '@/lib/ontology/generator-tasks';
+import { generateTaskListJsonLd } from '@/lib/graph/projection/seo';
 import styles from './page.module.css';
 
 interface Project {
@@ -142,8 +142,7 @@ export default function TasksPage() {
 
     const jsonLdData = useMemo(() => {
         if (isLoading) return null;
-        // Map UI Project type to Generator ProjectData type if needed (interfaces seem compatible enough or cast)
-        return generateTaskListJsonLd(projects as any, tasks as any);
+        return generateTaskListJsonLd(projects, tasks);
     }, [projects, tasks, isLoading]);
 
     return (
