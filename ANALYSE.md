@@ -101,7 +101,7 @@ angefangen worden, statt weitere halbe Attrappen zu hinterlassen.
 
 ## 4. Durchgeführte Modernisierung (dieser Branch)
 
-### 4.1 Toolchain & Dependencies ✅
+### 4.1 Toolchain & Dependencies
 
 - Produktions-Build repariert (Debug-Skript und Alt-Lockfile entfernt)
 - **Next.js 16.3**, React 19.2.8, CopilotKit 1.66, openai 7, lucide-react 1.x,
@@ -120,7 +120,7 @@ angefangen worden, statt weitere halbe Attrappen zu hinterlassen.
   **TypeScript 5.9** statt 7 (typescript-eslint unterstützt <6.1; TS 6 ist Beta) —
   beides dokumentierte Upgrade-Kandidaten, sobald das Ökosystem nachzieht
 
-### 4.2 Sicherheit & Datenintegrität ✅
+### 4.2 Sicherheit & Datenintegrität
 
 - Path-Traversal-Fix, SVG-Auslieferung entschärft, Upload-Allowlist mit
   Magic-Byte-Prüfung und 10-MB-Limit, `X-Content-Type-Options: nosniff`
@@ -134,7 +134,7 @@ angefangen worden, statt weitere halbe Attrappen zu hinterlassen.
   SSRF-Schutz mit `ALLOW_LOCAL_TOOL_URLS`-Escape-Hatch für lokale Endpunkte
 - Migrationsskript mit Datenverlust-Risiko entfernt (Migration war abgeschlossen)
 
-### 4.3 PWA ✅
+### 4.3 PWA
 
 - **Service Worker** (Vanilla JS, Turbopack-kompatibel): App-Shell-Precache,
   network-first für Navigation und `GET /api/*` mit Offline-Fallback,
@@ -145,7 +145,7 @@ angefangen worden, statt weitere halbe Attrappen zu hinterlassen.
 - Manifest vervollständigt (id, scope, lang, Shortcuts); Offline-Seite in
   hell/dunkel; Registrierung mit sauberem Update-Reload
 
-### 4.4 Kernfeatures ✅
+### 4.4 Kernfeatures
 
 - **Tool-Ausführung existiert jetzt wirklich**: Streaming-Parser für
   `[[TOOL:id:{args}]]` (chunk-grenzen-sicher, unit-getestet), serverseitiger
@@ -165,7 +165,7 @@ angefangen worden, statt weitere halbe Attrappen zu hinterlassen.
 - Hydration-Muster auf `useSyncExternalStore` umgestellt (Theme, Sidebar,
   Notifications-Read-State); `useId()` statt `Math.random()`
 
-### 4.5 CI/CD & Deployment ✅
+### 4.5 CI/CD & Deployment
 
 - GitHub-Actions-Workflow: Lint → Typecheck → Unit-Tests → Build,
   plus optionaler E2E-Job mit Playwright-Report-Artifact
@@ -236,8 +236,8 @@ Aufwände sind Richtwerte für eine Person.
 
 ## 7. Verifikation
 
-- `bun run build` ✅ (Next 16.3, Turbopack, 27 Seiten)
-- `bun run typecheck` ✅
-- `bun run test:run` ✅ (35 Unit-Tests: A2UI-Renderer, Ontologie, Tool-Call-Parser)
-- `bun run lint` ✅ 0 Errors (Warnings bewusst sichtbar)
+- `bun run build`: ok (Next 16.3, Turbopack, 27 Seiten)
+- `bun run typecheck`
+- `bun run test:run`: ok (35 Unit-Tests: A2UI-Renderer, Ontologie, Tool-Call-Parser)
+- `bun run lint`: 0 Errors (Warnings bewusst sichtbar)
 - E2E: Widget-Test läuft headless; Konversations-Test skippt ohne LLM sauber

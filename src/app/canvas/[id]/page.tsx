@@ -467,7 +467,7 @@ export default function CanvasEditorPage() {
                         <IconButton icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>} onClick={() => router.push('/canvas')} label="Zurück zur Übersicht" />
                         <div className={styles.divider} />
                         <Button variant={connectionMode === 'none' ? 'ghost' : 'primary'} size="sm" onClick={() => { if (connectionMode === 'connecting') { setConnectionMode('none'); setConnectionStart(null); setPendingConnection(null); } else { setConnectionMode('connecting'); } }}>
-                            {connectionMode === 'connecting' ? '✓ Verbinden' : '🔗 Verbinden'}
+                            {connectionMode === 'connecting' ? 'Verbinden aktiv' : 'Verbinden'}
                         </Button>
                         {connectionMode === 'connecting' && (
                             <select className={styles.select} value={connectionType} onChange={(e) => setConnectionType(e.target.value as CanvasConnection['type'])}>

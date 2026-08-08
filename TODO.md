@@ -1,7 +1,6 @@
 # TODO - Open Workspace Development
 
 > Roadmap auf Basis der vollständigen Analyse in [ANALYSE.md](./ANALYSE.md).
-> Status: ✅ fertig · 🚧 teilweise · ⬜ offen
 
 ## Fundament (fertig)
 

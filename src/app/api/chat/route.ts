@@ -147,13 +147,13 @@ async function runTool(
         try {
             args = JSON.parse(rawArgs);
         } catch {
-            emitText(`\n\n> ⚠️ Ungültige Argumente für \`${toolId}\`.\n\n`);
+            emitText(`\n\n> Hinweis: Ungültige Argumente für \`${toolId}\`.\n\n`);
             return `Fehler: Argumente waren kein gültiges JSON: ${rawArgs.slice(0, 200)}`;
         }
     }
 
     if (toolId === 'workspace_finder') {
-        emitText(`\n\n> 🔎 Durchsuche den Workspace…\n\n`);
+        emitText(`\n\n> Durchsuche den Workspace…\n\n`);
         try {
             return await runWorkspaceFinder(args, origin);
         } catch (error) {
@@ -166,11 +166,11 @@ async function runTool(
     const tool = tools.find((t: Tool) => t.id === toolId);
 
     if (!tool) {
-        emitText(`\n\n> ⚠️ Tool \`${toolId}\` nicht gefunden.\n\n`);
+        emitText(`\n\n> Hinweis: Tool \`${toolId}\` nicht gefunden.\n\n`);
         return `Fehler: Tool "${toolId}" existiert nicht.`;
     }
 
-    emitText(`\n\n> 🔧 Führe Tool **${tool.name}** aus…\n\n`);
+    emitText(`\n\n> Führe Tool **${tool.name}** aus…\n\n`);
 
     try {
         const result = await executeTool(tool, args as Record<string, any>);
@@ -180,7 +180,7 @@ async function runTool(
             : serialized;
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Unbekannter Fehler';
-        emitText(`\n\n> ⚠️ Tool **${tool.name}** fehlgeschlagen: ${message}\n\n`);
+        emitText(`\n\n> Hinweis: Tool **${tool.name}** fehlgeschlagen: ${message}\n\n`);
         return `Fehler bei der Ausführung: ${message}`;
     }
 }

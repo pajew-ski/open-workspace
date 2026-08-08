@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDoc, updateDoc, deleteDoc } from '@/lib/storage/docs';
+import { parseBody, updateDocSchema } from '@/lib/api/validation';
 
 interface RouteParams {
     params: Promise<{ id: string }>;
@@ -30,7 +31,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function PUT(request: NextRequest, { params }: RouteParams) {
     try {
         const { id } = await params;
-        const body = await request.json();
+        const parsed = await parseBody(updateDocSchema, request);
+        if (!parsed.ok) return parsed.response;
+        const body = parsed.data;
 
         const doc = await updateDoc(id, {
             title: body.title,

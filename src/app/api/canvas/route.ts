@@ -13,6 +13,7 @@ import {
     deleteConnection,
     updateViewport,
 } from '@/lib/storage';
+import { canvasActionSchema, parseBody } from '@/lib/api/validation';
 
 export async function GET(request: NextRequest) {
     try {
@@ -37,10 +38,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     try {
-        const body = await request.json();
-        const { action, canvasId } = body;
+        const parsed = await parseBody(canvasActionSchema, request);
+        if (!parsed.ok) return parsed.response;
+        const body = parsed.data;
 
-        switch (action) {
+        switch (body.action) {
             // Canvas CRUD
             case 'create': {
                 const canvas = await createCanvas(body.name, body.description);
@@ -50,7 +52,7 @@ export async function POST(request: NextRequest) {
             }
 
             case 'updateMeta': {
-                const canvas = await updateCanvasMeta(canvasId, { name: body.name, description: body.description });
+                const canvas = await updateCanvasMeta(body.canvasId, { name: body.name, description: body.description });
                 if (!canvas) return NextResponse.json({ error: 'Canvas nicht gefunden' }, { status: 404 });
 
                 const { logActivity } = await import('@/lib/activity');
@@ -74,7 +76,7 @@ export async function POST(request: NextRequest) {
 
             // Card CRUD
             case 'createCard': {
-                const card = await createCard(canvasId, {
+                const card = await createCard(body.canvasId, {
                     type: body.type,
                     title: body.title || 'Neue Karte',
                     content: body.content,
@@ -87,49 +89,49 @@ export async function POST(request: NextRequest) {
                 if (!card) return NextResponse.json({ error: 'Canvas nicht gefunden' }, { status: 404 });
 
                 const { logActivity } = await import('@/lib/activity');
-                await logActivity('canvas_updated', canvasId, `Canvas Karte erstellt: ${card.title}`);
+                await logActivity('canvas_updated', body.canvasId, `Canvas Karte erstellt: ${card.title}`);
 
                 return NextResponse.json({ card }, { status: 201 });
             }
 
             case 'updateCard': {
-                const card = await updateCard(canvasId, body.cardId, body.updates);
+                const card = await updateCard(body.canvasId, body.cardId, body.updates);
                 if (!card) return NextResponse.json({ error: 'Karte nicht gefunden' }, { status: 404 });
                 // No logging for updates (high frequency)
                 return NextResponse.json({ card });
             }
 
             case 'deleteCard': {
-                const success = await deleteCard(canvasId, body.cardId);
+                const success = await deleteCard(body.canvasId, body.cardId);
                 if (!success) return NextResponse.json({ error: 'Karte nicht gefunden' }, { status: 404 });
 
                 const { logActivity } = await import('@/lib/activity');
-                await logActivity('canvas_updated', canvasId, `Canvas Karte gelöscht`);
+                await logActivity('canvas_updated', body.canvasId, `Canvas Karte gelöscht`);
 
                 return NextResponse.json({ success: true });
             }
 
             // Connection CRUD
             case 'createConnection': {
-                const connection = await createConnection(canvasId, body.fromId, body.toId, body.type || 'directional', body.label);
+                const connection = await createConnection(body.canvasId, body.fromId, body.toId, body.type || 'directional', body.label);
                 if (!connection) return NextResponse.json({ error: 'Karten nicht gefunden' }, { status: 404 });
                 return NextResponse.json({ connection }, { status: 201 });
             }
 
             case 'updateConnection': {
-                const connection = await updateConnection(canvasId, body.connectionId, body.updates);
+                const connection = await updateConnection(body.canvasId, body.connectionId, body.updates);
                 if (!connection) return NextResponse.json({ error: 'Verbindung nicht gefunden' }, { status: 404 });
                 return NextResponse.json({ connection });
             }
 
             case 'deleteConnection': {
-                const success = await deleteConnection(canvasId, body.connectionId);
+                const success = await deleteConnection(body.canvasId, body.connectionId);
                 if (!success) return NextResponse.json({ error: 'Verbindung nicht gefunden' }, { status: 404 });
                 return NextResponse.json({ success: true });
             }
 
             case 'updateViewport': {
-                await updateViewport(canvasId, body.viewport);
+                await updateViewport(body.canvasId, body.viewport);
                 return NextResponse.json({ success: true });
             }
 

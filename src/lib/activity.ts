@@ -1,5 +1,5 @@
-import fs from 'fs/promises';
 import path from 'path';
+import { readJsonSafe, withFileLock, writeJsonAtomic } from '@/lib/storage/atomic';
 
 const ACTIVITY_FILE = path.join(process.cwd(), 'data', 'activity.json');
 
@@ -17,43 +17,39 @@ export interface ActivityEvent {
     entityId: string;
     title: string;
     timestamp: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
 }
 
 export async function logActivity(
     type: ActivityType,
     entityId: string,
     title: string,
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
 ) {
     try {
-        let activities: ActivityEvent[] = [];
-        try {
-            const data = await fs.readFile(ACTIVITY_FILE, 'utf-8');
-            activities = JSON.parse(data);
-        } catch (error) {
-            // File might not exist or be empty, start fresh
-        }
+        return await withFileLock(ACTIVITY_FILE, async () => {
+            let activities = await readJsonSafe<ActivityEvent[]>(ACTIVITY_FILE, []);
 
-        const newEvent: ActivityEvent = {
-            id: `evt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            type,
-            entityId,
-            title,
-            timestamp: new Date().toISOString(),
-            metadata
-        };
+            const newEvent: ActivityEvent = {
+                id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+                type,
+                entityId,
+                title,
+                timestamp: new Date().toISOString(),
+                metadata
+            };
 
-        // Prepend new event
-        activities.unshift(newEvent);
+            // Prepend new event
+            activities.unshift(newEvent);
 
-        // Keep last 100 events
-        if (activities.length > 100) {
-            activities = activities.slice(0, 100);
-        }
+            // Keep last 100 events
+            if (activities.length > 100) {
+                activities = activities.slice(0, 100);
+            }
 
-        await fs.writeFile(ACTIVITY_FILE, JSON.stringify(activities, null, 2));
-        return newEvent;
+            await writeJsonAtomic(ACTIVITY_FILE, activities);
+            return newEvent;
+        });
     } catch (error) {
         console.error('Failed to log activity:', error);
         return null; // Don't block main flow
@@ -61,11 +57,6 @@ export async function logActivity(
 }
 
 export async function getActivities(limit = 20): Promise<ActivityEvent[]> {
-    try {
-        const data = await fs.readFile(ACTIVITY_FILE, 'utf-8');
-        const activities: ActivityEvent[] = JSON.parse(data);
-        return activities.slice(0, limit);
-    } catch (error) {
-        return [];
-    }
+    const activities = await readJsonSafe<ActivityEvent[]>(ACTIVITY_FILE, []);
+    return activities.slice(0, limit);
 }

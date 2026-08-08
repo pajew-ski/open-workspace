@@ -7,6 +7,7 @@ import {
     syncProvider,
     getEvents
 } from '@/lib/storage/calendar';
+import { calendarActionSchema, parseBody } from '@/lib/api/validation';
 
 export async function GET(request: NextRequest) {
     try {
@@ -31,10 +32,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     try {
-        const body = await request.json();
-        const { action } = body;
+        const parsed = await parseBody(calendarActionSchema, request);
+        if (!parsed.ok) return parsed.response;
+        const body = parsed.data;
 
-        switch (action) {
+        switch (body.action) {
             case 'addProvider': {
                 const provider = await addProvider(body.name, body.url, body.color);
                 return NextResponse.json({ provider }, { status: 201 });
