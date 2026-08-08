@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Button, Input, Card, CardContent } from '@/components/ui';
 import styles from './AddAgentDialog.module.css';
 
@@ -16,19 +17,15 @@ export function AddAgentDialog({ onClose, onAdd }: AddAgentDialogProps) {
     const [connectionId, setConnectionId] = useState('');
     const [systemPrompt, setSystemPrompt] = useState('');
 
-    const [connections, setConnections] = useState<any[]>([]);
-
-    useEffect(() => {
-        fetchConnections();
-    }, []);
-
-    const fetchConnections = async () => {
-        try {
+    const { data: connections = [] } = useQuery<any[]>({
+        queryKey: ['connections'],
+        queryFn: async () => {
             const res = await fetch('/api/connections');
             const data = await res.json();
-            setConnections(data.connections || []);
-        } catch (e) { console.error(e); }
-    };
+            return data.connections || [];
+        },
+    });
+
 
     const handleSubmit = async () => {
         if (!name) return;

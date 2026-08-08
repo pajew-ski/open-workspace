@@ -3,6 +3,10 @@ import { describe, it, expect } from 'vitest';
 import { generateDocJsonLd } from '../src/lib/ontology/generator';
 import { Doc } from '../src/types/doc';
 
+// schema-dts types are wide unions (incl. IdReference); tests inspect the
+// concrete runtime shape, so they access fields via a plain record view.
+const asRecord = (value: unknown) => value as Record<string, any>;
+
 // Mock Config if necessary, but generator imports it. We assume valid default config.
 
 describe('JSON-LD Ontology', () => {
@@ -20,7 +24,7 @@ describe('JSON-LD Ontology', () => {
             author: 'michael-pajewski'
         };
 
-        const jsonLd = generateDocJsonLd(doc);
+        const jsonLd = asRecord(generateDocJsonLd(doc));
 
         expect(jsonLd['@context']).toBe('https://schema.org');
         expect(jsonLd['@type']).toBe('BlogPosting');
@@ -42,7 +46,7 @@ describe('JSON-LD Ontology', () => {
             type: 'TechArticle'
         };
 
-        const jsonLd = generateDocJsonLd(doc);
+        const jsonLd = asRecord(generateDocJsonLd(doc));
         expect(jsonLd.description).toBe('Heading This is bold text and link.');
     });
 
@@ -58,7 +62,7 @@ describe('JSON-LD Ontology', () => {
             type: 'TechArticle'
         };
 
-        const jsonLd = generateDocJsonLd(doc);
+        const jsonLd = asRecord(generateDocJsonLd(doc));
 
         // mentions is correctly typed as Thing[] or undefined in our generator logic (though schema-dts allows more)
         const mentions = jsonLd.mentions as any[];
@@ -80,10 +84,10 @@ describe('JSON-LD Ontology', () => {
             type: 'DefinedTerm'
         };
 
-        const jsonLd = generateDocJsonLd(doc);
+        const jsonLd = asRecord(generateDocJsonLd(doc));
         expect(jsonLd['@type']).toBe('DefinedTerm');
         // DefinedTerm uses specific structure
-        const term = jsonLd as any;
+        const term = jsonLd;
         expect(term.inDefinedTermSet).toBeDefined();
         expect(term.inDefinedTermSet.name).toBe('Exocortex Glossary');
     });

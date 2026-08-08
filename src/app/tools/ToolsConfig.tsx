@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, Button } from '@/components/ui';
 import { AddApiToolDialog } from '@/components/tools/AddApiToolDialog';
 import { ConnectionManager } from '@/app/tools/connections/ConnectionManager';
@@ -8,22 +9,17 @@ import styles from './ToolsConfig.module.css';
 
 export function ToolsConfig() {
     const [activeTab, setActiveTab] = useState<'tools' | 'connections'>('tools');
-    const [tools, setTools] = useState<any[]>([]);
     const [isAdding, setIsAdding] = useState(false);
+    const queryClient = useQueryClient();
 
-    useEffect(() => {
-        fetchTools();
-    }, []);
-
-    const fetchTools = async () => {
-        try {
+    const { data: tools = [] } = useQuery<any[]>({
+        queryKey: ['tools'],
+        queryFn: async () => {
             const res = await fetch('/api/tools');
             const data = await res.json();
-            setTools(data.tools || []);
-        } catch (e) {
-            console.error(e);
-        }
-    };
+            return data.tools || [];
+        },
+    });
 
     const handleAddApi = async (data: any) => {
         const res = await fetch('/api/tools', {
@@ -32,7 +28,7 @@ export function ToolsConfig() {
             headers: { 'Content-Type': 'application/json' }
         });
         if (res.ok) {
-            fetchTools();
+            queryClient.invalidateQueries({ queryKey: ['tools'] });
         }
     };
 
