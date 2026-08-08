@@ -5,9 +5,13 @@
 ## Hier weitermachen (Einstieg für neue Sessions)
 
 **Stand 2026-08-08 (3. Ausbaustufe, Graph Core M0–M2)**: Der **RDF-Graph ist
-das kanonische Datenmodell** (SPEC „Graph Core — Vollausbau", verbindlich;
-Store-Entscheidung mit Messwerten in
-[docs/decisions/0001-graph-store.md](./docs/decisions/0001-graph-store.md)):
+das kanonische Datenmodell**. Die verbindliche Spezifikation inklusive aller
+Meilensteine M0–M13 liegt in
+[GRAPH_CORE_SPEC.md](./GRAPH_CORE_SPEC.md) — **Arbeitsmodus: ein Meilenstein
+= eine Session = ein Branch = ein PR**; jede Session liest zuerst diesen
+Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
+(Store-Entscheidung mit Messwerten in
+[docs/decisions/0001-graph-store.md](./docs/decisions/0001-graph-store.md).)
 
 - **Store** (`src/lib/graph/store/`): `GraphStore`-Interface + Oxigraph-WASM
   (SPARQL 1.1 Query/Update, RDF 1.2/RDF-star, Quads) + ehrliches
@@ -72,10 +76,12 @@ E2E-Gate** (`e2e/mobile-navigation`, `e2e/mobile-ux`, `e2e/a11y` inkl. der
 neuen Seiten `/ai` und `/skills`) laufen grün.
 
 **Bevor du etwas Neues baust, lies in dieser Reihenfolge:**
-1. [docs/ai-platform.md](./docs/ai-platform.md) — Architektur der AI-Schicht
-2. [ANALYSE.md](./ANALYSE.md) — Bestandsaufnahme + **§5 Roadmap** (P0/P1/P2)
-3. [TODO.md](./TODO.md) — dieselbe Roadmap als abhakbare Liste
-4. Diesen Abschnitt hier für die Architektur-Prinzipien
+1. [GRAPH_CORE_SPEC.md](./GRAPH_CORE_SPEC.md) — verbindliche Spec des
+   Graph-Ausbaus (M0–M13, Invarianten, Abnahmen) — Pflicht für Graph-Arbeit
+2. [docs/ai-platform.md](./docs/ai-platform.md) — Architektur der AI-Schicht
+3. [ANALYSE.md](./ANALYSE.md) — Bestandsaufnahme + **§5 Roadmap** (P0/P1/P2)
+4. [TODO.md](./TODO.md) — Roadmap als abhakbare Liste (inkl. Graph Core)
+5. Diesen Abschnitt hier für die Architektur-Prinzipien
 
 **Nächste sinnvolle Schritte**: Graph Core M3 (Connector-Framework +
 `rdf-file`/`github-rdf`, prima-materia als Referenzfall) und die Umstellung
