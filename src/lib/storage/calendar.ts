@@ -1,6 +1,6 @@
-import { promises as fs } from 'fs';
 import path from 'path';
 import { parseICS } from '@/lib/calendar/ical';
+import { readJsonSafe, withFileLock, writeJsonAtomic } from './atomic';
 
 const DATA_DIR = path.join(process.cwd(), 'data', 'calendar');
 const PROVIDERS_FILE = path.join(DATA_DIR, 'providers.json');
@@ -26,7 +26,7 @@ export interface CalendarEvent {
     location?: string;
 }
 
-interface CalendarData {
+interface ProvidersData {
     providers: CalendarProvider[];
 }
 
@@ -36,33 +36,26 @@ interface EventsData {
 }
 
 // Helpers
-async function ensureDataFiles() {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-    try { await fs.access(PROVIDERS_FILE); }
-    catch { await fs.writeFile(PROVIDERS_FILE, JSON.stringify({ providers: [] })); }
-    try { await fs.access(EVENTS_FILE); }
-    catch { await fs.writeFile(EVENTS_FILE, JSON.stringify({ events: [], updatedAt: new Date().toISOString() })); }
-}
-
 async function readProviders(): Promise<CalendarProvider[]> {
-    await ensureDataFiles();
-    const data = JSON.parse(await fs.readFile(PROVIDERS_FILE, 'utf-8'));
-    return data.providers;
+    const data = await readJsonSafe<ProvidersData>(PROVIDERS_FILE, { providers: [] });
+    return data.providers ?? [];
 }
 
 async function writeProviders(providers: CalendarProvider[]) {
-    await fs.writeFile(PROVIDERS_FILE, JSON.stringify({ providers }, null, 2));
+    await writeJsonAtomic(PROVIDERS_FILE, { providers });
 }
 
 async function readEvents(): Promise<CalendarEvent[]> {
-    await ensureDataFiles();
-    const data = JSON.parse(await fs.readFile(EVENTS_FILE, 'utf-8'));
-    return data.events;
+    const data = await readJsonSafe<EventsData>(EVENTS_FILE, {
+        events: [],
+        updatedAt: new Date().toISOString(),
+    });
+    return data.events ?? [];
 }
 
 async function writeEvents(events: CalendarEvent[]) {
     const data: EventsData = { events, updatedAt: new Date().toISOString() };
-    await fs.writeFile(EVENTS_FILE, JSON.stringify(data, null, 2));
+    await writeJsonAtomic(EVENTS_FILE, data);
 }
 
 // Provider Operations
@@ -71,17 +64,20 @@ export async function listProviders() {
 }
 
 export async function addProvider(name: string, url: string, color: string) {
-    const providers = await readProviders();
-    const newProvider: CalendarProvider = {
-        id: `cal-${Date.now()}`,
-        name,
-        url,
-        color,
-        enabled: true,
-        lastSync: null
-    };
-    providers.push(newProvider);
-    await writeProviders(providers);
+    const newProvider = await withFileLock(PROVIDERS_FILE, async () => {
+        const providers = await readProviders();
+        const provider: CalendarProvider = {
+            id: `cal-${Date.now()}`,
+            name,
+            url,
+            color,
+            enabled: true,
+            lastSync: null
+        };
+        providers.push(provider);
+        await writeProviders(providers);
+        return provider;
+    });
 
     // Sync immediately
     try {
@@ -94,26 +90,35 @@ export async function addProvider(name: string, url: string, color: string) {
 }
 
 export async function updateProvider(id: string, updates: Partial<CalendarProvider>) {
-    const providers = await readProviders();
-    const index = providers.findIndex(p => p.id === id);
-    if (index === -1) return null;
+    return withFileLock(PROVIDERS_FILE, async () => {
+        const providers = await readProviders();
+        const index = providers.findIndex(p => p.id === id);
+        if (index === -1) return null;
 
-    providers[index] = { ...providers[index], ...updates };
-    await writeProviders(providers);
-    return providers[index];
+        providers[index] = { ...providers[index], ...updates };
+        await writeProviders(providers);
+        return providers[index];
+    });
 }
 
 export async function deleteProvider(id: string) {
-    const providers = await readProviders();
-    const newProviders = providers.filter(p => p.id !== id);
-    if (newProviders.length === providers.length) return false;
+    const removed = await withFileLock(PROVIDERS_FILE, async () => {
+        const providers = await readProviders();
+        const newProviders = providers.filter(p => p.id !== id);
+        if (newProviders.length === providers.length) return false;
 
-    await writeProviders(newProviders);
+        await writeProviders(newProviders);
+        return true;
+    });
+
+    if (!removed) return false;
 
     // Clean up events
-    const events = await readEvents();
-    const newEvents = events.filter(e => e.providerId !== id);
-    await writeEvents(newEvents);
+    await withFileLock(EVENTS_FILE, async () => {
+        const events = await readEvents();
+        const newEvents = events.filter(e => e.providerId !== id);
+        await writeEvents(newEvents);
+    });
 
     return true;
 }
@@ -149,12 +154,14 @@ export async function syncProvider(id: string) {
             location: e.location
         }));
 
-        // 4. Update events store
-        const allEvents = await readEvents();
-        // Remove old events from this provider
-        const otherEvents = allEvents.filter(e => e.providerId !== id);
-        // Add new events
-        await writeEvents([...otherEvents, ...newEvents]);
+        // 4. Update events store (read-modify-write under lock)
+        await withFileLock(EVENTS_FILE, async () => {
+            const allEvents = await readEvents();
+            // Remove old events from this provider
+            const otherEvents = allEvents.filter(e => e.providerId !== id);
+            // Add new events
+            await writeEvents([...otherEvents, ...newEvents]);
+        });
 
         // 5. Update provider lastSync
         await updateProvider(id, { lastSync: new Date().toISOString() });

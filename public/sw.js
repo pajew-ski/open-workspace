@@ -163,8 +163,9 @@ self.addEventListener("fetch", (event) => {
   // Fremde Origins nicht anfassen (vermeidet opake Antworten im Cache).
   if (url.origin !== self.location.origin) return;
 
-  // (a) Chat-Streaming niemals abfangen.
+  // (a) Chat-Streaming und Backup-Downloads niemals abfangen.
   if (url.pathname.startsWith("/api/chat")) return;
+  if (url.pathname.startsWith("/api/export")) return;
 
   // (b) Navigationen.
   if (request.mode === "navigate") {

@@ -5,8 +5,8 @@
  * Designed for future migration to database
  */
 
-import { promises as fs } from 'fs';
 import path from 'path';
+import { readJsonSafe, withFileLock, writeJsonAtomic } from './atomic';
 
 const DATA_DIR = path.join(process.cwd(), 'data', 'tasks');
 const TASKS_FILE = path.join(DATA_DIR, 'tasks.json');
@@ -46,32 +46,17 @@ export interface TasksData {
 }
 
 /**
- * Ensure data directory and file exist
- */
-async function ensureDataFile(): Promise<void> {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-
-    try {
-        await fs.access(TASKS_FILE);
-    } catch {
-        await fs.writeFile(TASKS_FILE, JSON.stringify({ tasks: [], version: 1 }, null, 2));
-    }
-}
-
-/**
- * Read tasks data
+ * Read tasks data (missing/corrupt file falls back to empty data)
  */
 async function readTasksData(): Promise<TasksData> {
-    await ensureDataFile();
-    const content = await fs.readFile(TASKS_FILE, 'utf-8');
-    return JSON.parse(content);
+    return readJsonSafe<TasksData>(TASKS_FILE, { tasks: [], version: 1 });
 }
 
 /**
- * Write tasks data
+ * Write tasks data atomically
  */
 async function writeTasksData(data: TasksData): Promise<void> {
-    await fs.writeFile(TASKS_FILE, JSON.stringify(data, null, 2));
+    await writeJsonAtomic(TASKS_FILE, data);
 }
 
 /**
@@ -128,73 +113,79 @@ export async function createTask(input: {
     tags?: string[];
     dependencies?: TaskDependency[];
 }): Promise<Task> {
-    const data = await readTasksData();
-    const now = new Date().toISOString();
+    return withFileLock(TASKS_FILE, async () => {
+        const data = await readTasksData();
+        const now = new Date().toISOString();
 
-    const task: Task = {
-        id: generateId(),
-        title: input.title,
-        description: input.description,
-        status: input.status || 'todo',
-        priority: input.priority || 'medium',
-        type: input.type || 'task',
-        startDate: input.startDate,
-        dueDate: input.dueDate,
-        deferredUntil: input.deferredUntil,
-        estimatedEffort: input.estimatedEffort,
-        projectId: input.projectId,
-        tags: input.tags || [],
-        dependencies: input.dependencies || [],
-        createdAt: now,
-        updatedAt: now,
-    };
+        const task: Task = {
+            id: generateId(),
+            title: input.title,
+            description: input.description,
+            status: input.status || 'todo',
+            priority: input.priority || 'medium',
+            type: input.type || 'task',
+            startDate: input.startDate,
+            dueDate: input.dueDate,
+            deferredUntil: input.deferredUntil,
+            estimatedEffort: input.estimatedEffort,
+            projectId: input.projectId,
+            tags: input.tags || [],
+            dependencies: input.dependencies || [],
+            createdAt: now,
+            updatedAt: now,
+        };
 
-    data.tasks.push(task);
-    await writeTasksData(data);
+        data.tasks.push(task);
+        await writeTasksData(data);
 
-    return task;
+        return task;
+    });
 }
 
 /**
  * Update task
  */
 export async function updateTask(id: string, input: Partial<Omit<Task, 'id' | 'createdAt'>>): Promise<Task | null> {
-    const data = await readTasksData();
-    const index = data.tasks.findIndex(t => t.id === id);
+    return withFileLock(TASKS_FILE, async () => {
+        const data = await readTasksData();
+        const index = data.tasks.findIndex(t => t.id === id);
 
-    if (index === -1) return null;
+        if (index === -1) return null;
 
-    const now = new Date().toISOString();
-    const completedAt = input.status === 'done' && data.tasks[index].status !== 'done'
-        ? now
-        : (input.status && input.status !== 'done' ? undefined : data.tasks[index].completedAt);
+        const now = new Date().toISOString();
+        const completedAt = input.status === 'done' && data.tasks[index].status !== 'done'
+            ? now
+            : (input.status && input.status !== 'done' ? undefined : data.tasks[index].completedAt);
 
-    const updated: Task = {
-        ...data.tasks[index],
-        ...input,
-        completedAt: completedAt || data.tasks[index].completedAt,
-        updatedAt: now,
-    };
+        const updated: Task = {
+            ...data.tasks[index],
+            ...input,
+            completedAt: completedAt || data.tasks[index].completedAt,
+            updatedAt: now,
+        };
 
-    data.tasks[index] = updated;
-    await writeTasksData(data);
+        data.tasks[index] = updated;
+        await writeTasksData(data);
 
-    return updated;
+        return updated;
+    });
 }
 
 /**
  * Delete task
  */
 export async function deleteTask(id: string): Promise<boolean> {
-    const data = await readTasksData();
-    const index = data.tasks.findIndex(t => t.id === id);
+    return withFileLock(TASKS_FILE, async () => {
+        const data = await readTasksData();
+        const index = data.tasks.findIndex(t => t.id === id);
 
-    if (index === -1) return false;
+        if (index === -1) return false;
 
-    data.tasks.splice(index, 1);
-    await writeTasksData(data);
+        data.tasks.splice(index, 1);
+        await writeTasksData(data);
 
-    return true;
+        return true;
+    });
 }
 
 /**

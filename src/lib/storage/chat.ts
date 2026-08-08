@@ -2,8 +2,8 @@
  * Chat Storage - Conversation persistence
  */
 
-import { promises as fs } from 'fs';
 import path from 'path';
+import { readJsonSafe, withFileLock, writeJsonAtomic } from './atomic';
 
 const DATA_DIR = path.join(process.cwd(), 'data', 'chat');
 const CONVERSATIONS_FILE = path.join(DATA_DIR, 'conversations.json');
@@ -28,27 +28,17 @@ export interface ConversationsData {
     activeId: string | null;
 }
 
-async function ensureDataFile(): Promise<void> {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-    try {
-        await fs.access(CONVERSATIONS_FILE);
-    } catch {
-        const initialData: ConversationsData = {
-            conversations: [],
-            activeId: null,
-        };
-        await fs.writeFile(CONVERSATIONS_FILE, JSON.stringify(initialData, null, 2));
-    }
-}
+const EMPTY_DATA: ConversationsData = {
+    conversations: [],
+    activeId: null,
+};
 
 async function readData(): Promise<ConversationsData> {
-    await ensureDataFile();
-    const content = await fs.readFile(CONVERSATIONS_FILE, 'utf-8');
-    return JSON.parse(content);
+    return readJsonSafe<ConversationsData>(CONVERSATIONS_FILE, { ...EMPTY_DATA, conversations: [] });
 }
 
 async function writeData(data: ConversationsData): Promise<void> {
-    await fs.writeFile(CONVERSATIONS_FILE, JSON.stringify(data, null, 2));
+    await writeJsonAtomic(CONVERSATIONS_FILE, data);
 }
 
 function generateId(): string {
@@ -73,93 +63,105 @@ export async function getConversation(id: string): Promise<Conversation | null> 
 }
 
 export async function createConversation(title?: string): Promise<Conversation> {
-    const data = await readData();
-    const now = new Date().toISOString();
+    return withFileLock(CONVERSATIONS_FILE, async () => {
+        const data = await readData();
+        const now = new Date().toISOString();
 
-    const conversation: Conversation = {
-        id: generateId(),
-        title: title || `Chat ${new Date().toLocaleDateString('de-DE')}`,
-        messages: [],
-        createdAt: now,
-        updatedAt: now,
-    };
+        const conversation: Conversation = {
+            id: generateId(),
+            title: title || `Chat ${new Date().toLocaleDateString('de-DE')}`,
+            messages: [],
+            createdAt: now,
+            updatedAt: now,
+        };
 
-    data.conversations.unshift(conversation);
-    data.activeId = conversation.id;
-    await writeData(data);
+        data.conversations.unshift(conversation);
+        data.activeId = conversation.id;
+        await writeData(data);
 
-    return conversation;
+        return conversation;
+    });
 }
 
 export async function addMessage(conversationId: string, role: 'user' | 'assistant', content: string): Promise<ChatMessage | null> {
-    const data = await readData();
-    const conv = data.conversations.find(c => c.id === conversationId);
-    if (!conv) return null;
+    return withFileLock(CONVERSATIONS_FILE, async () => {
+        const data = await readData();
+        const conv = data.conversations.find(c => c.id === conversationId);
+        if (!conv) return null;
 
-    const message: ChatMessage = {
-        id: generateMessageId(),
-        role,
-        content,
-        timestamp: new Date().toISOString(),
-    };
+        const message: ChatMessage = {
+            id: generateMessageId(),
+            role,
+            content,
+            timestamp: new Date().toISOString(),
+        };
 
-    conv.messages.push(message);
-    conv.updatedAt = new Date().toISOString();
+        conv.messages.push(message);
+        conv.updatedAt = new Date().toISOString();
 
-    // Auto-title from first user message
-    if (conv.messages.filter(m => m.role === 'user').length === 1 && role === 'user') {
-        conv.title = content.slice(0, 50) + (content.length > 50 ? '...' : '');
-    }
+        // Auto-title from first user message
+        if (conv.messages.filter(m => m.role === 'user').length === 1 && role === 'user') {
+            conv.title = content.slice(0, 50) + (content.length > 50 ? '...' : '');
+        }
 
-    await writeData(data);
-    return message;
+        await writeData(data);
+        return message;
+    });
 }
 
 export async function updateMessage(conversationId: string, messageId: string, content: string): Promise<ChatMessage | null> {
-    const data = await readData();
-    const conv = data.conversations.find(c => c.id === conversationId);
-    if (!conv) return null;
+    return withFileLock(CONVERSATIONS_FILE, async () => {
+        const data = await readData();
+        const conv = data.conversations.find(c => c.id === conversationId);
+        if (!conv) return null;
 
-    const msg = conv.messages.find(m => m.id === messageId);
-    if (!msg) return null;
+        const msg = conv.messages.find(m => m.id === messageId);
+        if (!msg) return null;
 
-    msg.content = content;
-    conv.updatedAt = new Date().toISOString();
+        msg.content = content;
+        conv.updatedAt = new Date().toISOString();
 
-    await writeData(data);
-    return msg;
+        await writeData(data);
+        return msg;
+    });
 }
 
 export async function renameConversation(id: string, title: string): Promise<Conversation | null> {
-    const data = await readData();
-    const conv = data.conversations.find(c => c.id === id);
-    if (!conv) return null;
+    return withFileLock(CONVERSATIONS_FILE, async () => {
+        const data = await readData();
+        const conv = data.conversations.find(c => c.id === id);
+        if (!conv) return null;
 
-    conv.title = title;
-    conv.updatedAt = new Date().toISOString();
+        conv.title = title;
+        conv.updatedAt = new Date().toISOString();
 
-    await writeData(data);
-    return conv;
+        await writeData(data);
+        return conv;
+    });
 }
 
 export async function deleteConversation(id: string): Promise<boolean> {
-    const data = await readData();
-    const index = data.conversations.findIndex(c => c.id === id);
-    if (index === -1) return false;
+    return withFileLock(CONVERSATIONS_FILE, async () => {
+        const data = await readData();
+        const index = data.conversations.findIndex(c => c.id === id);
+        if (index === -1) return false;
 
-    data.conversations.splice(index, 1);
-    if (data.activeId === id) {
-        data.activeId = data.conversations[0]?.id || null;
-    }
+        data.conversations.splice(index, 1);
+        if (data.activeId === id) {
+            data.activeId = data.conversations[0]?.id || null;
+        }
 
-    await writeData(data);
-    return true;
+        await writeData(data);
+        return true;
+    });
 }
 
 export async function setActiveConversation(id: string): Promise<void> {
-    const data = await readData();
-    data.activeId = id;
-    await writeData(data);
+    return withFileLock(CONVERSATIONS_FILE, async () => {
+        const data = await readData();
+        data.activeId = id;
+        await writeData(data);
+    });
 }
 
 export async function getActiveConversation(): Promise<Conversation | null> {
@@ -174,9 +176,11 @@ export async function getActiveId(): Promise<string | null> {
 }
 
 export async function clearAllConversations(): Promise<void> {
-    const data: ConversationsData = {
-        conversations: [],
-        activeId: null,
-    };
-    await writeData(data);
+    return withFileLock(CONVERSATIONS_FILE, async () => {
+        const data: ConversationsData = {
+            conversations: [],
+            activeId: null,
+        };
+        await writeData(data);
+    });
 }

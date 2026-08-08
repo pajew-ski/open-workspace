@@ -134,7 +134,7 @@ export function AISettings() {
                 </div>
                 <div className={styles.inputGroup}>
                     <Button variant="primary" size="sm" onClick={handleSave} disabled={status === 'saving'}>
-                        {status === 'saving' ? 'Speichere…' : status === 'saved' ? 'Gespeichert ✓' : 'Speichern'}
+                        {status === 'saving' ? 'Speichere…' : status === 'saved' ? 'Gespeichert' : 'Speichern'}
                     </Button>
                     {status === 'error' && (
                         <span role="alert" className={styles.settingDescription}>Speichern fehlgeschlagen</span>

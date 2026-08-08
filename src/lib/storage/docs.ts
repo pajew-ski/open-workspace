@@ -1,8 +1,15 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { Doc, DocFrontmatter, DocType } from '@/types/doc';
+import { withFileLock, writeFileAtomic } from './atomic';
 
 const DATA_DIR = path.join(process.cwd(), 'data', 'docs');
+
+/**
+ * All doc mutations are serialized on the docs directory (used as lock key),
+ * because update/delete scan the directory and rename files.
+ */
+const DOCS_LOCK = DATA_DIR;
 
 /**
  * Parse YAML frontmatter from Markdown content
@@ -166,34 +173,36 @@ export async function createDoc(data: {
     type?: DocType;
     tags?: string[];
 }): Promise<Doc> {
-    await ensureDataDir();
+    return withFileLock(DOCS_LOCK, async () => {
+        await ensureDataDir();
 
-    const now = new Date().toISOString();
-    const id = generateId();
-    const slug = generateSlug(data.title);
+        const now = new Date().toISOString();
+        const id = generateId();
+        const slug = generateSlug(data.title);
 
-    const doc: Doc = {
-        id,
-        slug,
-        title: data.title,
-        content: data.content,
-        category: data.category,
-        tags: data.tags || [],
-        type: data.type || 'CreativeWork', // Default
-        author: 'default-author', // Should be configured via ENV or Context
-        inLanguage: 'de',
-        createdAt: now,
-        updatedAt: now,
-    };
+        const doc: Doc = {
+            id,
+            slug,
+            title: data.title,
+            content: data.content,
+            category: data.category,
+            tags: data.tags || [],
+            type: data.type || 'CreativeWork', // Default
+            author: 'default-author', // Should be configured via ENV or Context
+            inLanguage: 'de',
+            createdAt: now,
+            updatedAt: now,
+        };
 
-    const frontmatter = generateFrontmatter(doc);
+        const frontmatter = generateFrontmatter(doc);
 
-    // Filename uses the slug for cleaner FS
-    const filename = `${slug}.md`;
+        // Filename uses the slug for cleaner FS
+        const filename = `${slug}.md`;
 
-    await fs.writeFile(path.join(DATA_DIR, filename), `${frontmatter}\n\n${doc.content}`, 'utf-8');
+        await writeFileAtomic(path.join(DATA_DIR, filename), `${frontmatter}\n\n${doc.content}`);
 
-    return doc;
+        return doc;
+    });
 }
 
 /**
@@ -207,75 +216,78 @@ export async function updateDoc(id: string, data: {
     type?: DocType;
     slug?: string;
 }): Promise<Doc | null> {
-    const docs = await listDocs();
-    const existing = docs.find(n => n.id === id);
+    return withFileLock(DOCS_LOCK, async () => {
+        const docs = await listDocs();
+        const existing = docs.find(n => n.id === id);
 
-    if (!existing) return null;
+        if (!existing) return null;
 
-    // Remove old file if slug/title changes
-    if (data.slug && data.slug !== existing.slug) {
-        // This requires finding the old file by the old slug/filename
-        const oldFilename = `${existing.slug}.md`;
-        // But existing logic used title for filename sanitized.
-        // Since we are migrating, we should assume we might need to look for files.
-        // Ideally, we just check if file exists.
-        // For now, let's keep it robust by searching by ID in the directory loop if needed, 
-        // but since we read all into memory in listDocs, we can just find it.
-    }
-
-    // Deleting old file strategy
-    const files = await fs.readdir(DATA_DIR);
-    for (const file of files) {
-        const content = await fs.readFile(path.join(DATA_DIR, file), 'utf-8');
-        const { frontmatter } = parseFrontmatter(content);
-        if (frontmatter?.id === id) {
-            await fs.unlink(path.join(DATA_DIR, file));
-            break;
+        // Locate the file currently holding this doc (filename may differ from slug)
+        let oldFilePath: string | null = null;
+        const files = await fs.readdir(DATA_DIR);
+        for (const file of files) {
+            if (!file.endsWith('.md')) continue;
+            const content = await fs.readFile(path.join(DATA_DIR, file), 'utf-8');
+            const { frontmatter } = parseFrontmatter(content);
+            if (frontmatter?.id === id) {
+                oldFilePath = path.join(DATA_DIR, file);
+                break;
+            }
         }
-    }
 
-    const now = new Date().toISOString();
-    const updated: Doc = {
-        ...existing,
-        title: data.title ?? existing.title,
-        content: data.content ?? existing.content,
-        category: data.category ?? existing.category,
-        tags: data.tags ?? existing.tags,
-        type: data.type ?? existing.type,
-        slug: data.slug ?? existing.slug,
-        updatedAt: now,
-    };
+        const now = new Date().toISOString();
+        const updated: Doc = {
+            ...existing,
+            title: data.title ?? existing.title,
+            content: data.content ?? existing.content,
+            category: data.category ?? existing.category,
+            tags: data.tags ?? existing.tags,
+            type: data.type ?? existing.type,
+            slug: data.slug ?? existing.slug,
+            updatedAt: now,
+        };
 
-    const frontmatter = generateFrontmatter(updated);
+        const frontmatter = generateFrontmatter(updated);
 
-    // We prefer using slug for filename if we can, but we need to ensure backward compatibility or migration
-    // For new system: always use slug
-    const filename = `${updated.slug}.md`;
+        // Filename always follows the slug
+        const newFilePath = path.join(DATA_DIR, `${updated.slug}.md`);
 
-    await fs.writeFile(path.join(DATA_DIR, filename), `${frontmatter}\n\n${updated.content}`, 'utf-8');
+        // Write the new content FIRST (atomically), only then remove a stale
+        // old file. This way a crash in between never loses the document.
+        await writeFileAtomic(newFilePath, `${frontmatter}\n\n${updated.content}`);
 
-    return updated;
+        if (oldFilePath && path.resolve(oldFilePath) !== path.resolve(newFilePath)) {
+            await fs.unlink(oldFilePath).catch(error => {
+                console.error(`[docs] Failed to remove old doc file ${oldFilePath}:`, error);
+            });
+        }
+
+        return updated;
+    });
 }
 
 /**
  * Delete a doc
  */
 export async function deleteDoc(id: string): Promise<boolean> {
-    try {
-        const files = await fs.readdir(DATA_DIR);
+    return withFileLock(DOCS_LOCK, async () => {
+        try {
+            const files = await fs.readdir(DATA_DIR);
 
-        for (const file of files) {
-            const content = await fs.readFile(path.join(DATA_DIR, file), 'utf-8');
-            const { frontmatter } = parseFrontmatter(content);
+            for (const file of files) {
+                if (!file.endsWith('.md')) continue;
+                const content = await fs.readFile(path.join(DATA_DIR, file), 'utf-8');
+                const { frontmatter } = parseFrontmatter(content);
 
-            if (frontmatter?.id === id) {
-                await fs.unlink(path.join(DATA_DIR, file));
-                return true;
+                if (frontmatter?.id === id) {
+                    await fs.unlink(path.join(DATA_DIR, file));
+                    return true;
+                }
             }
-        }
 
-        return false;
-    } catch {
-        return false;
-    }
+            return false;
+        } catch {
+            return false;
+        }
+    });
 }

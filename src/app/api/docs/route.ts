@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { listDocs, createDoc } from '@/lib/storage/docs';
+import { createDocSchema, parseBody } from '@/lib/api/validation';
 
 export async function GET() {
     try {
@@ -16,20 +17,15 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
     try {
-        const body = await request.json();
-
-        if (!body.title) {
-            return NextResponse.json(
-                { error: 'Titel ist erforderlich' },
-                { status: 400 }
-            );
-        }
+        const parsed = await parseBody(createDocSchema, request);
+        if (!parsed.ok) return parsed.response;
+        const body = parsed.data;
 
         const doc = await createDoc({
             title: body.title,
-            content: body.content || '',
+            content: body.content,
             category: body.category,
-            tags: body.tags || [],
+            tags: body.tags,
             type: body.type, // Polymorphism support
         });
 
