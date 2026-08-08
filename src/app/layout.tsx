@@ -6,6 +6,7 @@ import { CopilotKit } from "@copilotkit/react-core";
 import { CopilotStateProvider } from "@/components/copilot";
 import { AssistantChat } from "@/components/assistant";
 import { GlobalFinder } from "@/components/finder/GlobalFinder";
+import { ServiceWorkerRegistration } from "@/components/pwa";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -46,6 +47,7 @@ export default function RootLayout({
                 <GlobalFinder />
               </CopilotStateProvider>
               <ToastContainer />
+              <ServiceWorkerRegistration />
             </AssistantProvider>
           </CopilotKit>
           </QueryProvider>

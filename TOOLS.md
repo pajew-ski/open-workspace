@@ -36,7 +36,12 @@ This tool allows agents to fuzzy-search across the entire workspace or specific 
 
 When the user asks to find something, you should:
 1.  Identify if they mean a specific type (e.g., "Find task X").
-2.  Use the `workspace_finder` tool (conceptually) or query the API if backend supports function calling.
+2.  Emit `[[TOOL:workspace_finder:{"q":"query","type":"task"}]]` — the chat
+    backend executes the search and feeds the results back as a
+    `[TOOL_RESULT]` message (see AGENTS.md, Tool Protocol).
 3.  Present the results to the user.
 
-*(Note: Currently, the Assistant backend relies on system prompt context. Future versions will implement direct function calling using this spec.)*
+*(Implemented: `workspace_finder` is a built-in tool of the chat tool loop
+in `/api/chat` — no configuration required. User-defined API tools from the
+Werkzeuge module are available through the same mechanism. Native function
+calling for models that support it is on the roadmap, see ANALYSE.md P1.)*

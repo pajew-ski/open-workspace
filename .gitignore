@@ -46,3 +46,9 @@ data/secure/
 data/connections/
 data/tools/
 data/agents/
+data/settings.json
+
+# playwright
+/playwright-report/
+/test-results/
+/blob-report/

@@ -857,6 +857,7 @@ export function AssistantChat() {
         <div className={styles.container}>
             {isOpen && (
                 <div
+                    data-testid="assistant-chat-window"
                     className={`${styles.chatWindow} ${isMobile ? styles.mobile : ''} ${showSidebar ? styles.showSidebar : ''} ${isDragging ? styles.dragging : ''} ${isFullscreen ? styles.fullscreen : ''}`}
                     style={(!isMobile && !isFullscreen) ? {
                         width,
@@ -966,7 +967,7 @@ export function AssistantChat() {
                             </div>
                         ) : (
                             messages.map(message => (
-                                <div key={message.id} data-message-id={message.id} className={`${styles.message} ${styles[message.role]}`}>
+                                <div key={message.id} data-message-id={message.id} data-testid={`assistant-chat-message-${message.role}`} className={`${styles.message} ${styles[message.role]}`}>
                                     {message.role === 'user' ? (
                                         <div>{message.content}</div>
                                     ) : message.content ? (
@@ -1005,6 +1006,7 @@ export function AssistantChat() {
                             />
                         )}
                         <textarea
+                            data-testid="assistant-chat-input"
                             ref={inputRef as any}
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
@@ -1040,7 +1042,7 @@ export function AssistantChat() {
 
             {/* FAB - hide in fullscreen */}
             {!isFullscreen && (
-                <button className={`${styles.fab} ${isOpen ? styles.fabActive : ''}`} onClick={() => setIsOpen(!isOpen)} title="⌘+Shift+A">
+                <button data-testid="assistant-chat-fab" aria-label={isOpen ? 'Assistant schließen' : 'Assistant öffnen'} className={`${styles.fab} ${isOpen ? styles.fabActive : ''}`} onClick={() => setIsOpen(!isOpen)} title="⌘+Shift+A">
                     {isOpen ? (
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
                     ) : (

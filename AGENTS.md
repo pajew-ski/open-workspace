@@ -101,13 +101,18 @@ open-workspace/
 ### Agent Tools
 - Verfügbare Tools sind in [TOOLS.md](./TOOLS.md) dokumentiert.
 - **Dynamic Tool Discovery**: Der Agent erhält verfügbare Tools via System-Prompt.
-- **Tool Protocol**:
-  Um ein Tool auszuführen, muss der Agent eine spezifische Syntax verwenden:
-  `[[TOOL:tool_id:{"arg":"value"}]]`
-  
+- **Tool Protocol** (implementiert in `/api/chat` + `src/lib/tools/callParser.ts`):
+  Um ein Tool auszuführen, verwendet der Agent die Syntax
+  `[[TOOL:tool_id:{"arg":"value"}]]`.
+  Der Server erkennt Aufrufe im Stream (auch über Chunk-Grenzen), blendet sie
+  aus der sichtbaren Antwort aus, führt das Tool aus (`src/lib/tools/executor.ts`)
+  und gibt das Ergebnis als `[TOOL_RESULT tool_id]`-Nachricht an das Modell
+  zurück — maximal 3 Runden pro Anfrage, Fortschritt wird im Chat angezeigt.
+
   Beispiel:
   - User: "Wie ist das Wetter in Berlin?"
   - Agent (Output): `Ich prüfe das Wetter. [[TOOL:weather:{"latitude":52.52,"longitude":13.41}]]`
+  - System führt das Tool aus → Agent fasst das Ergebnis zusammen.
   
 - **Standard-Tool**: `workspace_finder` (Global Finder)
   - Unterstützt Fuzzy-Suche (Levenshtein) für Inhalte und Befehle
@@ -170,10 +175,13 @@ Siehe [architecture_agents.md](docs/architecture_agents.md) für die detailliert
 ## Entwicklung
 
 ```bash
-bun install    # Abhangigkeiten
-bun run dev    # Entwicklung
-bun test       # Unit Tests (Vitest)
-bun run build  # Produktion
+bun install        # Abhängigkeiten
+bun run dev        # Entwicklung
+bun run lint       # ESLint (0 Errors erwartet)
+bun run typecheck  # TypeScript
+bun run test:run   # Unit Tests (Vitest)
+bun run test:e2e   # E2E (Playwright, braucht bun run build)
+bun run build      # Produktion
 ```
 
 ## Code-Konventionen

@@ -1,7 +1,8 @@
 import { AppShell } from '@/components/layout';
-import { Card, CardHeader, CardContent, Button } from '@/components/ui';
+import { Card, CardHeader, CardContent } from '@/components/ui';
 import { ThemeSelector } from './ThemeSelector';
 import { CalendarSettings } from './CalendarSettings';
+import { AISettings } from './AISettings';
 import styles from './page.module.css';
 
 // Force dynamic rendering to use ThemeProvider context
@@ -30,60 +31,10 @@ export default function SettingsPage() {
 
                 <Card>
                     <CardHeader>
-                        <h3>Sprache</h3>
-                    </CardHeader>
-                    <CardContent>
-                        <div className={styles.setting}>
-                            <div className={styles.settingInfo}>
-                                <span className={styles.settingLabel}>Anzeigesprache</span>
-                                <span className={styles.settingDescription}>
-                                    Wähle die Sprache der Benutzeroberfläche
-                                </span>
-                            </div>
-                            <div className={styles.themeButtons}>
-                                <Button variant="primary" size="sm">Deutsch</Button>
-                                <Button variant="secondary" size="sm">English</Button>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader>
                         <h3>AI-Konfiguration</h3>
                     </CardHeader>
                     <CardContent>
-                        <div className={styles.setting}>
-                            <div className={styles.settingInfo}>
-                                <span className={styles.settingLabel}>Inference-Endpunkt</span>
-                                <span className={styles.settingDescription}>
-                                    URL des lokalen oder entfernten AI-Servers
-                                </span>
-                            </div>
-                            <div className={styles.inputGroup}>
-                                <input
-                                    type="text"
-                                    className={styles.input}
-                                    placeholder="http://localhost:11434"
-                                />
-                            </div>
-                        </div>
-                        <div className={styles.setting}>
-                            <div className={styles.settingInfo}>
-                                <span className={styles.settingLabel}>Modell</span>
-                                <span className={styles.settingDescription}>
-                                    Name des zu verwendenden AI-Modells
-                                </span>
-                            </div>
-                            <div className={styles.inputGroup}>
-                                <input
-                                    type="text"
-                                    className={styles.input}
-                                    defaultValue="gpt-oss-20"
-                                    placeholder="llama3"
-                                />
-                            </div>
-                        </div>
+                        <AISettings />
                     </CardContent>
                 </Card>
 
@@ -98,17 +49,20 @@ export default function SettingsPage() {
 
                 <Card>
                     <CardHeader>
-                        <h3>GitHub-Synchronisierung</h3>
+                        <h3>Daten</h3>
                     </CardHeader>
                     <CardContent>
                         <div className={styles.setting}>
                             <div className={styles.settingInfo}>
-                                <span className={styles.settingLabel}>Repository verbinden</span>
+                                <span className={styles.settingLabel}>Workspace sichern</span>
                                 <span className={styles.settingDescription}>
-                                    Synchronisiere deine Notizen und Artefakte mit GitHub
+                                    Lädt alle Dokumente, Aufgaben, Pinnwände und Einstellungen
+                                    als JSON-Backup herunter (ohne gespeicherte Zugangsdaten)
                                 </span>
                             </div>
-                            <Button variant="secondary" size="sm">Mit GitHub verbinden</Button>
+                            <a href="/api/export" download className={styles.exportButton}>
+                                Backup herunterladen
+                            </a>
                         </div>
                     </CardContent>
                 </Card>

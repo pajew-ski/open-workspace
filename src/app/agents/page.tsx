@@ -78,11 +78,16 @@ export default function AgentsPage() {
                                         <div key={agent.id} className={styles.agentItem}>
                                             <div className={styles.agentInfo}>
                                                 <strong>{agent.name}</strong>
-                                                <span className={styles.meta}>{agent.type} {agent.connectionId ? '• Verbunden' : ''}</span>
+                                                <span className={styles.meta}>
+                                                    {agent.type === 'remote_a2a' ? 'Remote (A2A)' : 'Lokal'}
+                                                    {agent.connectionId ? ' • Verbunden' : ''}
+                                                </span>
                                                 <p className={styles.description}>{agent.description}</p>
                                             </div>
                                             <div className={styles.status}>
-                                                <span className={styles.badge}>Aktiv</span>
+                                                <span className={styles.badge}>
+                                                    {agent.type === 'remote_a2a' ? 'Konfiguriert' : 'Aktiv'}
+                                                </span>
                                             </div>
                                         </div>
                                     ))}
@@ -97,12 +102,20 @@ export default function AgentsPage() {
                         </CardHeader>
                         <CardContent>
                             <div className={styles.configItem}>
-                                <span className={styles.configLabel}>A2A-Protokoll</span>
-                                <span className={styles.configValue}>Aktiviert</span>
+                                <span className={styles.configLabel}>Lokale Agenten</span>
+                                <span className={styles.configValue}>
+                                    {agents.filter(a => a.type !== 'remote_a2a').length} konfiguriert
+                                </span>
                             </div>
                             <div className={styles.configItem}>
-                                <span className={styles.configLabel}>System-Status</span>
-                                <span className={styles.configValue}>Bereit</span>
+                                <span className={styles.configLabel}>Remote-Agenten (A2A)</span>
+                                <span className={styles.configValue}>
+                                    {agents.filter(a => a.type === 'remote_a2a').length} konfiguriert
+                                </span>
+                            </div>
+                            <div className={styles.configItem}>
+                                <span className={styles.configLabel}>A2A-Protokoll</span>
+                                <span className={styles.configValue}>In Entwicklung — Agent Cards &amp; JSON-RPC folgen</span>
                             </div>
                         </CardContent>
                     </Card>
