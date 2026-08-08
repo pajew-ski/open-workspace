@@ -5,14 +5,11 @@ import { Send, Sparkles, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { useConversation, UIMessage } from '@/lib/assistant/useConversation';
 import { A2UIRenderer } from '@/components/a2ui/A2UIRenderer';
 import { MessageContent } from '@/components/assistant/MessageContent';
+import { ModelPicker } from '@/components/assistant/ModelPicker';
+import { useAIState, useActiveSelection } from '@/lib/ai/useAI';
+import { listConversations, createConversation } from '@/lib/chat/gateway';
 import '@/components/assistant/MessageContent.css';
 import styles from './FullPageAssistant.module.css';
-
-interface Conversation {
-    id: string;
-    title: string;
-    messages: UIMessage[];
-}
 
 const SUGGESTIONS = [
     'Zeig mir meine offenen Aufgaben',
@@ -40,36 +37,31 @@ export function FullPageAssistant() {
         pathname: '/assistant',
     }), []);
 
-    const { messages, isLoading, activeSurface, sendMessage, loadMessages } =
-        useConversation(conversationId, context);
+    const { data: aiState } = useAIState();
+    const { provider, model } = useActiveSelection(aiState);
 
-    // Load or create the active conversation on mount
+    const { messages, isLoading, activeSurface, sendMessage, loadMessages } =
+        useConversation(conversationId, context, { provider, model });
+
+    // Load or create the active conversation on mount (gateway: server
+    // when reachable, IndexedDB when serverless)
     useEffect(() => {
         let cancelled = false;
         (async () => {
             try {
-                const res = await fetch('/api/chat/conversations');
-                const data = await res.json();
+                const { conversations, activeId } = await listConversations();
                 if (cancelled) return;
 
-                const active: Conversation | undefined =
-                    data.conversations?.find((c: Conversation) => c.id === data.activeId)
-                    || data.conversations?.[0];
-
+                const active = conversations.find(c => c.id === activeId) || conversations[0];
                 if (active) {
                     setConversationId(active.id);
-                    loadMessages(active.messages || []);
+                    loadMessages((active.messages || []) as UIMessage[]);
                 } else {
-                    const created = await fetch('/api/chat/conversations', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'create' }),
-                    });
-                    const cd = await created.json();
-                    if (!cancelled) setConversationId(cd.conversation.id);
+                    const created = await createConversation();
+                    if (!cancelled) setConversationId(created.id);
                 }
             } catch {
-                /* offline — stage still works once endpoint returns */
+                /* storage unavailable — chat still streams without persistence */
             }
         })();
         return () => { cancelled = true; };
@@ -114,6 +106,7 @@ export function FullPageAssistant() {
                         <Sparkles size={18} />
                         <span>Persönlicher Assistent</span>
                     </div>
+                    <ModelPicker />
                     {hasSurface && (
                         <button
                             className={styles.stageToggle}

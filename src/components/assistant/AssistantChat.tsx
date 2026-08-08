@@ -6,8 +6,14 @@ import { useAssistantContext } from '@/lib/assistant/context';
 import { ConfirmDialog } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { A2UIRenderer } from '../a2ui/A2UIRenderer';
-import { A2UINode } from '../a2ui/types';
+import { A2UINode, UIResourceContent } from '../a2ui/types';
 import { MessageContent } from './MessageContent';
+import { ModelPicker } from './ModelPicker';
+import { runAssistantTurn } from '@/lib/ai/transport';
+import { uiResourceNodes } from '@/lib/assistant/useConversation';
+import { useAIState, useActiveSelection } from '@/lib/ai/useAI';
+import { resolveRoute } from '@/lib/ai/store.client';
+import * as chatGateway from '@/lib/chat/gateway';
 import './MessageContent.css';
 import styles from './AssistantChat.module.css';
 
@@ -25,12 +31,6 @@ interface Conversation {
     messages: ChatMessage[];
     createdAt: string;
     updatedAt: string;
-}
-
-interface StreamChunk {
-    message?: { content: string };
-    surfaceUpdate?: { components: A2UINode[] };
-    done?: boolean;
 }
 
 const MODULE_CONTEXT: Record<string, { name: string; description: string }> = {
@@ -107,6 +107,11 @@ export function AssistantChat() {
     // Get viewState for dashboard and module-specific context
     const { viewState } = useAssistantContext();
 
+    // Active inference selection (provider + model) — drives routing:
+    // browser-direct or server relay, decided per provider.
+    const { data: aiState } = useAIState();
+    const { provider, model } = useActiveSelection(aiState);
+
     // Load settings from localStorage on mount (Client-side only)
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -179,19 +184,29 @@ export function AssistantChat() {
         }
     }, [position, isSettingsLoaded]);
 
-    // Check connection
+    // Check connection: probe the ACTIVE provider's resolved route
+    // (browser-direct or server) — not just the server's default.
     useEffect(() => {
+        let cancelled = false;
         const checkConnection = async () => {
             try {
+                if (provider) {
+                    const route = await resolveRoute(provider);
+                    if (!cancelled) {
+                        setConnectionStatus(route.probe?.status === 'online' || route.probe?.status === 'auth' ? 'online' : 'offline');
+                    }
+                    return;
+                }
                 const response = await fetch('/api/chat/health');
                 const data = await response.json();
-                setConnectionStatus(data.status === 'online' ? 'online' : 'offline');
+                if (!cancelled) setConnectionStatus(data.status === 'online' || data.status === 'browser-only' ? 'online' : 'offline');
             } catch {
-                setConnectionStatus('offline');
+                if (!cancelled) setConnectionStatus('offline');
             }
         };
         checkConnection();
-    }, []);
+        return () => { cancelled = true; };
+    }, [provider]);
 
     // Load conversations
     useEffect(() => {
@@ -368,12 +383,11 @@ export function AssistantChat() {
 
     const loadConversations = async () => {
         try {
-            const response = await fetch('/api/chat/conversations');
-            const data = await response.json();
-            setConversations(data.conversations || []);
+            const { conversations: loaded, activeId } = await chatGateway.listConversations();
+            setConversations(loaded as Conversation[]);
 
-            if (data.activeId) {
-                const active = data.conversations?.find((c: Conversation) => c.id === data.activeId);
+            if (activeId) {
+                const active = loaded.find(c => c.id === activeId) as Conversation | undefined;
                 if (active) {
                     setActiveConversation(active);
                     setMessages(active.messages || []);
@@ -383,7 +397,7 @@ export function AssistantChat() {
             }
 
             // Create default if none exist
-            if (!data.conversations?.length) {
+            if (!loaded.length) {
                 await createNewConversation();
             }
         } catch (error) {
@@ -393,14 +407,9 @@ export function AssistantChat() {
 
     const createNewConversation = async () => {
         try {
-            const response = await fetch('/api/chat/conversations', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'create' }),
-            });
-            const data = await response.json();
-            setConversations(prev => [data.conversation, ...prev]);
-            setActiveConversation(data.conversation);
+            const conversation = await chatGateway.createConversation() as Conversation;
+            setConversations(prev => [conversation, ...prev]);
+            setActiveConversation(conversation);
             setMessages([]);
             setShowSidebar(false);
         } catch (error) {
@@ -419,22 +428,14 @@ export function AssistantChat() {
         }
         setShowSidebar(false);
 
-        await fetch('/api/chat/conversations', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'setActive', id: conv.id }),
-        });
+        await chatGateway.setActiveConversation(conv.id);
     };
 
     const handleRename = async () => {
         if (!renameConv || !renameValue.trim()) return;
 
         try {
-            await fetch('/api/chat/conversations', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'rename', id: renameConv.id, title: renameValue }),
-            });
+            await chatGateway.renameConversation(renameConv.id, renameValue);
 
             setConversations(prev => prev.map(c =>
                 c.id === renameConv.id ? { ...c, title: renameValue } : c
@@ -452,11 +453,7 @@ export function AssistantChat() {
         if (!deleteConfirm) return;
 
         try {
-            await fetch('/api/chat/conversations', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'delete', id: deleteConfirm.id }),
-            });
+            await chatGateway.deleteConversation(deleteConfirm.id);
 
             setConversations(prev => prev.filter(c => c.id !== deleteConfirm.id));
             if (activeConversation?.id === deleteConfirm.id) {
@@ -488,16 +485,7 @@ export function AssistantChat() {
         setIsLoading(true);
 
         try {
-            await fetch('/api/chat/conversations', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'addMessage',
-                    conversationId: activeConversation.id,
-                    role: 'user',
-                    content: userInput,
-                }),
-            });
+            await chatGateway.addMessage(activeConversation.id, 'user', userInput);
         } catch (e) { console.error('Failed to save user message', e); }
 
         // Assistant Placeholder
@@ -557,122 +545,72 @@ export function AssistantChat() {
                 })
                 : [];
 
-            const response = await fetch('/api/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    messages: [...messages, userMessage].filter(m => m.role !== 'assistant' || m.content).map(m => ({
-                        role: m.role,
-                        content: m.content,
-                    })),
-                    context: {
-                        module: currentModule.name,
-                        moduleDescription: currentModule.description + additionalContext,
-                        pathname,
-                        viewState: JSON.stringify(viewState),
-                        activeSurface,
-                    },
-                    stream: true,
-                }),
-            });
-
-            if (!response.ok) {
-                let errorMsg = `Fehler: ${response.status}`;
-                try {
-                    const errData = await response.json();
-                    // Handle rate limits specifically
-                    if (errData.details?.includes('429') || response.status === 429) {
-                        errorMsg = 'Rate Limit erreicht (zu viele Anfragen). Bitte warte einen Moment.';
-                    } else {
-                        errorMsg = errData.error || errData.details || errorMsg;
-                    }
-                } catch { }
-                throw new Error(errorMsg);
-            }
-
-            const reader = response.body?.getReader();
-            if (!reader) throw new Error('No response body');
-
-            const decoder = new TextDecoder();
             let fullContent = '';
             let currentUiComponents: A2UINode[] | undefined = undefined;
+            const collectedResources: UIResourceContent[] = [];
 
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                const text = decoder.decode(value, { stream: true });
-                const lines = text.split('\n').filter(line => line.trim());
-
-                let hasUpdates = false;
-
-                for (const line of lines) {
+            // The surface merges the model's a2ui block with any MCP-UI
+            // resources delivered by tools during this turn.
+            const applyUpdate = () => {
+                let parsed: A2UINode[] | undefined;
+                const match = fullContent.match(/```a2ui\s*([\s\S]*?)\s*```/);
+                if (match) {
                     try {
-                        const chunk: StreamChunk & { error?: string } = JSON.parse(line);
-
-                        // Handle backend stream errors nicely
-                        if (chunk.error) {
-                            throw new Error(chunk.error);
-                        }
-
-                        if (chunk.message?.content) {
-                            fullContent += chunk.message.content;
-                            hasUpdates = true;
-                        }
-                        if (chunk.surfaceUpdate?.components) {
-                            currentUiComponents = chunk.surfaceUpdate.components;
-                            hasUpdates = true;
-                        }
-                    } catch (e) {
-                        // If it's the error we just threw, rethrow it to stop the loop
-                        if (e instanceof Error) {
-                            if (e.message.includes('429') || e.message.startsWith('Rate Limit')) throw e;
-                            // If it was an explicit error signal from the chunk
-                            const castedError = e as Error;
-                            if (castedError.message && !castedError.message.includes('JSON')) throw e;
-                        }
-                    }
+                        const json = JSON.parse(match[1]);
+                        const comps = Array.isArray(json) ? json : json.components;
+                        if (Array.isArray(comps)) parsed = comps;
+                    } catch { /* incomplete block while streaming */ }
                 }
+                const resourceNodes = uiResourceNodes(collectedResources);
+                currentUiComponents = parsed !== undefined
+                    ? [...parsed, ...resourceNodes]
+                    : (resourceNodes.length > 0 ? resourceNodes : currentUiComponents);
+                setMessages(prev => prev.map(m =>
+                    m.id === assistantId
+                        ? { ...m, content: fullContent, uiComponents: currentUiComponents || m.uiComponents }
+                        : m
+                ));
+            };
 
-                if (!currentUiComponents) {
-                    const match = fullContent.match(/```a2ui\s*([\s\S]*?)\s*```/);
-                    if (match) {
-                        try {
-                            const json = JSON.parse(match[1]);
-                            const comps = Array.isArray(json) ? json : json.components;
-                            if (comps) {
-                                currentUiComponents = comps;
-                                hasUpdates = true;
-                            }
-                        } catch { }
-                    }
-                }
-
-                if (hasUpdates) {
-                    setMessages(prev => prev.map(m =>
-                        m.id === assistantId
-                            ? { ...m, content: fullContent, uiComponents: currentUiComponents || m.uiComponents }
-                            : m
-                    ));
-                }
-            }
+            // Routing happens inside runAssistantTurn: server relay or
+            // in-browser engine, depending on the selected provider.
+            await runAssistantTurn({
+                messages: [...messages, userMessage].filter(m => m.role !== 'assistant' || m.content).map(m => ({
+                    role: m.role,
+                    content: m.content,
+                })),
+                context: {
+                    module: currentModule.name,
+                    moduleDescription: currentModule.description + additionalContext,
+                    pathname,
+                    viewState,
+                    activeSurface,
+                },
+                provider,
+                model,
+                handlers: {
+                    onText: chunk => {
+                        fullContent += chunk;
+                        applyUpdate();
+                    },
+                    onUiResource: resource => {
+                        collectedResources.push(resource);
+                        applyUpdate();
+                    },
+                },
+            });
 
             // Save assistant response
-            if (fullContent) {
-                await fetch('/api/chat/conversations', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'addMessage',
-                        conversationId: activeConversation.id,
-                        role: 'assistant',
-                        content: fullContent,
-                        // Persist the generative surface with the message —
-                        // the interface must be reconstructable from the
-                        // conversation alone.
-                        uiComponents: currentUiComponents || undefined,
-                    }),
-                });
+            if (fullContent || currentUiComponents) {
+                await chatGateway.addMessage(
+                    activeConversation.id,
+                    'assistant',
+                    fullContent,
+                    // Persist the generative surface with the message —
+                    // the interface must be reconstructable from the
+                    // conversation alone.
+                    currentUiComponents || undefined
+                );
 
                 if (messages.length === 0) {
                     setConversations(prev => prev.map(c =>
@@ -690,7 +628,7 @@ export function AssistantChat() {
         } finally {
             setIsLoading(false);
         }
-    }, [messages, activeConversation, currentModule, pathname, viewState]);
+    }, [messages, activeConversation, currentModule, pathname, viewState, provider, model]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -992,6 +930,11 @@ export function AssistantChat() {
                                 <path d="M18 6L6 18M6 6l12 12" />
                             </svg>
                         </button>
+                    </div>
+
+                    {/* Model bar: active provider · model with routing badge */}
+                    <div className={styles.modelBar}>
+                        <ModelPicker compact />
                     </div>
 
                     {/* Sidebar */}

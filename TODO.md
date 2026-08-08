@@ -41,7 +41,10 @@
 - [x] Werkzeuge: API-Tools + sichere Verbindungen (AES-256-GCM)
 - [x] Agenten: CRUD inkl. Bearbeiten (PUT), ehrliche Status-Anzeige
 - [x] Benachrichtigungen aus echtem Activity-Log (Read-State persistiert)
-- [x] Einstellungen: Theme, AI-Endpunkt + Modell (persistiert, Live-Health-Check), Kalender
+- [x] Einstellungen: Theme, Kalender, AI-Summary (Provider-Verwaltung im AI-Hub /ai)
+- [x] AI-Hub (/ai): Provider-Karten, Presets, Routing-Badges, WebLLM-Manager
+- [x] Skills (/skills): Verwaltung + Lade-Flows
+- [x] Werkzeuge: MCP-Server-Verwaltung (Status, Tools, Prompts→Skills)
 - [ ] Kommunikation (Matrix) — Seite kennzeichnet Planungsstand, siehe P1
 
 ## AI-Integration
@@ -53,11 +56,26 @@
       Surface-Zustand im Modell-Kontext, ganzseitige /assistant-Ansicht mit Bühne
 - [x] Native Workspace-Widgets (WorkspaceTasks/Calendar/Docs/Stats, selbst-ladend)
 - [x] MCP-UI-Standard: UIResource-Renderer (ui://, sandboxed iframe, postMessage)
-- [x] Tool-Ausführung: [[TOOL:...]]-Parser + serverseitiger Tool-Loop (max. 3 Runden)
+- [x] Tool-Ausführung: [[TOOL:...]]-Parser + Tool-Loop (max. 4 Runden)
 - [x] Chat-Historie (Konversationen, Persistenz inkl. Surfaces)
-- [ ] Natives Function Calling (Ollama `tools`-Parameter) mit Text-Syntax-Fallback — P1
-- [ ] A2A-Protokoll: Agent Card (/.well-known/agent.json), JSON-RPC, Task-Lifecycle — P1
-- [ ] MCP-Client (@modelcontextprotocol/sdk): externe MCP-Server als Tool-Quelle — P1
+- [x] **Multi-Provider-Inference**: Provider-Katalog (lokal/cloud/browser),
+      Protokoll-Adapter (openai/anthropic/ollama/webllm), AI-Hub (/ai),
+      ModelPicker im Chat, Defaults, Live-Diagnose (CORS/Mixed-Content/Auth)
+- [x] **Backend-Unabhängigkeit**: Routing browser-direkt vs. Server-Route pro
+      Provider (auto-Probe), Browser-Keys, serverlose Persistenz (localStorage +
+      IndexedDB-Chats), isomorphe Engine auf beiden Pfaden
+- [x] **WebLLM**: Inference im Browser via WebGPU, Modell-Manager mit
+      Download-Fortschritt und Cache-Status (offline-fähig)
+- [x] Natives Function Calling (OpenAI/Anthropic/Ollama `tools`) mit
+      automatischem Text-Syntax-Fallback
+- [x] A2A-Protokoll: Agent-Card-Discovery, JSON-RPC message/send,
+      Task-Polling, Delegation via [[AGENT:...]], lokale Persona-Agenten
+- [x] MCP-Client (@modelcontextprotocol/sdk): Streamable HTTP/SSE,
+      Tools im Loop, Prompts→Skills, ui://-Ressourcen auf der Bühne
+- [x] **Skills**: SKILL.md-Konvention, Ladewege manuell/URL/GitHub-Repo/
+      MCP-Prompt, Progressive Disclosure (use_skill), /skills-Seite
+- [ ] A2A-Streaming (message/stream) + Push-Notifications — Vertiefung
+- [ ] MCP-Ressourcen-Browser (resources/list als UI) — Vertiefung
 - [ ] CopilotKit: UI rendern oder Stack entfernen (Entscheidung, siehe ANALYSE §5 P0.3)
 
 ## Sicherheit & Datenqualität
@@ -79,9 +97,10 @@
 - [ ] Frontmatter-Parser durch yaml/gray-matter ersetzen
 
 ### P1
-- [ ] A2A, MCP, natives Tool-Calling (siehe AI-Integration)
+- [x] A2A, MCP, natives Tool-Calling (siehe AI-Integration)
 - [ ] GitHub-Sync (OAuth Device Flow, Commit/Pull von data/docs)
-- [ ] IndexedDB-Spiegel + Background-Sync-Queue (Offline-Schreiben)
+- [ ] IndexedDB-Spiegel + Background-Sync-Queue für Workspace-INHALTE
+      (Docs/Tasks/Canvas — die AI-Schicht inkl. Chats ist bereits serverlos-fähig)
 - [ ] Matrix-Chat (matrix-js-sdk, E2EE)
 
 ### P2

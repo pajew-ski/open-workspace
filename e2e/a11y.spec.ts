@@ -19,6 +19,8 @@ const PAGES = [
     '/canvas',
     '/communication',
     '/agents',
+    '/ai',
+    '/skills',
     '/tools',
     '/graph',
     '/settings',

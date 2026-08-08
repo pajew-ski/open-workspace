@@ -133,6 +133,10 @@ export const updateProjectSchema = createProjectSchema.partial();
 export const agentConfigSchema = z.object({
     systemPrompt: z.string().max(50_000).optional(),
     model: z.string().max(200).optional(),
+    providerId: z.string().max(200).optional(),
+    endpointUrl: z.string().max(2048).optional(),
+    cardUrl: z.string().max(2048).optional(),
+    capabilities: z.array(z.string().max(500)).max(100).optional(),
 });
 
 export const createAgentSchema = z.object({
@@ -326,6 +330,101 @@ export const canvasActionSchema = z.discriminatedUnion('action', [
         viewport: viewportSchema,
     }),
 ]);
+
+// ---------------------------------------------------------------------------
+// AI platform (providers, defaults, MCP servers)
+// ---------------------------------------------------------------------------
+
+export const providerKindSchema = z.enum([
+    'ollama', 'lmstudio', 'llamacpp', 'vllm', 'jan', 'webllm',
+    'openai', 'anthropic', 'google', 'mistral', 'groq', 'openrouter',
+    'together', 'deepseek', 'xai', 'custom',
+]);
+
+export const connectionModeSchema = z.enum(['auto', 'browser', 'server']);
+export const keyLocationSchema = z.enum(['none', 'server', 'browser']);
+export const toolCallModeSchema = z.enum(['auto', 'native', 'text']);
+
+export const createProviderSchema = z.object({
+    label: z.string().min(1, 'Name ist erforderlich').max(200),
+    kind: providerKindSchema,
+    baseUrl: z.string().max(2048).default(''),
+    connectionMode: connectionModeSchema.default('auto'),
+    keyLocation: keyLocationSchema.default('none'),
+    apiKey: z.string().max(10_000).optional(),
+    defaultModel: z.string().max(300).optional(),
+    pinnedModels: z.array(z.string().max(300)).max(200).optional(),
+    toolCalls: toolCallModeSchema.default('auto'),
+    enabled: z.boolean().default(true),
+});
+
+export const updateProviderSchema = createProviderSchema.partial();
+
+export const aiDefaultsSchema = z.object({
+    providerId: z.string().max(200).optional(),
+    model: z.string().max(300).optional(),
+});
+
+export const mcpTransportSchema = z.enum(['auto', 'streamable-http', 'sse']);
+
+export const createMcpServerSchema = z.object({
+    label: z.string().min(1, 'Name ist erforderlich').max(200),
+    url: httpUrlSchema,
+    transport: mcpTransportSchema.default('auto'),
+    connectionMode: connectionModeSchema.default('auto'),
+    authHeaderName: z.string().max(200).optional(),
+    authHeaderValue: z.string().max(10_000).optional(),
+    enabled: z.boolean().default(true),
+});
+
+export const updateMcpServerSchema = createMcpServerSchema.partial();
+
+/** Ops relayed to a configured MCP server (server-side execution). */
+export const mcpOpSchema = z.discriminatedUnion('op', [
+    z.object({ op: z.literal('probe') }),
+    z.object({ op: z.literal('listTools') }),
+    z.object({
+        op: z.literal('callTool'),
+        name: z.string().min(1).max(200),
+        args: z.record(z.string(), z.unknown()).default({}),
+    }),
+    z.object({ op: z.literal('listPrompts') }),
+    z.object({
+        op: z.literal('getPrompt'),
+        name: z.string().min(1).max(200),
+        args: z.record(z.string(), z.string().max(10_000)).optional(),
+    }),
+]);
+
+/** Ops relayed to A2A agents (server-side execution). */
+export const a2aOpSchema = z.discriminatedUnion('op', [
+    z.object({ op: z.literal('discover'), url: httpUrlSchema }),
+    z.object({
+        op: z.literal('send'),
+        agentId: z.string().min(1).max(200),
+        prompt: z.string().min(1).max(100_000),
+    }),
+]);
+
+// ---------------------------------------------------------------------------
+// Skills
+// ---------------------------------------------------------------------------
+
+export const skillSourceSchema = z.object({
+    type: z.enum(['manual', 'url', 'repo', 'mcp-prompt']),
+    ref: z.string().max(2048).optional(),
+});
+
+export const createSkillSchema = z.object({
+    name: z.string().min(1, 'Name ist erforderlich').max(300),
+    description: z.string().max(2_000).default(''),
+    content: z.string().max(500_000),
+    source: skillSourceSchema.default({ type: 'manual' }),
+    enabled: z.boolean().default(true),
+    alwaysInject: z.boolean().default(false),
+});
+
+export const updateSkillSchema = createSkillSchema.partial();
 
 // ---------------------------------------------------------------------------
 // Dashboard layout

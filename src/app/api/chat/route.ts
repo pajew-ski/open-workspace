@@ -1,7 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { chat, chatStream, ChatMessage } from '@/lib/inference';
-import { executeTool } from '@/lib/tools/executor';
-import { ToolCallStreamFilter } from '@/lib/tools/callParser';
+import type { EngineMessage } from '@/lib/ai/types';
+import { getAdapter, streamProviderChat } from '@/lib/ai/client';
+import { resolveDefaultServerProvider, resolveServerProvider } from '@/lib/ai/store.server';
+import { buildSystemPrompt } from '@/lib/ai/prompt';
+import { runEngineTurn } from '@/lib/ai/engine';
+import { buildServerEngineDeps } from '@/lib/ai/server/deps';
+import { toPromptInfo } from '@/lib/ai/tools.shared';
+
+/**
+ * Server chat route on the isomorphic engine.
+ *
+ * This is ONE of two equivalent execution paths: the browser runs the
+ * exact same engine locally when a provider's route resolves to
+ * "browser" (local inference, browser-stored keys, serverless mode).
+ * This route handles providers whose keys live on the server and
+ * endpoints only the server can reach.
+ *
+ * Wire format (NDJSON, backward compatible):
+ *   {message:{role:'assistant',content}, done:false}   visible text
+ *   {type:'status', message:{…}}                       tool progress
+ *   {type:'ui-resource', resource:{…}}                 MCP-UI resource for the stage
+ *   {error, done:true}                                 terminal error
+ */
 
 export interface ChatRequestBody {
     messages: Array<{
@@ -12,263 +32,106 @@ export interface ChatRequestBody {
         module: string;
         moduleDescription: string;
         pathname: string;
-        viewState?: Record<string, any>;
+        viewState?: Record<string, unknown>;
         /** Compact summary of the components currently on the generative surface */
         activeSurface?: Array<Record<string, unknown>>;
     };
     stream?: boolean;
-}
-
-import { loadTools } from '@/lib/tools/storage';
-import { Tool } from '@/lib/tools/types';
-
-/**
- * Build system prompt with context awareness and tools
- */
-async function buildSystemPrompt(context: ChatRequestBody['context']): Promise<string> {
-    let viewStateContext = '';
-    if (context.viewState && Object.keys(context.viewState).length > 0) {
-        viewStateContext = `\nAKTUELLE ANSICHT (Was der Nutzer sieht):\n${JSON.stringify(context.viewState, null, 2)}`;
-    }
-
-    // The surface is a function of the conversation: the model needs to
-    // know what is currently rendered to be able to change or dismiss it.
-    let surfaceContext = '';
-    if (context.activeSurface && context.activeSurface.length > 0) {
-        surfaceContext = `\nAKTIVE BÜHNE (aktuell gerenderte UI-Komponenten):\n${JSON.stringify(context.activeSurface, null, 1)}\nDein nächster a2ui-Block ERSETZT diese Bühne vollständig. Um sie zu leeren ("blende X aus"), sende einen a2ui-Block mit leerem components-Array oder ohne die betreffende Komponente.`;
-    }
-
-    // Load available tools (built-in finder + user-configured API tools)
-    const tools = await loadTools();
-    const toolLines = [
-        `- Workspace-Suche (ID: workspace_finder): Durchsucht Aufgaben, Dokumente, Projekte, Chats und Termine. Argumente: {"q":"suchbegriff","type":"task|doc|project|chat|calendar"} (type optional)`,
-        ...tools.map(t => `- ${t.name} (ID: ${t.id}): ${t.description} [${t.config.method} ${t.config.url}]`),
-    ];
-    const toolsContext = `\nVERFÜGBARE TOOLS:\n${toolLines.join('\n')}\n\nUm ein Tool zu nutzen, schreibe exakt: [[TOOL:tool_id:{"arg":"value"}]]\nDas Tool wird automatisch ausgeführt und du erhältst das Ergebnis als [TOOL_RESULT]-Nachricht. Beantworte danach die Frage des Nutzers auf Basis des Ergebnisses.`;
-
-    return `Du bist der Persönliche Assistent im Open Workspace. Deine Aufgaben:
-
-KONTEXT:
-- Der Nutzer befindet sich gerade im Modul: ${context.module}
-- Modul-Beschreibung: ${context.moduleDescription}
-- Aktuelle Seite: ${context.pathname}${viewStateContext}${surfaceContext}${toolsContext}
-
-DEINE EIGENSCHAFTEN:
-- Du sprichst den Nutzer immer mit "du" an (informell, nie "Sie")
-- Du bist freundlich, hilfsbereit und präzise
-- Du hast Zugriff auf alle Module des Workspaces
-- Du kannst Aufgaben delegieren und koordinieren
-
-GENERATIVE UI — GRUNDPRINZIP:
-Der Dialog ist der primäre Kanal. UI materialisiert sich nur, wenn die
-Aufgabe es erfordert (Liste, Termine, Formular) — nicht als Dekoration.
-Deine UI-Ausgabe ist die "Bühne" der Konversation:
-- Ein a2ui-Block in deiner Antwort ERSETZT die aktive Bühne vollständig.
-- "Zeig mir X" -> rendere die passende Komponente.
-- "Blende X aus" / "verstecke die Liste" -> neuer a2ui-Block ohne X
-  (oder mit leerem components-Array, um alles auszublenden).
-- Beziehe dich auf die AKTIVE BÜHNE im Kontext, um gezielt zu ändern.
-
-**Dynamische UI rendern (Agent2UI)**:
-Nutze einen Markdown Code-Block mit \`a2ui\` als Sprache:
-\`\`\`a2ui
-{
-    "components": [
-        { "id": "c1", "component": { "Card": { "title": "Titel", "children": { "explicitList": ["t1", "b1"] } } } },
-        { "id": "t1", "component": { "Text": { "text": "Inhalt" } } },
-        { "id": "b1", "component": { "Button": { "label": "Aktion", "onPress": { "actionId": "clicked" } } } }
-    ]
-}
-\`\`\`
-
-NATIVE WORKSPACE-WIDGETS (selbst-ladend, immer aktuelle Live-Daten — bevorzuge sie
-gegenüber selbst abgeschriebenen Listen):
-- **WorkspaceTasks**: \`status\` ('todo'|'in-progress'|'done', optional), \`projectId\`, \`limit\`, \`title\` — Live-Aufgabenliste
-- **WorkspaceCalendar**: \`days\` (Zahl, Standard 7), \`title\` — kommende Termine
-- **WorkspaceDocs**: \`query\` (optionale Suche), \`limit\`, \`title\` — Wissensbasis-Dokumente
-- **WorkspaceStats**: \`title\` — Workspace-Kennzahlen
-Beispiel: { "id": "w1", "component": { "WorkspaceTasks": { "status": "todo", "limit": 5 } } }
-
-EINGEBETTETE UI-RESSOURCEN (MCP-UI-Standard):
-- **UIResource**: \`resource\` ({ uri: "ui://...", mimeType: "text/html"|"text/uri-list", text: "..." }), \`height\`
-  Rendert Tool-/Server-gelieferte UI sandboxed. Nur verwenden, wenn ein Tool eine UI-Ressource geliefert hat.
-
-WEITERE A2UI-KOMPONENTEN & Props:
-- **Text**: \`text\`, \`style\` | **Markdown**: \`content\` | **CodeBlock**: \`code\`, \`language\`
-- **Card**: \`title\`, \`children\` ({ explicitList: string[] }) | **Column**/**Row**: \`gap\`, \`children\`
-- **Image**: \`src\`, \`alt\`, \`caption\` | **Link**: \`text\`, \`href\`
-- **Alert**: \`title\`, \`message\`, \`variant\` ('info'|'warning'|'error'|'success')
-- **List**: \`items\` | **Table**: \`columns\`, \`rows\` | **Progress**, **Chip**, **Badge**
-- **Button**: \`label\`, \`onPress\` ({ actionId }) | **Input**: \`label\`, \`placeholder\`, \`onChange\` ({ actionId })
-- **Select**: \`label\`, \`options\`, \`onSelect\` | **Checkbox**: \`label\`, \`onChange\`
-
-DEINE FÄHIGKEITEN:
-- Wissensbasis durchsuchen und bearbeiten (Professional Editor)
-- Pinnwand-Karten (Canvas) erstellen und verknüpfen
-- Aufgaben verwalten und priorisieren
-- Global Finder nutzen (@task, @note, etc.)
-- Code generieren und analysieren
-
-HINWEIS: Das Modul "Canvas" wird im UI als "Pinnwand" bezeichnet.
-Die ganzseitige Assistent-Ansicht ist unter /assistant erreichbar.
-
-Antworte immer auf Deutsch, es sei denn der Nutzer schreibt auf Englisch.
-Halte deine Antworten präzise und hilfreich.`;
-}
-
-// Upper bound for LLM→tool→LLM cycles per request
-const MAX_TOOL_ROUNDS = 3;
-// Tool output is truncated before being fed back to the model
-const MAX_TOOL_RESULT_CHARS = 4000;
-
-/**
- * Built-in tool: workspace_finder — always available, no configuration
- * needed. Calls the internal finder endpoint (see TOOLS.md).
- */
-async function runWorkspaceFinder(
-    args: Record<string, unknown>,
-    origin: string
-): Promise<string> {
-    const query = typeof args.q === 'string' ? args.q : String(args.query ?? '');
-    if (!query) return 'Fehler: Parameter "q" (Suchbegriff) fehlt.';
-
-    const url = new URL('/api/finder', origin);
-    url.searchParams.set('q', query);
-    if (typeof args.type === 'string') url.searchParams.set('type', args.type);
-
-    const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
-    if (!res.ok) return `Fehler: Finder antwortete mit Status ${res.status}.`;
-    const data = await res.json();
-    const results = (data.results || []).slice(0, 10);
-    if (results.length === 0) return `Keine Treffer für "${query}".`;
-    return JSON.stringify(results);
-}
-
-/**
- * Execute a parsed tool call and return a summary string for the model.
- * Progress is surfaced to the user via emitText as markdown.
- */
-async function runTool(
-    toolId: string,
-    rawArgs: string,
-    emitText: (content: string) => void,
-    origin: string
-): Promise<string> {
-    let args: Record<string, unknown> = {};
-    if (rawArgs.trim()) {
-        try {
-            args = JSON.parse(rawArgs);
-        } catch {
-            emitText(`\n\n> Hinweis: Ungültige Argumente für \`${toolId}\`.\n\n`);
-            return `Fehler: Argumente waren kein gültiges JSON: ${rawArgs.slice(0, 200)}`;
-        }
-    }
-
-    if (toolId === 'workspace_finder') {
-        emitText(`\n\n> Durchsuche den Workspace…\n\n`);
-        try {
-            return await runWorkspaceFinder(args, origin);
-        } catch (error) {
-            const message = error instanceof Error ? error.message : 'Unbekannter Fehler';
-            return `Fehler bei der Suche: ${message}`;
-        }
-    }
-
-    const tools = await loadTools();
-    const tool = tools.find((t: Tool) => t.id === toolId);
-
-    if (!tool) {
-        emitText(`\n\n> Hinweis: Tool \`${toolId}\` nicht gefunden.\n\n`);
-        return `Fehler: Tool "${toolId}" existiert nicht.`;
-    }
-
-    emitText(`\n\n> Führe Tool **${tool.name}** aus…\n\n`);
-
-    try {
-        const result = await executeTool(tool, args as Record<string, any>);
-        const serialized = typeof result === 'string' ? result : JSON.stringify(result);
-        return serialized.length > MAX_TOOL_RESULT_CHARS
-            ? serialized.slice(0, MAX_TOOL_RESULT_CHARS) + '… [gekürzt]'
-            : serialized;
-    } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unbekannter Fehler';
-        emitText(`\n\n> Hinweis: Tool **${tool.name}** fehlgeschlagen: ${message}\n\n`);
-        return `Fehler bei der Ausführung: ${message}`;
-    }
+    /** Provider/model override (from the chat model picker). */
+    providerId?: string;
+    model?: string;
 }
 
 export async function POST(request: NextRequest) {
     try {
         const body: ChatRequestBody = await request.json();
-        const { messages, context, stream = false } = body;
+        const { messages, context, stream = false, providerId, model } = body;
 
-        // Build full message array with system prompt
-        const systemMessage: ChatMessage = {
+        // Resolve the provider for the SERVER execution context.
+        const resolution = providerId
+            ? { resolved: await resolveServerProvider(providerId), model }
+            : await (async () => {
+                const def = await resolveDefaultServerProvider();
+                return def ? { resolved: def.resolved, model: model ?? def.model } : { resolved: null, model };
+            })();
+
+        if (!resolution.resolved) {
+            return NextResponse.json(
+                { error: 'Kein Inference-Provider konfiguriert. Öffne den AI-Hub und richte einen Provider ein.' },
+                { status: 503 }
+            );
+        }
+        const resolved = resolution.resolved;
+        if (resolved.protocol === 'webllm') {
+            return NextResponse.json(
+                { error: 'WebLLM läuft nur im Browser — dieser Chat muss die Browser-Route verwenden.' },
+                { status: 400 }
+            );
+        }
+
+        const deps = await buildServerEngineDeps(request.nextUrl.origin);
+        const adapter = getAdapter(resolved.protocol);
+        const nativeTools = resolved.provider.toolCalls !== 'text' && adapter.supportsNativeTools;
+
+        const systemMessage: EngineMessage = {
             role: 'system',
-            content: await buildSystemPrompt(context),
+            content: buildSystemPrompt({
+                context,
+                tools: deps.tools.map(toPromptInfo),
+                agents: deps.agents,
+                skills: deps.skills,
+                nativeTools,
+            }),
         };
 
-        const fullMessages: ChatMessage[] = [
+        const history: EngineMessage[] = [
             systemMessage,
-            ...messages.map((m) => ({
-                role: m.role as 'user' | 'assistant',
-                content: m.content,
-            })),
+            ...messages.map(m => ({ role: m.role, content: m.content })),
         ];
 
+        const runOptions = {
+            tools: deps.tools,
+            nativeTools,
+            callAgent: deps.callAgent,
+        };
+
         if (stream) {
-            // Streaming response with a server-side tool loop: complete
-            // [[TOOL:...]] calls are stripped from the visible stream,
-            // executed, and their results fed back for a follow-up round.
             const encoder = new TextEncoder();
             const readable = new ReadableStream({
                 async start(controller) {
                     const emit = (payload: Record<string, unknown>) => {
                         controller.enqueue(encoder.encode(JSON.stringify(payload) + '\n'));
                     };
-                    const emitText = (content: string) => {
-                        if (content) {
-                            emit({ message: { role: 'assistant', content }, done: false });
-                        }
-                    };
-
                     try {
-                        const history: ChatMessage[] = [...fullMessages];
-
-                        for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-                            const filter = new ToolCallStreamFilter();
-                            let roundText = '';
-
-                            for await (const chunk of chatStream(history)) {
-                                const content = chunk.message?.content || '';
-                                if (content) {
-                                    roundText += content;
-                                    emitText(filter.feed(content));
+                        await runEngineTurn(history, {
+                            ...runOptions,
+                            stream: (msgs, tools, signal) => streamProviderChat(resolved, {
+                                model: resolution.model,
+                                messages: msgs,
+                                tools,
+                                signal,
+                            }),
+                            signal: request.signal,
+                            onEvent: event => {
+                                switch (event.type) {
+                                    case 'text':
+                                        emit({ message: { role: 'assistant', content: event.text }, done: false });
+                                        break;
+                                    case 'status':
+                                        emit({ type: 'status', message: { role: 'assistant', content: `\n\n> ${event.text}\n\n` }, done: false });
+                                        break;
+                                    case 'ui-resource':
+                                        emit({ type: 'ui-resource', resource: event.resource, done: false });
+                                        break;
+                                    case 'progress':
+                                        emit({ type: 'progress', label: event.label, value: event.value, done: false });
+                                        break;
                                 }
-                            }
-                            emitText(filter.flush());
-
-                            if (filter.calls.length === 0) break;
-
-                            // Record the assistant turn (incl. raw tool syntax)
-                            history.push({ role: 'assistant', content: roundText });
-
-                            const isLastRound = round === MAX_TOOL_ROUNDS - 1;
-                            for (const call of filter.calls) {
-                                const resultSummary = await runTool(call.toolId, call.rawArgs, emitText, request.nextUrl.origin);
-                                history.push({
-                                    role: 'user',
-                                    content: `[TOOL_RESULT ${call.toolId}]: ${resultSummary}` +
-                                        (isLastRound
-                                            ? '\n(Hinweis: Tool-Limit erreicht — fasse jetzt zusammen, ohne weitere Tools aufzurufen.)'
-                                            : '\nFasse das Ergebnis für den Nutzer verständlich zusammen.'),
-                                });
-                            }
-                        }
+                            },
+                        });
+                        emit({ done: true });
                         controller.close();
                     } catch (error) {
-                        // Send error as a special chunk so client can display it
-                        // instead of the stream just dying with "Failed to fetch"
                         const errorMessage = error instanceof Error ? error.message : 'Unknown stream error';
                         emit({ error: errorMessage, done: true });
                         controller.close();
@@ -283,19 +146,31 @@ export async function POST(request: NextRequest) {
                     'Connection': 'keep-alive',
                 },
             });
-        } else {
-            // Non-streaming response
-            const response = await chat(fullMessages);
-            return NextResponse.json({
-                message: response.message,
-                done: response.done,
-            });
         }
+
+        // Non-streaming: run the same engine, return the final text.
+        let finalText = '';
+        const result = await runEngineTurn(history, {
+            ...runOptions,
+            stream: (msgs, tools, signal) => streamProviderChat(resolved, {
+                model: resolution.model,
+                messages: msgs,
+                tools,
+                signal,
+            }),
+            onEvent: event => {
+                if (event.type === 'text') finalText += event.text;
+            },
+        });
+        return NextResponse.json({
+            message: { role: 'assistant', content: finalText || result.finalText },
+            done: true,
+        });
     } catch (error) {
         console.error('Chat API error:', error);
         return NextResponse.json(
             {
-                error: 'Verbindung zum AI-Server fehlgeschlagen. Stelle sicher, dass Ollama läuft.',
+                error: 'Verbindung zum AI-Server fehlgeschlagen. Prüfe deine Provider im AI-Hub.',
                 details: error instanceof Error ? error.message : 'Unknown error'
             },
             { status: 500 }

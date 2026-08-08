@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, Button } from '@/components/ui';
 import { AddApiToolDialog } from '@/components/tools/AddApiToolDialog';
 import { ConnectionManager } from '@/app/tools/connections/ConnectionManager';
+import { McpServerManager } from './McpServerManager';
 import styles from './ToolsConfig.module.css';
 
 export function ToolsConfig() {
@@ -60,15 +61,7 @@ export function ToolsConfig() {
                         />
                     )}
 
-                    <div className={styles.header}>
-                        <div className={styles.info}>
-                            <span className={styles.label}>MCP Server</span>
-                            <span className={styles.description}>
-                                Model Context Protocol (MCP) Anbindung ist in Entwicklung — bis dahin kannst du externe Dienste als API-Tools verbinden.
-                            </span>
-                        </div>
-                        <Button variant="primary" size="sm" disabled title="MCP-Anbindung ist in Entwicklung">Geplant</Button>
-                    </div>
+                    <McpServerManager />
 
                     <div className={styles.header} style={{ marginTop: 'var(--space-6)' }}>
                         <div className={styles.info}>

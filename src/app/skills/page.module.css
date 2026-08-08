@@ -1,0 +1,278 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    width: 100%;
+}
+
+.header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+}
+
+.header h2 {
+    margin: 0 0 var(--space-1);
+    color: var(--color-text-primary);
+}
+
+.header p {
+    margin: 0;
+    max-width: 70ch;
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    line-height: var(--leading-normal);
+}
+
+.header code {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    background: var(--color-surface-sunken);
+    padding: 1px 5px;
+    border-radius: var(--radius-sm);
+}
+
+.addButtons {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
+.empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-8) var(--space-4);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-lg);
+    color: var(--color-text-secondary);
+    text-align: center;
+}
+
+.empty h3 {
+    margin: 0;
+    color: var(--color-text-primary);
+}
+
+.empty p {
+    margin: 0;
+    max-width: 55ch;
+    font-size: var(--text-sm);
+}
+
+.skillGrid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--space-4);
+}
+
+.skillCard {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+}
+
+.skillCard.disabled {
+    opacity: 0.6;
+}
+
+.skillHead {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
+.skillName {
+    color: var(--color-text-primary);
+    overflow-wrap: anywhere;
+}
+
+.sourceTag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    background: var(--color-primary-subtle);
+    color: var(--color-primary-text);
+    font-size: var(--text-xs);
+}
+
+.originTag {
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    background: var(--color-warning-subtle);
+    color: var(--color-warning-text);
+    font-size: var(--text-xs);
+}
+
+.skillDescription {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    line-height: var(--leading-normal);
+    flex: 1;
+}
+
+.skillFooter {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    border-top: 1px solid var(--color-border-subtle);
+    padding-top: var(--space-2);
+}
+
+.toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: var(--touch-target);
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+}
+
+.toggle input {
+    accent-color: var(--color-primary);
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+}
+
+.cardActions {
+    display: flex;
+    gap: 2px;
+    margin-left: auto;
+}
+
+.iconAction {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--touch-target);
+    height: var(--touch-target);
+    border: none;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+}
+
+.iconAction:hover,
+.iconAction:focus-visible {
+    background: var(--color-surface-sunken);
+    color: var(--color-text-primary);
+}
+
+.iconAction.danger:hover,
+.iconAction.danger:focus-visible {
+    background: var(--color-error-subtle);
+    color: var(--color-error);
+}
+
+.overlay {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-modal, 1000);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-4);
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.dialog {
+    width: min(640px, 100%);
+    max-height: min(90vh, 720px);
+    overflow-y: auto;
+    padding: var(--space-5);
+    border-radius: var(--radius-xl);
+    background: var(--color-surface-elevated);
+    box-shadow: var(--shadow-xl);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.dialog h3 {
+    margin: 0;
+    color: var(--color-text-primary);
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.field span {
+    font-size: var(--text-xs);
+    font-weight: var(--font-medium);
+    color: var(--color-text-secondary);
+}
+
+.field input,
+.field textarea {
+    min-height: var(--touch-target);
+    padding: 8px 10px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+    font-size: 16px;
+    font-family: inherit;
+}
+
+.field textarea {
+    font-family: var(--font-mono);
+    /* nie unter 16px: iOS-Autozoom (siehe e2e/mobile-ux) */
+    font-size: 16px;
+    line-height: 1.5;
+    resize: vertical;
+}
+
+.field input:focus-visible,
+.field textarea:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
+}
+
+.dialogButtons {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+}
+
+.viewDescription {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+}
+
+.viewContent {
+    margin: 0;
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-sunken);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    max-height: 400px;
+    overflow-y: auto;
+}
