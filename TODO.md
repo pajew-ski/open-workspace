@@ -1,8 +1,9 @@
 # TODO - Open Workspace Development
 
 > Roadmap auf Basis der vollständigen Analyse in [ANALYSE.md](./ANALYSE.md).
-> Für den Graph-Ausbau gilt die SPEC „Graph Core — Vollausbau" (hat Vorrang
-> vor ANALYSE §5, wo sie widersprechen).
+> Für den Graph-Ausbau gilt [GRAPH_CORE_SPEC.md](./GRAPH_CORE_SPEC.md)
+> (hat Vorrang vor ANALYSE §5, wo sie widersprechen). Arbeitsmodus:
+> ein Meilenstein = eine Session = ein Branch = ein PR.
 
 ## Graph Core (SPEC „Vollausbau", M0–M13)
 
