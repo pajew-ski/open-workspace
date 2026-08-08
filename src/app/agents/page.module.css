@@ -138,3 +138,74 @@
     font-size: var(--text-xs);
     font-weight: var(--font-bold);
 }
+.capabilities {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    margin-top: var(--space-1);
+}
+
+.capChip {
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-sunken);
+    border: 1px solid var(--color-border-subtle);
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+}
+
+.testResult {
+    margin: var(--space-1) 0 0;
+    font-size: var(--text-xs);
+    font-family: var(--font-mono);
+    color: var(--color-text-secondary);
+    word-break: break-word;
+}
+
+.enabledToggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: var(--touch-target);
+    padding: 0 var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+}
+
+.enabledToggle input {
+    accent-color: var(--color-primary);
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+}
+
+.iconAction {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--touch-target);
+    height: var(--touch-target);
+    border: none;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+}
+
+.iconAction:hover,
+.iconAction:focus-visible {
+    background: var(--color-surface-sunken);
+    color: var(--color-text-primary);
+}
+
+.iconAction:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.dangerAction:hover,
+.dangerAction:focus-visible {
+    background: var(--color-error-subtle);
+    color: var(--color-error);
+}

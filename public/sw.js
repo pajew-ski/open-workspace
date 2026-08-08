@@ -13,7 +13,7 @@
  * activate entfernt. {type: "SKIP_WAITING"} aktiviert eine wartende Version.
  */
 
-const VERSION = "v1";
+const VERSION = "v2";
 const PREFIX = "ow";
 const SHELL_CACHE = `${PREFIX}-${VERSION}-shell`;
 const API_CACHE = `${PREFIX}-${VERSION}-api`;
@@ -23,6 +23,9 @@ const NAVIGATION_TIMEOUT_MS = 4000;
 
 const PRECACHE_URLS = [
   "/",
+  "/assistant",
+  "/ai",
+  "/skills",
   OFFLINE_URL,
   "/manifest.json",
   "/icons/icon-192.png",

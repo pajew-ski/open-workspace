@@ -4,33 +4,45 @@
 
 ## Hier weitermachen (Einstieg für neue Sessions)
 
-**Stand 2026-08-08**: Das Projekt ist vom Prototyp auf einen belastbaren Stand
-gehoben. Build, Typecheck, Lint (0 Errors) und Unit-Tests laufen grün; CI und
-Docker-Deployment stehen; PWA, Tool-Loop, API-Härtung und die generative
-Oberfläche (A2UI + native Workspace-Widgets + MCP-UI) sind implementiert.
-Mobile UX und Accessibility sind saniert (modaler Drawer, Safe-Areas,
-Touch-Targets, WCAG-AA-Kontraste) und durch ein **blockierendes E2E-Gate**
-abgesichert: `e2e/mobile-navigation`, `e2e/mobile-ux`, `e2e/a11y` (axe-core)
-laufen in CI auf Desktop- und Pixel-7-Projekt — Änderungen, die diese
-Garantien brechen, kommen nicht durch den PR-Check.
+**Stand 2026-08-08 (2. Ausbaustufe)**: Die **AI-Plattform ist voll ausgebaut
+und backend-unabhängig** — Details in [docs/ai-platform.md](./docs/ai-platform.md):
+
+- **Multi-Provider-Inference** (`src/lib/ai/`): Provider-Katalog (Ollama,
+  LM Studio, llama.cpp, vLLM, Jan, OpenAI, Anthropic, Gemini, Mistral, Groq,
+  OpenRouter, Together, DeepSeek, xAI, custom, **WebLLM im Browser/WebGPU**),
+  Protokoll-Adapter (openai/anthropic/ollama/webllm) mit Streaming und
+  **nativem Tool-Calling + Text-Syntax-Fallback**.
+- **Routing pro Provider**: Browser-direkt (erreicht lokale Endpunkte auch
+  bei cloud-gehosteter App; Keys optional nur im Browser) oder Server-Route
+  (AES-verschlüsselte Keys); `auto` probt Browser→Server. Diagnose erkennt
+  CORS/Mixed-Content/Auth mit deutschen Lösungs-Hinweisen.
+- **Serverloser Modus**: ohne erreichbares Backend laufen Konfiguration
+  (localStorage), Chats (IndexedDB), Skills und Inference im Browser weiter;
+  die **isomorphe Engine** (`engine.ts`) ist auf beiden Pfaden identisch.
+- **MCP-Client** (Streamable HTTP/SSE, browser-direkt + Server-Relay):
+  Tools im Loop, Prompts→Skills-Import, `ui://`-Ressourcen auf der Bühne.
+- **A2A**: Agent-Card-Discovery, `message/send` + Task-Polling, Delegation
+  im Chat via `[[AGENT:id:…]]`; lokale Persona-Agenten mit Provider-Override.
+- **Skills** (`src/lib/skills/`): SKILL.md-Konvention, Ladewege manuell/URL/
+  GitHub-Repo/MCP-Prompt, Progressive Disclosure über das `use_skill`-Tool.
+- **UI**: AI-Hub (`/ai`), Skills (`/skills`), MCP-Verwaltung in `/tools`,
+  A2A-Discovery in `/agents`, ModelPicker in beiden Chat-Oberflächen.
+
+Build, Typecheck, Lint (0 Errors), 85 Unit-Tests und das **blockierende
+E2E-Gate** (`e2e/mobile-navigation`, `e2e/mobile-ux`, `e2e/a11y` inkl. der
+neuen Seiten `/ai` und `/skills`) laufen grün.
 
 **Bevor du etwas Neues baust, lies in dieser Reihenfolge:**
-1. [ANALYSE.md](./ANALYSE.md) — vollständige Bestandsaufnahme, was umgesetzt
-   wurde und **§5 die priorisierte Roadmap** (P0/P1/P2) mit Begründungen
-2. [TODO.md](./TODO.md) — dieselbe Roadmap als abhakbare Liste
-3. Diesen Abschnitt hier für die Architektur-Prinzipien
+1. [docs/ai-platform.md](./docs/ai-platform.md) — Architektur der AI-Schicht
+2. [ANALYSE.md](./ANALYSE.md) — Bestandsaufnahme + **§5 Roadmap** (P0/P1/P2)
+3. [TODO.md](./TODO.md) — dieselbe Roadmap als abhakbare Liste
+4. Diesen Abschnitt hier für die Architektur-Prinzipien
 
-**Nächster geplanter Schritt (P1, direkt anschlussfähig)**: MCP-Client mit
-`@modelcontextprotocol/sdk` — konfigurierte MCP-Server anbinden, deren Tools in
-den bestehenden Tool-Loop (`/api/chat`) einspeisen und deren `UIResource`-Antworten
-in die bereits vorhandene generative Bühne rendern. Der `UIResource`-Renderer
-(MCP-UI-Standard) und der Tool-Loop existieren bereits — es fehlt nur die
-Server-Anbindung. Danach kann der deaktivierte MCP-Button in den Werkzeugen scharf
-geschaltet werden.
-
-**Ebenfalls offen und klein genug für einen Einstieg (P0)**: i18n mit `next-intl`,
-Abbau der `no-explicit-any`-Warnings, CopilotKit-Entscheidung (UI rendern oder
-Stack entfernen), Frontmatter-Parser auf `yaml`/`gray-matter` umstellen.
+**Nächste sinnvolle Schritte**: IndexedDB-Spiegel für Workspace-INHALTE
+(Docs/Tasks) + Background-Sync (P1.9 — die AI-Schicht ist schon serverlos-fähig,
+die Content-Module noch nicht); i18n mit `next-intl` (P0); Abbau der
+`no-explicit-any`-Warnings; CopilotKit-Entscheidung; A2A-Streaming
+(`message/stream`) und MCP-Ressourcen-Browser als Vertiefung.
 
 **Arbeitsprinzip dieses Repos**: Keine Attrappen. Lieber ein Feature ehrlich als
 „geplant" kennzeichnen, als tote Buttons stehen lassen.
@@ -106,11 +118,13 @@ open-workspace/
 
 ## Core Protokolle
 
-### Agent2Agent (A2A)
-- HTTP/SSE-basierte Kommunikation
-- JSON-RPC Nachrichtenformat
-- Capability Discovery via Agent Cards
-- Long-running Task Support
+### Agent2Agent (A2A) — implementiert (`src/lib/ai/a2a/client.ts`)
+- Capability Discovery via Agent Cards (`/.well-known/agent-card.json`,
+  Fallback `agent.json`)
+- JSON-RPC `message/send` (Fallback `tasks/send` für ältere Agenten)
+- Task-Lifecycle via `tasks/get`-Polling bis Terminal-Status
+- Delegation im Chat: `[[AGENT:agent_id:Auftrag]]` → `[AGENT_RESULT]`
+- Browser-direkt (CORS erlaubt) oder Server-Relay `POST /api/ai/a2a`
 
 ### Agent2UI (A2UI) — Generative Oberfläche
 - Deklarative UI-Komponenten-Beschreibungen
@@ -142,21 +156,29 @@ open-workspace/
 - **Ganzseitige Ansicht**: `/assistant` — Dialog links, generative Bühne rechts
 - **Tests**: A2UI-Renderer + MCP-UI-Resource Unit-Tests mit Vitest (`bun run test:run`)
 
-### Model Context Protocol (MCP)
-- Tool und Resource Exposure für Agenten
-- Standardisiertes Context Passing
-- JSON-RPC 2.0 Messaging
+### Model Context Protocol (MCP) — implementiert (`src/lib/ai/mcp/client.ts`)
+- Client auf `@modelcontextprotocol/sdk`: Streamable HTTP mit SSE-Fallback
+- Verwaltung in `/tools`; Verbindung browser-direkt (auch serverlos) oder
+  über das Server-Relay `POST /api/ai/mcp/[id]` (nur konfigurierte Server)
+- Entdeckte Tools laufen namespaced (`mcp_<server>_<tool>`) im Tool-Loop
+- Prompts sind als Skills importierbar; `ui://`-Ressourcen in
+  Tool-Ergebnissen rendern als `UIResource` auf der generativen Bühne
 
 ### Agent Tools
 - Verfügbare Tools sind in [TOOLS.md](./TOOLS.md) dokumentiert.
-- **Dynamic Tool Discovery**: Der Agent erhält verfügbare Tools via System-Prompt.
-- **Tool Protocol** (implementiert in `/api/chat` + `src/lib/tools/callParser.ts`):
-  Um ein Tool auszuführen, verwendet der Agent die Syntax
-  `[[TOOL:tool_id:{"arg":"value"}]]`.
-  Der Server erkennt Aufrufe im Stream (auch über Chunk-Grenzen), blendet sie
-  aus der sichtbaren Antwort aus, führt das Tool aus (`src/lib/tools/executor.ts`)
-  und gibt das Ergebnis als `[TOOL_RESULT tool_id]`-Nachricht an das Modell
-  zurück — maximal 3 Runden pro Anfrage, Fortschritt wird im Chat angezeigt.
+- **Dynamic Tool Discovery**: Der Agent erhält verfügbare Tools via
+  System-Prompt (Builtins + API-Tools + MCP-Tools) — bei Providern mit
+  Function-Calling-Support zusätzlich als native Tool-Definitionen.
+- **Tool Protocol** (isomorphe Engine `src/lib/ai/engine.ts`, Parser
+  `src/lib/tools/callParser.ts`): Nativ ruft das Modell Function Calls auf;
+  als universeller Fallback gilt die Text-Syntax
+  `[[TOOL:tool_name:{"arg":"value"}]]`. Die Engine erkennt Aufrufe im
+  Stream (auch über Chunk-Grenzen), blendet sie aus der sichtbaren Antwort
+  aus, führt das Tool aus und speist das Ergebnis als `[TOOL_RESULT]`
+  (Text-Modus) bzw. `role:"tool"`-Nachricht (nativ) zurück — maximal
+  4 Runden pro Anfrage, Fortschritt wird im Chat angezeigt. Der gleiche
+  Loop läuft serverseitig (`/api/chat`) und im Browser (Serverless/
+  Direktverbindungen, `src/lib/ai/transport.ts`).
 
   Beispiel:
   - User: "Wie ist das Wetter in Berlin?"
@@ -170,9 +192,17 @@ open-workspace/
 
 ## AI Inference
 
-**Endpunkt**: `Konfigurierbar via .env`
-**Modell**: `gpt-oss:20b` (konfigurierbar)
-**API**: Ollama REST API
+**Multi-Provider** (AI-Hub `/ai`, persistiert in `data/ai/config.json`,
+Keys AES-256-GCM-verschlüsselt oder browser-lokal):
+
+- Protokolle: OpenAI-kompatibel, Anthropic Messages, Ollama nativ,
+  WebLLM (In-Browser/WebGPU)
+- Routing pro Provider: Browser-direkt oder Server-Route, `auto` probt
+  Browser→Server (`src/lib/ai/store.client.ts#resolveRoute`)
+- Tool-Calling: nativ (Function Calling) mit automatischem Fallback auf
+  die `[[TOOL:…]]`-Text-Syntax
+- Legacy-Env (`LLM_API_BASE_URL`/`LLM_MODEL`/`LLM_API_KEY`) wird beim
+  ersten Start in einen Provider migriert
 
 ## Data Layer
 
