@@ -2,6 +2,34 @@
 
 > Single Source of Truth für AI-Agent Interaktion mit dieser Codebase
 
+## Hier weitermachen (Einstieg für neue Sessions)
+
+**Stand 2026-08-08**: Das Projekt ist vom Prototyp auf einen belastbaren Stand
+gehoben. Build, Typecheck, Lint (0 Errors) und Unit-Tests laufen grün; CI und
+Docker-Deployment stehen; PWA, Tool-Loop, API-Härtung und die generative
+Oberfläche (A2UI + native Workspace-Widgets + MCP-UI) sind implementiert.
+
+**Bevor du etwas Neues baust, lies in dieser Reihenfolge:**
+1. [ANALYSE.md](./ANALYSE.md) — vollständige Bestandsaufnahme, was umgesetzt
+   wurde und **§5 die priorisierte Roadmap** (P0/P1/P2) mit Begründungen
+2. [TODO.md](./TODO.md) — dieselbe Roadmap als abhakbare Liste
+3. Diesen Abschnitt hier für die Architektur-Prinzipien
+
+**Nächster geplanter Schritt (P1, direkt anschlussfähig)**: MCP-Client mit
+`@modelcontextprotocol/sdk` — konfigurierte MCP-Server anbinden, deren Tools in
+den bestehenden Tool-Loop (`/api/chat`) einspeisen und deren `UIResource`-Antworten
+in die bereits vorhandene generative Bühne rendern. Der `UIResource`-Renderer
+(MCP-UI-Standard) und der Tool-Loop existieren bereits — es fehlt nur die
+Server-Anbindung. Danach kann der deaktivierte MCP-Button in den Werkzeugen scharf
+geschaltet werden.
+
+**Ebenfalls offen und klein genug für einen Einstieg (P0)**: i18n mit `next-intl`,
+Abbau der `no-explicit-any`-Warnings, CopilotKit-Entscheidung (UI rendern oder
+Stack entfernen), Frontmatter-Parser auf `yaml`/`gray-matter` umstellen.
+
+**Arbeitsprinzip dieses Repos**: Keine Attrappen. Lieber ein Feature ehrlich als
+„geplant" kennzeichnen, als tote Buttons stehen lassen.
+
 ## System Overview
 
 Open Workspace ist eine umfassende Next.js-Anwendung als einheitliche Schnittstelle für AI-Agent-Kollaboration. Das System implementiert Agent2Agent (A2A), Agent2UI (A2UI) und Model Context Protocol (MCP) für standardisierte Agent-Kommunikation.
