@@ -16,7 +16,7 @@
 .statValue {
     font-size: 24px;
     font-weight: 700;
-    color: var(--color-primary);
+    color: var(--color-primary-text);
 }
 
 .statLabel {
@@ -27,7 +27,7 @@
 
 .welcomeWidget h2 {
     margin-bottom: 8px;
-    color: var(--color-primary);
+    color: var(--color-primary-text);
 }
 
 .textarea {

@@ -184,7 +184,11 @@ export default function TasksPage() {
                                     <h3>{project.title}</h3>
                                     {project.prefix && <span className={styles.prefix}>{project.prefix}</span>}
                                     {project.id !== 'unassigned' && (
-                                        <button className={styles.editProjBtn} onClick={() => setEditingProject(project)}>✎</button>
+                                        <button
+                                            className={styles.editProjBtn}
+                                            onClick={() => setEditingProject(project)}
+                                            aria-label={`Projekt "${project.title}" bearbeiten`}
+                                        >✎</button>
                                     )}
                                 </div>
 

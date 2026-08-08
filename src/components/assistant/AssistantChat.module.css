@@ -5,8 +5,8 @@
 /* FAB */
 .fab {
     position: fixed;
-    bottom: 20px;
-    right: 20px;
+    bottom: var(--fab-bottom);
+    right: var(--fab-right);
     width: 48px;
     height: 48px;
     border-radius: 50%;
@@ -19,8 +19,14 @@
     align-items: center;
     justify-content: center;
     transition: all var(--transition-base);
-    z-index: 10000;
+    /* Unter Drawer-Overlay (z-modal - 1): der Drawer dimmt auch die FABs */
+    z-index: var(--z-dropdown);
     pointer-events: auto;
+}
+
+/* Bei offenem Chat muss der FAB über dem Chat-Fenster liegen (Schließen) */
+.fab.fabActive {
+    z-index: calc(var(--z-modal) + 2);
 }
 
 .fab:hover {
@@ -47,8 +53,8 @@
 /* Chat Window */
 .chatWindow {
     position: fixed;
-    bottom: calc(var(--space-5) + 70px);
-    right: var(--space-5);
+    bottom: calc(var(--fab-bottom) + 60px);
+    right: var(--fab-right);
     background-color: #FFFFFF;
     /* Fallback */
     background-color: var(--color-surface-elevated);
@@ -58,21 +64,21 @@
     flex-direction: column;
     overflow: hidden;
     animation: slideUp var(--transition-base);
-    z-index: 9000;
+    z-index: calc(var(--z-modal) + 1);
     border: 1px solid var(--color-border);
     backdrop-filter: blur(10px);
 }
 
 .chatWindow.mobile {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
     width: 100% !important;
-    height: 100% !important;
+    height: auto !important;
     border-radius: 0;
     animation: fadeIn var(--transition-fast);
+    /* Vollbild bis unter Notch/Home-Indicator, Inhalt mit Abstand */
+    padding-top: var(--safe-top);
+    padding-bottom: var(--safe-bottom);
 }
 
 /* Resize Handles - all edges and corners */
@@ -607,7 +613,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 10000;
+    z-index: var(--z-popover);
     pointer-events: auto;
 }
 

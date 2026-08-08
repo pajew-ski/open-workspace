@@ -1,27 +1,27 @@
 .overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
+    inset: 0;
     background-color: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
-    z-index: 1000;
+    /* Über Chat-Fenster und Drawer — der Finder ist immer die oberste Ebene */
+    z-index: var(--z-popover);
     display: flex;
     justify-content: center;
-    padding-top: 15vh;
+    padding-top: 12dvh;
+    padding-left: calc(var(--space-3) + var(--safe-left));
+    padding-right: calc(var(--space-3) + var(--safe-right));
 }
 
 .modal {
     width: 600px;
-    max-width: 90vw;
+    max-width: 100%;
     background-color: var(--color-surface-elevated);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-xl);
     display: flex;
     flex-direction: column;
-    max-height: 500px;
+    /* Auf kleinen Screens: nicht hinter Tastatur/Home-Indicator laufen */
+    max-height: min(500px, calc(76dvh - var(--safe-bottom)));
     animation: slideIn 0.2s ease-out;
     overflow: hidden;
 }
@@ -65,7 +65,7 @@
 }
 
 .shortcut {
-    font-size: 10px;
+    font-size: var(--text-xs);
     color: var(--color-text-tertiary);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
@@ -120,7 +120,7 @@
 }
 
 .resultSubtitle {
-    font-size: 10px;
+    font-size: var(--text-xs);
     color: var(--color-text-tertiary);
 }
 
@@ -138,15 +138,15 @@
     display: flex;
     justify-content: flex-end;
     gap: var(--space-3);
-    font-size: 10px;
+    font-size: var(--text-xs);
     color: var(--color-text-tertiary);
 }
 
 .floatingTrigger {
     position: fixed;
-    bottom: 20px;
-    right: 80px;
-    /* Left of Assistant FAB (assuming FAB is ~20px right + size) */
+    bottom: var(--fab-bottom);
+    right: calc(var(--fab-right) + 60px);
+    /* Mitte der FAB-Reihe: [Aktion] [Finder] [Chat] */
     width: 48px;
     height: 48px;
     border-radius: 50%;
@@ -157,7 +157,7 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    z-index: 50;
+    z-index: var(--z-dropdown);
     transition: all var(--transition-fast);
     color: var(--color-text-secondary);
 }
@@ -184,10 +184,3 @@
     background-color: var(--color-primary-light);
 }
 
-@media (max-width: 768px) {
-    .floatingTrigger {
-        bottom: 16px;
-        right: 76px;
-        /* 16px + 48px + 12px */
-    }
-}

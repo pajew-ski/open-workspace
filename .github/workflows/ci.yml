@@ -41,9 +41,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: quality
     if: github.event_name == 'pull_request'
-    # The chat E2E test needs a reachable LLM endpoint that CI does not
-    # provide, so this job is advisory and must not block the PR.
-    continue-on-error: true
+    # Blocking: Mobile-UX- und Accessibility-Suiten sind das dauerhafte
+    # Qualitäts-Gate. LLM-abhängige Tests überspringen sich selbst, wenn
+    # kein Inferenz-Endpunkt erreichbar ist.
     steps:
       - name: Checkout
         uses: actions/checkout@v4

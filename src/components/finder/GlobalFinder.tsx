@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Search, FileText, CheckSquare, Briefcase, MessageSquare, Calendar } from 'lucide-react';
+import { useDialogA11y } from '@/lib/hooks/useDialogA11y';
 import styles from './GlobalFinder.module.css';
 
 interface SearchResult {
@@ -67,8 +68,15 @@ export function GlobalFinder() {
     const [isGlobal, setIsGlobal] = useState(false);
 
     const inputRef = useRef<HTMLInputElement>(null);
+    const modalRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
     const pathname = usePathname() ?? '';
+
+    const closeFinder = useCallback(() => setIsOpen(false), []);
+
+    // Modal-Verhalten: Fokus ins Suchfeld, Escape schließt (der "ESC"-Hinweis
+    // im UI muss stimmen), Fokus kehrt zum Trigger zurück
+    useDialogA11y(isOpen, modalRef, closeFinder, inputRef);
 
     // Context is derived from the pathname — no state needed
     const contextType = useMemo<string | null>(() => {
@@ -165,15 +173,27 @@ export function GlobalFinder() {
                 className={styles.floatingTrigger}
                 onClick={() => { setIsGlobal(false); setIsOpen(true); }}
                 title="Finden (CMD+F)"
+                aria-label="Suchen"
+                aria-haspopup="dialog"
+                aria-expanded={isOpen}
+                data-testid="global-finder-trigger"
             >
-                <Search size={20} />
+                <Search size={20} aria-hidden="true" />
             </button>
 
             {isOpen && (
-                <div className={styles.overlay} onClick={() => setIsOpen(false)}>
-                    <div className={styles.modal} onClick={e => e.stopPropagation()}>
+                <div className={styles.overlay} onClick={closeFinder}>
+                    <div
+                        ref={modalRef}
+                        className={styles.modal}
+                        onClick={e => e.stopPropagation()}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="Suchen"
+                        data-testid="global-finder-dialog"
+                    >
                         <div className={styles.searchHeader}>
-                            <Search className={styles.searchIcon} size={20} />
+                            <Search className={styles.searchIcon} size={20} aria-hidden="true" />
                             <input
                                 ref={inputRef}
                                 type="text"
@@ -183,15 +203,23 @@ export function GlobalFinder() {
                                 onChange={e => setQuery(e.target.value)}
                                 onKeyDown={handleKeyDown}
                                 autoComplete="off"
+                                aria-label="Suchbegriff"
+                                role="combobox"
+                                aria-expanded={results.length > 0}
+                                aria-controls="finder-results"
+                                aria-activedescendant={results[selectedIndex] ? `finder-option-${selectedIndex}` : undefined}
                             />
-                            <span className={styles.shortcut}>ESC</span>
+                            <span className={styles.shortcut} aria-hidden="true">ESC</span>
                         </div>
 
-                        <div className={styles.results}>
+                        <div className={styles.results} id="finder-results" role="listbox" aria-label="Suchergebnisse">
                             {results.length > 0 ? (
                                 results.map((result, index) => (
                                     <div
                                         key={`${result.type}-${result.id}`}
+                                        id={`finder-option-${index}`}
+                                        role="option"
+                                        aria-selected={index === selectedIndex}
                                         className={`${styles.resultItem} ${index === selectedIndex ? styles.active : ''}`}
                                         onClick={() => handleSelect(result)}
                                         onMouseEnter={() => setSelectedIndex(index)}
@@ -206,7 +234,7 @@ export function GlobalFinder() {
                                             )}
                                         </div>
                                         {index === selectedIndex && (
-                                            <span className={styles.shortcut}>⏎</span>
+                                            <span className={styles.shortcut} aria-hidden="true">⏎</span>
                                         )}
                                     </div>
                                 ))

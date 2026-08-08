@@ -12,6 +12,23 @@
 - [x] CI: GitHub Actions (Lint, Typecheck, Unit-Tests, Build, optional E2E)
 - [x] Deployment: Multi-Stage-Dockerfile (standalone, non-root, data/-Volume)
 
+## Mobile UX & Accessibility (fertig)
+
+- [x] Mobiler Drawer als modaler Dialog: über sticky Inhalten/FABs (Z-Index-Skala
+      bereinigt), Fokus-Falle, Escape, Fokus-Rückgabe, Scroll-Lock,
+      schließt bei Navigation, `aria-expanded`/`aria-controls`/`aria-current`
+- [x] Off-Canvas-Sidebar aus Fokus-/A11y-Baum (visibility), 100dvh statt 100vh
+- [x] Safe-Area-Insets (Notch/Home-Indicator) für FABs, Sidebar, Header; viewport-fit=cover
+- [x] Touch-Targets ≥44px für Primär-Controls, ≥24px überall (WCAG 2.5.8);
+      Hover-only-Controls (Status-Pfeile, Umbenennen) auf Touch/Fokus sichtbar
+- [x] iOS-Autozoom verhindert (16px-Minimum für Formularfelder), Pinch-Zoom bleibt erlaubt
+- [x] Kontrast-Töne WCAG AA: tertiary/warning-Token, Primärfarbe-als-Text-Token
+      (Dark Mode), Event-Chips mit luminanzabhängiger Textfarbe, `--color-*-subtle` definiert
+- [x] Skip-Link, Dialog-Semantik für Finder/Chat, scrollbare Regionen fokussierbar
+- [x] E2E-Gate (blockierend in CI): Playwright-Projekte Desktop + Pixel-7-Emulation,
+      Drawer-Verhalten, Overlay-Abdeckung, Touch-Target-/Overflow-/Fontsize-Scans,
+      axe-core (WCAG A/AA, serious/critical = 0) Light + Dark, 200%-Zoom-Reflow
+
 ## Module
 
 - [x] Dashboard (Masonry-Layout, Widgets, Activity-Feed)
@@ -68,7 +85,9 @@
 - [ ] Matrix-Chat (matrix-js-sdk, E2EE)
 
 ### P2
-- [ ] Accessibility-Durchgang (Fokus-Management, ARIA im Chat, Reduced Motion)
+- [x] Accessibility-Durchgang (Fokus-Management, ARIA, Reduced Motion, Kontraste,
+      Touch-Targets — automatisiert abgesichert via e2e/a11y + e2e/mobile-*)
+- [ ] A11y-Feinschliff: Chat-Verlauf als Live-Region, Dark-Mode-Scans auf alle Seiten ausweiten
 - [ ] Versionshistorie für Dokumente
 - [x] Export: Workspace-Backup als JSON-Download (Settings → Daten)
 - [ ] Import/Restore aus Backup (mit Validierung und Sicherung des Ist-Stands)
