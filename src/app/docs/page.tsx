@@ -5,7 +5,7 @@ import { AppShell } from '@/components/layout';
 import { Card, CardContent, Button, Input, FloatingActionButton } from '@/components/ui';
 import { MarkdownEditor } from '@/components/markdown';
 import { JsonLdScript } from '@/components/seo/JsonLdScript';
-import { generateDocJsonLd } from '@/lib/ontology/generator';
+import { generateDocJsonLd } from '@/lib/graph/projection/seo';
 import { Doc } from '@/types/doc';
 import styles from './page.module.css';
 

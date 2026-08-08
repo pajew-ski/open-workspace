@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "canonicalization": "RDFC-1.0",
+  "instanceBase": "urn:ow:14b46c31-2026-4d79-9fe6-4516cf791ea6:",
+  "graphs": [
+    {
+      "iri": "urn:ow:14b46c31-2026-4d79-9fe6-4516cf791ea6:graph/u/default/workspace",
+      "file": "workspace.nq",
+      "quads": 185,
+      "sha256": "fe127d14780dc7ffda5fa40551ad92d177851943d73bfb9dfac4ab1131e6f579"
+    }
+  ]
+}
