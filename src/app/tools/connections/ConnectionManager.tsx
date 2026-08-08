@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, Button, Input } from '@/components/ui';
 import styles from './ConnectionManager.module.css';
 
 export function ConnectionManager() {
-    const [connections, setConnections] = useState<any[]>([]);
     const [isAdding, setIsAdding] = useState(false);
+    const queryClient = useQueryClient();
 
     // Form State
     const [name, setName] = useState('');
@@ -15,14 +16,17 @@ export function ConnectionManager() {
     const [token, setToken] = useState('');
     const [isEnv, setIsEnv] = useState(false); // Toggle between regular value and ENV ref
 
-    useEffect(() => {
-        fetchConnections();
-    }, []);
+    const { data: connections = [] } = useQuery<any[]>({
+        queryKey: ['connections'],
+        queryFn: async () => {
+            const res = await fetch('/api/connections');
+            const data = await res.json();
+            return data.connections || [];
+        },
+    });
 
-    const fetchConnections = async () => {
-        const res = await fetch('/api/connections');
-        const data = await res.json();
-        setConnections(data.connections || []);
+    const refreshConnections = () => {
+        queryClient.invalidateQueries({ queryKey: ['connections'] });
     };
 
     const handleSave = async () => {
@@ -45,7 +49,7 @@ export function ConnectionManager() {
 
         setIsAdding(false);
         resetForm();
-        fetchConnections();
+        refreshConnections();
     };
 
     const resetForm = () => {

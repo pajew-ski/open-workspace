@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { Search, FileText, CheckSquare, Briefcase, MessageSquare, Calendar } from 'lucide-react';
 import styles from './GlobalFinder.module.css';
 
@@ -64,20 +64,19 @@ export function GlobalFinder() {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<SearchResult[]>([]);
     const [selectedIndex, setSelectedIndex] = useState(0);
-    const [contextType, setContextType] = useState<string | null>(null);
     const [isGlobal, setIsGlobal] = useState(false);
 
     const inputRef = useRef<HTMLInputElement>(null);
     const router = useRouter();
-    const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+    const pathname = usePathname() ?? '';
 
-    // Determine context from pathname
-    useEffect(() => {
-        if (pathname.startsWith('/tasks')) setContextType('task');
-        else if (pathname.startsWith('/docs')) setContextType('doc');
-        else if (pathname.startsWith('/communication')) setContextType('chat');
-        else if (pathname.startsWith('/calendar')) setContextType('calendar');
-        else setContextType(null);
+    // Context is derived from the pathname — no state needed
+    const contextType = useMemo<string | null>(() => {
+        if (pathname.startsWith('/tasks')) return 'task';
+        if (pathname.startsWith('/docs')) return 'doc';
+        if (pathname.startsWith('/communication')) return 'chat';
+        if (pathname.startsWith('/calendar')) return 'calendar';
+        return null;
     }, [pathname]);
 
     // ... (Toggle code omitted, staying same)

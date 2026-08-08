@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { ThemeProvider } from "@/components/providers";
+import { ThemeProvider, QueryProvider } from "@/components/providers";
 import { ToastContainer } from "@/components/ui";
 import { AssistantProvider } from "@/lib/assistant/context";
 import { CopilotKit } from "@copilotkit/react-core";
@@ -37,6 +37,7 @@ export default function RootLayout({
     <html lang="de" suppressHydrationWarning>
       <body suppressHydrationWarning>
         <ThemeProvider>
+          <QueryProvider>
           <CopilotKit runtimeUrl="/api/copilotkit" showDevConsole={false}>
             <AssistantProvider>
               <CopilotStateProvider>
@@ -47,6 +48,7 @@ export default function RootLayout({
               <ToastContainer />
             </AssistantProvider>
           </CopilotKit>
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>

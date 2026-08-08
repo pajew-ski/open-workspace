@@ -1,26 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AppShell } from '@/components/layout';
 import { Card, CardHeader, CardContent, Button, FloatingActionButton } from '@/components/ui';
 import { AddAgentDialog } from '@/components/agents/AddAgentDialog';
 import styles from './page.module.css';
 
 export default function AgentsPage() {
-    const [agents, setAgents] = useState<any[]>([]);
     const [isCreating, setIsCreating] = useState(false);
+    const queryClient = useQueryClient();
 
-    useEffect(() => {
-        fetchAgents();
-    }, []);
-
-    const fetchAgents = async () => {
-        try {
+    const { data: agents = [] } = useQuery<any[]>({
+        queryKey: ['agents'],
+        queryFn: async () => {
             const res = await fetch('/api/agents');
             const data = await res.json();
-            setAgents(data.agents || []);
-        } catch (e) { console.error(e); }
-    };
+            return data.agents || [];
+        },
+    });
 
     const handleCreate = async (data: any) => {
         await fetch('/api/agents', {
@@ -29,7 +27,7 @@ export default function AgentsPage() {
             headers: { 'Content-Type': 'application/json' }
         });
         setIsCreating(false);
-        fetchAgents();
+        queryClient.invalidateQueries({ queryKey: ['agents'] });
     };
 
     return (

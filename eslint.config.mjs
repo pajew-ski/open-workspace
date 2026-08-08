@@ -12,7 +12,15 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "public/sw.js",
   ]),
+  {
+    rules: {
+      // Prototype legacy: surfaced as warnings while the codebase is
+      // migrated to precise types module by module.
+      "@typescript-eslint/no-explicit-any": "warn",
+    },
+  },
 ]);
 
 export default eslintConfig;

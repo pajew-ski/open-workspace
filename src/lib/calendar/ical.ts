@@ -74,7 +74,7 @@ export async function parseICS(icsData: string): Promise<ParsedEvent[]> {
         if (colonIndex === -1) continue;
 
         const keyPart = line.substring(0, colonIndex);
-        let value = line.substring(colonIndex + 1);
+        const value = line.substring(colonIndex + 1);
 
         // Handle parameters (DTSTART;VALUE=DATE:20230101)
         // Key might look like "DTSTART;TZID=Europe/Berlin"

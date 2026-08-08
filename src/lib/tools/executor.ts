@@ -20,7 +20,7 @@ export async function executeTool(tool: Tool, args: Record<string, any> = {}): P
         let url = tool.config.url || '';
         const method = tool.config.method || 'GET';
         let body = tool.config.body;
-        let headers = { ...tool.config.headers };
+        const headers = { ...tool.config.headers };
 
         // Resolve Connection logic
         if (tool.connectionId) {
