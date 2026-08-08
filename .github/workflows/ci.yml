@@ -30,6 +30,9 @@ jobs:
       - name: Typecheck
         run: bun run typecheck
 
+      - name: Ontologie-Check (ow.ttl ↔ vocab.ts)
+        run: bun run check:ontology
+
       - name: Unit tests
         run: bun run test:run
 

@@ -4,6 +4,45 @@
 
 ## Hier weitermachen (Einstieg für neue Sessions)
 
+**Stand 2026-08-08 (3. Ausbaustufe, Graph Core M0–M2)**: Der **RDF-Graph ist
+das kanonische Datenmodell** (SPEC „Graph Core — Vollausbau", verbindlich;
+Store-Entscheidung mit Messwerten in
+[docs/decisions/0001-graph-store.md](./docs/decisions/0001-graph-store.md)):
+
+- **Store** (`src/lib/graph/store/`): `GraphStore`-Interface + Oxigraph-WASM
+  (SPARQL 1.1 Query/Update, RDF 1.2/RDF-star, Quads) + ehrliches
+  In-Memory-Test-Double. Kein Default-Graph-Schreibpfad — jedes Tripel hat
+  einen Named Graph, per Store erzwungen.
+- **Vokabular** (`ontology/ow.ttl` + `src/lib/graph/vocab.ts`): 33 eigene
+  Terme unter der produktweit konstanten Base
+  `https://pajew-ski.github.io/open-workspace/ns/v1#`, jeder mit
+  de/en-Labels und Begründung. CI-Check `bun run check:ontology` erzwingt
+  ow.ttl ↔ vocab.ts synchron.
+- **IRIs** (`src/lib/graph/iri.ts`): Instanz-Base pro Installation
+  (`urn:ow:<uuid>:` oder `OW_INSTANCE_BASE`), nutzerskalierte Graphen
+  (`graph/u/<userId>/workspace|public|presentation|import/<id>|inferred/<scope>`),
+  Migration per `owl:sameAs`-Brücke. `https://exocortex.local` ist Geschichte.
+- **Deterministische Serialisierung** (`src/lib/graph/serialize/`):
+  RDFC-1.0-kanonische N-Quads (rdf-canonize), byte-identische Dumps,
+  Snapshot-Layout `data/graph/` mit Manifest. `bun run migrate:graph`
+  erzeugt den Snapshot aus dem Dateibestand (idempotent, Zähl-Assertions).
+- **`GET /api/graph`** wird per SPARQL aus dem Store generiert
+  (`src/lib/graph/projection/schema-org.ts`); `color`/`val` sind aus der
+  Antwort entfernt — die Graph-UI berechnet Präsentation clientseitig.
+- **SPARQL-Endpoint** `GET|POST /api/graph/sparql` (SPARQL 1.1 Protocol,
+  Content Negotiation JSON/CSV/TSV/Turtle/JSON-LD/N-Quads/TriG): Dataset
+  wird IMMER injiziert (überschreibt `FROM`), `graph/acl` ist unerreichbar,
+  `presentation`/`inferred` nur auf explizite Anforderung, Updates laufen
+  transaktional mit Schutz vor Änderungen an systemverwalteten Graphen.
+- **Übergangszustand** (`// MIGRATION:`-Marker): Die Dateien unter
+  `data/docs|tasks|canvas` bleiben operative Quelle; der Store spiegelt sie
+  inhalts-gehasht (`src/lib/graph/server/instance.ts#syncWorkspaceFromFiles`).
+  Endet mit der Umstellung der Schreibpfade (TODO „Graph Core").
+- **Invarianten** (Review-Blocker, SPEC §2): RDF ist die eine Wahrheit;
+  Wissen ≠ Präsentation; asserted ≠ inferred; ein Connector-Vertrag für
+  alles Externe; kein `any` unter `src/lib/graph/` (ESLint-Error);
+  Vokabular-Base niemals deployment-spezifisch.
+
 **Stand 2026-08-08 (2. Ausbaustufe)**: Die **AI-Plattform ist voll ausgebaut
 und backend-unabhängig** — Details in [docs/ai-platform.md](./docs/ai-platform.md):
 
@@ -38,11 +77,12 @@ neuen Seiten `/ai` und `/skills`) laufen grün.
 3. [TODO.md](./TODO.md) — dieselbe Roadmap als abhakbare Liste
 4. Diesen Abschnitt hier für die Architektur-Prinzipien
 
-**Nächste sinnvolle Schritte**: IndexedDB-Spiegel für Workspace-INHALTE
-(Docs/Tasks) + Background-Sync (P1.9 — die AI-Schicht ist schon serverlos-fähig,
-die Content-Module noch nicht); i18n mit `next-intl` (P0); Abbau der
-`no-explicit-any`-Warnings; CopilotKit-Entscheidung; A2A-Streaming
-(`message/stream`) und MCP-Ressourcen-Browser als Vertiefung.
+**Nächste sinnvolle Schritte**: Graph Core M3 (Connector-Framework +
+`rdf-file`/`github-rdf`, prima-materia als Referenzfall) und die Umstellung
+der Schreibpfade auf den Store (Rest von M1, `// MIGRATION:`-Marker
+auflösen); danach M4 Obsidian-Connector. Parallel weiter sinnvoll: i18n mit
+`next-intl` (P0); Abbau der `no-explicit-any`-Warnings außerhalb des
+Graph-Codes; CopilotKit-Entscheidung.
 
 **Arbeitsprinzip dieses Repos**: Keine Attrappen. Lieber ein Feature ehrlich als
 „geplant" kennzeichnen, als tote Buttons stehen lassen.

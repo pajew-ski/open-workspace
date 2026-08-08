@@ -10,7 +10,10 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "check:ontology": "bun scripts/check-ontology.ts",
+    "bench:graph-store": "bun scripts/bench-graph-store.ts",
+    "migrate:graph": "bun scripts/migrate-graph.ts"
   },
   "dependencies": {
     "@copilotkit/react-core": "1.66.4",
@@ -18,6 +21,7 @@
     "@copilotkit/runtime": "1.66.4",
     "@mlc-ai/web-llm": "^0.2.84",
     "@modelcontextprotocol/sdk": "^1.30.0",
+    "@rdfjs/types": "^2.0.1",
     "@tanstack/react-query": "^5.101.4",
     "@types/prismjs": "^1.26.5",
     "date-fns": "^4.4.0",
@@ -26,7 +30,9 @@
     "next": "16.3.0",
     "node-ical": "^0.27.1",
     "openai": "^7.4.0",
+    "oxigraph": "^0.5.9",
     "prismjs": "^1.30.0",
+    "rdf-canonize": "^5.0.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-force-graph-2d": "^1.29.1",

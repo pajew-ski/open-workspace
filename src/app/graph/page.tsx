@@ -26,6 +26,22 @@ interface GraphLink {
     type: string; // Predicate label
 }
 
+/**
+ * Präsentationswerte (Farbe, Knotengröße) sind seit dem Graph-Core-Umbau
+ * nicht mehr Teil der API-Antwort (Trennung Wissen/Präsentation, SPEC §2).
+ * Sie werden hier clientseitig aus dem Typ berechnet.
+ */
+const NODE_STYLE: Record<string, { color: string; val: number }> = {
+    Project: { color: '#00674F', val: 8 },
+    Action: { color: '#2E7D4A', val: 3 },
+    TechArticle: { color: '#2563A0', val: 4 },
+    BlogPosting: { color: '#2563A0', val: 4 },
+    HowTo: { color: '#2563A0', val: 4 },
+    CreativeWork: { color: '#B8860B', val: 6 },
+    DefinedTerm: { color: '#8A8A8A', val: 1 },
+};
+const FALLBACK_STYLE = { color: '#999', val: 1 };
+
 // Default Constants
 const DEFAULTS = {
     showDocs: true,
@@ -146,13 +162,15 @@ export default function GraphExplorerPage() {
 
                 if (jsonLd['@graph']) {
                     jsonLd['@graph'].forEach((entity: any) => {
-                        // Extract base properties
+                        // Präsentation (Farbe/Größe) aus dem Typ berechnen —
+                        // die API liefert nur noch Wissen, kein Layout.
+                        const style = NODE_STYLE[entity['@type']] ?? FALLBACK_STYLE;
                         const node: GraphNode = {
                             id: entity['@id'],
                             name: entity.name || entity.headline || entity['@id'],
                             type: entity['@type'],
-                            val: entity.val || 1,
-                            color: entity.color || '#999',
+                            val: style.val,
+                            color: style.color,
                             group: entity.group
                         };
                         nodes.push(node);
@@ -195,6 +213,7 @@ export default function GraphExplorerPage() {
         const typeMap: Record<string, boolean> = {
             'TechArticle': showDocs,
             'BlogPosting': showDocs,
+            'HowTo': showDocs,
             'Action': showTasks,
             'Project': showProjects,
             'CreativeWork': showCanvas,
