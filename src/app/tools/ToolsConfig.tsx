@@ -64,20 +64,11 @@ export function ToolsConfig() {
                         <div className={styles.info}>
                             <span className={styles.label}>MCP Server</span>
                             <span className={styles.description}>
-                                Konfiguriere Model Context Protocol (MCP) Server für erweiterte Agenten-Funktionen.
+                                Model Context Protocol (MCP) Anbindung ist in Entwicklung — bis dahin kannst du externe Dienste als API-Tools verbinden.
                             </span>
                         </div>
-                        <Button variant="primary" size="sm" disabled>+ Server verbinden</Button>
+                        <Button variant="primary" size="sm" disabled title="MCP-Anbindung ist in Entwicklung">Geplant</Button>
                     </div>
-
-                    <Card className={styles.serverList}>
-                        <CardContent>
-                            <div className={styles.emptyState}>
-                                <p>Keine MCP Server konfiguriert.</p>
-                                <p className={styles.emptySub}>Verbinde einen Server, um Tools bereitzustellen.</p>
-                            </div>
-                        </CardContent>
-                    </Card>
 
                     <div className={styles.header} style={{ marginTop: 'var(--space-6)' }}>
                         <div className={styles.info}>

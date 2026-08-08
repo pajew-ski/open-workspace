@@ -1,187 +1,76 @@
 # TODO - Open Workspace Development
 
-## Phase 1: Foundation
+> Roadmap auf Basis der vollständigen Analyse in [ANALYSE.md](./ANALYSE.md).
+> Status: ✅ fertig · 🚧 teilweise · ⬜ offen
 
-### Project Setup
-- [ ] Initialize Next.js 14 with App Router
-- [ ] Configure TypeScript strict mode
-- [ ] Set up CSS Modules with design tokens
-- [ ] Configure ESLint and Prettier
-- [ ] Create PWA manifest and service worker shell
+## Fundament (fertig)
 
-### Design System
-- [ ] Define color palette (neutrals + #00674F accent)
-- [ ] Create typography scale
-- [ ] Implement theme provider (light/dark/system)
-- [ ] Build base UI components (Button, Input, Card, etc.)
+- [x] Next.js 16 App Router, TypeScript strict, CSS Modules, Design Tokens
+- [x] Produktions-Build grün (Debug-Reste entfernt, Toolchain aktualisiert)
+- [x] Theme-System (light/dark/system) via useSyncExternalStore
+- [x] TanStack React Query als Server-State-Layer
+- [x] PWA: Manifest, App-Icons, Service Worker (Offline-Shell, API-Cache), Offline-Seite
+- [x] CI: GitHub Actions (Lint, Typecheck, Unit-Tests, Build, optional E2E)
+- [x] Deployment: Multi-Stage-Dockerfile (standalone, non-root, data/-Volume)
 
-### Internationalization
-- [ ] Set up i18n with next-intl or similar
-- [ ] Create German translation file (default)
-- [ ] Create English translation file
-- [ ] Implement language switcher in settings
+## Module
 
----
+- [x] Dashboard (Masonry-Layout, Widgets, Activity-Feed)
+- [x] Wissensbasis (Markdown-Editor, JSON-LD-Ontologie, Umbenennung)
+- [x] Aufgaben (Kanban, Projekte, Prioritäten, Fälligkeiten)
+- [x] Pinnwand/Canvas (Karten, Verbindungen)
+- [x] Kalender (ICS-Provider, Monats-/Wochenansicht)
+- [x] Knowledge Graph (JSON-LD, Force-Graph, Filter — Link-Filter-Bug behoben)
+- [x] Global Finder (Fuzzy, Smart Modifiers, Cmd+F)
+- [x] Werkzeuge: API-Tools + sichere Verbindungen (AES-256-GCM)
+- [x] Agenten: CRUD inkl. Bearbeiten (PUT), ehrliche Status-Anzeige
+- [x] Benachrichtigungen aus echtem Activity-Log (Read-State persistiert)
+- [x] Einstellungen: Theme, AI-Endpunkt + Modell (persistiert, Live-Health-Check), Kalender
+- [ ] Kommunikation (Matrix) — Seite kennzeichnet Planungsstand, siehe P1
 
-## Phase 2: Core Modules
+## AI-Integration
 
-### Layout Shell
-- [ ] Main navigation structure
-- [ ] Global search bar (top)
-- [ ] Notification bell (top right)
-- [ ] Module container with consistent spacing
+- [x] Streaming-Chat (Ollama + OpenAI-kompatibel) mit Timeout & Fehlerbehandlung
+- [x] Kontext-Injektion pro Modul (viewState)
+- [x] A2UI-Protokoll: Parser + React-Renderer + Streaming-Updates (Tests)
+- [x] Tool-Ausführung: [[TOOL:...]]-Parser + serverseitiger Tool-Loop (max. 3 Runden)
+- [x] Chat-Historie (Konversationen, Persistenz)
+- [ ] Natives Function Calling (Ollama `tools`-Parameter) mit Text-Syntax-Fallback — P1
+- [ ] A2A-Protokoll: Agent Card (/.well-known/agent.json), JSON-RPC, Task-Lifecycle — P1
+- [ ] MCP-Client (@modelcontextprotocol/sdk): externe MCP-Server als Tool-Quelle — P1
+- [ ] CopilotKit: UI rendern oder Stack entfernen (Entscheidung, siehe ANALYSE §5 P0.3)
 
-### Dashboard Module
-- [x] Dashboard page layout
-- [x] Activity feed component
-- [x] Quick stats widgets
-- [x] Recent items list
-- [x] Chat widget integration
+## Sicherheit & Datenqualität
 
-### Knowledge Base Module
-- [ ] Knowledge base page layout
-- [ ] Note list with filtering
-- [ ] Markdown editor component
-- [ ] Mermaid diagram renderer
-- [ ] Code syntax highlighting
-- [ ] Artifact management
-- [ ] Module search functionality
-- [ ] Add artifact button (+)
-- [ ] Chat widget integration
+- [x] Zod-Validierung aller schreibenden API-Routen
+- [x] Atomare JSON-Writes + Dateilocks, defensives Lesen mit Quarantäne
+- [x] Path-Traversal-Fix, Upload-Härtung (Allowlist, Magic Bytes, 10 MB), SVG-XSS entschärft
+- [x] Credentials: kein Ciphertext-Leak, WORKSPACE_MASTER_KEY-Option, Keyfile 0600
+- [x] API-Key nur serverseitig (LLM_API_KEY)
+- [x] Tool-Executor: SSRF-Schutz, Timeout, JSON-sichere Platzhalter
+- [ ] Rate Limiting am Chat-Endpunkt — P2
+- [ ] Optionale Auth (Passkey/WebAuthn) für Nicht-localhost-Deployments — P2
 
-### Canvas Module
-- [ ] Canvas page layout
-- [ ] Draggable card components
-- [ ] Connection lines between cards
-- [ ] Card creation (+) widget
-- [ ] Module search functionality
-- [ ] Chat widget integration
+## Offen (priorisiert — Details in ANALYSE.md §5)
 
-### Tasks Module
-- [x] Tasks page layout
-- [x] Task list with status (open/in-progress/done)
-- [x] Project grouping
-- [x] Priority levels
-- [x] Due dates and reminders
-- [x] Task filtering and sorting
-- [x] Add task (+) widget
-- [x] Chat widget integration
+### P0
+- [ ] i18n mit next-intl (de/en, Umschalter, dynamisches html lang)
+- [ ] no-explicit-any-Abbau (135 Warnings → typisierte Module)
+- [ ] Frontmatter-Parser durch yaml/gray-matter ersetzen
 
----
+### P1
+- [ ] A2A, MCP, natives Tool-Calling (siehe AI-Integration)
+- [ ] GitHub-Sync (OAuth Device Flow, Commit/Pull von data/docs)
+- [ ] IndexedDB-Spiegel + Background-Sync-Queue (Offline-Schreiben)
+- [ ] Matrix-Chat (matrix-js-sdk, E2EE)
 
-## Phase 3: AI Integration and Data Layer
-
-### Data Layer
-- [ ] JSON file store implementation (data/)
-- [ ] Zod schemas for validation
-- [ ] Notes CRUD operations
-- [ ] Artifacts CRUD operations
-- [ ] Canvas data operations
-- [ ] Chat history persistence
-- [ ] Tasks data operations
-
-### GitHub Sync
-- [ ] GitHub OAuth integration
-- [ ] Repository selection
-- [ ] Sync notes to GitHub
-- [ ] Sync code artifacts
-- [ ] Pull changes from GitHub
-- [ ] Conflict resolution
-
-### Inference Client
-- [x] Ollama/Hybrid API client implementation
-- [x] Streaming response handler
-- [x] Error handling and retry logic
-- [x] Model configuration management (Env vars)
-
-### A2A Protocol
-- [ ] Agent card schema
-- [ ] Task management endpoints
-- [ ] Capability discovery
-- [ ] Multi-agent routing
-
-### A2UI Protocol
-- [ ] Component catalog definition
-- [ ] A2UI message parser
-- [ ] React renderer for A2UI components
-- [ ] Streaming UI updates
-
-### Chat Widget
-- [x] Base chat component
-- [x] Message list with markdown
-- [x] Input with send action
-- [x] Context injection per module
-- [x] Streaming response display
-
-### MCP Protocol
-- [ ] MCP server implementation
-- [ ] Tool definitions
-- [ ] Resource handlers
+### P2
+- [ ] Accessibility-Durchgang (Fokus-Management, ARIA im Chat, Reduced Motion)
+- [ ] Versionshistorie für Dokumente
+- [x] Export: Workspace-Backup als JSON-Download (Settings → Daten)
+- [ ] Import/Restore aus Backup (mit Validierung und Sicherung des Ist-Stands)
+- [ ] Kollaboration (CRDT/Yjs), Plugin-System via MCP, GitLab-Sync
 
 ---
 
-## Phase 4: Offline and PWA
-
-### Service Worker
-- [ ] Cache strategy for static assets
-- [ ] API response caching
-- [ ] Background sync for pending actions
-- [ ] Push notification support (later)
-
-### IndexedDB Storage
-- [ ] Notes persistence
-- [ ] Canvas state persistence
-- [ ] Chat history storage
-- [ ] Settings sync
-
-### PWA Configuration
-- [ ] Complete manifest.json
-- [ ] App icons (all sizes)
-- [ ] Splash screens
-- [ ] Install prompt handling
-
----
-
-## Phase 5: Polish
-
-### Settings Module
-- [x] Theme selection (light/dark/system)
-- [ ] Language selection (de/en)
-- [x] AI endpoint configuration
-- [x] Model selection
-- [ ] Notification preferences
-
-### Search
-- [x] Global search implementation
-- [x] Module-specific search
-- [x] Search result highlighting
-- [x] Keyboard shortcuts (Cmd+K/Cmd+F)
-- [x] Fuzzy search & Modifiers
-
-### Notifications
-- [ ] Notification center component
-- [ ] Event types and priorities
-- [ ] Read/unread state
-- [ ] Notification actions
-
-### Accessibility
-- [ ] Keyboard navigation
-- [ ] Screen reader support
-- [ ] Focus management
-- [ ] Reduced motion support
-
----
-
-## Backlog
-
-- [ ] Export/import functionality
-- [ ] Version history for notes
-- [ ] Collaborative editing (future)
-- [x] Additional AI providers (Groq/OpenAI)
-- [ ] Plugin/extension system
-- [x] Mobile-optimized views (Sidebar Overlay)
-- [ ] GitLab sync support
-
----
-
-*Last updated: 2026-01-24*
+*Last updated: 2026-08-08*

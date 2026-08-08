@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#00674F">
+  <title>Offline – Open Workspace</title>
+  <style>
+    :root {
+      --teal: #00674F;
+      --teal-soft: rgba(0, 103, 79, 0.10);
+      --bg: #FAFAFA;
+      --surface: #FFFFFF;
+      --text: #1A1A1A;
+      --text-muted: #5C6660;
+      --border: rgba(0, 0, 0, 0.08);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --teal: #2FA98C;
+        --teal-soft: rgba(47, 169, 140, 0.12);
+        --bg: #1A1A1A;
+        --surface: #232725;
+        --text: #F2F4F3;
+        --text-muted: #9AA6A0;
+        --border: rgba(255, 255, 255, 0.10);
+      }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      padding: 1.5rem;
+      -webkit-font-smoothing: antialiased;
+    }
+    main {
+      max-width: 26rem;
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1.25rem;
+      padding: 3rem 2rem 2.5rem;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+    }
+    .zen {
+      width: 5.5rem;
+      height: 5.5rem;
+      margin: 0 auto 1.75rem;
+      display: block;
+      border-radius: 1.375rem;
+      background: var(--teal-soft);
+      padding: 1rem;
+    }
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 650;
+      letter-spacing: -0.01em;
+      margin-bottom: 0.75rem;
+    }
+    p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin-bottom: 2rem;
+    }
+    button {
+      font: inherit;
+      font-weight: 600;
+      color: #FFFFFF;
+      background: var(--teal);
+      border: none;
+      border-radius: 0.75rem;
+      padding: 0.75rem 2rem;
+      cursor: pointer;
+      transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+    button:hover { opacity: 0.9; }
+    button:active { transform: scale(0.98); }
+    button:focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
+    .hint {
+      margin-top: 1.5rem;
+      margin-bottom: 0;
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <svg class="zen" viewBox="-512 -512 1024 1024" role="img" aria-label="Zen-Garten-Motiv" fill="none" stroke="currentColor" stroke-width="52" stroke-linecap="round" style="color: var(--teal)">
+      <g transform="scale(1.28)">
+        <circle r="62" fill="currentColor" stroke="none"/>
+        <path d="M -82.406 -137.147 A 160 160 0 1 1 -151.283 52.091" opacity="1"/>
+        <path d="M 255.961 4.468 A 256 256 0 1 1 124.111 -223.903" opacity="0.85"/>
+        <path d="M -85.157 341.544 A 352 352 0 1 1 196.836 291.821" opacity="0.7"/>
+      </g>
+    </svg>
+    <h1>Du bist offline</h1>
+    <p>
+      Gerade besteht keine Verbindung zum Internet.
+      Kein Grund zur Eile &ndash; deine zuletzt besuchten Seiten und
+      gecachten Inhalte bleiben weiterhin verf&uuml;gbar.
+    </p>
+    <button type="button" onclick="location.reload()">Erneut versuchen</button>
+    <p class="hint">Sobald du wieder online bist, l&auml;dt diese Seite automatisch neu.</p>
+  </main>
+  <script>
+    window.addEventListener("online", function () {
+      location.reload();
+    });
+  </script>
+</body>
+</html>
