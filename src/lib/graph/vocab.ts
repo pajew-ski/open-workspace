@@ -116,6 +116,7 @@ export const SCHEMA = {
     hasPart: schemaOrg('hasPart'),
     isPartOf: schemaOrg('isPartOf'),
     keywords: schemaOrg('keywords'),
+    error: schemaOrg('error'),
     ActiveActionStatus: schemaOrg('ActiveActionStatus'),
     CompletedActionStatus: schemaOrg('CompletedActionStatus'),
     PotentialActionStatus: schemaOrg('PotentialActionStatus'),
@@ -157,6 +158,7 @@ export const PROV = {
     wasGeneratedBy: `${PREFIXES.prov}wasGeneratedBy`,
     generatedAtTime: `${PREFIXES.prov}generatedAtTime`,
     Activity: `${PREFIXES.prov}Activity`,
+    SoftwareAgent: `${PREFIXES.prov}SoftwareAgent`,
 } as const;
 
 export const SKOS = {
