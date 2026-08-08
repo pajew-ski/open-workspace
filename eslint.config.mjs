@@ -21,6 +21,18 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-explicit-any": "warn",
     },
   },
+  {
+    // Graph-Core (SPEC §2, Invariante 9): kein `any` im neuen Graph-Code.
+    // Neue Dateien unter src/lib/graph/ erben keine Alt-Warnings.
+    files: [
+      "src/lib/graph/**/*.ts",
+      "src/lib/platform/runtime/**/*.ts",
+      "src/app/api/graph/**/*.ts",
+    ],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "error",
+    },
+  },
 ]);
 
 export default eslintConfig;

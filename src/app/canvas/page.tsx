@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { AppShell } from '@/components/layout';
 import { Card, CardContent, Button, Input, ConfirmDialog, FloatingActionButton } from '@/components/ui';
 import { JsonLdScript } from '@/components/seo/JsonLdScript';
-import { generateCanvasListJsonLd } from '@/lib/ontology/generator-canvas';
+import { generateCanvasListJsonLd } from '@/lib/graph/projection/seo';
 import { useMemo } from 'react';
 import styles from './page.module.css';
 

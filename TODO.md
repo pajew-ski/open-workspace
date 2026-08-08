@@ -1,6 +1,53 @@
 # TODO - Open Workspace Development
 
 > Roadmap auf Basis der vollständigen Analyse in [ANALYSE.md](./ANALYSE.md).
+> Für den Graph-Ausbau gilt die SPEC „Graph Core — Vollausbau" (hat Vorrang
+> vor ANALYSE §5, wo sie widersprechen).
+
+## Graph Core (SPEC „Vollausbau", M0–M13)
+
+- [x] **M0 Fundament**: Vokabular `ontology/ow.ttl` (33 Terme, de/en,
+      CI-Check `check:ontology`), IRI-Strategie (drei Basen, nutzerskalierte
+      Named Graphs, `owl:sameAs`-Migration), `GraphStore`-Interface,
+      Oxigraph-WASM-Anbindung (Entscheidung mit Messwerten:
+      docs/decisions/0001-graph-store.md), deterministische Serialisierung
+      inkl. RDFC-1.0 (Round-Trip RDF-isomorph, Dumps byte-identisch)
+- [x] **M1 Migration/Kompatibilität**: idempotenter Migrator
+      (`bun run migrate:graph`, Zähl-Assertions), `/api/graph` per SPARQL aus
+      dem Store, `color`/`val` entfernt (UI berechnet Präsentation), alte
+      Generatoren → `src/lib/graph/projection/` (seo.ts, schema-org.ts),
+      kein `any` im Graph-Pfad (ESLint-Error)
+  - [ ] **M1-Rest: Schreibpfade umstellen** — `src/lib/storage/*` schreibt
+        über den Store als Wahrheitsquelle; danach die
+        `// MIGRATION:`-Marker auflösen:
+        `src/lib/graph/server/instance.ts#syncWorkspaceFromFiles`
+- [x] **M2 SPARQL (Protokoll)**: `GET|POST /api/graph/sparql` nach
+      SPARQL 1.1 Protocol; SELECT/CONSTRUCT/ASK/DESCRIBE + UPDATE;
+      Content Negotiation (SPARQL-JSON, CSV, TSV, Turtle, JSON-LD, N-Quads,
+      TriG); Dataset-Injektion überschreibt `FROM`; `graph/acl` unerreichbar;
+      Updates transaktional mit Schutz systemverwalteter Graphen
+  - [ ] M2-Rest: SPARQL-Editor-UI (Syntax-Highlighting, Prefix-Vervollständigung,
+        Ergebnis-als-Graph), gespeicherte Queries als Graph-Entitäten
+- [ ] **M3 Connector-Framework** + `rdf-file` + `github-rdf`
+      (prima-materia als Referenzfall, fehlertolerant mit Quarantäne-Bericht)
+- [ ] **M4 Obsidian-Connector** (Round-Trip-Test, Verlustpositionen dokumentiert)
+- [ ] **M5 Canvas/Präsentationsschicht** (`graph/<u>/presentation`,
+      JSON-Canvas 1.0, generierte Query-Views; Layout-Blacklist-Test existiert)
+- [ ] **M6 Git-Sync** in allen drei Runtimes (`backup`/`bidirectional`,
+      `git-backup` als regulärer Connector)
+- [ ] **M7 Reasoning** (SHACL, OWL RL Tier 1, `graph/<u>/inferred/<scope>`,
+      DL-Sidecar optional)
+- [ ] **M8 Suche + Multi-Hop-Retrieval** (§7.5-Pipeline, `workspace_finder`
+      auf den Graphen)
+- [ ] **M9 Agents/Skills/Tools als Graph-Bürger**
+- [ ] **M10 MCP-Server** (`/api/mcp`, graph_search/retrieve/neighbors/
+      describe/sparql)
+- [ ] **M11 Föderation** (Endpoint-Registry, SERVICE, Authz-Rewriting,
+      SSRF-Schutz)
+- [ ] **M12 Runtime-Vollausbau** (HA-Add-on inkl. Ingress-Base-Path,
+      `server`-Compose, ein Image)
+- [ ] **M13 Multi-User/ACL** (WAC/ACP in `graph/acl`, Dataset-Resolver,
+      Test-Matrix §17.6)
 
 ## Fundament (fertig)
 

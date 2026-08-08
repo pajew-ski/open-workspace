@@ -1,0 +1,272 @@
+@prefix ow:      <https://pajew-ski.github.io/open-workspace/ns/v1#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix schema:  <https://schema.org/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix prov:    <http://www.w3.org/ns/prov#> .
+@prefix foaf:    <http://xmlns.com/foaf/0.1/> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix void:    <http://rdfs.org/ns/void#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+#################################################################
+# Ontologie-Kopf
+#
+# Die Vokabular-Base ist produktweit konstant und wandert mit dem
+# Code, nicht mit dem Deployment (SPEC §3.2). Deployment-spezifische
+# Terme entstehen ausschließlich unter <deploymentBase>/ns/ext#.
+#################################################################
+
+<https://pajew-ski.github.io/open-workspace/ns/v1>
+    a owl:Ontology ;
+    rdfs:label "Open Workspace Vokabular"@de, "Open Workspace Vocabulary"@en ;
+    rdfs:comment "Produktvokabular von Open Workspace. Enthält nur Terme, für die nachweislich kein etablierter Standard-Term existiert; alles andere nutzt schema.org, Dublin Core, PROV, FOAF, SKOS. /ns/v1# ist nach Veröffentlichung eingefroren; Breaking Changes ergeben /ns/v2# mit owl:equivalentClass-Brücken."@de ;
+    owl:versionInfo "1.0.0-draft" ;
+    dcterms:created "2026-08-08"^^xsd:date ;
+    dcterms:license <https://opensource.org/licenses/MIT> .
+
+#################################################################
+# Klassen
+#################################################################
+
+ow:Document a owl:Class ;
+    rdfs:subClassOf schema:DigitalDocument ;
+    rdfs:label "Dokument"@de, "Document"@en ;
+    rdfs:comment "Markierungsklasse für native Workspace-Dokumente. schema:DigitalDocument trägt die Semantik; die Unterklasse existiert, weil Workspace-Dokumente zusätzliche Garantien haben (stabile ID, Markdown-Quelle, Wikilink-Auflösung), die abfragbar sein müssen, ohne alle DigitalDocuments fremder Quellen zu treffen."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:Project a owl:Class ;
+    rdfs:subClassOf schema:Project ;
+    rdfs:label "Projekt"@de, "Project"@en ;
+    rdfs:comment "Markierungsklasse für native Workspace-Projekte, analog ow:Document: unterscheidet eigene Projekte von importierten schema:Project-Knoten fremder Quellen."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:Task a owl:Class ;
+    rdfs:subClassOf schema:Action ;
+    rdfs:label "Aufgabe"@de, "Task"@en ;
+    rdfs:comment "Aufgabe im Workspace. schema.org kennt keine Task-Klasse mit Abhängigkeiten und Projektzuordnung; schema:Action ist die nächstliegende Oberklasse und trägt actionStatus/endTime."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:Canvas a owl:Class ;
+    rdfs:subClassOf schema:CreativeWork ;
+    rdfs:label "Canvas"@de, "Canvas"@en ;
+    rdfs:comment "Manuell kuratierter Subgraph-View: eine Auswahl semantischer Knoten plus räumlicher Anordnung (Layout in graph/presentation, nie hier). Kein Standard-Vokabular modelliert einen gespeicherten Graph-View als eigenständiges Werk."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:Skill a owl:Class ;
+    rdfs:subClassOf schema:HowTo ;
+    rdfs:label "Skill"@de, "Skill"@en ;
+    rdfs:comment "Prozedurales Wissen für AI-Agenten nach der SKILL.md-Konvention (Trigger + Anleitung + Progressive Disclosure). schema:HowTo deckt die Anleitungs-Semantik, aber nicht Trigger und Werkzeugbedarf ab."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:Agent a owl:Class ;
+    rdfs:subClassOf foaf:Agent ;
+    rdfs:label "Agent"@de, "Agent"@en ;
+    rdfs:comment "AI-Agent mit A2A-Agent-Card (Endpoints, Security-Schemes, Skills). foaf:Agent und schema:SoftwareApplication tragen die Grundsemantik; die Unterklasse bündelt die A2A-spezifischen Prädikate, für die kein Standard existiert."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:Tool a owl:Class ;
+    rdfs:subClassOf schema:Intangible ;
+    rdfs:label "Werkzeug"@de, "Tool"@en ;
+    rdfs:comment "Aufrufbares Werkzeug eines Agenten (MCP-Tool, API-Tool) mit JSON-Schema-Eingabe. Kein Standard-Vokabular modelliert LLM-aufrufbare Funktionen; schema:SoftwareApplication beschreibt Anwendungen, nicht einzelne Aufrufflächen."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:ToolProvider a owl:Class ;
+    rdfs:subClassOf schema:SoftwareApplication ;
+    rdfs:label "Werkzeug-Anbieter"@de, "Tool Provider"@en ;
+    rdfs:comment "System, das Werkzeuge bereitstellt, typischerweise ein MCP-Server mit Endpoint und Transport. Die Unterklasse existiert, weil ein MCP-Server über ow:providedBy als Quelle einzelner Tools abfragbar sein muss."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:Connector a owl:Class ;
+    rdfs:subClassOf prov:SoftwareAgent ;
+    rdfs:label "Connector"@de, "Connector"@en ;
+    rdfs:comment "Konfigurierte Instanz des Connector-Frameworks: materialisiert oder föderiert eine externe Wissensquelle. prov:SoftwareAgent macht sie PROV-attributierbar (prov:wasAttributedTo); Art, Quelle und Sync-Zustand haben kein Standard-Äquivalent."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:FederatedEndpoint a owl:Class ;
+    rdfs:subClassOf schema:Service ;
+    rdfs:label "Föderierter Endpoint"@de, "Federated Endpoint"@en ;
+    rdfs:comment "Registrierter externer SPARQL-Endpoint für SERVICE-Queries, mit Vertrauensstufe. void:Dataset beschreibt Datensätze, nicht die Föderationsbeziehung samt Trust-Level; ein void:Dataset-Zusatztyp ist optional."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+#################################################################
+# Dokument- und Wissensvernetzung
+#################################################################
+
+ow:linksTo a owl:ObjectProperty ;
+    rdfs:subPropertyOf schema:mentions ;
+    rdfs:label "verlinkt auf"@de, "links to"@en ;
+    rdfs:comment "Untypisierter Wikilink ([[Ziel]]) zwischen Knoten. schema:mentions ist die nächstliegende Oberkategorie, trägt aber die Erwähnungs-Semantik von Publikationen; ow:linksTo hält die Herkunft aus expliziter Nutzer-Verlinkung abfragbar getrennt."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:inFolder a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "im Ordner"@de, "in folder"@en ;
+    rdfs:comment "Vault-Ordnerpfad als Konvention (z. B. 'projekte/2026'), ohne erzwungene Hierarchie-Semantik. Kein Standard-Term trägt einen Dateisystem-Pfad als bloße Einsortierung ohne Teil-Ganzes-Behauptung."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+#################################################################
+# Aufgaben
+#################################################################
+
+ow:blockedBy a owl:ObjectProperty ;
+    owl:inverseOf ow:blocks ;
+    rdfs:domain schema:Action ;
+    rdfs:range schema:Action ;
+    rdfs:label "blockiert durch"@de, "blocked by"@en ;
+    rdfs:comment "Die Aufgabe kann erst beginnen/abschließen, wenn die referenzierte Aufgabe abgeschlossen ist. schema.org kennt keine Aktions-Abhängigkeiten; das improvisierte dependencies-Array der Altfassung wird hiermit durch ein dereferenzierbares Prädikat ersetzt."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:blocks a owl:ObjectProperty ;
+    owl:inverseOf ow:blockedBy ;
+    rdfs:domain schema:Action ;
+    rdfs:range schema:Action ;
+    rdfs:label "blockiert"@de, "blocks"@en ;
+    rdfs:comment "Inverse zu ow:blockedBy; wird vom OWL-RL-Reasoner materialisiert, nicht doppelt gepflegt."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:subTaskOf a owl:ObjectProperty ;
+    rdfs:subPropertyOf schema:isPartOf ;
+    rdfs:domain schema:Action ;
+    rdfs:range schema:Action ;
+    rdfs:label "Teilaufgabe von"@de, "subtask of"@en ;
+    rdfs:comment "Hierarchische Zerlegung von Aufgaben. schema:isPartOf ist auf CreativeWork ausgelegt; die Unterproperty hält die Aufgaben-Hierarchie von genereller Teil-Ganzes-Beziehung abfragbar getrennt."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:inProject a owl:ObjectProperty ;
+    rdfs:subPropertyOf schema:isPartOf ;
+    rdfs:range ow:Project ;
+    rdfs:label "im Projekt"@de, "in project"@en ;
+    rdfs:comment "Zuordnung einer Aufgabe (oder eines Dokuments) zu einem Projekt. schema.org drückt Projektzugehörigkeit von Actions nicht aus; schema:agent der Altfassung war semantisch falsch (das Projekt handelt nicht)."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+#################################################################
+# Skills, Agenten, Werkzeuge
+#
+# Die Prädikate spiegeln bewusst die Feldnamen der A2A-AgentCard
+# (endpoints, securitySchemes, skills), damit eine spätere Brücke
+# zu A2A eine Umbenennung ist und kein Remodelling (SPEC §4.3).
+#################################################################
+
+ow:trigger a owl:DatatypeProperty ;
+    rdfs:domain ow:Skill ;
+    rdfs:range xsd:string ;
+    rdfs:label "Auslöser"@de, "trigger"@en ;
+    rdfs:comment "Beschreibung, wann ein Skill anzuwenden ist (SKILL.md-Frontmatter 'description'/'trigger'). Kein Standard-Term modelliert Aktivierungsbedingungen prozeduralen Wissens."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:skillSource a owl:DatatypeProperty ;
+    rdfs:domain ow:Skill ;
+    rdfs:range xsd:string ;
+    rdfs:label "Skill-Quelle"@de, "skill source"@en ;
+    rdfs:comment "Ladeweg des Skills (manuell, URL, GitHub-Repo, MCP-Prompt) samt Locator. Herkunftsangabe unterhalb der PROV-Granularität; prov:wasDerivedFrom referenziert Entitäten, hier ist es ein Konfigurationswert."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:providesSkill a owl:ObjectProperty ;
+    rdfs:range ow:Skill ;
+    rdfs:label "bietet Skill an"@de, "provides skill"@en ;
+    rdfs:comment "Ein Agent bietet einen Skill an (A2A-AgentCard 'skills'). schema:knowsAbout ist zu unspezifisch: es behauptet Themenwissen, nicht abrufbare Fähigkeit."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:agentCardUrl a owl:DatatypeProperty ;
+    rdfs:domain ow:Agent ;
+    rdfs:range xsd:anyURI ;
+    rdfs:label "Agent-Card-URL"@de, "agent card URL"@en ;
+    rdfs:comment "URL der A2A-AgentCard (/.well-known/agent-card.json). Bewusst getrennt von schema:url (der Homepage des Agenten): die Card ist ein maschinenlesbares Capability-Dokument."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:endpoint a owl:DatatypeProperty ;
+    rdfs:range xsd:anyURI ;
+    rdfs:label "Endpoint"@de, "endpoint"@en ;
+    rdfs:comment "Aufruf-Endpoint eines Agenten oder MCP-Servers (A2A-AgentCard 'endpoints'). schema:url bezeichnet die Referenz-URL eines Dings, nicht die maschinelle Aufruffläche."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:securityScheme a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "Security-Scheme"@de, "security scheme"@en ;
+    rdfs:comment "Authentifizierungsschema als Literal (A2A-AgentCard 'securitySchemes', JSON). Kein etabliertes RDF-Vokabular für API-Auth-Schemata; das Literal hält die A2A-Struktur verlustfrei."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:transport a owl:DatatypeProperty ;
+    rdfs:domain ow:ToolProvider ;
+    rdfs:range xsd:string ;
+    rdfs:label "Transport"@de, "transport"@en ;
+    rdfs:comment "MCP-Transportart des Servers ('streamable-http', 'sse', 'stdio'). Protokollspezifisch, kein Standard-Äquivalent."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:inputSchema a owl:DatatypeProperty ;
+    rdfs:domain ow:Tool ;
+    rdfs:range xsd:string ;
+    rdfs:label "Eingabe-Schema"@de, "input schema"@en ;
+    rdfs:comment "JSON-Schema der Tool-Parameter als Literal. Eine Abbildung von JSON-Schema nach RDF wäre verlustbehaftet und für den Zweck (Weitergabe an LLM-Function-Calling) kontraproduktiv."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:providedBy a owl:ObjectProperty ;
+    rdfs:subPropertyOf schema:provider ;
+    rdfs:domain ow:Tool ;
+    rdfs:range ow:ToolProvider ;
+    rdfs:label "bereitgestellt von"@de, "provided by"@en ;
+    rdfs:comment "Verbindet ein Werkzeug mit seinem MCP-Server. Unterproperty von schema:provider, damit generische Clients die Beziehung auf der Oberkategorie auswerten können."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+#################################################################
+# Connectors und Föderation
+#################################################################
+
+ow:connectorKind a owl:DatatypeProperty ;
+    rdfs:domain ow:Connector ;
+    rdfs:range xsd:string ;
+    rdfs:label "Connector-Art"@de, "connector kind"@en ;
+    rdfs:comment "Registrierte Art des Connectors (z. B. 'github-rdf', 'obsidian-vault', 'sparql-endpoint'). Interner Registry-Schlüssel ohne Standard-Äquivalent."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:locator a owl:DatatypeProperty ;
+    rdfs:domain ow:Connector ;
+    rdfs:range xsd:string ;
+    rdfs:label "Quell-Locator"@de, "source locator"@en ;
+    rdfs:comment "Adresse der Quelle (Repo-URL, Vault-Pfad, Endpoint-URL, Agent-Card-URL). Bewusst breiter als xsd:anyURI, weil lokale Pfade und opaque Bezeichner vorkommen."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:revision a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "Revision"@de, "revision"@en ;
+    rdfs:comment "Quell-Revision eines Imports (Commit-SHA, ETag, mtime-Hash). Grundlage der Konflikterkennung vor push; kein Standard-Term trägt versionsübergreifende opake Revisionsbezeichner."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:syncState a owl:DatatypeProperty ;
+    rdfs:domain ow:Connector ;
+    rdfs:range xsd:string ;
+    rdfs:label "Sync-Zustand"@de, "sync state"@en ;
+    rdfs:comment "Betriebszustand der Connector-Instanz ('idle', 'syncing', 'error', 'conflict'). Systemzustand, kein Wissensinhalt; als eigener Term, damit das Selbstmodell abfragbar bleibt."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:targetGraph a owl:ObjectProperty ;
+    rdfs:domain ow:Connector ;
+    rdfs:label "Ziel-Graph"@de, "target graph"@en ;
+    rdfs:comment "Named Graph, in den ein materialisierender Connector schreibt (graph/<u>/import/<id>). Verweist auf die Graph-IRI selbst; kein Standard-Term modelliert Schreibziele von Import-Prozessen."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:sparqlEndpoint a owl:DatatypeProperty ;
+    owl:equivalentProperty void:sparqlEndpoint ;
+    rdfs:domain ow:FederatedEndpoint ;
+    rdfs:range xsd:anyURI ;
+    rdfs:label "SPARQL-Endpoint"@de, "SPARQL endpoint"@en ;
+    rdfs:comment "Query-URL des föderierten Endpoints. Äquivalent zu void:sparqlEndpoint; eigener Term nur, damit das Kernvokabular ohne VoID-Import vollständig bleibt (as: und void: werden erst bei Bedarf geladen, SPEC §4.1)."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:trustLevel a owl:DatatypeProperty ;
+    rdfs:domain ow:FederatedEndpoint ;
+    rdfs:range xsd:string ;
+    rdfs:label "Vertrauensstufe"@de, "trust level"@en ;
+    rdfs:comment "Vertrauensstufe eines föderierten Endpoints ('trusted', 'known', 'unknown'); steuert, ob ausgehende SERVICE-Aufrufe Bindings aus privaten Graphen senden dürfen. Sicherheitsattribut ohne Standard-Äquivalent."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+#################################################################
+# Präsentationsbezug
+#################################################################
+
+ow:rendersNode a owl:ObjectProperty ;
+    rdfs:label "stellt Knoten dar"@de, "renders node"@en ;
+    rdfs:comment "Verbindet ein Layout-Element in graph/presentation mit dem semantischen Knoten, den es darstellt. Die einzige Brücke zwischen Präsentations- und Wissensschicht; Layout-Werte selbst (Position, Farbe) stehen nie im semantischen Graphen."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
