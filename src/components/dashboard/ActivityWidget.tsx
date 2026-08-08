@@ -31,7 +31,8 @@ export function ActivityWidget({ id, title, isEditing, onDelete }: any) {
 
     return (
         <WidgetWrapper id={id} title={title || "Aktivitäten"} isEditing={isEditing} onDelete={onDelete}>
-            <div className={styles.activityList}>
+            {/* Scrollbare Region: fokussierbar, damit Tastaturnutzer scrollen können */}
+            <div className={styles.activityList} tabIndex={0} role="region" aria-label="Aktivitäten">
                 {activities.length === 0 ? (
                     <p className={styles.empty}>Keine Aktivitäten</p>
                 ) : (

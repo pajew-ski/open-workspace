@@ -914,6 +914,9 @@ export function AssistantChat() {
             {isOpen && (
                 <div
                     data-testid="assistant-chat-window"
+                    role="dialog"
+                    aria-label="Assistent"
+                    aria-modal={isMobile || undefined}
                     className={`${styles.chatWindow} ${isMobile ? styles.mobile : ''} ${showSidebar ? styles.showSidebar : ''} ${isDragging ? styles.dragging : ''} ${isFullscreen ? styles.fullscreen : ''}`}
                     style={(!isMobile && !isFullscreen) ? {
                         width,

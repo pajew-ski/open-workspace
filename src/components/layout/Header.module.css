@@ -41,10 +41,18 @@
     display: none;
     background: none;
     border: none;
+    border-radius: var(--radius-md);
     color: var(--color-text-secondary);
     cursor: pointer;
-    padding: var(--space-2);
+    width: var(--touch-target);
+    height: var(--touch-target);
     margin-right: var(--space-2);
+    flex-shrink: 0;
+}
+
+.mobileMenuBtn:hover {
+    background-color: var(--color-surface-sunken);
+    color: var(--color-text-primary);
 }
 
 @media (max-width: 768px) {
@@ -55,6 +63,15 @@
     }
 
     .header {
-        padding: 0 var(--space-3);
+        padding: 0 var(--space-2) 0 var(--space-2);
+        padding-right: calc(var(--space-2) + var(--safe-right));
+        padding-left: calc(var(--space-2) + var(--safe-left));
+    }
+
+    .title {
+        font-size: var(--text-base);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 }

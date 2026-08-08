@@ -7,6 +7,21 @@ import { AppShell } from '@/components/layout';
 import { Button, Card, CardContent } from '@/components/ui';
 import styles from './page.module.css';
 
+/**
+ * Provider liefern beliebige Event-Farben — die Textfarbe muss sich der
+ * Helligkeit anpassen, sonst ist Weiß auf hellen Farben unlesbar.
+ */
+function eventTextColor(color: string | undefined): string {
+    const match = color?.match(/^#?([0-9a-f]{6})$/i);
+    if (!match) return '#FFFFFF';
+    const value = parseInt(match[1], 16);
+    const r = (value >> 16) & 255;
+    const g = (value >> 8) & 255;
+    const b = value & 255;
+    const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+    return yiq >= 145 ? '#1A1A1A' : '#FFFFFF';
+}
+
 interface CalendarEvent {
     id: string;
     providerId: string;
@@ -120,7 +135,7 @@ export default function CalendarPage() {
                             <div className={styles.dayNumber}>{format(day, 'd')}</div>
                             <div className={styles.dayEvents}>
                                 {dayEvents.slice(0, 4).map(ev => (
-                                    <div key={ev.id} className={styles.eventChip} style={{ backgroundColor: ev.color }} title={ev.title}>
+                                    <div key={ev.id} className={styles.eventChip} style={{ backgroundColor: ev.color, color: eventTextColor(ev.color) }} title={ev.title}>
                                         {ev.title}
                                     </div>
                                 ))}
@@ -157,7 +172,7 @@ export default function CalendarPage() {
                                     const start = new Date(ev.startDate);
                                     const top = (start.getHours() * 60 + start.getMinutes()) / 1440 * 100;
                                     return (
-                                        <div key={ev.id} className={styles.weekEvent} style={{ top: `${top}%`, backgroundColor: ev.color }} title={`${ev.title} (${format(start, 'HH:mm')})`}>
+                                        <div key={ev.id} className={styles.weekEvent} style={{ top: `${top}%`, backgroundColor: ev.color, color: eventTextColor(ev.color) }} title={`${ev.title} (${format(start, 'HH:mm')})`}>
                                             {format(start, 'HH:mm')} {ev.title}
                                         </div>
                                     );

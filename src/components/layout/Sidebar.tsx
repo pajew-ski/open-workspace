@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useRef } from 'react';
+import { useDialogA11y } from '@/lib/hooks/useDialogA11y';
 import styles from './Sidebar.module.css';
 
 interface NavItem {
@@ -132,25 +134,50 @@ interface SidebarProps {
 
 export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: SidebarProps) {
     const pathname = usePathname();
+    const asideRef = useRef<HTMLElement>(null);
+    const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+    // Als mobiler Drawer ist die Sidebar ein modaler Dialog: Fokus-Falle,
+    // Escape schließt, Fokus kehrt zum Burger-Button zurück.
+    useDialogA11y(Boolean(isMobileOpen), asideRef, onMobileClose ?? (() => { }), closeButtonRef);
 
     return (
-        <aside className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''} ${isMobileOpen ? styles.mobileOpen : ''}`}>
+        <aside
+            ref={asideRef}
+            id="app-sidebar"
+            className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''} ${isMobileOpen ? styles.mobileOpen : ''}`}
+            role={isMobileOpen ? 'dialog' : undefined}
+            aria-modal={isMobileOpen || undefined}
+            aria-label="Hauptmenü"
+        >
             <div className={styles.header}>
                 <button
-                    className={styles.burgerButton}
+                    className={`${styles.burgerButton} ${styles.desktopOnly}`}
                     onClick={onToggle}
-                    aria-label={isCollapsed ? 'Menü öffnen' : 'Menü schließen'}
+                    aria-label={isCollapsed ? 'Seitenleiste ausklappen' : 'Seitenleiste einklappen'}
+                    aria-expanded={!isCollapsed}
                 >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                         <line x1="3" y1="6" x2="21" y2="6" />
                         <line x1="3" y1="12" x2="21" y2="12" />
                         <line x1="3" y1="18" x2="21" y2="18" />
                     </svg>
                 </button>
-                {!isCollapsed && <span className={styles.logoText}>Open Workspace</span>}
+                <button
+                    ref={closeButtonRef}
+                    className={`${styles.burgerButton} ${styles.mobileOnly}`}
+                    onClick={onMobileClose}
+                    aria-label="Menü schließen"
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+                {(!isCollapsed || isMobileOpen) && <span className={styles.logoText}>Open Workspace</span>}
             </div>
 
-            <nav className={styles.nav}>
+            <nav className={styles.nav} aria-label="Hauptnavigation">
                 {navItems.map((item) => {
                     const isActive = pathname === item.href ||
                         (item.href !== '/' && pathname.startsWith(item.href));
@@ -161,6 +188,8 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
                             href={item.href}
                             className={`${styles.navItem} ${isActive ? styles.active : ''}`}
                             title={isCollapsed && !isMobileOpen ? item.label : undefined}
+                            aria-current={isActive ? 'page' : undefined}
+                            onClick={onMobileClose}
                         >
                             <span className={styles.navIcon}>{item.icon}</span>
                             {(!isCollapsed || isMobileOpen) && <span className={styles.navLabel}>{item.label}</span>}
@@ -174,6 +203,8 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
                     href="/settings"
                     className={`${styles.navItem} ${pathname.startsWith('/settings') ? styles.active : ''}`}
                     title={isCollapsed && !isMobileOpen ? 'Einstellungen' : undefined}
+                    aria-current={pathname.startsWith('/settings') ? 'page' : undefined}
+                    onClick={onMobileClose}
                 >
                     <span className={styles.navIcon}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

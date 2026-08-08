@@ -1,23 +1,30 @@
 'use client';
 
+import { RefObject } from 'react';
 import { NotificationBell } from '@/components/notifications';
 import styles from './Header.module.css';
 
 interface HeaderProps {
     title?: string;
     onMobileMenuClick?: () => void;
+    isMobileMenuOpen?: boolean;
+    mobileMenuButtonRef?: RefObject<HTMLButtonElement | null>;
 }
 
-export function Header({ title, onMobileMenuClick }: HeaderProps) {
+export function Header({ title, onMobileMenuClick, isMobileMenuOpen, mobileMenuButtonRef }: HeaderProps) {
     return (
         <header className={styles.header}>
             <div className={styles.left}>
                 <button
+                    ref={mobileMenuButtonRef}
                     className={styles.mobileMenuBtn}
                     onClick={onMobileMenuClick}
                     aria-label="Menü öffnen"
+                    aria-expanded={Boolean(isMobileMenuOpen)}
+                    aria-controls="app-sidebar"
+                    aria-haspopup="dialog"
                 >
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                         <line x1="3" y1="12" x2="21" y2="12" />
                         <line x1="3" y1="6" x2="21" y2="6" />
                         <line x1="3" y1="18" x2="21" y2="18" />
