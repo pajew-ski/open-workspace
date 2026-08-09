@@ -152,6 +152,8 @@ export const SCHEMA = {
     Message: schemaOrg('Message'),
     SoftwareApplication: schemaOrg('SoftwareApplication'),
     WebPage: schemaOrg('WebPage'),
+    /** Oberklasse föderierter Endpoints (ow:FederatedEndpoint ⊑ schema:Service, SPEC §7.4). */
+    Service: schemaOrg('Service'),
     name: schemaOrg('name'),
     alternateName: schemaOrg('alternateName'),
     author: schemaOrg('author'),
