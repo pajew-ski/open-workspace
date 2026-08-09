@@ -1,0 +1,111 @@
+# Runtime `server` (SPEC §5.2, M12) — dasselbe Image wie das
+# Home-Assistant-Add-on, nur anders verpackt: TLS und OIDC liegen davor,
+# die App selbst spricht Klartext-HTTP im internen Netz und läuft
+# unprivilegiert.
+#
+#   cp deploy/server/.env.example deploy/server/.env
+#
+#   Mit OIDC (Kette: Caddy TLS → oauth2-proxy → App):
+#     docker compose -f deploy/server/docker-compose.yml --profile oidc up -d
+#
+#   Ohne OIDC (Einzelnutzer, Caddy direkt vor der App) — in der .env
+#   OW_UPSTREAM=app:3000 und OW_AUTH_MODE=single-user setzen:
+#     docker compose -f deploy/server/docker-compose.yml up -d
+#
+# Der oauth2-proxy steht im Profil `oidc`: ohne ausgefüllte Zugangsdaten
+# startet er gar nicht erst, statt halb konfiguriert Anmeldungen zu
+# verschlucken.
+
+name: open-workspace
+
+services:
+  app:
+    image: ${OW_IMAGE:-ghcr.io/pajew-ski/open-workspace:latest}
+    build:
+      # EIN Dockerfile für beide Runtimes — hier nur, damit `docker compose
+      # build` aus dem Repo heraus funktioniert.
+      context: ../..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    # Nicht-root: das Image legt uid/gid 1001 an und übereignet ihm /app.
+    user: "1001:1001"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      # App an der Wurzel (der Reverse-Proxy leitet / weiter). Für einen
+      # Unterpfad hier z. B. /workspace setzen — der Start-Schritt backt ihn
+      # in den Build ein.
+      OW_BASE_PATH: ${OW_BASE_PATH:-}
+      OW_RUNTIME: server
+      # Identität kommt vom oauth2-proxy (siehe unten). Ohne Proxy davor
+      # ist `single-user` die ehrliche Einstellung.
+      OW_AUTH_MODE: ${OW_AUTH_MODE:-proxy-header}
+      OW_AUTH_USER_HEADER: ${OW_AUTH_USER_HEADER:-x-forwarded-user}
+      OW_AUTH_NAME_HEADER: ${OW_AUTH_NAME_HEADER:-x-forwarded-preferred-username}
+      OW_AUTH_GROUPS_HEADER: ${OW_AUTH_GROUPS_HEADER:-x-forwarded-groups}
+      OW_INSTANCE_BASE: ${OW_INSTANCE_BASE:-}
+      OW_MCP_TOKENS: ${OW_MCP_TOKENS:-}
+    volumes:
+      - ow-data:/app/data
+    expose:
+      - "3000"
+    networks:
+      - internal
+
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.13.0
+    restart: unless-stopped
+    profiles:
+      - oidc
+    depends_on:
+      - app
+    command:
+      - --http-address=0.0.0.0:4180
+      - --reverse-proxy=true
+      - --provider=oidc
+      - --oidc-issuer-url=${OIDC_ISSUER_URL}
+      - --client-id=${OIDC_CLIENT_ID}
+      - --client-secret=${OIDC_CLIENT_SECRET}
+      - --redirect-url=https://${OW_PUBLIC_HOST}/oauth2/callback
+      - --email-domain=*
+      - --cookie-secret=${OIDC_COOKIE_SECRET}
+      - --cookie-secure=true
+      - --upstream=http://app:3000
+      # Identität an die App weiterreichen — genau die Header, die
+      # OW_AUTH_MODE=proxy-header liest.
+      - --set-xauthrequest=true
+      - --pass-user-headers=true
+      - --pass-access-token=false
+      - --scope=openid profile email groups
+    expose:
+      - "4180"
+    networks:
+      - internal
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      OW_PUBLIC_HOST: ${OW_PUBLIC_HOST}
+      OW_TLS_EMAIL: ${OW_TLS_EMAIL}
+      # Ziel der Weiterleitung: mit OIDC der oauth2-proxy, ohne ihn die App.
+      OW_UPSTREAM: ${OW_UPSTREAM:-oauth2-proxy:4180}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - internal
+
+networks:
+  internal:
+
+volumes:
+  ow-data:
+  caddy-data:
+  caddy-config:

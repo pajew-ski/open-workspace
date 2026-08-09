@@ -15,7 +15,7 @@ import { getServerGraph, persistServerGraphSnapshot } from '@/lib/graph/server/i
 import { getConnector } from '@/lib/graph/connectors/registry';
 import { pushConnector } from '@/lib/graph/connectors/sync';
 import { createNodeFileSystem } from '@/lib/platform/runtime/node-fs';
-import { createServerRuntimeAdapter } from '@/lib/platform/runtime/server';
+import { createNodeRuntimeAdapter } from '@/lib/platform/runtime/server';
 
 interface RouteContext {
     params: Promise<{ id: string }>;
@@ -35,7 +35,7 @@ export async function POST(_request: NextRequest, context: RouteContext) {
         }
         const result = await pushConnector(handle, id, {
             files: createNodeFileSystem(),
-            runtime: createServerRuntimeAdapter(),
+            runtime: createNodeRuntimeAdapter(),
         });
         await persistServerGraphSnapshot();
         const connector = await getConnector(handle, id);
