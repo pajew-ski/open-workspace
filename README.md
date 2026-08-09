@@ -40,6 +40,11 @@ konfigurierte Tools selbstständig aus.
   `graph_neighbors`, `graph_describe`, `graph_sparql`, optional `graph_write`),
   Knoten als Resources `graph://<iri>`, Retrieval-Profile als Prompts. Zugang
   nur per Token mit ausdrücklich freigegebenen Graphen (`OW_MCP_TOKENS`)
+- **Föderation** (`/graph/federation`): `SERVICE`-Abfragen gegen registrierte
+  SPARQL-Endpoints (Vertrauensstufe entscheidet, ob lokale Join-Schlüssel
+  mitgeschickt werden), SSRF-Schutz, Zeit- und Ergebnis-Limits — und der eigene
+  Endpoint als föderierbare Quelle (`/api/graph/federation/sparql`, read-only;
+  ohne Token ist das Dataset leer)
 - **Agenten (A2A)**: Remote-Agenten per Agent-Card-Discovery verbinden
   (JSON-RPC `message/send`, Task-Polling) und lokale Personas definieren —
   der Assistent delegiert im Chat via `[[AGENT:id:…]]`
@@ -179,6 +184,8 @@ e2e/                # Playwright-Tests
 | `POST /api/graph/retrieve`, `GET /api/graph/search` | Multi-Hop-Retrieval und Graph-Suche |
 | `POST/GET/DELETE /api/mcp` | MCP-Server (Streamable HTTP) — Token-gebunden |
 | `GET /api/mcp/status` | Status des MCP-Servers (Zugänge, Rechte, Sitzungen — ohne Geheimnisse) |
+| `GET/POST /api/graph/federation/endpoints` | Registrierte SPARQL-Endpoints (`ow:FederatedEndpoint`) |
+| `GET/POST /api/graph/federation/sparql` | Eingehende Föderation (read-only, Dataset aus dem Token) |
 | `GET/POST/PUT/DELETE /api/agents` | Agenten-Verwaltung |
 | `GET/POST/DELETE /api/tools` | Tool-Konfiguration |
 | `GET/POST/PUT/DELETE /api/connections` | Sichere Verbindungen |
