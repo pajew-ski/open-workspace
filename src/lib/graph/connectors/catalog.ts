@@ -12,11 +12,13 @@ import type { Connector } from './types';
 import { rdfFileConnector } from './rdf-file';
 import { githubRdfConnector } from './github-rdf';
 import { obsidianVaultConnector } from './obsidian';
+import { jsonCanvasConnector } from './json-canvas';
 
 const CONNECTORS: ReadonlyArray<Connector<unknown>> = [
     rdfFileConnector as Connector<unknown>,
     githubRdfConnector as Connector<unknown>,
     obsidianVaultConnector as Connector<unknown>,
+    jsonCanvasConnector as Connector<unknown>,
 ];
 
 export function listConnectorKinds(): ReadonlyArray<Connector<unknown>> {

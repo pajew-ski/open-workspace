@@ -11,7 +11,13 @@ const INDEX_FILE = path.join(DATA_DIR, 'index.json');
 
 export interface CanvasCard {
     id: string;
-    type: 'note' | 'task' | 'link' | 'image';
+    /**
+     * `file` und `group` kommen mit dem JSON-Canvas-Import (M5):
+     * `file` referenziert eine Datei (Pfad in `content`, optional mit
+     * `#Unterabschnitt`), `group` ist ein reiner Darstellungs-Rahmen
+     * (Label in `title`) ohne semantisches Gegenstück im Graphen.
+     */
+    type: 'note' | 'task' | 'link' | 'image' | 'file' | 'group';
     title: string;
     content?: string;
     x: number;
@@ -117,6 +123,50 @@ export async function createCanvas(name: string, description?: string): Promise<
             name,
             description,
             cardCount: 0,
+            createdAt: now,
+            updatedAt: now,
+        });
+    });
+
+    return canvas;
+}
+
+export interface ImportCanvasInput {
+    name: string;
+    description?: string;
+    cards: Array<Omit<CanvasCard, 'createdAt' | 'updatedAt'>>;
+    connections: CanvasConnection[];
+}
+
+/**
+ * Legt eine Pinnwand aus einem Import (JSON Canvas 1.0, M5) an — Karten
+ * und Verbindungen kommen komplett aus der Quelle, die IDs bleiben
+ * erhalten (sie sind innerhalb der Datei eindeutig und tragen den
+ * Round-Trip).
+ */
+export async function importCanvas(input: ImportCanvasInput): Promise<CanvasData> {
+    const now = new Date().toISOString();
+    const id = generateId();
+
+    const canvas: CanvasData = {
+        id,
+        name: input.name,
+        description: input.description,
+        cards: input.cards.map(card => ({ ...card, createdAt: now, updatedAt: now })),
+        connections: input.connections,
+        viewport: { x: 0, y: 0, zoom: 1 },
+        createdAt: now,
+        updatedAt: now,
+    };
+
+    await writeJsonAtomic(getCanvasPath(id), canvas);
+
+    await updateIndex(index => {
+        index.canvases.push({
+            id,
+            name: input.name,
+            description: input.description,
+            cardCount: canvas.cards.length,
             createdAt: now,
             updatedAt: now,
         });

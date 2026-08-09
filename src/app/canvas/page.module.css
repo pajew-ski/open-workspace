@@ -183,3 +183,7 @@
         grid-template-columns: 1fr;
     }
 }
+/* Nativer Datei-Dialog übernimmt die Auswahl — das Input selbst bleibt unsichtbar. */
+.importInput {
+    display: none;
+}
