@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadTools, createTool, deleteTool } from '@/lib/tools/storage';
 import { createToolSchema, parseBody } from '@/lib/api/validation';
+import { refreshAiMirrorAfterMutation } from '@/lib/graph/server/instance';
 
 export async function GET() {
     try {
@@ -18,6 +19,7 @@ export async function POST(request: NextRequest) {
         if (!parsed.ok) return parsed.response;
 
         const tool = await createTool(parsed.data);
+        await refreshAiMirrorAfterMutation('Werkzeug angelegt');
         return NextResponse.json({ tool });
     } catch (error) {
         console.error('Tool create error:', error);
@@ -35,6 +37,7 @@ export async function DELETE(request: NextRequest) {
         }
 
         await deleteTool(id);
+        await refreshAiMirrorAfterMutation('Werkzeug gelöscht');
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Tool delete error:', error);

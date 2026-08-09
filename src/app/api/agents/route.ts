@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { loadAgents, createAgent, deleteAgent, updateAgent } from '@/lib/agents/storage';
 import { Agent } from '@/lib/agents/types';
 import { createAgentSchema, parseBody, updateAgentSchema } from '@/lib/api/validation';
+import { refreshAiMirrorAfterMutation } from '@/lib/graph/server/instance';
 
 export async function GET() {
     try {
@@ -19,6 +20,7 @@ export async function POST(request: NextRequest) {
         if (!parsed.ok) return parsed.response;
 
         const agent = await createAgent(parsed.data);
+        await refreshAiMirrorAfterMutation('Agent angelegt');
         return NextResponse.json({ agent });
     } catch (error) {
         console.error('Agent create error:', error);
@@ -43,6 +45,7 @@ export async function PUT(request: NextRequest) {
             return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
         }
 
+        await refreshAiMirrorAfterMutation('Agent aktualisiert');
         return NextResponse.json({ agent });
     } catch (error) {
         console.error('Agent update error:', error);
@@ -60,6 +63,7 @@ export async function DELETE(request: NextRequest) {
         }
 
         await deleteAgent(id);
+        await refreshAiMirrorAfterMutation('Agent gelöscht');
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Agent delete error:', error);

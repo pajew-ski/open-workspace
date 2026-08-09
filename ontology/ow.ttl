@@ -274,6 +274,14 @@ ow:providedBy a owl:ObjectProperty ;
     rdfs:comment "Verbindet ein Werkzeug mit seinem MCP-Server. Unterproperty von schema:provider, damit generische Clients die Beziehung auf der Oberkategorie auswerten können."@de ;
     rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
 
+ow:requiresTool a owl:ObjectProperty ;
+    rdfs:subPropertyOf schema:tool ;
+    rdfs:domain ow:Skill ;
+    rdfs:range ow:Tool ;
+    rdfs:label "benötigt Werkzeug"@de, "requires tool"@en ;
+    rdfs:comment "Ein Skill benötigt ein aufrufbares Werkzeug (ergänzt mit M9). schema:tool bezeichnet generische Hilfsmittel einer Anleitung (HowToTool oder Text) ohne Verfügbarkeits-Anspruch; die Spezialisierung macht den maschinellen Werkzeugbedarf (LLM-Function-Calling) als harte Voraussetzung abfragbar — welche Skills welche Tools brauchen, ist die M9-Abnahmefrage. Als Unterproperty bleibt die Beziehung für generische Clients auf schema:tool auswertbar."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
 #################################################################
 # Connectors und Föderation
 #################################################################

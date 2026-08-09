@@ -94,6 +94,7 @@ export const OW = {
     transport: ow('transport'),
     inputSchema: ow('inputSchema'),
     providedBy: ow('providedBy'),
+    requiresTool: ow('requiresTool'),
     // Connectors und Föderation
     connectorKind: ow('connectorKind'),
     locator: ow('locator'),
@@ -167,6 +168,7 @@ export const SCHEMA = {
     keywords: schemaOrg('keywords'),
     error: schemaOrg('error'),
     url: schemaOrg('url'),
+    softwareVersion: schemaOrg('softwareVersion'),
     /** Präsentationswerte (nur graph/presentation): Invariante 8 vor eigenem Term. */
     width: schemaOrg('width'),
     height: schemaOrg('height'),
@@ -223,6 +225,12 @@ export const SKOS = {
     Concept: `${PREFIXES.skos}Concept`,
     prefLabel: `${PREFIXES.skos}prefLabel`,
     broader: `${PREFIXES.skos}broader`,
+} as const;
+
+export const FOAF = {
+    Agent: `${PREFIXES.foaf}Agent`,
+    Person: `${PREFIXES.foaf}Person`,
+    Group: `${PREFIXES.foaf}Group`,
 } as const;
 
 export const XSD = {

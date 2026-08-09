@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseBody, createMcpServerSchema } from '@/lib/api/validation';
 import { createMcpServer } from '@/lib/ai/store.server';
+import { refreshAiMirrorAfterMutation } from '@/lib/graph/server/instance';
 
 export async function POST(request: NextRequest) {
     const parsed = await parseBody(createMcpServerSchema, request);
@@ -8,6 +9,7 @@ export async function POST(request: NextRequest) {
 
     try {
         const server = await createMcpServer(parsed.data);
+        await refreshAiMirrorAfterMutation('MCP-Server angelegt');
         return NextResponse.json({ server }, { status: 201 });
     } catch (error) {
         return NextResponse.json(
