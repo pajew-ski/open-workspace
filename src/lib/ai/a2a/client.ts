@@ -20,7 +20,21 @@ export interface A2AAgentCard {
     cardUrl: string;
 }
 
-const CARD_PATHS = ['/.well-known/agent-card.json', '/.well-known/agent.json'];
+/** Well-known card locations, newest spec first (shared with the graph connector). */
+export const CARD_PATHS = ['/.well-known/agent-card.json', '/.well-known/agent.json'];
+
+/**
+ * Candidate card URLs for an input that may be an origin, a full card URL
+ * (".../*.json") or the JSON-RPC endpoint. Single source of the discovery
+ * order for `fetchAgentCard` and the `a2a-agent-card` graph connector.
+ */
+export function agentCardCandidates(input: string): string[] {
+    const trimmed = input.trim().replace(/\/+$/, '');
+    if (trimmed.endsWith('.json')) return [trimmed];
+    const candidates = CARD_PATHS.map(path => `${trimmed}${path}`);
+    candidates.push(trimmed); // some agents serve the card at their root
+    return candidates;
+}
 const FETCH_TIMEOUT_MS = 10_000;
 const POLL_INTERVAL_MS = 1_500;
 const MAX_POLLS = 20;
@@ -47,14 +61,7 @@ function normalizeCard(data: Record<string, unknown>, cardUrl: string, origin: s
  * a full card URL (".../agent-card.json") or the JSON-RPC endpoint.
  */
 export async function fetchAgentCard(input: string, headers?: Record<string, string>): Promise<A2AAgentCard> {
-    const trimmed = input.trim().replace(/\/+$/, '');
-    const candidates: string[] = [];
-    if (trimmed.endsWith('.json')) {
-        candidates.push(trimmed);
-    } else {
-        for (const path of CARD_PATHS) candidates.push(`${trimmed}${path}`);
-        candidates.push(trimmed); // some agents serve the card at their root
-    }
+    const candidates = agentCardCandidates(input);
 
     let lastError = '';
     for (const candidate of candidates) {
