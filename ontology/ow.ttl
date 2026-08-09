@@ -148,6 +148,64 @@ ow:inProject a owl:ObjectProperty ;
     rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
 
 #################################################################
+# Quelltreue nativer Entitäten (Abschluss SPEC §12.4)
+#
+# Mit der Umstellung der Schreibpfade ist der Store die einzige
+# Wahrheit — der native Zustand muss verlustfrei im Graphen liegen.
+# Wo das Standard-Vokabular gröber ist als das native Modell, tragen
+# diese Terme den exakten Zustand; die Standard-Projektion (z. B.
+# schema:actionStatus) bleibt daneben für Interop erhalten — dasselbe
+# Doppel-Muster wie beim Frontmatter des Obsidian-Connectors (M4).
+#################################################################
+
+ow:workflowStatus a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "Workflow-Status"@de, "workflow status"@en ;
+    rdfs:comment "Exakter nativer Workflow-Zustand einer Aufgabe ('backlog', 'todo', 'in-progress', 'review', 'done', 'on-hold') oder eines Projekts ('planning', 'active', 'completed', 'archived'). schema:actionStatus kennt nur drei ActionStatusType-Werte und gilt nicht für Projekte — ohne diesen Term wäre der Zustand nach dem Round-Trip verlustbehaftet."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:priority a owl:DatatypeProperty ;
+    rdfs:domain schema:Action ;
+    rdfs:range xsd:string ;
+    rdfs:label "Priorität"@de, "priority"@en ;
+    rdfs:comment "Priorität einer Aufgabe: 'low', 'medium', 'high' oder 'urgent'. Weder schema.org noch Dublin Core oder PROV kennen eine Aufgaben-Priorität."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:taskKind a owl:DatatypeProperty ;
+    rdfs:domain schema:Action ;
+    rdfs:range xsd:string ;
+    rdfs:label "Aufgabenart"@de, "task kind"@en ;
+    rdfs:comment "Native Art einer Aufgabe: 'task', 'bug', 'feature' oder 'milestone'. schema:additionalType erwartet frei interpretierbare URLs/Texte ohne kontrollierte Semantik; ein etabliertes Issue-Typen-Vokabular existiert nicht."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:deferredUntil a owl:DatatypeProperty ;
+    rdfs:domain schema:Action ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "zurückgestellt bis"@de, "deferred until"@en ;
+    rdfs:comment "Wiedervorlage-Zeitpunkt: Die Aufgabe ist bis dahin bewusst zurückgestellt. Bewusst nicht schema:scheduledTime — das wäre ein geplanter Ausführungszeitpunkt, keine Zurückstellung; schema:startTime trägt bereits den geplanten Beginn."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:estimatedEffort a owl:DatatypeProperty ;
+    rdfs:domain schema:Action ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "geschätzter Aufwand"@de, "estimated effort"@en ;
+    rdfs:comment "Geschätzter Aufwand in Stunden. schema:timeRequired gilt für CreativeWork/HowTo und ist eine ISO-Duration für Lernaufwand, kein Planwert für Actions."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:actualEffort a owl:DatatypeProperty ;
+    rdfs:domain schema:Action ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "tatsächlicher Aufwand"@de, "actual effort"@en ;
+    rdfs:comment "Tatsächlich aufgewendete Stunden (Ist-Wert zu ow:estimatedEffort). Kein Standard-Vokabular modelliert Ist-Aufwand auf Aktionsebene."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:dependencyKind a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "Abhängigkeitsart"@de, "dependency kind"@en ;
+    rdfs:comment "Kanten-Annotation (RDF 1.2, am Reifier eines ow:blockedBy-Tripels): Projektmanagement-Typ der Abhängigkeit — 'FS' (Finish-to-Start, Default, wird nicht materialisiert), 'SS', 'FF' oder 'SF'. Kein Standard-Vokabular typisiert Vorgänger-Beziehungen; eine eigene Kantenklasse wäre Reifikations-Boilerplate (SPEC §3.1)."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+#################################################################
 # Skills, Agenten, Werkzeuge
 #
 # Die Prädikate spiegeln bewusst die Feldnamen der A2A-AgentCard
@@ -307,6 +365,13 @@ ow:nodeKind a owl:DatatypeProperty ;
     rdfs:comment "Darstellungsart des Canvas-Knotens nach JSON Canvas 1.0: 'text', 'file', 'link' oder 'group'. Explizit gespeichert statt aus dem semantischen Gegenstück inferiert, damit der Export deterministisch bleibt. Kein Standard-Äquivalent."@de ;
     rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
 
+ow:cardKind a owl:DatatypeProperty ;
+    rdfs:domain ow:CanvasNode ;
+    rdfs:range xsd:string ;
+    rdfs:label "Kartentyp"@de, "card kind"@en ;
+    rdfs:comment "Nativer Kartentyp einer Workspace-Pinnwand, wo er feiner ist als ow:nodeKind: 'task' (nodeKind 'text') und 'image' (nodeKind 'file'). Nur bei Abweichung vom nodeKind-Default materialisiert — Quelltreue-Träger für den Round-Trip nativer Pinnwände (Abschluss SPEC §12.4), kein Standard-Äquivalent."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
 ow:xPosition a owl:DatatypeProperty ;
     rdfs:domain ow:CanvasNode ;
     rdfs:range xsd:decimal ;
@@ -416,7 +481,7 @@ ow:queryText a owl:DatatypeProperty ;
     rdfs:domain ow:QueryView ;
     rdfs:range xsd:string ;
     rdfs:label "Query-Text"@de, "query text"@en ;
-    rdfs:comment "SPARQL-Text der gespeicherten Query (CONSTRUCT/DESCRIBE). sh:select trägt SHACL-Constraint-Semantik, spin:text ist kein gepflegter Standard, schema:text ist Anzeige-Inhalt von Werken — daher eigener Term."@de ;
+    rdfs:comment "SPARQL-Text der gespeicherten Query. CONSTRUCT/DESCRIBE ergeben eine auflösbare Graph-View; SELECT/ASK sind gespeicherte Editor-Queries (SPEC §7.1) — dieselbe Entität, unterschieden am Query-Text. sh:select trägt SHACL-Constraint-Semantik, spin:text ist kein gepflegter Standard, schema:text ist Anzeige-Inhalt von Werken — daher eigener Term."@de ;
     rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
 
 ow:layoutMethod a owl:DatatypeProperty ;

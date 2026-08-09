@@ -6,9 +6,13 @@
  * `local`, `ha-addon`, `server` — „Standalone" wird nicht mehr als
  * Runtime-Bezeichnung verwendet.
  *
- * Stand des Ausbaus: implementiert ist der `server`-Adapter (Node).
- * `local` (OPFS/Worker) und `ha-addon` folgen mit M6/M12 — es gibt
- * bewusst keine Platzhalter-Implementierungen (keine Attrappen).
+ * Stand des Ausbaus (M6): implementiert ist der `server`-Adapter
+ * (server.ts — node:fs + Prozess-git); `ha-addon` teilt exakt diese
+ * Bindungen und unterscheidet sich nur im Packaging (M12, dasselbe
+ * Container-Image). Für `local` existiert die Git-Schicht
+ * (isomorphic-git über FileSystemLike, isomorphic-git.ts) — der
+ * vollständige Adapter (OPFS-Backing, Store im Worker) kommt mit M12.
+ * Es gibt bewusst keine Platzhalter-Implementierungen (keine Attrappen).
  */
 
 import type { GraphStore } from '@/lib/graph/store/types';
@@ -23,13 +27,70 @@ export interface FileSystemLike {
     readdir(path: string): Promise<string[]>;
     exists(path: string): Promise<boolean>;
     rm(path: string): Promise<void>;
-    /** Unterscheidet Datei und Verzeichnis; wirft bei fehlendem Pfad. */
-    stat(path: string): Promise<{ isDirectory: boolean }>;
+    /**
+     * Unterscheidet Datei und Verzeichnis; wirft bei fehlendem Pfad.
+     * `size`/`mtimeMs` sind optionale Frische-Signale (M6): isomorphic-git
+     * braucht sie, um Index-Caches zu invalidieren — ein Backing, das sie
+     * weglässt, würde Änderungen bei identischen Stats übersehen.
+     */
+    stat(path: string): Promise<{ isDirectory: boolean; size?: number; mtimeMs?: number }>;
 }
 
+/**
+ * Binär-Erweiterung von FileSystemLike (M6): Git-Objekte sind komprimierte
+ * Binärdaten — die String-API reicht dafür nicht. node:fs, das
+ * Memory-Double und der spätere OPFS-Wrapper implementieren beide Ebenen.
+ */
+export interface BinaryFileSystemLike extends FileSystemLike {
+    readBytes(path: string): Promise<Uint8Array>;
+    writeBytes(path: string, data: Uint8Array): Promise<void>;
+}
+
+export interface GitAuthor {
+    name: string;
+    email: string;
+}
+
+export interface GitChange {
+    path: string;
+    state: 'added' | 'modified' | 'deleted' | 'untracked';
+}
+
+export interface GitCommitResult {
+    /** HEAD nach dem Aufruf (auch wenn nichts committet wurde). */
+    sha: string | null;
+    /** false, wenn der Working Tree sauber war (kein neuer Commit). */
+    committed: boolean;
+}
+
+/**
+ * Git-Schicht des Git-Syncs (SPEC §8, M6) — EINE Implementierung pro
+ * Bindung, drei Runtimes: Prozess-git (`server`/`ha-addon`, dasselbe
+ * Image) und isomorphic-git über FileSystemLike (`local`; im Browser mit
+ * OPFS-Backing, Push/Pull dort nur über CORS-fähige Hosts — SPEC §8.3).
+ */
 export interface GitProvider {
-    /** isomorphic-git (local) oder Prozess-git (ha-addon/server) — ab M6. */
     readonly kind: 'isomorphic-git' | 'process-git';
+    isRepo(dir: string): Promise<boolean>;
+    /** Initialisiert ein Repository (idempotent), Default-Branch `main`. */
+    init(dir: string): Promise<void>;
+    /** SHA des HEAD-Commits; null ohne Commits oder ohne Repository. */
+    head(dir: string): Promise<string | null>;
+    /** Working-Tree-Änderungen relativ zu HEAD. */
+    status(dir: string): Promise<GitChange[]>;
+    /** `add -A` + Commit; committed=false bei sauberem Working Tree. */
+    commitAll(dir: string, message: string, author: GitAuthor): Promise<GitCommitResult>;
+    /** Geänderte Pfade zwischen zwei Commits. */
+    changedFiles(dir: string, fromSha: string, toSha: string): Promise<string[]>;
+    /** Menschlich lesbarer, zeilenbasierter Diff zwischen zwei Commits. */
+    diff(dir: string, fromSha: string, toSha: string): Promise<string>;
+    /**
+     * Remote-Sync (optional — die Bindung kann ihn nicht immer leisten,
+     * z. B. isomorphic-git ohne HTTP-Client). `pull` ist fast-forward-only:
+     * ein divergierter Verlauf ist ein ehrlicher Fehler, kein Auto-Merge.
+     */
+    push?(dir: string, remoteUrl: string, branch: string): Promise<void>;
+    pull?(dir: string, remoteUrl: string, branch: string): Promise<void>;
 }
 
 export interface Identity {

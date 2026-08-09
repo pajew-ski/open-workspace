@@ -21,7 +21,15 @@ import { canonicalNQuads, hashCanonical } from './canonical';
 import { parseRdf } from './io';
 import { factory } from '../rdf';
 
-export const SNAPSHOT_SCHEMA_VERSION = 1;
+/**
+ * Version 2 seit dem Abschluss von SPEC §12.4: Der Workspace-Snapshot wird
+ * vom Store-first-Schreibpfad erzeugt (inkl. Quelltreue-Termen). Ein
+ * v1-Manifest markiert einen Stand, in dem die Dateien unter data/ noch
+ * operative Quelle waren — der Bootstrap re-migriert dann einmalig aus dem
+ * Dateibestand. Das Datei-LAYOUT ist zwischen v1 und v2 unverändert.
+ */
+export const SNAPSHOT_SCHEMA_VERSION = 2;
+const COMPATIBLE_SCHEMA_VERSIONS: ReadonlySet<number> = new Set([1, 2]);
 
 export interface SnapshotManifest {
     schemaVersion: number;
@@ -77,6 +85,18 @@ function joinPath(dir: string, file: string): string {
     return `${dir.replace(/\/$/, '')}/${file}`;
 }
 
+export interface WriteSnapshotOptions {
+    /**
+     * Filtert Quads aus dem Snapshot (true = behalten). Der git-backup-
+     * Connector blendet damit seine EIGENE volatile Sync-Buchführung aus
+     * (lastRun-Zeitstempel, Revision) — sonst wäre jedes Backup allein
+     * wegen des vorherigen Backups „geändert" und die Historie voller
+     * Rausch-Commits (dieselbe Kategorie, aus der §8.1 `inferred`
+     * ausschließt). Der Live-Snapshot der App (data/graph) filtert nichts.
+     */
+    filterQuad?: (quad: Quad, graphIri: string) => boolean;
+}
+
 /**
  * Schreibt den Snapshot des Stores nach `dir`. Entfernt `.nq`-Dateien,
  * deren Graph nicht mehr existiert, damit der Working-Tree den Store
@@ -87,6 +107,7 @@ export async function writeSnapshot(
     fs: FileSystemLike,
     dir: string,
     instanceBase: string,
+    options: WriteSnapshotOptions = {},
 ): Promise<SnapshotReport> {
     const graphs = await store.graphs();
     const entries: SnapshotManifest['graphs'] = [];
@@ -96,7 +117,10 @@ export async function writeSnapshot(
     for (const graph of graphs) {
         const file = snapshotFileForGraph(graph.value, instanceBase);
         if (!file) continue;
-        const quads = await collect(store.dump(graph));
+        let quads = await collect(store.dump(graph));
+        if (options.filterQuad) {
+            quads = quads.filter(quad => options.filterQuad!(quad, graph.value));
+        }
         const canonical = await canonicalNQuads(quads);
         const target = joinPath(dir, file);
         const parent = target.slice(0, target.lastIndexOf('/'));
@@ -153,7 +177,7 @@ export async function readManifest(fs: FileSystemLike, dir: string): Promise<Sna
     const parsed: unknown = JSON.parse(await fs.readFile(path));
     if (
         typeof parsed !== 'object' || parsed === null ||
-        (parsed as SnapshotManifest).schemaVersion !== SNAPSHOT_SCHEMA_VERSION ||
+        !COMPATIBLE_SCHEMA_VERSIONS.has((parsed as SnapshotManifest).schemaVersion) ||
         !Array.isArray((parsed as SnapshotManifest).graphs)
     ) {
         throw new Error(`Ungültiges oder inkompatibles Snapshot-Manifest: ${path}`);

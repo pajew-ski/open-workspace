@@ -21,6 +21,7 @@ import type { Quad } from '@rdfjs/types';
 import type { GraphStore } from '../store/types';
 import type { IriFactory } from '../iri';
 import type { CanvasData } from '@/lib/storage/canvas';
+import type { Project } from '@/lib/storage/projects';
 import { factory, namedNode, literal, typedLiteral } from '../rdf';
 import { DCTERMS, OW, RDF, SCHEMA } from '../vocab';
 
@@ -72,9 +73,19 @@ export function buildNativeCanvasLayout(canvas: CanvasData, iri: IriFactory): Ca
         if (card.color !== undefined && card.color !== '') {
             add(subject, SCHEMA.color, literal(card.color));
         }
+        // Nativer Kartentyp, wo er feiner ist als der JSON-Canvas-nodeKind
+        // ('task' ↔ text, 'image' ↔ file) — Quelltreue-Träger für den
+        // Round-Trip Store → Pinnwand (Abschluss SPEC §12.4).
+        if (card.type === 'task' || card.type === 'image') {
+            add(subject, OW.cardKind, literal(card.type));
+        }
         if (card.type === 'group') {
-            // Gruppen sind reine Darstellung (SPEC §9) — Label am Layout-Knoten.
+            // Gruppen sind reine Darstellung (SPEC §9) — Label und
+            // Zeitstempel am Layout-Knoten, denn ein semantisches
+            // Gegenstück existiert nicht.
             if (card.title !== '') add(subject, SCHEMA.name, literal(card.title));
+            add(subject, DCTERMS.created, typedLiteral.dateTime(card.createdAt));
+            add(subject, DCTERMS.modified, typedLiteral.dateTime(card.updatedAt));
         } else {
             addIri(subject, OW.rendersNode, iri.entity('card', `${canvas.id}/${card.id}`));
             if ((card.type === 'file' || card.type === 'image') && card.content) {
@@ -108,6 +119,38 @@ async function dumpGraph(store: GraphStore, graphIri: string): Promise<Quad[]> {
         quads.push(q);
     }
     return quads;
+}
+
+/**
+ * Projekt-Farben (Abschluss SPEC §12.4): `<projekt> schema:color "#…"` im
+ * Presentation-Graphen — die Farbe ist Darstellung, kein Wissen
+ * (Invariante 2). Bis zur Umstellung der Schreibpfade blieb sie in der
+ * Datei; mit dem Store als Wahrheitsquelle lebt sie hier. Ersetzt werden
+ * alle Projekt-Subjekte vollständig, ohne Canvas-Layout-Gruppen
+ * anzufassen; läuft auf dem übergebenen Store — innerhalb einer
+ * Transaktion ist das die tx-Sicht.
+ */
+export async function replaceProjectPresentation(
+    store: GraphStore,
+    iri: IriFactory,
+    projects: ReadonlyArray<Project>,
+): Promise<void> {
+    const graphIri = iri.graph('presentation');
+    const projectPrefix = `${iri.instanceBase}u/${encodeURIComponent(iri.userId)}/project/`;
+    const existing = await dumpGraph(store, graphIri);
+    const remaining = existing.filter(q =>
+        !(q.subject.termType === 'NamedNode' && q.subject.value.startsWith(projectPrefix)),
+    );
+    const next = [...remaining];
+    for (const project of projects) {
+        if (project.color === '') continue;
+        next.push(factory.quad(
+            namedNode(iri.entity('project', project.id)),
+            namedNode(SCHEMA.color),
+            literal(project.color),
+        ));
+    }
+    await store.load(next, namedNode(graphIri), { replace: true });
 }
 
 /** Subjekte einer Layout-Gruppe im Bestand: Canvas-Subjekt + isPartOf-Elemente. */
@@ -154,7 +197,9 @@ export async function pruneOrphanCanvasLayouts(store: GraphStore, iri: IriFactor
     const existing = await dumpGraph(store, graphIri);
     if (existing.length === 0) return [];
 
-    // Wurzeln: Ziele von isPartOf plus Subjekte ohne eigenes isPartOf.
+    // Canvas-Wurzeln: Ziele von isPartOf plus Subjekte mit Viewport-Werten
+    // (leere Pinnwand). Subjekte ohne beides — z. B. Projekt-Farben — sind
+    // keine Layout-Gruppen und werden hier nicht angefasst.
     const roots = new Set<string>();
     const partOf = new Map<string, string>();
     for (const q of existing) {
@@ -164,7 +209,12 @@ export async function pruneOrphanCanvasLayouts(store: GraphStore, iri: IriFactor
         }
     }
     for (const q of existing) {
-        if (q.subject.termType === 'NamedNode' && !partOf.has(q.subject.value) && !roots.has(q.subject.value)) {
+        if (
+            q.subject.termType === 'NamedNode' &&
+            !partOf.has(q.subject.value) &&
+            !roots.has(q.subject.value) &&
+            (q.predicate.value === OW.viewportX || q.predicate.value === OW.viewportY || q.predicate.value === OW.viewportZoom)
+        ) {
             roots.add(q.subject.value);
         }
     }

@@ -199,6 +199,7 @@
     color: var(--color-text-primary);
     font-size: 13px;
     text-align: left;
+    text-decoration: none; /* auch als Link (Editor-Queries) nutzbar */
     cursor: pointer;
 }
 

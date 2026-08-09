@@ -21,10 +21,11 @@
  */
 
 import type { Quad } from '@rdfjs/types';
-import type { FileSystemLike } from '@/lib/platform/runtime/types';
+import type { FileSystemLike, RuntimeAdapter } from '@/lib/platform/runtime/types';
 import { factory, namedNode, literal, typedLiteral } from '../rdf';
 import { OW, PROV } from '../vocab';
 import { replaceCanvasLayouts } from '../presentation/layout';
+import { snapshotFileForGraph } from '../serialize/snapshot';
 import { getConnectorKind } from './catalog';
 import { createGuardedFetch } from './http';
 import { getConnector, runErrors, saveConnectorState, type GraphHandle } from './registry';
@@ -47,6 +48,8 @@ export interface SyncOptions {
     now?: () => Date;
     /** Dateizugriff der Runtime — Pflicht für Datei-Connectors (obsidian-vault). */
     files?: FileSystemLike;
+    /** Runtime-Adapter (SPEC §5.2) — Pflicht für git-backup (Git-Bindung). */
+    runtime?: RuntimeAdapter;
     onProgress?: (progress: { done: number; total?: number; note?: string }) => void;
 }
 
@@ -66,10 +69,15 @@ function provQuads(view: ConnectorInstanceView, revision: string | undefined, no
     return quads;
 }
 
-function summarize(quadCount: number, quarantined: QuarantineEntry[]): string {
-    const base = `${quadCount} Aussagen importiert`;
-    if (quarantined.length === 0) return `${base}.`;
-    return `${base}, ${quarantined.length} Quell-Einheit(en) quarantäniert.`;
+function summarize(quadCount: number, quarantined: QuarantineEntry[], restoredGraphs: string[] = []): string {
+    const parts = [`${quadCount} Aussagen importiert`];
+    if (restoredGraphs.length > 0) {
+        parts.push(`${restoredGraphs.length} Graph(en) wiederhergestellt`);
+    }
+    if (quarantined.length > 0) {
+        parts.push(`${quarantined.length} Quell-Einheit(en) quarantäniert`);
+    }
+    return `${parts.join(', ')}.`;
 }
 
 /**
@@ -106,6 +114,7 @@ export async function syncConnector(handle: GraphHandle, connectorId: string, op
             timeoutMs: options.timeoutMs,
         }),
         files: options.files,
+        runtime: options.runtime,
         report: progress => options.onProgress?.(progress),
         quarantine: entry => quarantined.push(entry),
         presentation: group => presentationGroups.push(group),
@@ -139,18 +148,44 @@ export async function syncConnector(handle: GraphHandle, connectorId: string, op
                 previousRevision: view.revision,
                 added: 0,
                 removed: 0,
+                restoredGraphs: [],
                 quarantined: [],
                 message: 'Revision unverändert — kein Import nötig.',
                 finishedAt: finishedAtIso,
             };
         }
 
+        // Quads einsammeln; Store-Serialisierungs-Connectors (SPEC §8.2)
+        // dürfen Quads mit expliziter Graph-Komponente liefern — sie werden
+        // pro kanonischem Ziel-Graphen gruppiert und ersetzt. Nur
+        // Snapshot-fähige Graphen sind wiederherstellbar (acl/vocab/
+        // shapes/inferred nie); alles andere landet im Import-Graphen.
+        const canRestore = impl.capabilities.restoresCanonicalGraphs === true;
         const pulled: Quad[] = [];
+        const restoreByGraph = new Map<string, Quad[]>();
         for await (const quad of impl.pull(ref, ctx)) {
+            if (
+                canRestore &&
+                quad.graph.termType === 'NamedNode' &&
+                quad.graph.value !== view.targetGraph
+            ) {
+                if (snapshotFileForGraph(quad.graph.value, handle.iri.instanceBase) === null) {
+                    ctx.quarantine({
+                        source: quad.graph.value,
+                        reason: 'Graph ist nicht wiederherstellbar (acl/vocab/shapes/inferred sind geschützt).',
+                    });
+                    continue;
+                }
+                const list = restoreByGraph.get(quad.graph.value) ?? [];
+                list.push(quad);
+                restoreByGraph.set(quad.graph.value, list);
+                continue;
+            }
             pulled.push(quad);
         }
         const importFinishedIso = now().toISOString();
         const quads = [...pulled, ...provQuads(view, ref.revision, importFinishedIso)];
+        const restoredGraphs = [...restoreByGraph.keys()].sort();
 
         let added = 0;
         let removed = 0;
@@ -158,6 +193,12 @@ export async function syncConnector(handle: GraphHandle, connectorId: string, op
             const report = await tx.load(quads, namedNode(view.targetGraph), { replace: true });
             added = report.added;
             removed = report.removed;
+            // Wiederhergestellte kanonische Graphen: vollständiger Replace
+            // in DERSELBEN Transaktion (SPEC §8.2 — Restore ist Teil des
+            // Laufs, kein zweiter Codepfad).
+            for (const [graphIri, graphQuads] of restoreByGraph) {
+                await tx.load(graphQuads, namedNode(graphIri), { replace: true });
+            }
             // Layout-Schicht (SPEC §9): gemeldete Gruppen ersetzen die
             // Layouts ihrer Canvases in graph/<u>/presentation — in
             // derselben Transaktion wie der Import-Replace.
@@ -172,7 +213,7 @@ export async function syncConnector(handle: GraphHandle, connectorId: string, op
                 lastRun: {
                     at: importFinishedIso,
                     revision: ref.revision,
-                    summary: summarize(pulled.length, quarantined),
+                    summary: summarize(pulled.length, quarantined, restoredGraphs),
                     errors: runErrors(quarantined),
                 },
             });
@@ -185,8 +226,9 @@ export async function syncConnector(handle: GraphHandle, connectorId: string, op
             previousRevision: view.revision,
             added,
             removed,
+            restoredGraphs,
             quarantined,
-            message: summarize(pulled.length, quarantined),
+            message: summarize(pulled.length, quarantined, restoredGraphs),
             finishedAt: importFinishedIso,
         };
     } catch (error) {
@@ -248,6 +290,7 @@ export async function pushConnector(handle: GraphHandle, connectorId: string, op
             timeoutMs: options.timeoutMs,
         }),
         files: options.files,
+        runtime: options.runtime,
         report: progress => options.onProgress?.(progress),
         quarantine: entry => quarantined.push(entry),
         // Export-Läufe importieren nichts — Layout-Meldungen wären ein
@@ -370,6 +413,7 @@ async function persistFailure(
         previousRevision: view.revision,
         added: 0,
         removed: 0,
+        restoredGraphs: [],
         quarantined,
         message: `Synchronisierung fehlgeschlagen: ${message}`,
         finishedAt: finishedAtIso,
