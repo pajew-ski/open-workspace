@@ -219,7 +219,7 @@ und backend-unabhängig** — Details in [docs/ai-platform.md](./docs/ai-platfor
 - **UI**: AI-Hub (`/ai`), Skills (`/skills`), MCP-Verwaltung in `/tools`,
   A2A-Discovery in `/agents`, ModelPicker in beiden Chat-Oberflächen.
 
-Build, Typecheck, Lint (0 Errors), 275 Unit-Tests und das **blockierende
+Build, Typecheck, Lint (0 Errors), 276 Unit-Tests und das **blockierende
 E2E-Gate** (`e2e/mobile-navigation`, `e2e/mobile-ux`, `e2e/a11y` inkl. der
 Seiten `/ai`, `/skills`, `/graph/connectors` und `/graph/sparql`) laufen
 grün.

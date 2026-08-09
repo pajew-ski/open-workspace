@@ -40,14 +40,18 @@ const DEFAULT_PROJECT_COLOR = '#00674F';
 
 /**
  * Stellt die JS-ISO-Form eines Zeitstempels wieder her, wenn Oxigraph
- * lediglich „.000" entfernt hat; alles andere bleibt wörtlich erhalten.
+ * lediglich die Endnullen der Sekundenbruchteile entfernt hat — die
+ * kanonische xsd:dateTime-Lexik kürzt „.000" ganz weg, „.090" zu „.09"
+ * und „.100" zu „.1". Alles andere (reine Datumsangaben, fremde
+ * Zeitzonen-Offsets, echte Sub-Millisekunden) bleibt wörtlich erhalten.
  */
 export function isoFromStoreValue(value: string): string {
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) return value;
     const iso = parsed.toISOString();
     if (iso === value) return value;
-    if (iso.replace('.000Z', 'Z') === value) return iso;
+    const canonical = iso.replace(/(\.\d*?)0+Z$/, (_, keep: string) => (keep === '.' ? 'Z' : `${keep}Z`));
+    if (canonical === value) return iso;
     return value;
 }
 
