@@ -1,17 +1,21 @@
 /**
- * Generierte Query-Views (GRAPH_CORE_SPEC §9, M5).
+ * Gespeicherte Queries als Graph-Entitäten (GRAPH_CORE_SPEC §7.1/§9 —
+ * M5-Views, erweitert mit dem SPARQL-Editor aus M2).
  *
- * GET  /api/graph/views — gespeicherte Views (ow:QueryView in graph/meta).
- * POST /api/graph/views — legt eine View an (Name, SPARQL-CONSTRUCT/
- *      DESCRIBE, Layout-Verfahren). Die Query wird beim Anlegen einmal
- *      probeweise aufgelöst, damit keine kaputte View gespeichert wird —
+ * GET  /api/graph/views — gespeicherte Queries (ow:QueryView in graph/meta).
+ * POST /api/graph/views — legt eine gespeicherte Query an. Graph-förmige
+ *      Queries (CONSTRUCT/DESCRIBE) werden beim Anlegen einmal probeweise
+ *      als View aufgelöst; SELECT/ASK werden probeweise ausgeführt —
  *      lieber ein klarer Fehler als eine tote Karteileiche (Invariante 10).
+ *      Updates sind nicht speicherbar (lesende Queries, SPEC §7.1).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { parseBody, createGraphViewSchema } from '@/lib/api/validation';
 import { getServerGraph, persistServerGraphSnapshot } from '@/lib/graph/server/instance';
 import { createQueryView, deleteQueryView, listQueryViews, resolveQueryView } from '@/lib/graph/views/registry';
+import { isGraphQuery, isReadQuery } from '@/lib/graph/sparql/classify';
+import { resolveDataset } from '@/lib/graph/sparql/protocol';
 
 export async function GET() {
     try {
@@ -30,6 +34,13 @@ export async function POST(request: NextRequest) {
     const parsed = await parseBody(createGraphViewSchema, request);
     if (!parsed.ok) return parsed.response;
 
+    if (!isReadQuery(parsed.data.queryText)) {
+        return NextResponse.json(
+            { error: 'Nur lesende Queries sind speicherbar', details: 'SELECT, ASK, CONSTRUCT oder DESCRIBE — Updates werden nicht als gespeicherte Query abgelegt.' },
+            { status: 400 },
+        );
+    }
+
     try {
         const handle = await getServerGraph();
         const view = await createQueryView(handle, {
@@ -38,11 +49,21 @@ export async function POST(request: NextRequest) {
             layoutMethod: parsed.data.layoutMethod,
         });
         try {
-            await resolveQueryView(handle, view.id);
+            if (isGraphQuery(parsed.data.queryText)) {
+                await resolveQueryView(handle, view.id);
+            } else {
+                // SELECT/ASK: probeweise ausführen (Syntax + Dataset), Ergebnis verwerfen.
+                const dataset = await resolveDataset(handle.store, handle.iri);
+                await handle.store.query(parsed.data.queryText, {
+                    defaultGraphs: dataset.defaultGraphs,
+                    namedGraphs: dataset.namedGraphs,
+                    timeoutMs: 30_000,
+                });
+            }
         } catch (error) {
             await deleteQueryView(handle, view.id);
             return NextResponse.json(
-                { error: 'Query ist als View nicht auflösbar', details: error instanceof Error ? error.message : 'unknown' },
+                { error: 'Query ist nicht ausführbar', details: error instanceof Error ? error.message : 'unknown' },
                 { status: 400 },
             );
         }
