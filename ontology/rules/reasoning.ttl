@@ -1,0 +1,26 @@
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+#################################################################
+# Schema-Axiome für den OWL-RL-Lauf (GRAPH_CORE_SPEC §7.3, M7)
+#
+# Wird beim Start ZUSÄTZLICH zu ontology/ow.ttl nach graph/vocab
+# geladen (mitgelieferte Kopie — Reasoning funktioniert offline).
+# Hier stehen nur Axiome über FREMDE Vokabulare, die der Reasoner
+# braucht und die nicht ins Produktvokabular ow.ttl gehören.
+#################################################################
+
+# Tag-Hierarchien: Die SPEC behandelt skos:broader als transitiv
+# („Tag-Hierarchien über skos:broader als transitiv", §7.3) — damit
+# findet eine Abfrage nach einem Ober-Tag auch die Inhalte aller
+# Unter-Tags. SKOS selbst lässt skos:broader bewusst untransitiv und
+# reicht die Hülle als skos:broaderTransitive; dieses Deployment
+# materialisiert die Hülle direkt auf skos:broader, weil alle
+# Tag-Queries der App über broader laufen. Die behaupteten Graphen
+# bleiben reines SKOS (nur direkte broader-Kanten) — die Hülle liegt
+# ausschließlich in graph/<u>/inferred/<scope> und wird bei jedem
+# Lauf vollständig ersetzt.
+skos:broader a owl:TransitiveProperty ;
+    rdfs:comment "Reasoning-Axiom dieses Deployments: transitiv materialisiert nach graph/inferred; behauptete Graphen bleiben reines SKOS."@de .

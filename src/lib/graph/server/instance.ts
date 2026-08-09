@@ -4,13 +4,17 @@
  * Initialisierung beim ersten Zugriff:
  *  1. Instanz-Base auflösen (OW_INSTANCE_BASE → data/graph/instance.json →
  *     neue UUID, persistiert). `https://exocortex.local` existiert nicht mehr.
- *  2. Mitgelieferte Ontologie `ontology/ow.ttl` nach `graph/vocab` laden —
- *     Reasoning/Validierung funktionieren offline (SPEC §3.2).
+ *  2. Mitgelieferte Ontologie `ontology/ow.ttl` plus Reasoning-Axiome
+ *     `ontology/rules/*.ttl` nach `graph/vocab`, SHACL-Shapes
+ *     `ontology/shapes/*.ttl` nach `graph/shapes` laden —
+ *     Reasoning/Validierung funktionieren offline (SPEC §3.2, §7.2).
  *  3. Snapshot `data/graph/` wiederherstellen, falls vorhanden.
  *  4. Bootstrap (Abschluss SPEC §12.4): Fehlt der Snapshot oder stammt er
  *     aus der Zeit VOR der Umstellung der Schreibpfade (Manifest v1), wird
  *     der Dateibestand unter data/docs|tasks|canvas EINMALIG in den Store
  *     (re-)migriert — bis dahin waren die Dateien die operative Quelle.
+ *  5. OWL-RL-Materialisierung (SPEC §7.3, M7): `graph/<u>/inferred/<scope>`
+ *     wird nie persistiert (SPEC §8.1) und deshalb beim Start neu erzeugt.
  *
  * Danach ist der Store die einzige Wahrheit: Alle Lese- und Schreibpfade
  * laufen über `workspace/crud.ts`, die Dateien sind Projektion, und
@@ -28,6 +32,7 @@ import { createNodeFileSystem } from '@/lib/platform/runtime/node-fs';
 import { parseRdf } from '../serialize/io';
 import { readManifest, restoreSnapshot, writeSnapshot, SNAPSHOT_SCHEMA_VERSION, type SnapshotReport } from '../serialize/snapshot';
 import { namedNode } from '../rdf';
+import { runReasoning } from '../reasoning/run';
 import { writeWorkspaceToStore, type WorkspaceContext } from '../workspace/crud';
 import { workspaceFromStore } from '../workspace/read';
 import { defaultWorkspaceFilePaths, projectWorkspaceFiles, readWorkspaceFiles } from '../workspace/files';
@@ -45,6 +50,8 @@ interface ServerGraphState extends ServerGraph {
 const GRAPH_DIR = () => path.join(process.cwd(), 'data', 'graph');
 const INSTANCE_FILE = () => path.join(GRAPH_DIR(), 'instance.json');
 const ONTOLOGY_FILE = () => path.join(process.cwd(), 'ontology', 'ow.ttl');
+const RULES_DIR = () => path.join(process.cwd(), 'ontology', 'rules');
+const SHAPES_DIR = () => path.join(process.cwd(), 'ontology', 'shapes');
 
 /**
  * Dev-Hot-Reload-sicherer Singleton (Next.js erzeugt Module mehrfach).
@@ -88,10 +95,13 @@ async function createState(): Promise<ServerGraphState> {
         mutationChain: Promise.resolve(),
     };
     const fs = createNodeFileSystem();
-    // 2. Vokabular laden (mitgelieferte Kopie, kein Netzzugriff).
-    const ttl = await fs.readFile(ONTOLOGY_FILE());
-    const vocabQuads = parseRdf(ttl, { format: 'text/turtle' });
+    // 2. Vokabular + Reasoning-Axiome nach graph/vocab, Shapes nach
+    //    graph/shapes (mitgelieferte Kopien, kein Netzzugriff).
+    const vocabQuads = parseRdf(await fs.readFile(ONTOLOGY_FILE()), { format: 'text/turtle' });
+    vocabQuads.push(...await parseTurtleDir(fs, RULES_DIR()));
     await state.store.load(vocabQuads, namedNode(state.iri.sharedGraph('vocab')), { replace: true });
+    const shapesQuads = await parseTurtleDir(fs, SHAPES_DIR());
+    await state.store.load(shapesQuads, namedNode(state.iri.sharedGraph('shapes')), { replace: true });
     // 3. Snapshot wiederherstellen, falls vorhanden (Manifest v1 und v2).
     await restoreSnapshot(state.store, fs, GRAPH_DIR());
     // 4. Bootstrap: Dateibestand einmalig (re-)migrieren, wenn der Snapshot
@@ -102,7 +112,19 @@ async function createState(): Promise<ServerGraphState> {
         await writeWorkspaceToStore(state.store, state.iri, input);
         await writeSnapshot(state.store, fs, GRAPH_DIR(), state.iri.instanceBase);
     }
+    // 5. Inferenz-Graphen materialisieren (nie persistiert, SPEC §8.1).
+    await runReasoning(state);
     return state;
+}
+
+/** Parst alle `.ttl`-Dateien eines Verzeichnisses (sortiert, deterministisch). */
+async function parseTurtleDir(fs: ReturnType<typeof createNodeFileSystem>, dir: string) {
+    if (!(await fs.exists(dir))) return [];
+    const quads = [];
+    for (const name of (await fs.readdir(dir)).filter(n => n.endsWith('.ttl')).sort()) {
+        quads.push(...parseRdf(await fs.readFile(path.join(dir, name)), { format: 'text/turtle' }));
+    }
+    return quads;
 }
 
 function getState(): Promise<ServerGraphState> {
