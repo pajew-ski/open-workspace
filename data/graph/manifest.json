@@ -1,13 +1,19 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "canonicalization": "RDFC-1.0",
   "instanceBase": "urn:ow:14b46c31-2026-4d79-9fe6-4516cf791ea6:",
   "graphs": [
     {
+      "iri": "urn:ow:14b46c31-2026-4d79-9fe6-4516cf791ea6:graph/u/default/presentation",
+      "file": "presentation.nq",
+      "quads": 126,
+      "sha256": "1aacd8eb2630d334a32f2949dfec2c3b33116d4d64d2113cf11cde756e0ae6a3"
+    },
+    {
       "iri": "urn:ow:14b46c31-2026-4d79-9fe6-4516cf791ea6:graph/u/default/workspace",
       "file": "workspace.nq",
-      "quads": 185,
-      "sha256": "fe127d14780dc7ffda5fa40551ad92d177851943d73bfb9dfac4ab1131e6f579"
+      "quads": 208,
+      "sha256": "b4e2f205ad6d3aa57e7b758aa5214af0adb9c9dfb48bd50cba887dfb92956fcf"
     }
   ]
 }

@@ -21,7 +21,15 @@ import { canonicalNQuads, hashCanonical } from './canonical';
 import { parseRdf } from './io';
 import { factory } from '../rdf';
 
-export const SNAPSHOT_SCHEMA_VERSION = 1;
+/**
+ * Version 2 seit dem Abschluss von SPEC §12.4: Der Workspace-Snapshot wird
+ * vom Store-first-Schreibpfad erzeugt (inkl. Quelltreue-Termen). Ein
+ * v1-Manifest markiert einen Stand, in dem die Dateien unter data/ noch
+ * operative Quelle waren — der Bootstrap re-migriert dann einmalig aus dem
+ * Dateibestand. Das Datei-LAYOUT ist zwischen v1 und v2 unverändert.
+ */
+export const SNAPSHOT_SCHEMA_VERSION = 2;
+const COMPATIBLE_SCHEMA_VERSIONS: ReadonlySet<number> = new Set([1, 2]);
 
 export interface SnapshotManifest {
     schemaVersion: number;
@@ -153,7 +161,7 @@ export async function readManifest(fs: FileSystemLike, dir: string): Promise<Sna
     const parsed: unknown = JSON.parse(await fs.readFile(path));
     if (
         typeof parsed !== 'object' || parsed === null ||
-        (parsed as SnapshotManifest).schemaVersion !== SNAPSHOT_SCHEMA_VERSION ||
+        !COMPATIBLE_SCHEMA_VERSIONS.has((parsed as SnapshotManifest).schemaVersion) ||
         !Array.isArray((parsed as SnapshotManifest).graphs)
     ) {
         throw new Error(`Ungültiges oder inkompatibles Snapshot-Manifest: ${path}`);
