@@ -18,7 +18,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { buildWorkspaceQuads, type WorkspaceSnapshotInput } from '../../src/lib/graph/migrate/from-files';
-import { workspaceFromStore } from '../../src/lib/graph/workspace/read';
+import { isoFromStoreValue, workspaceFromStore } from '../../src/lib/graph/workspace/read';
 import * as crud from '../../src/lib/graph/workspace/crud';
 import { writeWorkspaceToStore } from '../../src/lib/graph/workspace/crud';
 import { defaultWorkspaceFilePaths, parseFrontmatter, readWorkspaceFiles } from '../../src/lib/graph/workspace/files';
@@ -154,6 +154,33 @@ describe('Round-Trip Domänenmodell ↔ Store (Abschluss SPEC §12.4)', () => {
         expect(first.docs[0].tags).toEqual(['rdf', 'wissen']);
         expect(first.tasks[0].description).toBeUndefined();
         expect(first.tasks[0].dependencies.map(d => `${d.id}:${d.type}`)).toEqual(['task-2:SS', 'task-3:FS']);
+    });
+
+    it('führt Oxigraph-normalisierte Zeitstempel-Lexik exakt zurück (Endnullen der Sekundenbruchteile)', async () => {
+        // Oxigraphs kanonische xsd:dateTime-Lexik kürzt Endnullen: „.000"
+        // entfällt ganz, „.090" wird „.09", „.100" wird „.1". Ohne die
+        // Rückführung wäre der Round-Trip zeitabhängig flaky (trifft immer
+        // dann, wenn die Millisekunden des Schreibzeitpunkts auf 0 enden).
+        expect(isoFromStoreValue('2026-08-09T14:30:29.09Z')).toBe('2026-08-09T14:30:29.090Z');
+        expect(isoFromStoreValue('2026-08-09T14:30:29.1Z')).toBe('2026-08-09T14:30:29.100Z');
+        expect(isoFromStoreValue('2026-08-09T14:30:29Z')).toBe('2026-08-09T14:30:29.000Z');
+        expect(isoFromStoreValue('2026-08-09T14:30:29.123Z')).toBe('2026-08-09T14:30:29.123Z');
+        // Nicht angetastet: reine Datumsangaben und fremde Offsets.
+        expect(isoFromStoreValue('2026-02-01')).toBe('2026-02-01');
+        expect(isoFromStoreValue('2026-08-09T14:30:29.090+02:00')).toBe('2026-08-09T14:30:29.090+02:00');
+
+        const input = fixture();
+        input.tasks[1].completedAt = '2026-01-06T10:00:00.090Z';
+        input.tasks[1].updatedAt = '2026-01-06T10:00:00.100Z';
+        input.tasks[0].dueDate = '2026-02-01T00:00:00.010Z';
+        input.tasks[0].deferredUntil = '2026-01-20T00:00:00.900Z';
+        const output = await roundTrip(input);
+        const done = output.tasks.find(t => t.id === 'task-2');
+        expect(done?.completedAt).toBe('2026-01-06T10:00:00.090Z');
+        expect(done?.updatedAt).toBe('2026-01-06T10:00:00.100Z');
+        const review = output.tasks.find(t => t.id === 'task-1');
+        expect(review?.dueDate).toBe('2026-02-01T00:00:00.010Z');
+        expect(review?.deferredUntil).toBe('2026-01-20T00:00:00.900Z');
     });
 
     it('trennt Wissen und Präsentation: Projekt-Farbe und Kartentyp-Feinheit liegen im Presentation-Graphen', async () => {
