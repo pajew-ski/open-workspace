@@ -15,6 +15,7 @@ import { getServerGraph, persistServerGraphSnapshot } from '@/lib/graph/server/i
 import { getConnector } from '@/lib/graph/connectors/registry';
 import { pushConnector } from '@/lib/graph/connectors/sync';
 import { createNodeFileSystem } from '@/lib/platform/runtime/node-fs';
+import { createServerRuntimeAdapter } from '@/lib/platform/runtime/server';
 
 interface RouteContext {
     params: Promise<{ id: string }>;
@@ -32,7 +33,10 @@ export async function POST(_request: NextRequest, context: RouteContext) {
         if (!(await getConnector(handle, id))) {
             return NextResponse.json({ error: 'Connector nicht gefunden' }, { status: 404 });
         }
-        const result = await pushConnector(handle, id, { files: createNodeFileSystem() });
+        const result = await pushConnector(handle, id, {
+            files: createNodeFileSystem(),
+            runtime: createServerRuntimeAdapter(),
+        });
         await persistServerGraphSnapshot();
         const connector = await getConnector(handle, id);
         return NextResponse.json({ result, connector });

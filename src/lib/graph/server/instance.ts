@@ -29,7 +29,8 @@ import { parseRdf } from '../serialize/io';
 import { readManifest, restoreSnapshot, writeSnapshot, SNAPSHOT_SCHEMA_VERSION, type SnapshotReport } from '../serialize/snapshot';
 import { namedNode } from '../rdf';
 import { writeWorkspaceToStore, type WorkspaceContext } from '../workspace/crud';
-import { defaultWorkspaceFilePaths, readWorkspaceFiles } from '../workspace/files';
+import { workspaceFromStore } from '../workspace/read';
+import { defaultWorkspaceFilePaths, projectWorkspaceFiles, readWorkspaceFiles } from '../workspace/files';
 
 export interface ServerGraph {
     store: OxigraphStore;
@@ -140,6 +141,22 @@ async function runExclusive<T>(fn: () => Promise<T>): Promise<T> {
 export async function persistServerGraphSnapshot(): Promise<SnapshotReport> {
     const state = await getState();
     return runExclusive(() => writeSnapshot(state.store, createNodeFileSystem(), GRAPH_DIR(), state.iri.instanceBase));
+}
+
+/**
+ * Projiziert die Workspace-Dateien neu aus dem Store — nötig, nachdem ein
+ * Store-Serialisierungs-Connector (git-backup, SPEC §8.2) kanonische
+ * Graphen wiederhergestellt hat: der Store ist die Wahrheit, also müssen
+ * die Datei-Projektionen ihm folgen. Der VOR der Projektion gelesene
+ * Dateibestand dient als Vorzustand, damit verwaiste Dateien weichen.
+ */
+export async function reprojectWorkspaceFiles(): Promise<void> {
+    const state = await getState();
+    await runExclusive(async () => {
+        const previous = await readWorkspaceFiles();
+        const input = await workspaceFromStore(state.store, state.iri);
+        await projectWorkspaceFiles(input, previous);
+    });
 }
 
 /**

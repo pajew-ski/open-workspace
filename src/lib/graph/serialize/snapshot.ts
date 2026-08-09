@@ -85,6 +85,18 @@ function joinPath(dir: string, file: string): string {
     return `${dir.replace(/\/$/, '')}/${file}`;
 }
 
+export interface WriteSnapshotOptions {
+    /**
+     * Filtert Quads aus dem Snapshot (true = behalten). Der git-backup-
+     * Connector blendet damit seine EIGENE volatile Sync-Buchführung aus
+     * (lastRun-Zeitstempel, Revision) — sonst wäre jedes Backup allein
+     * wegen des vorherigen Backups „geändert" und die Historie voller
+     * Rausch-Commits (dieselbe Kategorie, aus der §8.1 `inferred`
+     * ausschließt). Der Live-Snapshot der App (data/graph) filtert nichts.
+     */
+    filterQuad?: (quad: Quad, graphIri: string) => boolean;
+}
+
 /**
  * Schreibt den Snapshot des Stores nach `dir`. Entfernt `.nq`-Dateien,
  * deren Graph nicht mehr existiert, damit der Working-Tree den Store
@@ -95,6 +107,7 @@ export async function writeSnapshot(
     fs: FileSystemLike,
     dir: string,
     instanceBase: string,
+    options: WriteSnapshotOptions = {},
 ): Promise<SnapshotReport> {
     const graphs = await store.graphs();
     const entries: SnapshotManifest['graphs'] = [];
@@ -104,7 +117,10 @@ export async function writeSnapshot(
     for (const graph of graphs) {
         const file = snapshotFileForGraph(graph.value, instanceBase);
         if (!file) continue;
-        const quads = await collect(store.dump(graph));
+        let quads = await collect(store.dump(graph));
+        if (options.filterQuad) {
+            quads = quads.filter(quad => options.filterQuad!(quad, graph.value));
+        }
         const canonical = await canonicalNQuads(quads);
         const target = joinPath(dir, file);
         const parent = target.slice(0, target.lastIndexOf('/'));
