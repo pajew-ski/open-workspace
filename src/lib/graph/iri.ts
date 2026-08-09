@@ -34,7 +34,9 @@ export type EntityType =
     | 'conversation'
     | 'message'
     | 'query'
-    | 'activity';
+    | 'activity'
+    /** Reifier-Knoten einer annotierten Kante (RDF 1.2, rdf:reifies). */
+    | 'link';
 
 /**
  * Prüft eine Instanz-Base: absolute HTTP(S)-IRI mit abschließendem `/`

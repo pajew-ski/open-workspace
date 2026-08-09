@@ -4,7 +4,7 @@
 
 ## Hier weitermachen (Einstieg für neue Sessions)
 
-**Stand 2026-08-08 (4. Ausbaustufe, Graph Core M0–M3)**: Der **RDF-Graph ist
+**Stand 2026-08-09 (4. Ausbaustufe, Graph Core M0–M4)**: Der **RDF-Graph ist
 das kanonische Datenmodell**. Die verbindliche Spezifikation inklusive aller
 Meilensteine M0–M13 liegt in
 [GRAPH_CORE_SPEC.md](./GRAPH_CORE_SPEC.md) — **Arbeitsmodus: ein Meilenstein
@@ -17,11 +17,13 @@ Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
   (SPARQL 1.1 Query/Update, RDF 1.2/RDF-star, Quads) + ehrliches
   In-Memory-Test-Double. Kein Default-Graph-Schreibpfad — jedes Tripel hat
   einen Named Graph, per Store erzwungen.
-- **Vokabular** (`ontology/ow.ttl` + `src/lib/graph/vocab.ts`): 33 eigene
+- **Vokabular** (`ontology/ow.ttl` + `src/lib/graph/vocab.ts`): 34 eigene
   Terme unter der produktweit konstanten Base
   `https://pajew-ski.github.io/open-workspace/ns/v1#`, jeder mit
   de/en-Labels und Begründung. CI-Check `bun run check:ontology` erzwingt
-  ow.ttl ↔ vocab.ts synchron.
+  ow.ttl ↔ vocab.ts synchron. Zusätzlich der Frontmatter-Namespace
+  `…/ns/frontmatter#` (Quelltreue-Träger dynamischer YAML-Keys, bewusst
+  außerhalb von v1# und des CI-Checks).
 - **IRIs** (`src/lib/graph/iri.ts`): Instanz-Base pro Installation
   (`urn:ow:<uuid>:` oder `OW_INSTANCE_BASE`), nutzerskalierte Graphen
   (`graph/u/<userId>/workspace|public|presentation|import/<id>|inferred/<scope>`),
@@ -53,6 +55,27 @@ Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
   `ALLOW_LOCAL_TOOL_URLS=1` erlaubt lokale Quellen). Nach Mutationen wird
   `data/graph/` persistiert (meta + import/*). Abnahme:
   `tests/graph/connectors.test.ts`.
+- **Obsidian-Connector (M4)** (`src/lib/graph/connectors/obsidian/` +
+  `src/lib/graph/projection/obsidian.ts`): `obsidian-vault` als dritte
+  Connector-Art — Import eines lokalen Vaults (Body byte-genau in
+  `schema:text`, Frontmatter doppelt: Quelltreue als fm:-Properties
+  [`…/ns/frontmatter#`, Strings wörtlich, Strukturiertes als `rdf:JSON`] +
+  Wissens-Mapping bekannter Keys; Wikilinks als `ow:linksTo` mit
+  Alias/Einbettung als RDF-1.2-Annotation am benannten Reifier
+  [`rdf:reifies` + Triple Term]; Tags als `skos:Concept` mit
+  `skos:broader`; `ow:inFolder`) und verlustbehafteter Export zurück
+  (typisierte Kanten flachen zu generischen Wikilinks ab). Round-Trip
+  Vault → Store → Vault ist markdown-identisch bis auf normalisierte
+  Frontmatter-Reihenfolge, der zweite Round-Trip byte-identisch — als
+  Tests verankert (`tests/graph/obsidian-vault.test.ts`). Push folgt der
+  Konfliktregel §6.2 (`pushConnector`, Zustand `conflict` bei externer
+  Änderung, dateigenauer Bericht; Route
+  `POST /api/graph/connectors/[id]/push`, UI-Button „Exportieren" mit
+  Bestätigung). Vault-Pfade nur unter `data/vaults/` bzw. Wurzeln aus
+  `OW_VAULT_ROOTS` (Pfad-Politik analog SSRF). Dateizugriff kommt als
+  `FileSystemLike` in den ConnectorContext (`files`, injiziert von Route
+  bzw. Test — node-fs/memfs). Alle Verlustpositionen:
+  [docs/obsidian-kompatibilitaet.md](./docs/obsidian-kompatibilitaet.md).
 - **Übergangszustand** (`// MIGRATION:`-Marker): Die Dateien unter
   `data/docs|tasks|canvas` bleiben operative Quelle; der Store spiegelt sie
   inhalts-gehasht (`src/lib/graph/server/instance.ts#syncWorkspaceFromFiles`).
@@ -86,7 +109,7 @@ und backend-unabhängig** — Details in [docs/ai-platform.md](./docs/ai-platfor
 - **UI**: AI-Hub (`/ai`), Skills (`/skills`), MCP-Verwaltung in `/tools`,
   A2A-Discovery in `/agents`, ModelPicker in beiden Chat-Oberflächen.
 
-Build, Typecheck, Lint (0 Errors), 169 Unit-Tests und das **blockierende
+Build, Typecheck, Lint (0 Errors), 185 Unit-Tests und das **blockierende
 E2E-Gate** (`e2e/mobile-navigation`, `e2e/mobile-ux`, `e2e/a11y` inkl. der
 Seiten `/ai`, `/skills` und `/graph/connectors`) laufen grün.
 
@@ -98,9 +121,10 @@ Seiten `/ai`, `/skills` und `/graph/connectors`) laufen grün.
 4. [TODO.md](./TODO.md) — Roadmap als abhakbare Liste (inkl. Graph Core)
 5. Diesen Abschnitt hier für die Architektur-Prinzipien
 
-**Nächste sinnvolle Schritte**: Graph Core M4 (Obsidian-Connector:
-Import + Export über den bestehenden Connector-Vertrag, Round-Trip-Test,
-Verlustpositionen dokumentiert — SPEC §10) und die Umstellung der
+**Nächste sinnvolle Schritte**: Graph Core M5 (Canvas als
+Präsentationsschicht: `graph/<u>/presentation`, JSON-Canvas-1.0-Import/
+-Export, generierte Query-Views — SPEC §9; der Layout-Blacklist-Test
+existiert bereits in `tests/graph/migrate.test.ts`) und die Umstellung der
 Schreibpfade auf den Store (Rest von M1, `// MIGRATION:`-Marker auflösen);
 offen aus M2: SPARQL-Editor-UI. Parallel weiter sinnvoll: i18n mit
 `next-intl` (P0); Abbau der `no-explicit-any`-Warnings außerhalb des

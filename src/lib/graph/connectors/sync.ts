@@ -21,17 +21,19 @@
  */
 
 import type { Quad } from '@rdfjs/types';
+import type { FileSystemLike } from '@/lib/platform/runtime/types';
 import { factory, namedNode, literal, typedLiteral } from '../rdf';
 import { OW, PROV } from '../vocab';
 import { getConnectorKind } from './catalog';
 import { createGuardedFetch } from './http';
 import { getConnector, runErrors, saveConnectorState, type GraphHandle } from './registry';
-import type {
-    ConnectorContext,
-    ConnectorInstanceView,
-    QuarantineEntry,
-    SourceRef,
-    SyncResult,
+import {
+    ConnectorConflictError,
+    type ConnectorContext,
+    type ConnectorInstanceView,
+    type QuarantineEntry,
+    type SourceRef,
+    type SyncResult,
 } from './types';
 
 export interface SyncOptions {
@@ -41,6 +43,8 @@ export interface SyncOptions {
     timeoutMs?: number;
     /** Zeitquelle, injizierbar für deterministische Tests. */
     now?: () => Date;
+    /** Dateizugriff der Runtime — Pflicht für Datei-Connectors (obsidian-vault). */
+    files?: FileSystemLike;
     onProgress?: (progress: { done: number; total?: number; note?: string }) => void;
 }
 
@@ -98,6 +102,7 @@ export async function syncConnector(handle: GraphHandle, connectorId: string, op
             signal: abort.signal,
             timeoutMs: options.timeoutMs,
         }),
+        files: options.files,
         report: progress => options.onProgress?.(progress),
         quarantine: entry => quarantined.push(entry),
     };
@@ -177,6 +182,150 @@ export async function syncConnector(handle: GraphHandle, connectorId: string, op
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         return persistFailure(handle, view, now().toISOString(), message, quarantined);
+    } finally {
+        options.signal?.removeEventListener('abort', onOuterAbort);
+    }
+}
+
+export interface PushResult {
+    connectorId: string;
+    status: 'pushed' | 'conflict' | 'failed';
+    /** Quell-Revision nach dem Schreiben (bei Erfolg). */
+    revision?: string;
+    /** html_url bei PR-Schreibweg. */
+    url?: string;
+    /** Abweichungen bei status 'conflict' (aus dem ConflictReport). */
+    conflicts: Array<{ path?: string; reason: string }>;
+    message: string;
+    finishedAt: string;
+}
+
+/**
+ * Führt einen Export-Lauf (`push`, SPEC §6.2) für eine registrierte
+ * Connector-Instanz aus. Revisionskonflikte (Quelle extern verändert)
+ * werden als status 'conflict' gemeldet und als Sync-Zustand
+ * protokolliert — geschrieben wird dann nichts.
+ */
+export async function pushConnector(handle: GraphHandle, connectorId: string, options: SyncOptions = {}): Promise<PushResult> {
+    const now = options.now ?? (() => new Date());
+    const view = await getConnector(handle, connectorId);
+    if (!view) {
+        throw new Error(`Connector "${connectorId}" ist nicht registriert.`);
+    }
+    const impl = getConnectorKind(view.kind);
+    const finishedEarlyIso = now().toISOString();
+    if (!impl || !impl.push) {
+        return {
+            connectorId,
+            status: 'failed',
+            conflicts: [],
+            message: `Connector-Art "${view.kind}" unterstützt keinen Export.`,
+            finishedAt: finishedEarlyIso,
+        };
+    }
+
+    const quarantined: QuarantineEntry[] = [];
+    const abort = new AbortController();
+    const onOuterAbort = () => abort.abort();
+    options.signal?.addEventListener('abort', onOuterAbort, { once: true });
+    const ctx: ConnectorContext = {
+        store: handle.store,
+        iri: handle.iri,
+        signal: abort.signal,
+        fetch: createGuardedFetch({
+            fetchImpl: options.fetchImpl,
+            signal: abort.signal,
+            timeoutMs: options.timeoutMs,
+        }),
+        files: options.files,
+        report: progress => options.onProgress?.(progress),
+        quarantine: entry => quarantined.push(entry),
+    };
+
+    try {
+        const ref: SourceRef = {
+            id: view.id,
+            kind: view.kind,
+            locator: view.locator,
+            // Letzte gepullte Revision — Grundlage der Konfliktregel §6.2.
+            revision: view.revision,
+        };
+        const receipt = await impl.push(ref, { added: [], removed: [] }, ctx);
+        const finishedAtIso = now().toISOString();
+        const message = receipt.mode === 'pull-request' && receipt.url
+            ? `Export als Pull Request angelegt: ${receipt.url}`
+            : 'Export in die Quelle geschrieben.';
+        await handle.store.transaction(async tx => {
+            await saveConnectorState({ store: tx, iri: handle.iri }, {
+                ...view,
+                syncState: 'idle',
+                revision: receipt.revision,
+                modifiedAt: finishedAtIso,
+                lastRun: {
+                    at: finishedAtIso,
+                    revision: receipt.revision,
+                    summary: message,
+                    errors: runErrors(quarantined),
+                },
+            });
+        });
+        return {
+            connectorId,
+            status: 'pushed',
+            revision: receipt.revision,
+            url: receipt.url,
+            conflicts: [],
+            message,
+            finishedAt: finishedAtIso,
+        };
+    } catch (error) {
+        const finishedAtIso = now().toISOString();
+        if (error instanceof ConnectorConflictError) {
+            await handle.store.transaction(async tx => {
+                await saveConnectorState({ store: tx, iri: handle.iri }, {
+                    ...view,
+                    syncState: 'conflict',
+                    modifiedAt: finishedAtIso,
+                    lastRun: {
+                        at: finishedAtIso,
+                        revision: view.revision,
+                        summary: `Export blockiert: ${error.message}`,
+                        errors: runErrors(error.report.conflicts.map(conflict => ({
+                            source: conflict.path ?? view.locator,
+                            reason: conflict.reason,
+                        }))),
+                    },
+                });
+            });
+            return {
+                connectorId,
+                status: 'conflict',
+                conflicts: error.report.conflicts,
+                message: error.message,
+                finishedAt: finishedAtIso,
+            };
+        }
+        const message = error instanceof Error ? error.message : String(error);
+        await handle.store.transaction(async tx => {
+            await saveConnectorState({ store: tx, iri: handle.iri }, {
+                ...view,
+                syncState: 'error',
+                modifiedAt: finishedAtIso,
+                lastRun: {
+                    at: finishedAtIso,
+                    revision: view.revision,
+                    summary: `Export fehlgeschlagen: ${message}`,
+                    errors: runErrors([{ source: view.locator, reason: message }, ...quarantined]),
+                },
+            });
+        });
+        return {
+            connectorId,
+            status: 'failed',
+            conflicts: [],
+            message: `Export fehlgeschlagen: ${message}`,
+            finishedAt: finishedAtIso,
+        };
     } finally {
         options.signal?.removeEventListener('abort', onOuterAbort);
     }

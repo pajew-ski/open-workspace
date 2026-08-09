@@ -490,9 +490,10 @@ describe('Quad-Werkzeuge', () => {
 });
 
 describe('Katalog: nur Implementiertes existiert (Invariante 10)', () => {
-    it('führt genau rdf-file und github-rdf', () => {
-        expect(listConnectorKinds().map(c => c.kind).sort()).toEqual(['github-rdf', 'rdf-file']);
-        expect(getConnectorKind('obsidian-vault')).toBeNull();
+    it('führt genau rdf-file, github-rdf und obsidian-vault', () => {
+        expect(listConnectorKinds().map(c => c.kind).sort()).toEqual(['github-rdf', 'obsidian-vault', 'rdf-file']);
+        expect(getConnectorKind('git-backup')).toBeNull();
+        expect(getConnectorKind('sparql-endpoint')).toBeNull();
         expect(getConnectorKind('rdf-file')).toBe(rdfFileConnector);
     });
 

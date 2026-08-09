@@ -1,18 +1,19 @@
 /**
- * Sync-Lauf einer Connector-Instanz (GRAPH_CORE_SPEC §6.2, M3).
+ * Export-Lauf einer Connector-Instanz (GRAPH_CORE_SPEC §6.2, M4):
+ * schreibt den Import-Graphen zurück in die Quelle (z. B. Obsidian-Vault).
  *
- * Antwortet immer mit dem vollständigen Laufbericht inkl. Quarantäne —
- * Quell-Qualität bricht einen Import nie ab (M3-Abnahme), deshalb ist
- * auch ein Lauf mit quarantänierten Einheiten ein 200. Nur wenn die
- * Infrastruktur scheitert (Netz, Auth, Konfiguration), meldet `status:
- * 'failed'` das ehrlich — ebenfalls als 200 mit Bericht, denn der Lauf
- * selbst wurde ordnungsgemäß ausgeführt und protokolliert.
+ * Antwortet wie der Sync-Lauf immer mit dem vollständigen Bericht:
+ * `status: 'conflict'` meldet die Konfliktregel aus §6.2 (Quelle wurde
+ * seit dem letzten Pull extern verändert — erst synchronisieren), mit
+ * dateigenauer Abweichungsliste; `status: 'failed'` echte
+ * Infrastrukturfehler. Beides als 200 mit Bericht — der Lauf selbst
+ * wurde ordnungsgemäß ausgeführt und protokolliert.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerGraph, persistServerGraphSnapshot } from '@/lib/graph/server/instance';
 import { getConnector } from '@/lib/graph/connectors/registry';
-import { syncConnector } from '@/lib/graph/connectors/sync';
+import { pushConnector } from '@/lib/graph/connectors/sync';
 import { createNodeFileSystem } from '@/lib/platform/runtime/node-fs';
 
 interface RouteContext {
@@ -31,13 +32,13 @@ export async function POST(_request: NextRequest, context: RouteContext) {
         if (!(await getConnector(handle, id))) {
             return NextResponse.json({ error: 'Connector nicht gefunden' }, { status: 404 });
         }
-        const result = await syncConnector(handle, id, { files: createNodeFileSystem() });
+        const result = await pushConnector(handle, id, { files: createNodeFileSystem() });
         await persistServerGraphSnapshot();
         const connector = await getConnector(handle, id);
         return NextResponse.json({ result, connector });
     } catch (error) {
         return NextResponse.json(
-            { error: 'Synchronisierung nicht ausführbar', details: error instanceof Error ? error.message : 'unknown' },
+            { error: 'Export nicht ausführbar', details: error instanceof Error ? error.message : 'unknown' },
             { status: 500 },
         );
     }
