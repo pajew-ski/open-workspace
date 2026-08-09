@@ -115,6 +115,17 @@ export interface ResolvedDataset {
 }
 
 /**
+ * Verengung des Datasets auf das Recht des Aufrufers (SPEC §7.6): Der
+ * MCP-Server läuft über genau diese Funktion, statt einen zweiten
+ * Authz-Pfad zu bauen. `allowedGraphs` kann nur wegnehmen — die Klammern
+ * dieser Funktion (acl nie, presentation/inferred nicht im Default) gelten
+ * unverändert. Ohne Angabe verhält sich alles wie bisher.
+ */
+export interface DatasetAuthz {
+    allowedGraphs?: readonly string[];
+}
+
+/**
  * Vorstufe des Dataset-Resolvers (SPEC §17.3): leitet das erlaubte Dataset
  * aus dem Store-Bestand ab und filtert explizit angeforderte Graphen.
  */
@@ -122,10 +133,15 @@ export async function resolveDataset(
     store: GraphStore,
     iri: IriFactory,
     requested?: { defaultGraphUris?: string[]; namedGraphUris?: string[] },
+    authz?: DatasetAuthz,
 ): Promise<ResolvedDataset> {
     const base = iri.instanceBase;
     const existing = (await store.graphs()).map(g => g.value);
-    const readable = existing.filter(g => graphScope(g, base) !== null && !isAclGraph(g, base));
+    const grantedGraphs = authz?.allowedGraphs ? new Set(authz.allowedGraphs) : null;
+    const readable = existing.filter(g =>
+        graphScope(g, base) !== null &&
+        !isAclGraph(g, base) &&
+        (!grantedGraphs || grantedGraphs.has(g)));
     const defaultReadable = readable.filter(g => !isRestrictedByDefault(g, base));
 
     const filterRequested = (uris: string[] | undefined): string[] | null => {
@@ -293,10 +309,20 @@ function textResponse(status: number, message: string): SparqlProtocolResponse {
     return { status, contentType: 'text/plain; charset=utf-8', body: `${message}\n` };
 }
 
+export interface SparqlProtocolOptions extends DatasetAuthz {
+    /**
+     * Verbietet UPDATE unabhängig von Methode und Content-Type (SPEC §7.6:
+     * `graph_sparql` ist read-only). Der Aufrufer bekommt 405 statt eines
+     * stillen Erfolgs.
+     */
+    readOnly?: boolean;
+}
+
 export async function executeSparqlProtocol(
     store: GraphStore,
     iri: IriFactory,
     request: SparqlProtocolRequest,
+    options: SparqlProtocolOptions = {},
 ): Promise<SparqlProtocolResponse> {
     const contentType = request.contentType?.split(';')[0].trim().toLowerCase() ?? '';
 
@@ -313,6 +339,9 @@ export async function executeSparqlProtocol(
     }
     if (query && update) {
         return textResponse(400, 'Entweder query oder update, nicht beides.');
+    }
+    if (options.readOnly && (update || contentType === 'application/sparql-update')) {
+        return textResponse(405, 'Nur lesende Queries erlaubt — UPDATE ist auf diesem Pfad gesperrt.');
     }
 
     if (update) {
@@ -333,7 +362,7 @@ export async function executeSparqlProtocol(
     const dataset = await resolveDataset(store, iri, {
         defaultGraphUris: request.defaultGraphUris,
         namedGraphUris: request.namedGraphUris,
-    });
+    }, { allowedGraphs: options.allowedGraphs });
 
     let result: QueryResult;
     try {

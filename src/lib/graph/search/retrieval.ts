@@ -28,6 +28,10 @@
  *    Expansion (Dataset-Injektion), nie als Nachfilter.
  *  - Zyklenschutz (BFS-Besuchsmenge) und harte Obergrenzen für Knoten,
  *    Kanten und Laufzeit.
+ *  - Aufgenommen wird nur, worüber im erlaubten Dataset etwas ausgesagt
+ *    ist. Eine Kante, deren Ziel ausschließlich in einem gesperrten
+ *    Graphen beschrieben ist, endet damit im Nichts — sie verrät weder
+ *    Existenz noch Identität des Ziels (SPEC §7.6, Negativtest M10).
  *
  * Determinismus: gleiche Daten + gleiche Anfrage ⇒ identische Knotenmenge,
  * identische Score-Reihenfolge (Ties nach Hop, dann IRI). Alle
@@ -141,6 +145,14 @@ export interface RetrievalResult {
     explain: RetrievalExplain;
 }
 
+/**
+ * Zugriffs-Klammer des Aufrufers (SPEC §7.6). Wird durchgereicht statt
+ * neu erfunden: derselbe Grant, den auch der SPARQL-Pfad benutzt.
+ */
+export interface RetrievalAuthz {
+    allowedGraphs?: readonly string[];
+}
+
 /** Injizierbare Seed-Quellen (Volltext Pflicht, Vektor optional). */
 export interface RetrievalDeps {
     fulltext?: FulltextIndex;
@@ -211,17 +223,23 @@ function round6(value: number): number {
  */
 export async function retrievalDataset(
     handle: GraphHandle,
-    options: { graphs?: string[]; includeInferred: boolean },
+    options: { graphs?: string[]; includeInferred: boolean } & RetrievalAuthz,
 ): Promise<string[]> {
     const existing = (await handle.store.graphs()).map(g => g.value);
     const knowledge = workspaceScopeGraphs(handle.iri, existing);
     const inferred = handle.iri.inferredGraph('workspace');
-    const allowed = options.includeInferred && existing.includes(inferred)
+    const withInferred = options.includeInferred && existing.includes(inferred)
         ? [...knowledge, inferred]
         : knowledge;
-    if (!options.graphs || options.graphs.length === 0) return [...allowed].sort();
+    // Grant-Klammer (SPEC §7.6): Das Recht des Aufrufers kann nur
+    // wegnehmen. Sie greift VOR der Expansion — ein gesperrter Graph ist
+    // damit auch über Hops unerreichbar, nicht bloß nachgefiltert.
+    const granted = options.allowedGraphs
+        ? withInferred.filter(g => options.allowedGraphs!.includes(g))
+        : withInferred;
+    if (!options.graphs || options.graphs.length === 0) return [...granted].sort();
     const requested = new Set(options.graphs);
-    return allowed.filter(g => requested.has(g)).sort();
+    return granted.filter(g => requested.has(g)).sort();
 }
 
 // --- SPARQL-Hilfen -------------------------------------------------------
@@ -438,6 +456,32 @@ async function fetchFrontierEdges(
         a.s.localeCompare(b.s) || a.p.localeCompare(b.p) || a.o.localeCompare(b.o) || a.graph.localeCompare(b.graph));
 }
 
+/**
+ * Kandidaten, über die im erlaubten Dataset überhaupt etwas ausgesagt
+ * wird (Subjekt-Position). Ein Knoten, der nur als Objekt einer Kante
+ * vorkommt, trägt nichts zum Kontext bei — und darf nicht aufgenommen
+ * werden: Er läge sonst als bloße IRI im Ergebnis und würde die Existenz
+ * eines Knotens verraten, dessen Aussagen alle in einem Graphen liegen,
+ * den der Aufrufer nicht lesen darf (SPEC §7.6-Negativtest).
+ */
+async function fetchReadableSubjects(
+    handle: GraphHandle,
+    dataset: readonly string[],
+    iris: readonly string[],
+): Promise<Set<string>> {
+    const readable = new Set<string>();
+    if (iris.length === 0 || dataset.length === 0) return readable;
+    const rows = await selectRows(
+        handle,
+        `SELECT DISTINCT ?n WHERE { ${valuesClause('n', iris)} GRAPH ?g { ?n ?p ?o } }`,
+        dataset,
+    );
+    for (const row of rows) {
+        if (row.n?.termType === 'NamedNode') readable.add(row.n.value);
+    }
+    return readable;
+}
+
 async function fetchTypes(
     handle: GraphHandle,
     dataset: readonly string[],
@@ -563,7 +607,9 @@ export async function expandPhase(
             }
         }
         result.prunedAt.push(...[...hubPruned].sort());
-        const candidateTypes = await fetchTypes(handle, dataset, [...candidates].sort());
+        const candidateList = [...candidates].sort();
+        const candidateTypes = await fetchTypes(handle, dataset, candidateList);
+        const readableCandidates = await fetchReadableSubjects(handle, dataset, candidateList);
 
         // Deterministische Aufnahme: Frontier nach (base desc, IRI asc),
         // Kanten je Knoten nach (Prädikat, Nachbar-IRI, Graph).
@@ -595,6 +641,8 @@ export async function expandPhase(
                     }
                     continue;
                 }
+                // Nur Knoten, über die im erlaubten Dataset etwas steht.
+                if (!readableCandidates.has(other)) continue;
                 if (nodes.size >= request.maxNodes) {
                     result.truncated = true;
                     continue;
@@ -901,11 +949,13 @@ export async function retrieve(
     handle: GraphHandle,
     input: RetrievalRequestInput,
     deps: RetrievalDeps = {},
+    authz: RetrievalAuthz = {},
 ): Promise<RetrievalResult> {
     const request = withRetrievalDefaults(input);
     const dataset = await retrievalDataset(handle, {
         graphs: request.graphs,
         includeInferred: request.includeInferred,
+        ...(authz.allowedGraphs ? { allowedGraphs: authz.allowedGraphs } : {}),
     });
 
     // Phase 1: Seeding.
