@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CloudDownload, FileCode2, GitBranch, RefreshCw, Trash2 } from 'lucide-react';
+import { BookOpen, CloudDownload, FileCode2, GitBranch, RefreshCw, Trash2, Upload } from 'lucide-react';
 import { AppShell } from '@/components/layout';
 import { Button, ConfirmDialog, FloatingActionButton } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
@@ -23,6 +23,7 @@ interface ConnectorKindInfo {
     kind: string;
     label: string;
     description: string;
+    capabilities?: { read: boolean; write: boolean; watch: boolean; lossyExport: boolean };
 }
 
 interface ConnectorView {
@@ -46,9 +47,19 @@ interface SyncResponse {
     connector: ConnectorView | null;
 }
 
+interface PushResponse {
+    result: {
+        status: 'pushed' | 'conflict' | 'failed';
+        message: string;
+        conflicts: Array<{ path?: string; reason: string }>;
+    };
+    connector: ConnectorView | null;
+}
+
 const KIND_ICONS: Record<string, React.ReactNode> = {
     'rdf-file': <FileCode2 size={12} aria-hidden="true" />,
     'github-rdf': <GitBranch size={12} aria-hidden="true" />,
+    'obsidian-vault': <BookOpen size={12} aria-hidden="true" />,
 };
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -79,6 +90,7 @@ export default function GraphConnectorsPage() {
     const queryClient = useQueryClient();
     const [adding, setAdding] = useState(false);
     const [deleting, setDeleting] = useState<ConnectorView | null>(null);
+    const [exporting, setExporting] = useState<ConnectorView | null>(null);
     const [busyId, setBusyId] = useState<string | null>(null);
     const [creating, setCreating] = useState(false);
 
@@ -89,6 +101,7 @@ export default function GraphConnectorsPage() {
     const [formRepo, setFormRepo] = useState('');
     const [formRef, setFormRef] = useState('');
     const [formPath, setFormPath] = useState('');
+    const [formVaultPath, setFormVaultPath] = useState('');
 
     const { data, isLoading } = useQuery<{ connectors: ConnectorView[]; kinds: ConnectorKindInfo[] }>({
         queryKey: ['graph-connectors'],
@@ -106,10 +119,12 @@ export default function GraphConnectorsPage() {
         setFormRepo('');
         setFormRef('');
         setFormPath('');
+        setFormVaultPath('');
     };
 
     const configForForm = (): unknown => {
         if (formKind === 'rdf-file') return { url: formUrl.trim() };
+        if (formKind === 'obsidian-vault') return { path: formVaultPath.trim() };
         return {
             repo: formRepo.trim(),
             ref: formRef.trim() || undefined,
@@ -117,7 +132,11 @@ export default function GraphConnectorsPage() {
         };
     };
 
-    const formReady = formName.trim() !== '' && (formKind === 'rdf-file' ? formUrl.trim() !== '' : formRepo.trim() !== '');
+    const formReady = formName.trim() !== '' && (
+        formKind === 'rdf-file' ? formUrl.trim() !== ''
+        : formKind === 'obsidian-vault' ? formVaultPath.trim() !== ''
+        : formRepo.trim() !== ''
+    );
 
     const handleCreate = async () => {
         setCreating(true);
@@ -152,6 +171,26 @@ export default function GraphConnectorsPage() {
             }
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Synchronisierung fehlgeschlagen');
+        } finally {
+            setBusyId(null);
+            invalidate();
+        }
+    };
+
+    const handleExport = async () => {
+        if (!exporting) return;
+        const target = exporting;
+        setExporting(null);
+        setBusyId(target.id);
+        try {
+            const { result } = await fetchJson<PushResponse>(`/api/graph/connectors/${encodeURIComponent(target.id)}/push`, { method: 'POST' });
+            if (result.status === 'pushed') {
+                toast.success(`„${target.name}": ${result.message}`);
+            } else {
+                toast.error(`„${target.name}": ${result.message}`);
+            }
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Export fehlgeschlagen');
         } finally {
             setBusyId(null);
             invalidate();
@@ -211,9 +250,10 @@ export default function GraphConnectorsPage() {
                         <CloudDownload size={40} aria-hidden="true" />
                         <h3>Noch keine externen Quellen</h3>
                         <p>
-                            Binde eine RDF-Datei per URL ein oder ein GitHub-Repo mit
+                            Binde eine RDF-Datei per URL ein, ein GitHub-Repo mit
                             <code>.ttl</code>/<code>.jsonld</code>-Dateien — z. B.{' '}
-                            <code>pajew-ski/prima-materia</code> als Referenzfall.
+                            <code>pajew-ski/prima-materia</code> als Referenzfall — oder
+                            einen lokalen Obsidian-Vault unter <code>data/vaults/</code>.
                         </p>
                         <Button variant="primary" onClick={() => { resetForm(); setAdding(true); }}>
                             Erste Quelle einbinden
@@ -276,6 +316,17 @@ export default function GraphConnectorsPage() {
                                             <RefreshCw size={14} aria-hidden="true" className={busyId === connector.id ? styles.spinning : undefined} />
                                             {busyId === connector.id ? 'Synchronisiere…' : 'Synchronisieren'}
                                         </Button>
+                                        {kindInfo?.capabilities?.write && (
+                                            <Button
+                                                variant="secondary"
+                                                size="sm"
+                                                onClick={() => setExporting(connector)}
+                                                disabled={busyId !== null}
+                                            >
+                                                <Upload size={14} aria-hidden="true" />
+                                                Exportieren
+                                            </Button>
+                                        )}
                                         <button
                                             type="button"
                                             className={styles.deleteAction}
@@ -325,6 +376,15 @@ export default function GraphConnectorsPage() {
                                         placeholder="https://example.org/daten.ttl"
                                     />
                                 </label>
+                            ) : formKind === 'obsidian-vault' ? (
+                                <label className={styles.field}>
+                                    <span>Vault-Ordner (unter data/vaults/ oder einer Wurzel aus OW_VAULT_ROOTS)</span>
+                                    <input
+                                        value={formVaultPath}
+                                        onChange={e => setFormVaultPath(e.target.value)}
+                                        placeholder="data/vaults/mein-vault"
+                                    />
+                                </label>
                             ) : (
                                 <>
                                     <label className={styles.field}>
@@ -354,6 +414,17 @@ export default function GraphConnectorsPage() {
                         </div>
                     </div>
                 )}
+
+                <ConfirmDialog
+                    isOpen={exporting !== null}
+                    title="In die Quelle exportieren?"
+                    message={exporting
+                        ? `Der Import-Graph von „${exporting.name}" wird als Markdown in den Vault geschrieben und überschreibt dort geänderte Dateien. Typisierte Verknüpfungen werden dabei zu einfachen Wikilinks abgeflacht (verlustbehafteter Export). Wurde der Vault seit dem letzten Sync extern verändert, wird nichts geschrieben.`
+                        : ''}
+                    confirmText="Exportieren"
+                    onConfirm={handleExport}
+                    onCancel={() => setExporting(null)}
+                />
 
                 <ConfirmDialog
                     isOpen={deleting !== null}

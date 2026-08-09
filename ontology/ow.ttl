@@ -106,6 +106,12 @@ ow:inFolder a owl:DatatypeProperty ;
     rdfs:comment "Vault-Ordnerpfad als Konvention (z. B. 'projekte/2026'), ohne erzwungene Hierarchie-Semantik. Kein Standard-Term trägt einen Dateisystem-Pfad als bloße Einsortierung ohne Teil-Ganzes-Behauptung."@de ;
     rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
 
+ow:embedded a owl:DatatypeProperty ;
+    rdfs:range xsd:boolean ;
+    rdfs:label "eingebettet"@de, "embedded"@en ;
+    rdfs:comment "Kanten-Annotation (RDF 1.2, am Reifier eines ow:linksTo-Tripels): true, wenn der Link in der Quelle eine Einbettung/Transklusion war (Obsidian ![[…]]) statt eines bloßen Verweises. Kein Standard-Term unterscheidet Verweis von Transklusion auf Kanten-Ebene; schema:hasPart würde eine Teil-Ganzes-Behauptung über die Dokumente selbst aufstellen statt über die eine Link-Stelle."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
 #################################################################
 # Aufgaben
 #################################################################

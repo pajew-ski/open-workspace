@@ -22,6 +22,16 @@ export const OW_VOCAB_BASE = 'https://pajew-ski.github.io/open-workspace/ns/v1#'
 /** IRI der Ontologie selbst (ohne Fragment) — Ziel von rdfs:isDefinedBy. */
 export const OW_ONTOLOGY_IRI = 'https://pajew-ski.github.io/open-workspace/ns/v1' as const;
 
+/**
+ * Frontmatter-Namespace (SPEC §10): Quelltreue-Träger für YAML-Frontmatter-
+ * Keys aus Obsidian-Vaults. Bewusst NICHT unter /ns/v1# — die Properties
+ * entstehen dynamisch aus Nutzerdaten (ein Term pro Key) und sind kein
+ * Produktvokabular; der Ontologie-CI-Check prüft nur /ns/v1#. Bekannte
+ * Keys werden ZUSÄTZLICH auf echte Terme gemappt (schema:name, dcterms:…);
+ * der fm:-Träger garantiert den verlustfreien Round-Trip unbekannter Keys.
+ */
+export const OW_FRONTMATTER_BASE = 'https://pajew-ski.github.io/open-workspace/ns/frontmatter#' as const;
+
 export const PREFIXES = {
     ow: OW_VOCAB_BASE,
     rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
@@ -59,6 +69,7 @@ export const OW = {
     // Vernetzung
     linksTo: ow('linksTo'),
     inFolder: ow('inFolder'),
+    embedded: ow('embedded'),
     // Aufgaben
     blockedBy: ow('blockedBy'),
     blocks: ow('blocks'),
@@ -104,6 +115,7 @@ export const SCHEMA = {
     Message: schemaOrg('Message'),
     SoftwareApplication: schemaOrg('SoftwareApplication'),
     name: schemaOrg('name'),
+    alternateName: schemaOrg('alternateName'),
     author: schemaOrg('author'),
     text: schemaOrg('text'),
     description: schemaOrg('description'),
@@ -125,6 +137,8 @@ export const SCHEMA = {
 export const RDF = {
     type: `${PREFIXES.rdf}type`,
     reifies: `${PREFIXES.rdf}reifies`,
+    /** RDF-1.2-Datentyp für strukturierte Literale (Listen/Maps aus YAML). */
+    JSON: `${PREFIXES.rdf}JSON`,
 } as const;
 
 export const RDFS = {

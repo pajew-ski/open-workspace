@@ -23,6 +23,8 @@ export interface FileSystemLike {
     readdir(path: string): Promise<string[]>;
     exists(path: string): Promise<boolean>;
     rm(path: string): Promise<void>;
+    /** Unterscheidet Datei und Verzeichnis; wirft bei fehlendem Pfad. */
+    stat(path: string): Promise<{ isDirectory: boolean }>;
 }
 
 export interface GitProvider {

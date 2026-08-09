@@ -27,5 +27,9 @@ export function createNodeFileSystem(): FileSystemLike {
         rm: async path => {
             await fs.rm(path, { force: true });
         },
+        stat: async path => {
+            const stats = await fs.stat(path);
+            return { isDirectory: stats.isDirectory() };
+        },
     };
 }
