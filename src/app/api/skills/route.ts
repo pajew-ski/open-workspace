@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseBody, createSkillSchema } from '@/lib/api/validation';
 import { createSkill, loadSkills } from '@/lib/skills/store.server';
+import { refreshAiMirrorAfterMutation } from '@/lib/graph/server/instance';
 
 export async function GET() {
     try {
@@ -20,6 +21,7 @@ export async function POST(request: NextRequest) {
 
     try {
         const skill = await createSkill(parsed.data);
+        await refreshAiMirrorAfterMutation('Skill angelegt');
         return NextResponse.json({ skill }, { status: 201 });
     } catch (error) {
         return NextResponse.json(
