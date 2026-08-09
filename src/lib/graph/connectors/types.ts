@@ -26,7 +26,7 @@
 import type { Quad } from '@rdfjs/types';
 import type { GraphStore } from '../store/types';
 import type { IriFactory } from '../iri';
-import type { RuntimeAdapter } from '@/lib/platform/runtime/types';
+import type { FileSystemLike, RuntimeAdapter } from '@/lib/platform/runtime/types';
 
 export type ConnectorMode = 'materialize' | 'federate';
 
@@ -64,6 +64,13 @@ export interface ConnectorContext {
     /** Meldet eine nicht importierbare Quell-Einheit (Fehlerbericht). */
     quarantine(entry: QuarantineEntry): void;
     /**
+     * Dateizugriff der Runtime (SPEC §5.2, `files()` des RuntimeAdapters).
+     * Vom Aufrufer injiziert (Server: node:fs, Tests: Memory-FS); Connectors
+     * mit Dateiquellen (obsidian-vault) verlangen ihn und scheitern sonst
+     * mit einem Infrastrukturfehler — nie stillschweigend.
+     */
+    files?: FileSystemLike;
+    /**
      * Runtime-Adapter (SPEC §5.2). Optional, bis die Adapter-
      * Implementierungen existieren (M6/M12) — rdf-file und github-rdf
      * brauchen nur `fetch`. Keine Platzhalter-Adapter (Invariante 10).
@@ -93,6 +100,19 @@ export interface ConflictReport {
     sourceRevision: string;
     lastPulledRevision?: string;
     conflicts: Array<{ path?: string; reason: string }>;
+}
+
+/**
+ * Revisionskonflikt beim `push` (SPEC §6.2): Die Quelle wurde seit dem
+ * letzten `pull` extern verändert — Schreiben ohne vorheriges `reconcile`
+ * bzw. erneutes Synchronisieren ist verboten. Der Runner übersetzt diesen
+ * Fehler in den Sync-Zustand `conflict` statt `error`.
+ */
+export class ConnectorConflictError extends Error {
+    constructor(message: string, readonly report: ConflictReport) {
+        super(message);
+        this.name = 'ConnectorConflictError';
+    }
 }
 
 /** JSON Schema der Connector-Konfiguration (z. B. via z.toJSONSchema). */

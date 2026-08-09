@@ -39,7 +39,20 @@
       Redirect-Validierung, Verwaltung unter `/graph/connectors`,
       Persistenz nach `data/graph/` — Abnahme als Tests:
       `tests/graph/connectors.test.ts`
-- [ ] **M4 Obsidian-Connector** (Round-Trip-Test, Verlustpositionen dokumentiert)
+- [x] **M4 Obsidian-Connector** (`src/lib/graph/connectors/obsidian/` +
+      `src/lib/graph/projection/obsidian.ts`): `obsidian-vault` über den
+      EINEN Connector-Vertrag — Import (Body byte-genau in `schema:text`,
+      Frontmatter als fm:-Quelltreue-Properties + Wissens-Mapping
+      bekannter Keys, Wikilinks als `ow:linksTo` mit Alias/Einbettung als
+      RDF-1.2-Reifier-Annotation, Tags als `skos:Concept` mit
+      `skos:broader`, `ow:inFolder`), Export als verlustbehaftete
+      Projektion (typisierte Kanten → generische Wikilinks),
+      Push-Konfliktregel §6.2 (`pushConnector`, Zustand `conflict`),
+      Vault-Pfad-Politik (`data/vaults/` + `OW_VAULT_ROOTS`),
+      Verlustpositionen: docs/obsidian-kompatibilitaet.md — Abnahme
+      (Round-Trip markdown-identisch bis auf normalisierte
+      Frontmatter-Reihenfolge, zweiter Round-Trip byte-identisch) als
+      Tests: `tests/graph/obsidian-vault.test.ts`
 - [ ] **M5 Canvas/Präsentationsschicht** (`graph/<u>/presentation`,
       JSON-Canvas 1.0, generierte Query-Views; Layout-Blacklist-Test existiert)
 - [ ] **M6 Git-Sync** in allen drei Runtimes (`backup`/`bidirectional`,
@@ -170,4 +183,4 @@
 
 ---
 
-*Last updated: 2026-08-08*
+*Last updated: 2026-08-09*

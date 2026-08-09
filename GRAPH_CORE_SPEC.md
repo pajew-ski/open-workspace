@@ -150,6 +150,7 @@ Nur diese, jeder mit `rdfs:comment`-Begründung, warum kein Standard-Äquivalent
 `ow:trigger`, `ow:providesSkill`, `ow:agentCardUrl`, `ow:endpoint`, `ow:securityScheme`, `ow:transport`, `ow:inputSchema`, `ow:providedBy`
 `ow:connectorKind`, `ow:locator`, `ow:revision`, `ow:syncState`, `ow:targetGraph`, `ow:sparqlEndpoint`, `ow:trustLevel`
 `ow:inFolder` (Vault-Pfad als Konvention), `ow:rendersNode`
+`ow:embedded` (Kanten-Annotation am Reifier eines `ow:linksTo`-Tripels: Einbettung `![[…]]` vs. bloßer Verweis — ergänzt mit M4, Begründung in der Ontologie)
 
 Die Agent-Prädikate spiegeln bewusst die Feldnamen der A2A-AgentCard (`endpoints`, `securitySchemes`, `skills`), damit eine spätere Brücke zu A2A eine Umbenennung ist und kein Remodelling.
 
@@ -582,9 +583,10 @@ prima-materia lässt sich per Repo-URL einbinden, commit-gepinnt, mit Provenienz
 *Zusätzliche Abnahme, weil die Quelle unreif ist*: Der Connector bricht bei fehlerhaftem Turtle, unbekannten Prädikaten, fehlenden Typen oder SHACL-Verletzungen **nicht** ab. Er importiert, was parst, quarantäniert den Rest in einem Fehlerbericht und meldet ihn in der UI. Ein Import darf nie an der Qualität der Quelle scheitern — das ist der Normalfall bei fremden Graphen, nicht die Ausnahme.
 **Erfüllt, als Tests verankert (`tests/graph/connectors.test.ts`).** Umsetzungsnotizen: Der Vertrag aus §6.1 ist um `locatorFor`/`configFromLocator` (Instanzen persistieren als Graph-Knoten mit `ow:locator`, nicht als JSON-Config — Invariante 6), `parseConfig` und den Kontext-Kanal `quarantine()` sowie einen SSRF-geschützten `fetch` erweitert; `runtime` im Kontext ist optional, bis die Adapter existieren (M6/M12). Registry unter `graph/meta`, Fehlerbericht als `schema:error` am `prov:Activity`-Lauf-Knoten, Verwaltung unter `/graph/connectors`, Persistenz nach `data/graph/` (meta + import/*).
 
-**M4 — Obsidian-Connector** ⬜
+**M4 — Obsidian-Connector** ✅
 Import + Export, Round-Trip-Test, Verlustpositionen dokumentiert.
 *Abnahme*: Vault → Store → Vault ist markdown-identisch bis auf normalisierte Frontmatter-Reihenfolge.
+**Erfüllt, als Tests verankert (`tests/graph/obsidian-vault.test.ts`); zusätzlich ist der zweite Round-Trip (Export → Import → Export) byte-identisch.** Umsetzungsnotizen: `obsidian-vault` läuft über den unveränderten Vertrag aus §6.1 (Import: `src/lib/graph/connectors/obsidian/`, Export: `src/lib/graph/projection/obsidian.ts`); der ConnectorContext trägt jetzt optional `files: FileSystemLike` (Runtime-Dateizugriff, injiziert von Route/Test — die Adapter-Struktur aus §5.2 bleibt unberührt). Frontmatter liegt doppelt im Graphen: quelltreu als `…/ns/frontmatter#`-Properties (Strings wörtlich, Strukturiertes als `rdf:JSON` — typisierte XSD-Literale scheiden als Träger aus, weil Oxigraph ihre Lexik normalisiert) plus Wissens-Mapping bekannter Keys nach §10. Kanten-Annotationen (Alias, `ow:embedded` — Term in §4.3 ergänzt) nutzen RDF 1.2 mit benannten Reifiern (`rdf:reifies` + Triple Term), kompatibel zur RDFC-Serialisierung aus §8. `push` erfüllt die Konfliktregel aus §6.2 über `pushConnector` (Sync-Zustand `conflict`, dateigenauer Bericht, Route `POST /api/graph/connectors/[id]/push`); Direct-Write statt Branch→PR, weil der Vault ein lokaler Ordner der Installation ist. Vault-Pfade sind auf `data/vaults/` und `OW_VAULT_ROOTS` beschränkt (Pfad-Politik analog SSRF-Schutz). Verlustpositionen vollständig in `docs/obsidian-kompatibilitaet.md`.
 
 **M5 — Canvas und Präsentationsschicht** ⬜
 `graph/presentation`, JSON-Canvas-Import/-Export, generierte Query-Views.
