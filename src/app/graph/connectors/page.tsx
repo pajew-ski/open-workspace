@@ -35,7 +35,26 @@ interface ConnectorView {
     syncState: 'idle' | 'syncing' | 'error' | 'conflict';
     revision?: string;
     modifiedAt?: string;
-    lastRun?: { at?: string; revision?: string; summary?: string; errors: string[] };
+    lastRun?: {
+        at?: string;
+        revision?: string;
+        summary?: string;
+        errors: string[];
+        /** SHACL-Kurzfassung des letzten Imports (GRAPH_CORE_SPEC §7.2, M7). */
+        validation?: { conforms: boolean; violations: number; warnings: number; infos: number };
+    };
+}
+
+/** Deutsche Kurzfassung des SHACL-Befunds eines Laufs. */
+function validationLabel(validation: NonNullable<ConnectorView['lastRun']>['validation']): string | null {
+    if (!validation) return null;
+    if (validation.conforms) return 'konform';
+    const parts = [
+        validation.violations > 0 ? `${validation.violations} Verstoß/Verstöße` : '',
+        validation.warnings > 0 ? `${validation.warnings} Warnung(en)` : '',
+        validation.infos > 0 ? `${validation.infos} Hinweis(e)` : '',
+    ].filter(Boolean);
+    return parts.length > 0 ? parts.join(', ') : 'konform';
 }
 
 interface SyncResponse {
@@ -332,6 +351,14 @@ export default function GraphConnectorsPage() {
                                             <div className={styles.metaRow}>
                                                 <dt>Ergebnis</dt>
                                                 <dd>{connector.lastRun.summary}</dd>
+                                            </div>
+                                        )}
+                                        {connector.lastRun?.validation && (
+                                            <div className={styles.metaRow}>
+                                                <dt>Validierung</dt>
+                                                <dd data-conforms={connector.lastRun.validation.conforms}>
+                                                    {validationLabel(connector.lastRun.validation)}
+                                                </dd>
                                             </div>
                                         )}
                                     </dl>

@@ -30,6 +30,38 @@ interface GraphLink {
     source: string;
     target: string;
     type: string; // Predicate label
+    /** Kante stammt aus graph/<u>/inferred/* (M7) — gestrichelt gezeichnet. */
+    inferred?: boolean;
+}
+
+/** Reasoning-Zustand (GET /api/graph/reasoning, GRAPH_CORE_SPEC §7.3). */
+interface ReasoningPayload {
+    status: Array<{ scope: string; graph: string; inferred: number; generatedAt?: string }>;
+    triples: Array<{ subject: string; predicate: string; object: string }>;
+}
+
+/** SHACL-Befund (POST /api/graph/validate, GRAPH_CORE_SPEC §7.2). */
+interface ValidationReportPayload {
+    conforms: boolean;
+    counts: { violations: number; warnings: number; infos: number };
+    results: Array<{
+        severity: 'Violation' | 'Warning' | 'Info';
+        focusNode: string;
+        path?: string;
+        message: string;
+    }>;
+}
+
+const SEVERITY_LABELS: Record<ValidationReportPayload['results'][number]['severity'], string> = {
+    Violation: 'Verstoß',
+    Warning: 'Warnung',
+    Info: 'Hinweis',
+};
+
+/** Kurzform einer IRI für die Anzeige (letztes Pfadsegment). */
+function localName(iri: string): string {
+    const cut = Math.max(iri.lastIndexOf('#'), iri.lastIndexOf('/'));
+    return cut === -1 ? iri : iri.slice(cut + 1) || iri;
 }
 
 /** Gespeicherte Query-View (ow:QueryView, GRAPH_CORE_SPEC §9 / M5). */
@@ -129,6 +161,7 @@ const DEFAULTS = {
     showCanvas: true,
     showTags: false,
     showDependencies: true,
+    showInferred: false, // SPEC §11: inferierte Kanten per Default aus
     showPredicates: false,
     showNames: false,
     forceCharge: -100,
@@ -197,8 +230,66 @@ export default function GraphExplorerPage() {
 
     // Visualization Toggles
     const [showDependencies, setShowDependencies] = usePersistentState('showDependencies', DEFAULTS.showDependencies);
+    const [showInferred, setShowInferred] = usePersistentState('showInferred', DEFAULTS.showInferred);
     const [showPredicates, setShowPredicates] = usePersistentState('showPredicates', DEFAULTS.showPredicates);
     const [showNames, setShowNames] = usePersistentState('showNames', DEFAULTS.showNames);
+
+    // --- Reasoning & Validierung (M7, GRAPH_CORE_SPEC §7.2/§7.3) ---
+    const [reasoning, setReasoning] = useState<ReasoningPayload | null>(null);
+    const [reasoningBusy, setReasoningBusy] = useState(false);
+    const [reasoningError, setReasoningError] = useState<string | null>(null);
+    const [validation, setValidation] = useState<ValidationReportPayload | null>(null);
+    const [validationBusy, setValidationBusy] = useState(false);
+
+    const loadReasoning = useCallback(async (method: 'GET' | 'POST') => {
+        setReasoningBusy(true);
+        setReasoningError(null);
+        try {
+            const response = await fetch('/api/graph/reasoning', { method });
+            const data = await response.json();
+            if (!response.ok) {
+                setReasoningError(data.details || data.error || 'Reasoning nicht erreichbar');
+                return;
+            }
+            setReasoning({ status: data.status ?? data.runs ?? [], triples: data.triples ?? [] });
+        } catch (error) {
+            setReasoningError(error instanceof Error ? error.message : 'Reasoning nicht erreichbar');
+        } finally {
+            setReasoningBusy(false);
+        }
+    }, []);
+
+    // Inferenz-Kanten nachladen, sobald die Überlagerung eingeschaltet wird.
+    useEffect(() => {
+        if (showInferred && reasoning === null && !reasoningBusy) {
+            loadReasoning('GET');
+        }
+    }, [showInferred, reasoning, reasoningBusy, loadReasoning]);
+
+    const runValidation = useCallback(async () => {
+        setValidationBusy(true);
+        try {
+            const response = await fetch('/api/graph/validate', { method: 'POST' });
+            const data = await response.json();
+            if (!response.ok) {
+                setValidation({
+                    conforms: false,
+                    counts: { violations: 0, warnings: 0, infos: 0 },
+                    results: [{ severity: 'Info', focusNode: '', message: data.details || data.error || 'Validierung nicht erreichbar' }],
+                });
+                return;
+            }
+            setValidation(data.report);
+        } catch (error) {
+            setValidation({
+                conforms: false,
+                counts: { violations: 0, warnings: 0, infos: 0 },
+                results: [{ severity: 'Info', focusNode: '', message: error instanceof Error ? error.message : 'Validierung nicht erreichbar' }],
+            });
+        } finally {
+            setValidationBusy(false);
+        }
+    }, []);
 
     // Physics
     const [forceCharge, setForceCharge] = usePersistentState('forceCharge', DEFAULTS.forceCharge);
@@ -358,6 +449,7 @@ export default function GraphExplorerPage() {
         setShowCanvas(DEFAULTS.showCanvas);
         setShowTags(DEFAULTS.showTags);
         setShowDependencies(DEFAULTS.showDependencies);
+        setShowInferred(DEFAULTS.showInferred);
         setShowPredicates(DEFAULTS.showPredicates);
         setShowNames(DEFAULTS.showNames);
         setForceCharge(DEFAULTS.forceCharge);
@@ -456,8 +548,21 @@ export default function GraphExplorerPage() {
             return true;
         });
 
+        // Inferierte Kanten (graph/<u>/inferred/workspace, M7) als
+        // Überlagerung: nur zwischen sichtbaren Knoten, optisch
+        // unterscheidbar (gestrichelt), per Default aus (SPEC §11).
+        if (showInferred && reasoning) {
+            const known = new Set(activeLinks.map(l => `${linkId(l.source)}|${l.type}|${linkId(l.target)}`));
+            for (const t of reasoning.triples) {
+                if (!activeNodeIds.has(t.subject) || !activeNodeIds.has(t.object)) continue;
+                const type = localName(t.predicate);
+                if (known.has(`${t.subject}|${type}|${t.object}`)) continue;
+                activeLinks.push({ source: t.subject, target: t.object, type, inferred: true });
+            }
+        }
+
         return { nodes: activeNodes, links: activeLinks };
-    }, [graphData, showDocs, showTasks, showProjects, showCanvas, showTags, showDependencies]);
+    }, [graphData, showDocs, showTasks, showProjects, showCanvas, showTags, showDependencies, showInferred, reasoning]);
 
     // Aktive Query-View ersetzt den Standard-Graphen (Live-Subgraph).
     const displayData = useMemo(
@@ -541,9 +646,12 @@ export default function GraphExplorerPage() {
 
                             // Link Color
                             linkColor={(link: any) => {
+                                // Inferierte Kanten (M7): violett + gestrichelt.
+                                if (link.inferred) return 'rgba(126, 87, 194, 0.75)';
                                 if (link.type === 'depends_on' || link.type === 'blocks') return showDependencies ? '#ff4444' : 'rgba(150,150,150,0.2)';
                                 return 'rgba(150,150,150,0.2)';
                             }}
+                            linkLineDash={(link: any) => (link.inferred ? [4, 3] : null)}
 
                             // Link Labels (Predicates)
                             linkCanvasObject={showPredicates ? (link: any, ctx, globalScale) => {
@@ -639,6 +747,7 @@ export default function GraphExplorerPage() {
                                     <label><input type="checkbox" checked={showNames} onChange={e => setShowNames(e.target.checked)} /> Namen anzeigen</label>
                                     <label><input type="checkbox" checked={showPredicates} onChange={e => setShowPredicates(e.target.checked)} /> Beziehungen anzeigen</label>
                                     <label><input type="checkbox" checked={showDependencies} onChange={e => setShowDependencies(e.target.checked)} /> Abhängigkeiten anzeigen</label>
+                                    <label><input type="checkbox" checked={showInferred} onChange={e => setShowInferred(e.target.checked)} /> <span className={styles.inferredSwatch} aria-hidden="true">┄</span> Inferierte Kanten anzeigen</label>
                                 </div>
 
                                 <div className={styles.section}>
@@ -751,6 +860,56 @@ export default function GraphExplorerPage() {
                                             {viewBusy ? 'Speichert…' : 'View speichern'}
                                         </Button>
                                     </details>
+                                </div>
+
+                                <div className={styles.section}>
+                                    <h4>Reasoning &amp; Validierung</h4>
+                                    <div className={styles.reasonActions}>
+                                        <Button variant="ghost" size="sm" onClick={() => loadReasoning('POST')} disabled={reasoningBusy}>
+                                            {reasoningBusy ? 'Leitet ab…' : 'Neu ableiten'}
+                                        </Button>
+                                        <Button variant="ghost" size="sm" onClick={runValidation} disabled={validationBusy}>
+                                            {validationBusy ? 'Prüft…' : 'Validieren (SHACL)'}
+                                        </Button>
+                                    </div>
+                                    {reasoning && (
+                                        <p className={styles.reasonStatus}>
+                                            {(() => {
+                                                const ws = reasoning.status.find(s => s.scope === 'workspace');
+                                                if (!ws) return 'Noch kein Reasoning-Lauf.';
+                                                const stamp = ws.generatedAt
+                                                    ? new Date(ws.generatedAt).toLocaleString('de-DE')
+                                                    : 'unbekannt';
+                                                return `${ws.inferred} abgeleitete Aussagen (Stand: ${stamp})`;
+                                            })()}
+                                        </p>
+                                    )}
+                                    {reasoningError && <p className={styles.viewError} role="alert">{reasoningError}</p>}
+                                    {validation && (
+                                        <div className={styles.validationReport}>
+                                            <p className={styles.reasonStatus} role="status">
+                                                {validation.conforms
+                                                    ? 'SHACL: Bestand ist konform.'
+                                                    : `SHACL: ${validation.counts.violations} Verstoß/Verstöße, ${validation.counts.warnings} Warnung(en), ${validation.counts.infos} Hinweis(e)`}
+                                            </p>
+                                            {validation.results.length > 0 && (
+                                                <ul className={styles.validationList}>
+                                                    {validation.results.slice(0, 12).map((result, index) => (
+                                                        <li key={index} className={styles.validationItem} data-severity={result.severity}>
+                                                            <span className={styles.validationSeverity}>{SEVERITY_LABELS[result.severity]}</span>
+                                                            <span>
+                                                                {result.focusNode ? <strong>{localName(result.focusNode)}: </strong> : null}
+                                                                {result.message}
+                                                            </span>
+                                                        </li>
+                                                    ))}
+                                                    {validation.results.length > 12 && (
+                                                        <li className={styles.validationItem}>… und {validation.results.length - 12} weitere Einträge.</li>
+                                                    )}
+                                                </ul>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className={styles.section}>

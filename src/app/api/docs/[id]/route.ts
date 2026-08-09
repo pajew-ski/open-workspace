@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDoc, updateDoc, deleteDoc } from '@/lib/storage/docs';
-import { parseBody, updateDocSchema } from '@/lib/api/validation';
+import { parseBody, shaclErrorResponse, updateDocSchema } from '@/lib/api/validation';
 
 interface RouteParams {
     params: Promise<{ id: string }>;
@@ -56,6 +56,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
         return NextResponse.json({ doc });
     } catch (error) {
+        const shacl = shaclErrorResponse(error);
+        if (shacl) return shacl;
         console.error('Doc update error:', error);
         return NextResponse.json(
             { error: 'Dokument konnte nicht aktualisiert werden' },

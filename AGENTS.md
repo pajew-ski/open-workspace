@@ -4,7 +4,7 @@
 
 ## Hier weitermachen (Einstieg für neue Sessions)
 
-**Stand 2026-08-09 (5. Ausbaustufe, Graph Core M0–M6 inkl. §12.4)**: Der
+**Stand 2026-08-09 (5. Ausbaustufe, Graph Core M0–M7 inkl. §12.4)**: Der
 **RDF-Graph ist das kanonische Datenmodell — und seit dieser Stufe die
 einzige Wahrheit auch für die Schreibpfade**. Die verbindliche Spezifikation
 inklusive aller Meilensteine M0–M13 liegt in
@@ -162,6 +162,34 @@ Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
   „Backup erstellen"; Sync-Button nur bei bidirectional). Abnahme in
   BEIDEN Bindungen: `tests/graph/git-provider.test.ts`,
   `tests/graph/git-backup.test.ts`.
+- **Reasoning + SHACL (M7)** (`src/lib/graph/reasoning/`): OWL RL Tier 1
+  als EIGENE Regelmenge über exakt das §7.3-Fragment (`owl-rl.ts`:
+  subClassOf/subPropertyOf inkl. Hierarchie-Transitivität, domain/range,
+  inverseOf, Transitive-/SymmetricProperty, equivalentClass/-Property,
+  sameAs mit Ersetzung — Entscheidung gegen eye-js in
+  [docs/decisions/0002-shacl-library.md](./docs/decisions/0002-shacl-library.md)).
+  Materialisierung ist **scope-partitioniert** (Inferenz-Leak, §7.3):
+  ein Lauf pro Sichtbarkeits-Scope über genau dessen Dataset —
+  `workspace` (workspace+public+import/*+meta) und `public` (nur public) —
+  vollständiger Replace nach `graph/<u>/inferred/<scope>` mit PROV;
+  Schema-Axiome über fremde Vokabulare in `ontology/rules/reasoning.ttl`
+  (skos:broader transitiv — die Hülle liegt NUR im Inferenz-Graphen,
+  behauptete Graphen bleiben reines SKOS). Läuft beim Start (inferred
+  wird nie persistiert, SPEC §8.1), nach jedem Import/Connector-Löschen
+  und auf Anforderung (`GET|POST /api/graph/reasoning`). SHACL
+  (rdf-validate-shacl, gekapselt in `reasoning/shacl.ts`; Kern-Shapes
+  `ontology/shapes/core.ttl` → `graph/shapes` beim Start, inkl.
+  Layout-Blacklist als Shape) validiert an den DREI Stellen aus §7.2:
+  vor jedem UI/API-Schreibvorgang (`workspace/crud.ts` — blockierend NUR
+  bei sh:Violation, das die Mutation NEU einführt; Altbestand bleibt
+  bearbeitbar; API → 422), nach jedem Connector-Pull (berichtend, NIE
+  blockierend; Bericht als sh:ValidationReport in `graph/meta`,
+  Kurzfassung im Connector-Lesemodell + `/graph/connectors`) und on
+  demand (`POST /api/graph/validate` + Explorer-Panel „Reasoning &
+  Validierung"; inferierte Kanten gestrichelt, per Default aus).
+  DL-Sidecar (Tier 2) bewusst nicht gebaut — optional laut SPEC, kein
+  Bedarf, keine Attrappe. Abnahme: `tests/graph/reasoning.test.ts`
+  (inkl. Scope-Leak-Negativtest) und `tests/graph/shacl.test.ts`.
 - **Invarianten** (Review-Blocker, SPEC §2): RDF ist die eine Wahrheit;
   Wissen ≠ Präsentation; asserted ≠ inferred; ein Connector-Vertrag für
   alles Externe; kein `any` unter `src/lib/graph/` (ESLint-Error);
@@ -191,7 +219,7 @@ und backend-unabhängig** — Details in [docs/ai-platform.md](./docs/ai-platfor
 - **UI**: AI-Hub (`/ai`), Skills (`/skills`), MCP-Verwaltung in `/tools`,
   A2A-Discovery in `/agents`, ModelPicker in beiden Chat-Oberflächen.
 
-Build, Typecheck, Lint (0 Errors), 244 Unit-Tests und das **blockierende
+Build, Typecheck, Lint (0 Errors), 275 Unit-Tests und das **blockierende
 E2E-Gate** (`e2e/mobile-navigation`, `e2e/mobile-ux`, `e2e/a11y` inkl. der
 Seiten `/ai`, `/skills`, `/graph/connectors` und `/graph/sparql`) laufen
 grün.
@@ -204,16 +232,19 @@ grün.
 4. [TODO.md](./TODO.md) — Roadmap als abhakbare Liste (inkl. Graph Core)
 5. Diesen Abschnitt hier für die Architektur-Prinzipien
 
-**Nächste sinnvolle Schritte**: Graph Core M7 (Reasoning: SHACL-Validierung
-an den drei Stellen aus SPEC §7.2, OWL RL Tier 1 mit
-`graph/<u>/inferred/<scope>` und vollständigem Replace, DL-Sidecar
-optional — Abnahme: `ow:blockedBy`/`ow:blocks` und
-`skos:broader`-Transitivität nachweislich inferiert, kein inferiertes
-Tripel je in `graph/workspace`; Library-Entscheidung shacl-engine vs.
-rdf-validate-shacl mit Messwerten nach `docs/decisions/`). Danach M8
-(Suche + Multi-Hop-Retrieval nach §7.5). Parallel weiter sinnvoll: i18n
-mit `next-intl` (P0); Abbau der `no-explicit-any`-Warnings außerhalb des
-Graph-Codes; CopilotKit-Entscheidung.
+**Nächste sinnvolle Schritte**: Graph Core M8 (Suche + Multi-Hop-Retrieval
+nach SPEC §7.5/§7.7: Volltext-Index über alle Literale [leichte
+JS-Lösung, Browser + Server identisch], optionale Embeddings, die
+vier-Phasen-Retrieval-Pipeline Seeding → Expansion → Scoring → Assembly
+als erstklassige API mit Pflicht-`explain`/-`provenance`, Umstellung des
+`workspace_finder` auf den Graphen, Retrieval-Profile als
+`ow:`-Entitäten — Abnahme: reproduzierbare Knotenmenge samt
+Score-Reihenfolge bei `maxHops: 2`, Hub-Kappung nachweislich, Kontext
+hält das Token-Budget; `includeInferred: false` als Default nutzt die
+M7-Inferenz-Graphen nur auf Anforderung). Danach M9 (Agents/Skills/Tools
+als Graph-Bürger). Parallel weiter sinnvoll: i18n mit `next-intl` (P0);
+Abbau der `no-explicit-any`-Warnings außerhalb des Graph-Codes;
+CopilotKit-Entscheidung.
 
 **Arbeitsprinzip dieses Repos**: Keine Attrappen. Lieber ein Feature ehrlich als
 „geplant" kennzeichnen, als tote Buttons stehen lassen.
