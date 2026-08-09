@@ -14,12 +14,12 @@ import { getServerGraph } from '@/lib/graph/server/instance';
 import { getMcpHost } from '@/lib/graph/mcp/host.server';
 import { grantForToken, mcpTokensFromEnv, MCP_TOKENS_ENV } from '@/lib/graph/mcp/tokens';
 import { toolsForGrant } from '@/lib/graph/mcp/server';
-import { createServerRuntimeAdapter } from '@/lib/platform/runtime/server';
+import { createNodeRuntimeAdapter } from '@/lib/platform/runtime/server';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(): Promise<Response> {
-    const available = createServerRuntimeAdapter().capabilities.mcpServer;
+    const available = createNodeRuntimeAdapter().capabilities.mcpServer;
     const config = mcpTokensFromEnv();
     try {
         const handle = available && config.tokens.length > 0 ? await getServerGraph() : null;

@@ -17,6 +17,9 @@
 # next.js
 /.next/
 /out/
+# Zweiter Build für den Ingress-E2E-Lauf (scripts/e2e-ingress-server.mjs)
+/.next-ingress/
+/.next-ingress-run/
 
 # production
 /build

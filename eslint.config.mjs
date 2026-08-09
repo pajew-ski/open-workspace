@@ -9,6 +9,10 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    // Zweiter Build für den Ingress-E2E-Lauf (scripts/e2e-ingress-server.mjs):
+    // Build-Ausgabe plus mitkopierte Abhängigkeiten, kein Quellcode.
+    ".next-ingress/**",
+    ".next-ingress-run/**",
     "out/**",
     "build/**",
     "next-env.d.ts",

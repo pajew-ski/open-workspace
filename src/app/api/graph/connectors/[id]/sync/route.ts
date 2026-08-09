@@ -14,7 +14,7 @@ import { getServerGraph, persistServerGraphSnapshot, reprojectWorkspaceFiles } f
 import { getConnector } from '@/lib/graph/connectors/registry';
 import { syncConnector } from '@/lib/graph/connectors/sync';
 import { createNodeFileSystem } from '@/lib/platform/runtime/node-fs';
-import { createServerRuntimeAdapter } from '@/lib/platform/runtime/server';
+import { createNodeRuntimeAdapter } from '@/lib/platform/runtime/server';
 
 interface RouteContext {
     params: Promise<{ id: string }>;
@@ -34,7 +34,7 @@ export async function POST(_request: NextRequest, context: RouteContext) {
         }
         const result = await syncConnector(handle, id, {
             files: createNodeFileSystem(),
-            runtime: createServerRuntimeAdapter(),
+            runtime: createNodeRuntimeAdapter(),
         });
         // Wiederhergestellte kanonische Graphen (git-backup, SPEC §8.2):
         // die Datei-Projektionen folgen dem Store.

@@ -1,6 +1,8 @@
 # Dependencies and build output (recreated inside the image)
 node_modules
 .next
+.next-ingress
+.next-ingress-run
 out
 build
 coverage
@@ -11,10 +13,11 @@ tsconfig.tsbuildinfo
 .github
 .agent
 
-# Tests and tooling not needed for the production build
+# Tests and tooling not needed for the production build.
+# scripts/ bleibt im Kontext: das Runtime-Image kopiert daraus den
+# Start-Einstieg (start.mjs, base-path.mjs, ingress-proxy.mjs).
 e2e
 tests
-scripts
 playwright-report
 test-results
 blob-report

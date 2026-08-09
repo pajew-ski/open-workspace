@@ -17,7 +17,7 @@ import {
     TRUST_LEVELS,
     TRUST_LEVEL_LABELS,
 } from '@/lib/graph/federation/registry';
-import { createServerRuntimeAdapter } from '@/lib/platform/runtime/server';
+import { createNodeRuntimeAdapter } from '@/lib/platform/runtime/server';
 import { FEDERATION_DEFAULTS } from '@/lib/graph/federation/remote';
 
 const createSchema = z.object({
@@ -31,7 +31,7 @@ const createSchema = z.object({
 export async function GET(): Promise<Response> {
     try {
         const handle = await getServerGraph();
-        const capabilities = createServerRuntimeAdapter().capabilities;
+        const capabilities = createNodeRuntimeAdapter().capabilities;
         return NextResponse.json({
             endpoints: await listFederatedEndpoints(handle),
             trustLevels: TRUST_LEVELS.map(level => ({ level, label: TRUST_LEVEL_LABELS[level] })),

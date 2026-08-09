@@ -98,6 +98,22 @@ docker build -t open-workspace .
 docker run -p 3000:3000 -v ow-data:/app/data open-workspace
 ```
 
+### Server-Deployment und Home-Assistant-Add-on
+
+Dasselbe Image trägt beide Betriebsarten — Unterschied ist nur das
+Packaging (Details: [docs/deployment.md](./docs/deployment.md)):
+
+```bash
+# Server: TLS über Caddy, Anmeldung über oauth2-proxy (OIDC)
+cp deploy/server/.env.example deploy/server/.env
+docker compose -f deploy/server/docker-compose.yml --profile oidc up -d
+```
+
+Als **Home-Assistant-Add-on** wird `deploy/ha-addon/config.yaml` als
+Add-on-Repository eingebunden; die Oberfläche läuft dann über Ingress —
+ohne eigenen Port, mit der Anmeldung von Home Assistant
+([deploy/ha-addon/DOCS.md](./deploy/ha-addon/DOCS.md)).
+
 ## AI-Konfiguration
 
 Provider werden im **AI-Hub** (`/ai`) verwaltet: Preset wählen (Ollama,
@@ -143,9 +159,15 @@ Neutrale Töne mit `#00674F`-Teal-Akzent. Hell-/Dunkelmodus mit System-Erkennung
   `ENV:MY_VAR`-Referenzen statt lokaler Speicherung möglich
 - **API-Härtung**: Zod-Validierung, Upload-Allowlist mit Magic-Byte-Prüfung,
   Path-Traversal-Schutz, SSRF-Schutz im Tool-Executor
-- **Scope**: Die App ist für den lokalen Einzelnutzer-Betrieb konzipiert und hat
-  bewusst keine Login-Schicht — vor ein öffentliches Deployment gehört ein
-  Auth-Proxy (siehe [ANALYSE.md](./ANALYSE.md), Roadmap P2)
+- **Anmeldung**: Die App führt bewusst keinen eigenen Anmeldefluss. Sie liest
+  die Identität aus ihrer Umgebung (`OW_AUTH_MODE`: Home-Assistant-Ingress,
+  vorgelagerter OIDC-Proxy, oder ein selbst geprüftes Bearer-Token) und zeigt
+  sie an; die Durchsetzung übernimmt der Proxy vor der App. Das
+  Server-Compose bringt ihn mit ([docs/deployment.md](./docs/deployment.md)).
+- **Scope**: Rechte pro Nutzer und Graph sind noch nicht implementiert
+  (Graph Core M13, [GRAPH_CORE_SPEC.md](./GRAPH_CORE_SPEC.md) §17) —
+  `capabilities.multiUser` steht deshalb auf `false`. Ohne Auth-Proxy davor
+  ist die Installation Einzelnutzer-Betrieb.
 
 ## Projekt-Struktur
 
@@ -156,7 +178,9 @@ src/
 ├── lib/            # Core: inference, storage (atomar), tools, settings, security
 └── types/          # TypeScript-Definitionen
 data/               # Local-First-Datenhaltung (JSON/Markdown), data/secure ausgenommen
-public/             # PWA: manifest, sw.js, icons, offline.html
+public/             # PWA: sw.js, icons, offline.html (Manifest ist eine Route)
+deploy/             # Packaging: HA-Add-on (config.yaml) und server-Compose
+scripts/            # Start-Einstieg des Images, Base-Path-Rewrite, Ingress-Proxy
 e2e/                # Playwright-Tests
 ```
 

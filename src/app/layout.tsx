@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { ThemeProvider, QueryProvider } from "@/components/providers";
+import { ThemeProvider, QueryProvider, BasePathProvider } from "@/components/providers";
+import { withBasePath } from "@/lib/platform/base-path";
 import { ToastContainer } from "@/components/ui";
 import { AssistantProvider } from "@/lib/assistant/context";
 import { CopilotKit } from "@copilotkit/react-core";
@@ -12,7 +13,8 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Open Workspace",
   description: "Umfassender AI-Workspace für Agenten-Kollaboration",
-  manifest: "/manifest.json",
+  // Unter Ingress liegt auch das Manifest hinter dem Präfix (M12).
+  manifest: withBasePath("/manifest.webmanifest"),
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -40,9 +42,10 @@ export default function RootLayout({
   return (
     <html lang="de" suppressHydrationWarning>
       <body suppressHydrationWarning>
+        <BasePathProvider>
         <ThemeProvider>
           <QueryProvider>
-          <CopilotKit runtimeUrl="/api/copilotkit" showDevConsole={false}>
+          <CopilotKit runtimeUrl={withBasePath("/api/copilotkit")} showDevConsole={false}>
             <AssistantProvider>
               <CopilotStateProvider>
                 {children}
@@ -55,6 +58,7 @@ export default function RootLayout({
           </CopilotKit>
           </QueryProvider>
         </ThemeProvider>
+        </BasePathProvider>
       </body>
     </html>
   );
