@@ -4,7 +4,7 @@
 
 ## Hier weitermachen (Einstieg für neue Sessions)
 
-**Stand 2026-08-09 (7. Ausbaustufe, Graph Core M0–M9 inkl. §12.4)**: Der
+**Stand 2026-08-09 (8. Ausbaustufe, Graph Core M0–M10 inkl. §12.4)**: Der
 **RDF-Graph ist das kanonische Datenmodell — und seit der 6. Stufe die
 einzige Wahrheit auch für die Schreibpfade**. Die verbindliche Spezifikation
 inklusive aller Meilensteine M0–M13 liegt in
@@ -266,6 +266,44 @@ Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
   diff-stabile Snapshots), abschnittsweiser Replace neben der
   Connector-Registry. Abnahme: `tests/graph/agents-skills-tools.test.ts`
   (inkl. MCP end-to-end gegen einen Streamable-HTTP-Stub).
+- **MCP-Server (M10)** (`src/lib/graph/mcp/` + `/api/mcp`): Der Workspace
+  ist jetzt auch MCP-**Server** — externe Agenten (Claude Desktop, ein
+  zweiter Workspace) retrieven auf dem Graphen, ohne SPARQL zu sprechen.
+  Streamable HTTP über die Web-Standard-Bindung DERSELBEN SDK, die schon
+  den Client trägt (`WebStandardStreamableHTTPServerTransport`: `Request`
+  rein, `Response` raus — direkt am App-Router-Handler, kein Node-Adapter,
+  kein nachgebautes Protokoll). Werkzeuge nach §7.6: `graph_search`,
+  `graph_retrieve` (Default `format: 'context'`, `profile` als Basis),
+  `graph_neighbors`, `graph_describe` — dazu `graph_sparql` nur mit
+  SPARQL-Recht (read-only) und `graph_write` nur mit Schreibfreigabe
+  (**Default aus**); ein Werkzeug ohne Recht wird gar nicht erst
+  registriert (kein toter Eintrag im Inventar). Resources: `graph://<iri>`
+  mit **prozentkodierter** IRI (nur so ist die URI für `urn:ow:…` wie für
+  `https://…`-Basen eine gültige URL), ausgeliefert als Turtle + JSON-LD;
+  Prompts sind die `ow:RetrievalProfile`-Entitäten aus M8.
+  **Sicherheit ist kein zweiter Pfad**: `AccessGrant`
+  (`src/lib/graph/authz/grant.ts`) ist ausschließlich eine Verengung —
+  `resolveDataset` (SPARQL) und `retrievalDataset` (Retrieval) nehmen
+  `allowedGraphs` und können dadurch nur weniger zeigen; `graph_sparql`
+  ist derselbe `executeSparqlProtocol` mit `readOnly: true`. Die Klammer
+  greift VOR der Expansion, und die Expansion nimmt nur noch Knoten auf,
+  über die im erlaubten Dataset etwas ausgesagt ist — eine Kante ins
+  Gesperrte endet im Nichts statt eine nackte IRI auszuliefern. Zugänge
+  stehen bis M13 in `OW_MCP_TOKENS` (zod-validiert, Vergleich über
+  SHA-256-Digest ohne frühen Abbruch, Scope-Muster wie `workspace`,
+  `import/*`, `shared/<id>`, `*` — `graph/acl` trifft keins davon); ohne
+  Konfiguration ist der Endpunkt ehrlich **aus** (503 mit Hinweis), nie
+  anonym offen. Sitzungen sind an die Token-Identität gebunden (fremde
+  Session-ID = 404), Rate-Limit pro Token als gleitendes Minutenfenster
+  (429 + `Retry-After`), Zeitbudget pro Werkzeug. `graph_write` schreibt
+  ausschließlich in `workspace`/`public`/`shared/<id>` und hängt an jedes
+  Subjekt `prov:wasAttributedTo` plus eine `prov:Activity`.
+  `capabilities.mcpServer` steht damit für `server`/`ha-addon` auf true.
+  UI: read-only Status-Karte auf `/tools` (Zugänge, Rechte, sichtbare
+  Graphen, Sitzungen) über `GET /api/mcp/status` — Geheimnisse verlassen
+  die Route nie. Abnahme: `tests/graph/mcp-server.test.ts` (echter
+  SDK-Client; Negativtest über retrieve/neighbors/describe/search/sparql/
+  Resource).
 - **Invarianten** (Review-Blocker, SPEC §2): RDF ist die eine Wahrheit;
   Wissen ≠ Präsentation; asserted ≠ inferred; ein Connector-Vertrag für
   alles Externe; kein `any` unter `src/lib/graph/` (ESLint-Error);
@@ -295,10 +333,12 @@ und backend-unabhängig** — Details in [docs/ai-platform.md](./docs/ai-platfor
 - **UI**: AI-Hub (`/ai`), Skills (`/skills`), MCP-Verwaltung in `/tools`,
   A2A-Discovery in `/agents`, ModelPicker in beiden Chat-Oberflächen.
 
-Build, Typecheck, Lint (0 Errors), 337 Unit-Tests und das **blockierende
+Build, Typecheck, Lint (0 Errors), 356 Unit-Tests und das **blockierende
 E2E-Gate** (`e2e/mobile-navigation`, `e2e/mobile-ux`, `e2e/a11y` inkl. der
-Seiten `/ai`, `/skills`, `/graph/connectors` und `/graph/sparql`) laufen
-grün.
+Seiten `/ai`, `/skills`, `/tools`, `/graph/connectors` und `/graph/sparql`)
+laufen grün. In Sandboxes ohne Playwright-Download zeigt
+`CHROMIUM_PATH=/opt/pw-browsers/chromium bun run test:e2e` auf einen
+vorinstallierten Browser (die Konfiguration wertet die Variable aus).
 
 **Bevor du etwas Neues baust, lies in dieser Reihenfolge:**
 1. [GRAPH_CORE_SPEC.md](./GRAPH_CORE_SPEC.md) — verbindliche Spec des
@@ -308,17 +348,24 @@ grün.
 4. [TODO.md](./TODO.md) — Roadmap als abhakbare Liste (inkl. Graph Core)
 5. Diesen Abschnitt hier für die Architektur-Prinzipien
 
-**Nächste sinnvolle Schritte**: Graph Core M10 (MCP-**Server** `/api/mcp`
-nach SPEC §7.6: Streamable HTTP + SSE-Fallback über
-`@modelcontextprotocol/sdk`, nur Runtimes `ha-addon`/`server`
-[`capabilities.mcpServer`]; Tools `graph_search`/`graph_retrieve`/
-`graph_neighbors`/`graph_describe`/`graph_sparql` — Suche und
-Retrieval-Pipeline liegen mit M8 bereit, `graph_write` bleibt per Default
-aus; Knoten als Resources `graph://<iri>` [Turtle + JSON-LD],
-Retrieval-Profile als Prompts; identische Authz wie SPARQL/Retrieval,
-Rate-Limits und Timeouts Pflicht. Abnahme: externer MCP-Client ruft
-`graph_retrieve` mit Provenienz ab; Negativtest: Token ohne Leserecht
-sieht einen Graphen auch über Hops nicht). Danach M11 (Föderation).
+**Nächste sinnvolle Schritte**: Graph Core M11 (**Föderation** nach SPEC
+§7.4: Endpoint-Registry als `ow:FederatedEndpoint` mit `ow:trustLevel` in
+`graph/meta`, `SERVICE`-Queries gegen registrierte Endpoints mit
+Erreichbarkeits-Probe pro Endpoint [im Browser CORS-abhängig, in der UI
+ehrlich markieren], ausgehende Aufrufe über den bestehenden SSRF-Guard
+[`src/lib/net/private.ts` bzw. `connectors/http.ts`], Query-Timeouts und
+Ergebnis-Limits als Pflicht — und **eingehende** Föderation für
+`ha-addon`/`server` mit Authz-Rewriting: das erlaubte Dataset wird aus
+der authentifizierten Identität abgeleitet und in die Query injiziert,
+nie nachgefiltert. Der Grant aus M10 (`src/lib/graph/authz/grant.ts`) ist
+dafür der Einhängepunkt — `resolveDataset` nimmt `allowedGraphs` bereits
+entgegen; Default für unauthentifizierte Zugriffe ist das LEERE Dataset.
+Abnahme: Live-Query gegen Wikidata liefert Ergebnisse; ein
+unauthentifizierter Zugriff sieht ausschließlich explizit freigegebene
+Named Graphs — Negativtest mit manipuliertem `FROM`). Danach M12
+(Runtime-Vollausbau) und M13 (Multi-User/ACL — dort wird die
+Token→Scope-Konfiguration aus `OW_MCP_TOKENS` durch `graph/acl` ersetzt,
+ohne dass sich die Grant-Schnittstelle ändert).
 Parallel weiter sinnvoll: i18n mit `next-intl` (P0); Abbau der
 `no-explicit-any`-Warnings außerhalb des Graph-Codes;
 CopilotKit-Entscheidung.
@@ -442,6 +489,13 @@ open-workspace/
 - Entdeckte Tools laufen namespaced (`mcp_<server>_<tool>`) im Tool-Loop
 - Prompts sind als Skills importierbar; `ui://`-Ressourcen in
   Tool-Ergebnissen rendern als `UIResource` auf der generativen Bühne
+- **Server-Seite** (`/api/mcp`, `src/lib/graph/mcp/`, GRAPH_CORE_SPEC §7.6):
+  externe Agenten retrieven auf dem Wissensgraphen — Werkzeuge
+  `graph_search`/`graph_retrieve`/`graph_neighbors`/`graph_describe`
+  (+ `graph_sparql`, `graph_write` je nach Recht), Knoten als Resources
+  `graph://<iri>`, Retrieval-Profile als Prompts. Zugang ausschließlich
+  per Token aus `OW_MCP_TOKENS` mit ausdrücklich freigegebenen Graphen;
+  Status read-only unter `/tools`
 
 ### Agent Tools
 - Verfügbare Tools sind in [TOOLS.md](./TOOLS.md) dokumentiert.

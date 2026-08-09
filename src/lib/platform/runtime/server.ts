@@ -6,7 +6,8 @@
  * Auth-Bindung (M12, dasselbe Container-Image — SPEC §5.2).
  *
  * Capabilities sind ehrlich: nur was existiert, steht auf true —
- * MCP-Server (M10) und Föderation (M11) sind noch keine Fähigkeiten.
+ * der MCP-Server existiert seit M10 (`/api/mcp`), Föderation (M11) noch
+ * nicht.
  */
 
 import type { GraphStore } from '@/lib/graph/store/types';
@@ -35,7 +36,10 @@ export function createServerRuntimeAdapter(store?: () => Promise<GraphStore>): R
         }),
         capabilities: {
             sparqlEndpoint: true,
-            mcpServer: false,
+            // MCP-Server (M10): HTTP-Endpoint /api/mcp. Ob er jemanden
+            // hereinlässt, entscheidet die Token-Konfiguration — die
+            // Fähigkeit selbst existiert in dieser Runtime.
+            mcpServer: true,
             federationOutbound: false,
             federationInbound: false,
             multiUser: false,
