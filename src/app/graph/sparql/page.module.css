@@ -1,0 +1,492 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    width: 100%;
+}
+
+.header h2 {
+    margin: 0 0 var(--space-1);
+    color: var(--color-text-primary);
+}
+
+.header p {
+    margin: 0;
+    max-width: 75ch;
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    line-height: var(--leading-normal);
+}
+
+.header code,
+.hint code {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    background: var(--color-surface-sunken);
+    padding: 1px 5px;
+    border-radius: var(--radius-sm);
+}
+
+.inlineLink {
+    color: var(--color-primary-text);
+    text-decoration: underline;
+}
+
+/* --- Editor -------------------------------------------------------------- */
+
+.editorSection {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.editorLabel {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2);
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.operationTag {
+    font-size: var(--text-xs, 0.75rem);
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: 1px 6px;
+}
+
+/*
+ * Overlay-Editor: Prism-Layer unter transparenter Textarea. Beide Layer
+ * teilen Font, Größe, Zeilenhöhe und Padding — nur so bleibt die Karet-
+ * Position deckungsgleich. Formularfelder nie unter 16px (iOS-Autozoom).
+ */
+.editorShell {
+    position: relative;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-sunken);
+    overflow: hidden;
+}
+
+.editorShell:focus-within {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 25%, transparent);
+}
+
+.highlightLayer,
+.editorInput {
+    font-family: var(--font-mono);
+    font-size: 16px;
+    line-height: 1.5;
+    padding: var(--space-3);
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    tab-size: 2;
+}
+
+.highlightLayer {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    color: var(--color-text-primary);
+}
+
+.highlightLayer code {
+    font-family: inherit;
+    font-size: inherit;
+    background: none;
+    padding: 0;
+}
+
+.editorInput {
+    position: relative;
+    display: block;
+    width: 100%;
+    min-height: 16rem;
+    background: transparent;
+    color: transparent;
+    caret-color: var(--color-text-primary);
+    border: none;
+    outline: none;
+    resize: vertical;
+    overflow: auto;
+}
+
+.editorInput::selection {
+    background: color-mix(in srgb, var(--color-primary) 30%, transparent);
+    color: transparent;
+}
+
+/* Prism-Token — Licht-Palette (WCAG-AA auf --color-surface-sunken). */
+.highlightLayer :global(.token.keyword),
+.highlightLayer :global(.token.builtin) {
+    color: #0550ae;
+    font-weight: 600;
+}
+
+.highlightLayer :global(.token.variable) {
+    color: #953800;
+}
+
+.highlightLayer :global(.token.string),
+.highlightLayer :global(.token.url),
+.highlightLayer :global(.token.iri) {
+    color: #0a3069;
+}
+
+.highlightLayer :global(.token.function) {
+    color: #6639ba;
+}
+
+.highlightLayer :global(.token.number),
+.highlightLayer :global(.token.boolean) {
+    color: #953800;
+}
+
+.highlightLayer :global(.token.comment) {
+    color: #57606a;
+    font-style: italic;
+}
+
+.highlightLayer :global(.token.punctuation),
+.highlightLayer :global(.token.operator) {
+    color: var(--color-text-secondary);
+}
+
+:global([data-theme='dark']) .highlightLayer :global(.token.keyword),
+:global([data-theme='dark']) .highlightLayer :global(.token.builtin) {
+    color: #79c0ff;
+}
+
+:global([data-theme='dark']) .highlightLayer :global(.token.variable) {
+    color: #ffa657;
+}
+
+:global([data-theme='dark']) .highlightLayer :global(.token.string),
+:global([data-theme='dark']) .highlightLayer :global(.token.url),
+:global([data-theme='dark']) .highlightLayer :global(.token.iri) {
+    color: #a5d6ff;
+}
+
+:global([data-theme='dark']) .highlightLayer :global(.token.function) {
+    color: #d2a8ff;
+}
+
+:global([data-theme='dark']) .highlightLayer :global(.token.number),
+:global([data-theme='dark']) .highlightLayer :global(.token.boolean) {
+    color: #ffa657;
+}
+
+:global([data-theme='dark']) .highlightLayer :global(.token.comment) {
+    color: #8b949e;
+}
+
+/* --- Vorschläge ----------------------------------------------------------- */
+
+.suggestions {
+    list-style: none;
+    margin: 0;
+    padding: var(--space-1);
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-md, 0 4px 12px rgb(0 0 0 / 0.12));
+    max-height: 14rem;
+    overflow-y: auto;
+}
+
+.suggestion {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2);
+    width: 100%;
+    min-height: var(--touch-target);
+    padding: var(--space-2) var(--space-3);
+    border: none;
+    border-radius: var(--radius-sm);
+    background: none;
+    text-align: left;
+    cursor: pointer;
+    color: var(--color-text-primary);
+}
+
+.suggestion:hover,
+.suggestion:focus-visible {
+    background: var(--color-surface-sunken);
+}
+
+.suggestionLabel {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+}
+
+.suggestionDetail {
+    font-size: var(--text-xs, 0.75rem);
+    color: var(--color-text-secondary);
+    overflow-wrap: anywhere;
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.actions button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.hint {
+    margin: 0;
+    font-size: var(--text-xs, 0.75rem);
+    color: var(--color-text-secondary);
+}
+
+/* --- Ergebnis ------------------------------------------------------------- */
+
+.resultSection {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.resultMeta {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+}
+
+.error {
+    margin: 0;
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--color-error-subtle);
+    color: var(--color-error-text, #b91c1c);
+    font-size: var(--text-sm);
+    overflow-wrap: anywhere;
+}
+
+.booleanResult {
+    margin: 0;
+    font-size: var(--text-lg, 1.125rem);
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.tableWrap {
+    overflow-x: auto;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    max-height: 24rem;
+    overflow-y: auto;
+}
+
+.resultTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+}
+
+.resultTable th,
+.resultTable td {
+    text-align: left;
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--color-border);
+    font-family: var(--font-mono);
+    overflow-wrap: anywhere;
+    min-width: 8rem;
+    vertical-align: top;
+}
+
+.resultTable th {
+    position: sticky;
+    top: 0;
+    background: var(--color-surface-sunken);
+    color: var(--color-text-primary);
+    z-index: 1;
+}
+
+.resultTable td {
+    color: var(--color-text-primary);
+}
+
+.emptyResult {
+    margin: 0;
+    padding: var(--space-3) 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+}
+
+.graphWrap {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: var(--color-surface);
+}
+
+/* --- Gespeicherte Queries -------------------------------------------------- */
+
+.savedSection h3 {
+    margin: 0 0 var(--space-2);
+    color: var(--color-text-primary);
+}
+
+.savedList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.savedItem {
+    display: flex;
+    align-items: stretch;
+    gap: var(--space-1);
+}
+
+.savedLoad {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    min-height: var(--touch-target);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+    text-align: left;
+    cursor: pointer;
+}
+
+.savedLoad:hover,
+.savedLoad:focus-visible {
+    border-color: var(--color-primary);
+}
+
+.savedName {
+    overflow-wrap: anywhere;
+}
+
+.savedKind {
+    flex-shrink: 0;
+    font-size: var(--text-xs, 0.75rem);
+    font-family: var(--font-mono);
+    color: var(--color-text-secondary);
+}
+
+.savedDelete {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--touch-target);
+    min-height: var(--touch-target);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-error-text, #b91c1c);
+    cursor: pointer;
+}
+
+.savedDelete:hover,
+.savedDelete:focus-visible {
+    border-color: var(--color-error);
+}
+
+/* --- Speichern-Dialog ------------------------------------------------------ */
+
+.overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-4);
+    background: rgb(0 0 0 / 0.5);
+    z-index: var(--z-modal, 1000);
+}
+
+.dialog {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    width: 100%;
+    max-width: 28rem;
+    max-height: calc(100dvh - 2 * var(--space-4));
+    overflow-y: auto;
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-lg, 0 12px 32px rgb(0 0 0 / 0.25));
+}
+
+.dialogHead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+}
+
+.dialogHead h3 {
+    margin: 0;
+    color: var(--color-text-primary);
+}
+
+.dialogClose {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--touch-target);
+    height: var(--touch-target);
+    border: none;
+    border-radius: var(--radius-md);
+    background: none;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+}
+
+.dialogClose:hover,
+.dialogClose:focus-visible {
+    background: var(--color-surface-sunken);
+    color: var(--color-text-primary);
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    font-size: var(--text-sm);
+    color: var(--color-text-primary);
+}
+
+.field input,
+.field select {
+    font-size: 16px;
+    min-height: var(--touch-target);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+}
+
+.dialogButtons {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+}

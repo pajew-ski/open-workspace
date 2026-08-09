@@ -12,3 +12,5 @@ declare module 'prismjs/components/prism-yaml';
 declare module 'prismjs/components/prism-sql';
 declare module 'prismjs/components/prism-go';
 declare module 'prismjs/components/prism-rust';
+declare module 'prismjs/components/prism-turtle';
+declare module 'prismjs/components/prism-sparql';

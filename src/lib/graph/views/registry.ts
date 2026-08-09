@@ -211,19 +211,25 @@ const LABEL_PREDICATES = [
     `${PREFIXES.dcterms}title`,
 ];
 
+/** Graph-Auflösung eines Query-Texts ohne gespeicherte View (Editor-Vorschau). */
+export interface ResolvedQueryGraph {
+    nodes: ResolvedViewNode[];
+    links: ResolvedViewLink[];
+    quadCount: number;
+    truncated: boolean;
+}
+
 /**
- * Führt die gespeicherte Query gegen das erlaubte Dataset aus und baut
- * den Subgraphen für den Explorer. Nur graph-förmige Ergebnisse
+ * Führt einen Query-Text gegen das erlaubte Dataset aus und baut den
+ * Subgraphen für den Explorer. Nur graph-förmige Ergebnisse
  * (CONSTRUCT/DESCRIBE) sind eine View — SELECT/ASK werden mit klarer
- * Meldung abgelehnt, Updates lehnt der Store selbst ab.
+ * Meldung abgelehnt, Updates lehnt der Store selbst ab. Grundlage sowohl
+ * der gespeicherten Views (resolveQueryView) als auch der
+ * Ergebnis-als-Graph-Ansicht des SPARQL-Editors (M2).
  */
-export async function resolveQueryView(handle: GraphHandle, id: string): Promise<ResolvedQueryView> {
-    const view = await getQueryView(handle, id);
-    if (!view) {
-        throw new Error(`View "${id}" ist nicht registriert.`);
-    }
+export async function resolveQueryTextAsGraph(handle: GraphHandle, queryText: string): Promise<ResolvedQueryGraph> {
     const dataset = await resolveDataset(handle.store, handle.iri);
-    const result = await handle.store.query(view.queryText, {
+    const result = await handle.store.query(queryText, {
         defaultGraphs: dataset.defaultGraphs,
         namedGraphs: dataset.namedGraphs,
         timeoutMs: 30_000,
@@ -284,5 +290,15 @@ export async function resolveQueryView(handle: GraphHandle, id: string): Promise
         type: types.get(nodeId) ?? 'Ressource',
     }));
 
-    return { view, nodes, links, quadCount: quads.length, truncated };
+    return { nodes, links, quadCount: quads.length, truncated };
+}
+
+/** Löst eine gespeicherte View über ihren Query-Text auf. */
+export async function resolveQueryView(handle: GraphHandle, id: string): Promise<ResolvedQueryView> {
+    const view = await getQueryView(handle, id);
+    if (!view) {
+        throw new Error(`View "${id}" ist nicht registriert.`);
+    }
+    const resolved = await resolveQueryTextAsGraph(handle, view.queryText);
+    return { view, ...resolved };
 }
