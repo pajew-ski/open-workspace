@@ -20,7 +20,7 @@ import type { GraphStore } from '../store/types';
 import type { IriFactory } from '../iri';
 import { factory, namedNode, literal, typedLiteral } from '../rdf';
 import { DCTERMS, OW, RDF, SCHEMA, SKOS, PREFIXES } from '../vocab';
-import { resolveDataset } from '../sparql/protocol';
+import { resolveDataset, type SparqlFederationResolver } from '../sparql/protocol';
 
 export interface GraphHandle {
     store: GraphStore;
@@ -227,9 +227,17 @@ export interface ResolvedQueryGraph {
  * der gespeicherten Views (resolveQueryView) als auch der
  * Ergebnis-als-Graph-Ansicht des SPARQL-Editors (M2).
  */
-export async function resolveQueryTextAsGraph(handle: GraphHandle, queryText: string): Promise<ResolvedQueryGraph> {
+export async function resolveQueryTextAsGraph(
+    handle: GraphHandle,
+    queryText: string,
+    options: { federation?: SparqlFederationResolver } = {},
+): Promise<ResolvedQueryGraph> {
     const dataset = await resolveDataset(handle.store, handle.iri);
-    const result = await handle.store.query(queryText, {
+    // Föderation (SPEC §7.4, M11): `SERVICE` wird aufgelöst, bevor der
+    // Store die Query sieht — sonst endete ein föderierter CONSTRUCT im
+    // Editor mit „the service is not supported".
+    const localQuery = options.federation ? await options.federation(queryText, dataset) : queryText;
+    const result = await handle.store.query(localQuery, {
         defaultGraphs: dataset.defaultGraphs,
         namedGraphs: dataset.namedGraphs,
         timeoutMs: 30_000,

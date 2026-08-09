@@ -378,7 +378,10 @@ export default function SparqlEditorPage() {
                         Fragt den Store direkt ab (SPARQL 1.1, erlaubtes Dataset wird injiziert — <code>presentation</code>,{' '}
                         <code>inferred</code> und <code>acl</code> bleiben außen vor). Gespeicherte Queries sind{' '}
                         <code>ow:QueryView</code>-Entitäten im Graphen und erscheinen auch im{' '}
-                        <Link className={styles.inlineLink} href="/graph">Wissensgraphen</Link>.
+                        <Link className={styles.inlineLink} href="/graph">Wissensgraphen</Link>.{' '}
+                        <code>SERVICE &lt;url&gt;</code> läuft gegen die{' '}
+                        <Link className={styles.inlineLink} href="/graph/federation">föderierten Endpoints</Link>{' '}
+                        — nur registrierte Ziele, mit Zeitbudget und Ergebnis-Limit.
                     </p>
                 </header>
 

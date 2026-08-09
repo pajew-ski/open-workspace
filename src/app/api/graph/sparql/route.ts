@@ -12,64 +12,46 @@
 
 import type { NextRequest } from 'next/server';
 import { getServerGraph } from '@/lib/graph/server/instance';
-import { executeSparqlProtocol, type SparqlProtocolRequest } from '@/lib/graph/sparql/protocol';
+import { executeSparqlProtocol } from '@/lib/graph/sparql/protocol';
+import { sparqlHttpResponse, sparqlRequestFromHttp, SparqlBodyTooLargeError } from '@/lib/graph/sparql/http';
 import { invalidateSearchIndexes } from '@/lib/graph/search/cache';
-
-const MAX_BODY_BYTES = 1_000_000;
-
-function toResponse(result: { status: number; contentType: string; body: string }): Response {
-    return new Response(result.body === '' ? null : result.body, {
-        status: result.status,
-        headers: { 'Content-Type': result.contentType },
-    });
-}
+import { createFederationResolver } from '@/lib/graph/federation/host.server';
+import { summarizeFederation } from '@/lib/graph/federation/service';
 
 async function handle(request: NextRequest, method: 'GET' | 'POST'): Promise<Response> {
     try {
         const { store, iri } = await getServerGraph();
-        const url = request.nextUrl;
 
-        const protocolRequest: SparqlProtocolRequest = {
-            method,
-            contentType: request.headers.get('content-type'),
-            accept: request.headers.get('accept'),
-            query: url.searchParams.get('query'),
-            update: null,
-            body: null,
-            defaultGraphUris: url.searchParams.getAll('default-graph-uri'),
-            namedGraphUris: url.searchParams.getAll('named-graph-uri'),
-        };
-
-        if (method === 'POST') {
-            const body = await request.text();
-            if (body.length > MAX_BODY_BYTES) {
-                return new Response('Request-Body zu groß (max. 1 MB).\n', { status: 413 });
+        let protocolRequest;
+        try {
+            protocolRequest = await sparqlRequestFromHttp(request, method);
+        } catch (error) {
+            if (error instanceof SparqlBodyTooLargeError) {
+                return new Response(`${error.message}\n`, { status: 413 });
             }
-            const contentType = (protocolRequest.contentType ?? '').split(';')[0].trim().toLowerCase();
-            if (contentType === 'application/x-www-form-urlencoded') {
-                const form = new URLSearchParams(body);
-                protocolRequest.query = form.get('query') ?? protocolRequest.query;
-                protocolRequest.update = form.get('update');
-                protocolRequest.defaultGraphUris = [
-                    ...(protocolRequest.defaultGraphUris ?? []),
-                    ...form.getAll('default-graph-uri'),
-                ];
-                protocolRequest.namedGraphUris = [
-                    ...(protocolRequest.namedGraphUris ?? []),
-                    ...form.getAll('named-graph-uri'),
-                ];
-            } else {
-                protocolRequest.body = body;
-            }
+            throw error;
         }
 
-        const result = await executeSparqlProtocol(store, iri, protocolRequest);
+        // Föderation (SPEC §7.4, M11): `SERVICE` gegen registrierte
+        // Endpoints wird VOR der lokalen Ausführung aufgelöst.
+        const federation = createFederationResolver();
+        const result = await executeSparqlProtocol(store, iri, protocolRequest, {
+            federation: federation.resolve,
+        });
         // Ein erfolgreiches UPDATE (204) läuft am Mutations-Pfad von
         // server/instance.ts vorbei — Suchindizes hier invalidieren (M8).
         if (result.status === 204) {
             invalidateSearchIndexes(store);
         }
-        return toResponse(result);
+        const report = federation.report();
+        return sparqlHttpResponse(
+            result,
+            // HTTP-Header vertragen kein UTF-8 — die Kurzfassung geht
+            // ASCII-bereinigt raus (der volle Bericht steht im Server-Log).
+            report.calls.length > 0
+                ? { 'X-OW-Federation': summarizeFederation(report).replace(/[^\x20-\x7E]/g, '?') }
+                : {},
+        );
     } catch (error) {
         console.error('SPARQL Endpoint Error:', error);
         return new Response('Interner Fehler im SPARQL-Endpoint.\n', { status: 500 });
