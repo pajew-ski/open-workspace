@@ -1,0 +1,117 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.intro {
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+    margin: 0;
+}
+
+.muted {
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+
+.code {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.875em;
+    background: var(--color-surface-variant);
+    padding: 0 var(--space-1);
+    border-radius: var(--radius-sm);
+    overflow-wrap: anywhere;
+}
+
+.hint {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.example {
+    margin: 0;
+    padding: var(--space-3);
+    background: var(--color-surface-variant);
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+}
+
+.warning {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+    color: var(--color-warning-text, var(--color-text-primary));
+}
+
+.errors {
+    margin: 0;
+    padding-left: var(--space-5);
+    color: var(--color-error-text, var(--color-text-primary));
+}
+
+.sessions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+    color: var(--color-text-secondary);
+}
+
+.tokens {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.token {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.tokenHead {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
+.details {
+    display: grid;
+    grid-template-columns: minmax(9rem, auto) 1fr;
+    gap: var(--space-1) var(--space-3);
+    margin: 0;
+    font-size: 0.9375rem;
+}
+
+.details dt {
+    color: var(--color-text-secondary);
+}
+
+.details dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 480px) {
+    .details {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    .details dd {
+        margin-bottom: var(--space-2);
+    }
+}
