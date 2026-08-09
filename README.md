@@ -35,6 +35,11 @@ konfigurierte Tools selbstständig aus.
 - **MCP-Client**: Model-Context-Protocol-Server verbinden (Streamable HTTP/SSE,
   browser-direkt oder Server-Relay) — deren Tools landen im Tool-Loop, deren
   Prompts sind als Skills importierbar, gelieferte `ui://`-UI rendert auf der Bühne
+- **MCP-Server** (`/api/mcp`): Der Workspace ist auch MCP-*Server* — externe
+  Agenten retrieven auf dem Wissensgraphen (`graph_search`, `graph_retrieve`,
+  `graph_neighbors`, `graph_describe`, `graph_sparql`, optional `graph_write`),
+  Knoten als Resources `graph://<iri>`, Retrieval-Profile als Prompts. Zugang
+  nur per Token mit ausdrücklich freigegebenen Graphen (`OW_MCP_TOKENS`)
 - **Agenten (A2A)**: Remote-Agenten per Agent-Card-Discovery verbinden
   (JSON-RPC `message/send`, Task-Polling) und lokale Personas definieren —
   der Assistent delegiert im Chat via `[[AGENT:id:…]]`
@@ -170,6 +175,10 @@ e2e/                # Playwright-Tests
 | `GET/POST /api/calendar` | Kalender-Provider & Sync |
 | `GET /api/finder` | Globale Suche (Fuzzy + Modifiers) |
 | `GET /api/graph` | JSON-LD Knowledge Graph |
+| `GET/POST /api/graph/sparql` | SPARQL 1.1 Protocol (Content Negotiation, geschützter Update-Pfad) |
+| `POST /api/graph/retrieve`, `GET /api/graph/search` | Multi-Hop-Retrieval und Graph-Suche |
+| `POST/GET/DELETE /api/mcp` | MCP-Server (Streamable HTTP) — Token-gebunden |
+| `GET /api/mcp/status` | Status des MCP-Servers (Zugänge, Rechte, Sitzungen — ohne Geheimnisse) |
 | `GET/POST/PUT/DELETE /api/agents` | Agenten-Verwaltung |
 | `GET/POST/DELETE /api/tools` | Tool-Konfiguration |
 | `GET/POST/PUT/DELETE /api/connections` | Sichere Verbindungen |

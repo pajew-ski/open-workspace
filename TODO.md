@@ -181,8 +181,30 @@
       welche Tools benötigen und welcher Agent sie anbietet" über Spiegel +
       Import-Graphen; MCP end-to-end gegen Streamable-HTTP-Stub):
       `tests/graph/agents-skills-tools.test.ts`
-- [ ] **M10 MCP-Server** (`/api/mcp`, graph_search/retrieve/neighbors/
-      describe/sparql)
+- [x] **M10 MCP-Server** (`/api/mcp`): Streamable HTTP über die
+      Web-Standard-Bindung derselben SDK, die schon den Client trägt
+      (`src/lib/graph/mcp/` — `http.ts` Sitzungen/Auth/Limits, `server.ts`
+      Werkzeug-Registrierung, `tools.ts` Graph-Operationen). Werkzeuge nach
+      §7.6: graph_search/retrieve/neighbors/describe (immer),
+      graph_sparql (nur mit SPARQL-Recht, read-only über denselben
+      `executeSparqlProtocol`), graph_write (Default AUS, nur mit
+      Schreibfreigabe; schreibt ausschließlich in workspace/public/
+      shared/<id> und hängt prov:wasAttributedTo + prov:Activity an).
+      Resources `graph://<iri>` (prozentkodiert, Turtle + JSON-LD),
+      Prompts = gespeicherte Retrieval-Profile aus M8. Authz ist KEIN
+      zweiter Pfad: `AccessGrant` (`src/lib/graph/authz/grant.ts`) verengt
+      `resolveDataset`/`retrievalDataset` über `allowedGraphs` — die
+      Klammer greift vor der Expansion; zusätzlich nimmt die Expansion nur
+      Knoten auf, über die im erlaubten Dataset etwas ausgesagt ist.
+      Tokens in `OW_MCP_TOKENS` (zod-validiert, Digest-Vergleich ohne
+      frühen Abbruch, Scope-Muster, `graph/acl` nie erreichbar); ohne
+      Konfiguration ist der Endpunkt ehrlich aus (503). Sitzungen
+      token-gebunden (fremde Session-ID → 404), Rate-Limit pro Token
+      (429 + Retry-After), Zeitbudget pro Werkzeug.
+      `capabilities.mcpServer` = true für server/ha-addon; UI: read-only
+      Status-Karte auf `/tools` + `GET /api/mcp/status` (ohne Geheimnisse).
+      Abnahme (externer SDK-Client ruft graph_retrieve mit Provenienz ab;
+      Negativtest über alle Pfade): `tests/graph/mcp-server.test.ts`
 - [ ] **M11 Föderation** (Endpoint-Registry, SERVICE, Authz-Rewriting,
       SSRF-Schutz)
 - [ ] **M12 Runtime-Vollausbau** (HA-Add-on inkl. Ingress-Base-Path,
