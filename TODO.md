@@ -205,8 +205,34 @@
       Status-Karte auf `/tools` + `GET /api/mcp/status` (ohne Geheimnisse).
       Abnahme (externer SDK-Client ruft graph_retrieve mit Provenienz ab;
       Negativtest über alle Pfade): `tests/graph/mcp-server.test.ts`
-- [ ] **M11 Föderation** (Endpoint-Registry, SERVICE, Authz-Rewriting,
-      SSRF-Schutz)
+- [x] **M11 Föderation** (`src/lib/graph/federation/`): Endpoint-Registry
+      als `ow:FederatedEndpoint` + `ow:trustLevel` in `graph/meta`
+      (`registry.ts`, UI `/graph/federation`, API
+      `/api/graph/federation/endpoints` + `/[id]` + `/[id]/probe`).
+      **Ausgehend**: `SERVICE <url>` läuft über einen eigenen Planer
+      (`parse.ts` maskiert Kommentare/Strings/IRIs positionstreu,
+      `service.ts` ersetzt den Block durch die entfernte Lösungsmenge als
+      `VALUES` — oxigraph-js hat keinen Service-Handler, die Semantik von
+      SPARQL 1.1 Federated Query bleibt erhalten). Nur registrierte
+      Endpoints; die Vertrauensstufe hat Wirkung: `unknown` gesperrt,
+      `known` eigenständige Auswertung (keine lokale Bindung geht raus,
+      als Leak-Negativtest verankert), `trusted` Bound-Join mit lokalen
+      Join-Schlüsseln (Sonde ist eine Lockerung der Query → Obermenge der
+      echten Schlüssel, gechunkt). Ausgehende Aufrufe über den
+      SSRF-Guard (`connectors/http.ts`), Zeitbudget + Ergebnis-Limit
+      Pflicht (Überschreitung = Fehler, keine stille Kürzung),
+      `SERVICE SILENT` wird zur leeren Lösung samt Bericht;
+      Erreichbarkeits-Probe als echte ASK-Query, in der UI ehrlich
+      markiert. **Eingehend**: `GET|POST /api/graph/federation/sparql`
+      (read-only, CORS, `OPTIONS`) — das erlaubte Dataset kommt aus dem
+      Grant (M10-Token, Recht `sparql`) und wird über `resolveDataset`
+      INJIZIERT, nie nachgefiltert; ohne gültiges Token das leere
+      Dataset, `SERVICE` gesperrt (Quelle, kein Relais), Rate-Limit,
+      Zeit- und Ergebnis-Limit. `capabilities.federationOutbound`/
+      `federationInbound` = true für server/ha-addon.
+      Abnahme: `tests/graph/federation.test.ts` (Negativtest mit
+      manipuliertem `FROM`; Live-Query gegen Wikidata unter
+      `OW_FEDERATION_LIVE=1`, sonst ehrlich übersprungen)
 - [ ] **M12 Runtime-Vollausbau** (HA-Add-on inkl. Ingress-Base-Path,
       `server`-Compose, ein Image)
 - [ ] **M13 Multi-User/ACL** (WAC/ACP in `graph/acl`, Dataset-Resolver,

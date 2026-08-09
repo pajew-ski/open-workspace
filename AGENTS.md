@@ -4,7 +4,7 @@
 
 ## Hier weitermachen (Einstieg für neue Sessions)
 
-**Stand 2026-08-09 (8. Ausbaustufe, Graph Core M0–M10 inkl. §12.4)**: Der
+**Stand 2026-08-09 (9. Ausbaustufe, Graph Core M0–M11 inkl. §12.4)**: Der
 **RDF-Graph ist das kanonische Datenmodell — und seit der 6. Stufe die
 einzige Wahrheit auch für die Schreibpfade**. Die verbindliche Spezifikation
 inklusive aller Meilensteine M0–M13 liegt in
@@ -304,6 +304,44 @@ Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
   die Route nie. Abnahme: `tests/graph/mcp-server.test.ts` (echter
   SDK-Client; Negativtest über retrieve/neighbors/describe/search/sparql/
   Resource).
+- **Föderation (M11)** (`src/lib/graph/federation/` + `/graph/federation`):
+  Fremde Endpoints anfragen, ohne zu kopieren — und selbst befragbar sein.
+  **Registry**: `ow:FederatedEndpoint` mit `ow:sparqlEndpoint`/
+  `ow:trustLevel` in `graph/meta` (`registry.ts`; API
+  `/api/graph/federation/endpoints` + `/[id]` + `/[id]/probe`), Muster wie
+  Connectors/Views/Profile — die Registry IST der Graph. Die SSRF-Politik
+  greift schon beim Registrieren. **Ausgehend**: oxigraph-js hat keinen
+  Service-Handler, also liegt die Föderation eine Schicht über dem Store —
+  `service.ts` wertet das entfernte Muster beim Endpoint aus und ersetzt
+  den `SERVICE`-Block durch die Lösungsmenge als `VALUES` (Semantik von
+  SPARQL 1.1 Federated Query, Join lokal); `parse.ts` findet die Blöcke
+  über eine positionstreue Maske (SERVICE in Kommentar/String/IRI zählt
+  nicht). Nur registrierte Endpoints. `ow:trustLevel` hat **Wirkung**:
+  `unknown` (Default) gesperrt, `known` eigenständige Auswertung — keine
+  lokale Bindung verlässt den Rechner (Leak-Negativtest über den
+  ausgehenden Query-Text) —, `trusted` Bound-Join (lokale Join-Schlüssel
+  als `VALUES` mitgeschickt, gechunkt; die Sonde ist eine Lockerung der
+  Query, ihre Treffer damit eine Obermenge der echten Schlüssel, und eine
+  leere Sonde heißt nie „leeres Ergebnis"). Ausgehende Aufrufe über den
+  SSRF-Guard (`connectors/http.ts`), Zeitbudget + Ergebnis-Limit sind
+  Pflicht (Überschreitung = Fehler, nie stille Kürzung), `SERVICE SILENT`
+  wird zur leeren Lösung samt Bericht (`X-OW-Federation`-Header am
+  Endpoint, Feld `federation` in der Views-Vorschau). Blank Nodes des
+  Endpoints sind nicht einsetzbar — solche Zeilen entfallen und stehen im
+  Bericht. Eingebunden in `/api/graph/sparql` (Editor) und
+  `/api/graph/views/preview`. **Eingehend**:
+  `GET|POST /api/graph/federation/sparql` (read-only, CORS + `OPTIONS`):
+  das erlaubte Dataset kommt aus dem Grant (dieselben M10-Tokens, Recht
+  `sparql`) und wird über `resolveDataset` **injiziert**, nie
+  nachgefiltert; ohne gültiges Token ist es leer (Query läuft, sieht
+  nichts — kein 401, keine Existenzbestätigung), `SERVICE` ist gesperrt
+  (Quelle, kein Relais), Rate-Limit pro Identität, Ergebnis-Limit (413).
+  Die HTTP-Abbildung des Protokolls liegt jetzt einmal in
+  `sparql/http.ts`. `capabilities.federationOutbound`/`federationInbound`
+  = true für `server`/`ha-addon`. Abnahme:
+  `tests/graph/federation.test.ts` (Negativtest mit manipuliertem `FROM`;
+  Live-Query gegen Wikidata unter `OW_FEDERATION_LIVE=1`, sonst sichtbar
+  übersprungen statt vorgetäuscht).
 - **Invarianten** (Review-Blocker, SPEC §2): RDF ist die eine Wahrheit;
   Wissen ≠ Präsentation; asserted ≠ inferred; ein Connector-Vertrag für
   alles Externe; kein `any` unter `src/lib/graph/` (ESLint-Error);
@@ -333,9 +371,11 @@ und backend-unabhängig** — Details in [docs/ai-platform.md](./docs/ai-platfor
 - **UI**: AI-Hub (`/ai`), Skills (`/skills`), MCP-Verwaltung in `/tools`,
   A2A-Discovery in `/agents`, ModelPicker in beiden Chat-Oberflächen.
 
-Build, Typecheck, Lint (0 Errors), 356 Unit-Tests und das **blockierende
-E2E-Gate** (`e2e/mobile-navigation`, `e2e/mobile-ux`, `e2e/a11y` inkl. der
-Seiten `/ai`, `/skills`, `/tools`, `/graph/connectors` und `/graph/sparql`)
+Build, Typecheck, Lint (0 Errors), 380 Unit-Tests (plus der Live-Test
+gegen Wikidata, der ohne `OW_FEDERATION_LIVE=1` sichtbar übersprungen
+wird) und das **blockierende E2E-Gate** (`e2e/mobile-navigation`,
+`e2e/mobile-ux`, `e2e/a11y` inkl. der Seiten `/ai`, `/skills`, `/tools`,
+`/graph/connectors`, `/graph/sparql` und `/graph/federation`)
 laufen grün. In Sandboxes ohne Playwright-Download zeigt
 `CHROMIUM_PATH=/opt/pw-browsers/chromium bun run test:e2e` auf einen
 vorinstallierten Browser (die Konfiguration wertet die Variable aus).
@@ -348,24 +388,16 @@ vorinstallierten Browser (die Konfiguration wertet die Variable aus).
 4. [TODO.md](./TODO.md) — Roadmap als abhakbare Liste (inkl. Graph Core)
 5. Diesen Abschnitt hier für die Architektur-Prinzipien
 
-**Nächste sinnvolle Schritte**: Graph Core M11 (**Föderation** nach SPEC
-§7.4: Endpoint-Registry als `ow:FederatedEndpoint` mit `ow:trustLevel` in
-`graph/meta`, `SERVICE`-Queries gegen registrierte Endpoints mit
-Erreichbarkeits-Probe pro Endpoint [im Browser CORS-abhängig, in der UI
-ehrlich markieren], ausgehende Aufrufe über den bestehenden SSRF-Guard
-[`src/lib/net/private.ts` bzw. `connectors/http.ts`], Query-Timeouts und
-Ergebnis-Limits als Pflicht — und **eingehende** Föderation für
-`ha-addon`/`server` mit Authz-Rewriting: das erlaubte Dataset wird aus
-der authentifizierten Identität abgeleitet und in die Query injiziert,
-nie nachgefiltert. Der Grant aus M10 (`src/lib/graph/authz/grant.ts`) ist
-dafür der Einhängepunkt — `resolveDataset` nimmt `allowedGraphs` bereits
-entgegen; Default für unauthentifizierte Zugriffe ist das LEERE Dataset.
-Abnahme: Live-Query gegen Wikidata liefert Ergebnisse; ein
-unauthentifizierter Zugriff sieht ausschließlich explizit freigegebene
-Named Graphs — Negativtest mit manipuliertem `FROM`). Danach M12
-(Runtime-Vollausbau) und M13 (Multi-User/ACL — dort wird die
-Token→Scope-Konfiguration aus `OW_MCP_TOKENS` durch `graph/acl` ersetzt,
-ohne dass sich die Grant-Schnittstelle ändert).
+**Nächste sinnvolle Schritte**: Graph Core M12 (**Runtime-Vollausbau**
+nach SPEC §5.2/§13: HA-Add-on-Packaging inklusive Ingress-Base-Path,
+`server`-Compose mit OIDC/TLS — aus EINEM Image; dazu der `local`-Adapter
+mit OPFS-Backing und Store im Worker über die bestehenden Interfaces aus
+`src/lib/platform/runtime/`. Abnahme: dasselbe Image läuft in beiden
+Kontexten, ein E2E-Test deckt den Ingress-Base-Path ab). Danach M13
+(Multi-User/ACL — dort wird die Token→Scope-Konfiguration aus
+`OW_MCP_TOKENS` durch `graph/acl` ersetzt, ohne dass sich die
+Grant-Schnittstelle ändert; sie trägt seit M11 auch die eingehende
+Föderation, ein zweiter Authz-Pfad entsteht damit nicht).
 Parallel weiter sinnvoll: i18n mit `next-intl` (P0); Abbau der
 `no-explicit-any`-Warnings außerhalb des Graph-Codes;
 CopilotKit-Entscheidung.

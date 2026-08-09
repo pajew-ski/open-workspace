@@ -309,6 +309,15 @@ function textResponse(status: number, message: string): SparqlProtocolResponse {
     return { status, contentType: 'text/plain; charset=utf-8', body: `${message}\n` };
 }
 
+/**
+ * Auflösung föderierter `SERVICE`-Blöcke VOR der lokalen Ausführung
+ * (SPEC §7.4, M11). Der Protokoll-Layer kennt die Föderation nur als
+ * diese eine Funktion: rein geht die Query des Aufrufers, raus die lokal
+ * ausführbare Fassung. Wirft der Resolver einen Fehler mit numerischem
+ * `status`, wird genau der zum HTTP-Status der Antwort.
+ */
+export type SparqlFederationResolver = (query: string, dataset: ResolvedDataset) => Promise<string>;
+
 export interface SparqlProtocolOptions extends DatasetAuthz {
     /**
      * Verbietet UPDATE unabhängig von Methode und Content-Type (SPEC §7.6:
@@ -316,6 +325,20 @@ export interface SparqlProtocolOptions extends DatasetAuthz {
      * stillen Erfolgs.
      */
     readOnly?: boolean;
+    /** Zeitbudget der lokalen Query (Default 30 s). */
+    timeoutMs?: number;
+    /**
+     * Ergebnis-Limit (SPEC §7.4: Pflicht für die eingehende Föderation).
+     * Überschreitung ist ein Fehler (413), keine stille Kürzung.
+     */
+    maxRows?: number;
+    /** SERVICE-Auflösung (SPEC §7.4). Ohne Resolver: keine Föderation. */
+    federation?: SparqlFederationResolver;
+}
+
+function errorStatus(error: unknown, fallback: number): number {
+    const status = (error as { status?: unknown } | null)?.status;
+    return typeof status === 'number' ? status : fallback;
 }
 
 export async function executeSparqlProtocol(
@@ -364,12 +387,24 @@ export async function executeSparqlProtocol(
         namedGraphUris: request.namedGraphUris,
     }, { allowedGraphs: options.allowedGraphs });
 
+    let localQuery = query;
+    if (options.federation) {
+        try {
+            localQuery = await options.federation(query, dataset);
+        } catch (error) {
+            return textResponse(
+                errorStatus(error, 502),
+                error instanceof Error ? error.message : String(error),
+            );
+        }
+    }
+
     let result: QueryResult;
     try {
-        result = await store.query(query, {
+        result = await store.query(localQuery, {
             defaultGraphs: dataset.defaultGraphs,
             namedGraphs: dataset.namedGraphs,
-            timeoutMs: 30_000,
+            timeoutMs: options.timeoutMs ?? 30_000,
         });
     } catch (error) {
         return textResponse(400, error instanceof Error ? error.message : String(error));
@@ -390,6 +425,9 @@ export async function executeSparqlProtocol(
             const media = negotiate(request.accept, BINDINGS_TYPES, RESULT_JSON);
             if (!media) return textResponse(406, `Nicht verhandelbar. Unterstützt: ${BINDINGS_TYPES.join(', ')}`);
             const rows = await collectBindings(result);
+            if (options.maxRows !== undefined && rows.length > options.maxRows) {
+                return textResponse(413, `Ergebnis-Limit überschritten: ${rows.length} Zeilen, erlaubt sind ${options.maxRows}. Nutze LIMIT.`);
+            }
             const variables = result.variables.length > 0
                 ? result.variables
                 : [...new Set(rows.flatMap(row => Object.keys(row)))];
@@ -405,6 +443,9 @@ export async function executeSparqlProtocol(
             const media = negotiate(request.accept, QUADS_TYPES, 'text/turtle');
             if (!media) return textResponse(406, `Nicht verhandelbar. Unterstützt: ${QUADS_TYPES.join(', ')}`);
             const quads = await collectQuads(result);
+            if (options.maxRows !== undefined && quads.length > options.maxRows) {
+                return textResponse(413, `Ergebnis-Limit überschritten: ${quads.length} Tripel, erlaubt sind ${options.maxRows}. Nutze LIMIT.`);
+            }
             const format = media === 'application/json' ? 'application/ld+json' : media;
             return {
                 status: 200,

@@ -6,8 +6,9 @@
  * Auth-Bindung (M12, dasselbe Container-Image — SPEC §5.2).
  *
  * Capabilities sind ehrlich: nur was existiert, steht auf true —
- * der MCP-Server existiert seit M10 (`/api/mcp`), Föderation (M11) noch
- * nicht.
+ * der MCP-Server existiert seit M10 (`/api/mcp`), die Föderation in
+ * beide Richtungen seit M11 (`SERVICE` gegen die Endpoint-Registry,
+ * `/api/graph/federation/sparql`).
  */
 
 import type { GraphStore } from '@/lib/graph/store/types';
@@ -40,8 +41,12 @@ export function createServerRuntimeAdapter(store?: () => Promise<GraphStore>): R
             // hereinlässt, entscheidet die Token-Konfiguration — die
             // Fähigkeit selbst existiert in dieser Runtime.
             mcpServer: true,
-            federationOutbound: false,
-            federationInbound: false,
+            // Föderation (M11): ausgehend `SERVICE` gegen registrierte
+            // Endpoints, eingehend `/api/graph/federation/sparql` mit
+            // Authz-Rewriting. Ob jemand etwas sieht, entscheidet auch
+            // hier die Token-Konfiguration — die Fähigkeit existiert.
+            federationOutbound: true,
+            federationInbound: true,
             multiUser: false,
             reasoningTier: 'rl',
         },
