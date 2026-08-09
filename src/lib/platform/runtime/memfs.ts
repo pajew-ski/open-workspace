@@ -51,5 +51,15 @@ export function createMemoryFileSystem(): FileSystemLike & { files: Map<string, 
         rm: async path => {
             files.delete(normalize(path));
         },
+        stat: async path => {
+            const normalized = normalize(path);
+            if (files.has(normalized)) return { isDirectory: false };
+            if (dirs.has(normalized)) return { isDirectory: true };
+            const prefix = `${normalized}/`;
+            for (const file of files.keys()) {
+                if (file.startsWith(prefix)) return { isDirectory: true };
+            }
+            throw new Error(`ENOENT: ${path}`);
+        },
     };
 }
