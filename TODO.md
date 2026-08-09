@@ -132,8 +132,31 @@
       (blockedBy/blocks + skos:broader-Transitivität inferiert, kein
       inferiertes Tripel in graph/workspace, Scope-Leak-Negativtest):
       `tests/graph/reasoning.test.ts`, `tests/graph/shacl.test.ts`
-- [ ] **M8 Suche + Multi-Hop-Retrieval** (§7.5-Pipeline, `workspace_finder`
-      auf den Graphen)
+- [x] **M8 Suche + Multi-Hop-Retrieval** (`src/lib/graph/search/`):
+      Volltext-Index über ALLE Literale (eigene JS-Lösung, invertierter
+      Index + Levenshtein-Fuzzy + Präfix, Einträge tragen IRI/Prädikat/
+      Graph → scope-filterbar §17.4, nie persistiert — WeakMap-Cache mit
+      Invalidierung im Mutations-Pfad und in der SPARQL-Update-Route);
+      optionaler Embedding-/Vektorindex (separat vom Store, Vektor trägt
+      Subjekt-IRI; Provider aus der AI-Schicht via OW_EMBEDDING_PROVIDER/
+      OW_EMBEDDING_MODEL, openai-kompatibel + Ollama, ohne Konfiguration
+      ehrlich „nicht verfügbar"); Retrieval-Pipeline nach §7.5 als vier
+      einzeln testbare Phasen (Seeding IRI/Volltext/Vektor → Expansion mit
+      Richtung, Kanten-/Knotentyp-Filtern, Grad-Kappung, Zyklenschutz,
+      harten Obergrenzen → deterministisches Scoring seed×decay^hop×
+      ow:weight-Pfad×Zentralität×Aktualität → Assembly: Kanten-Hülle +
+      zitierfähiger [n]-Kontext mit Token-Budget); explain/provenance
+      Pflicht (hop, via, scoreParts pro Knoten; Quell-Graph + Connector);
+      Dataset-Klammer VOR der Expansion (Wissens-Graphen; presentation/
+      acl/vocab nie, inferred nur per includeInferred); Retrieval-Profile
+      als ow:RetrievalProfile in graph/meta (ow:retrievalConfig als
+      JSON-Literal); APIs GET /api/graph/search, POST /api/graph/retrieve
+      (zod, Profil als Basis + Overrides), /api/graph/retrieval-profiles;
+      `workspace_finder`/`/api/finder` auf den Index umgestellt (Fuzzy
+      erhalten; Chats/Termine ehrlich weiter aus Storages bis M9+) —
+      Abnahme (Reproduzierbarkeit inkl. zweitem Store, explain vollständig,
+      Hub-Kappung an Tag mit 120 Dokumenten + Gegenprobe, Token-Budget):
+      `tests/graph/retrieval.test.ts`, `tests/graph/search.test.ts`
 - [ ] **M9 Agents/Skills/Tools als Graph-Bürger**
 - [ ] **M10 MCP-Server** (`/api/mcp`, graph_search/retrieve/neighbors/
       describe/sparql)
@@ -256,4 +279,4 @@
 
 ---
 
-*Last updated: 2026-08-09 (M7 Reasoning: SHACL + OWL RL Tier 1)*
+*Last updated: 2026-08-09 (M8 Suche + Multi-Hop-Retrieval)*
