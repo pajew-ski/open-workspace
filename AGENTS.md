@@ -4,9 +4,10 @@
 
 ## Hier weitermachen (Einstieg für neue Sessions)
 
-**Stand 2026-08-09 (4. Ausbaustufe, Graph Core M0–M5)**: Der **RDF-Graph ist
-das kanonische Datenmodell**. Die verbindliche Spezifikation inklusive aller
-Meilensteine M0–M13 liegt in
+**Stand 2026-08-09 (5. Ausbaustufe, Graph Core M0–M6 inkl. §12.4)**: Der
+**RDF-Graph ist das kanonische Datenmodell — und seit dieser Stufe die
+einzige Wahrheit auch für die Schreibpfade**. Die verbindliche Spezifikation
+inklusive aller Meilensteine M0–M13 liegt in
 [GRAPH_CORE_SPEC.md](./GRAPH_CORE_SPEC.md) — **Arbeitsmodus: ein Meilenstein
 = eine Session = ein Branch = ein PR**; jede Session liest zuerst diesen
 Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
@@ -100,11 +101,67 @@ Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
   unsichtbar; Layout-Verfahren force-directed/hierarchisch/radial.
   Abnahme: `tests/graph/json-canvas.test.ts`; Verlustpositionen:
   [docs/obsidian-kompatibilitaet.md](./docs/obsidian-kompatibilitaet.md).
-- **Übergangszustand** (`// MIGRATION:`-Marker): Die Dateien unter
-  `data/docs|tasks|canvas` bleiben operative Quelle; der Store spiegelt sie
-  inhalts-gehasht (`src/lib/graph/server/instance.ts#syncWorkspaceFromFiles`),
-  seit M5 inklusive des Canvas-Layouts nach `graph/<u>/presentation`.
-  Endet mit der Umstellung der Schreibpfade (TODO „Graph Core").
+- **Store-first-Schreibpfade (§12.4 abgeschlossen)**
+  (`src/lib/graph/workspace/`): Jede Mutation läuft Store lesen →
+  Domänenmodell ändern → EINE Transaktion (Workspace-Graph, Layout-Gruppen,
+  Projekt-Farben, Waisen-Bereinigung) → Datei-Projektion
+  (`workspace/files.ts`: data/docs|tasks|canvas bleiben für Git und
+  Obsidian lesbar) → Snapshot. `src/lib/storage/{docs,tasks,projects,canvas}`
+  sind Fassaden; Lesepfade kommen aus dem Store (`workspace/read.ts` —
+  Normalisierungen dokumentiert: Tags/Abhängigkeiten sortiert, leere
+  optionale Strings entfallen, dateTime-Lexik rückgeführt). Der exakte
+  native Zustand liegt als Quelltreue-Terme im Graphen (ow:workflowStatus,
+  ow:priority, ow:taskKind, ow:deferredUntil, ow:estimated-/actualEffort,
+  ow:dependencyKind als RDF-1.2-Kanten-Annotation; completedAt =
+  prov:endedAtTime; Projekt-Farbe + ow:cardKind NUR in
+  graph/<u>/presentation). Bootstrap: Snapshot-Manifest v2; ein
+  v1-Snapshot oder fehlender Snapshot re-migriert den Dateibestand
+  EINMALIG (`server/instance.ts`), danach fließen externe Datei-Edits nur
+  noch über Connectors zurück (SPEC §16). Alle `// MIGRATION:`-Marker sind
+  aufgelöst (per Test erzwungen). `bun run migrate:graph` bleibt der
+  explizite Weg, den Dateibestand erneut zur Wahrheit zu erklären.
+  Abnahme: `tests/graph/workspace-roundtrip.test.ts`.
+- **SPARQL-Editor (M2-Rest)** (`/graph/sparql`): Prism-Highlighting
+  (language-sparql, scroll-synchrones Overlay, Theme-Token),
+  Prefix-Autovervollständigung aus `graph/vocab` (ow:-Terme mit de-Labels
+  per SPARQL vom eigenen Endpoint) plus Standard-Prefixe/Schlüsselwörter;
+  SELECT als Tabelle, ASK als Wahrheitswert, CONSTRUCT/DESCRIBE als
+  Graph-Ansicht (`POST /api/graph/views/preview` — Auflösung identisch zu
+  Views: erlaubtes Dataset, harte Kappung), Updates über den geschützten
+  Update-Pfad. Gespeicherte Queries sind `ow:QueryView`-Entitäten in
+  `graph/meta` (dieselbe Entität wie die M5-Views): SELECT/ASK speicherbar
+  (Probe-Ausführung), Updates nicht; auf `/graph` öffnen
+  Nicht-Graph-Queries den Editor statt eines toten Anwenden-Buttons.
+  Klassifikation IRI-/String-sicher in `sparql/classify.ts`. Abnahme:
+  `tests/graph/sparql-editor.test.ts`.
+- **Git-Sync (M6)** (`src/lib/platform/runtime/` +
+  `src/lib/graph/connectors/git-backup/`): `GitProvider` ist ein echtes
+  Interface (init/head/status/commitAll/changedFiles/diff, optional
+  push/pull ff-only) mit ZWEI Bindungen — `process-git`
+  (server/ha-addon, dasselbe Image) und `isomorphic-git` über
+  `FileSystemLike` (local; OPFS-Backing folgt M12 über dieselben
+  Interfaces). `FileSystemLike` trägt dafür eine Binär-Ebene
+  (readBytes/writeBytes) und Frische-Signale (size/mtimeMs — ohne sie
+  vertraut isomorphic-git seinem Index-Cache und übersieht Änderungen).
+  Der `server`-RuntimeAdapter existiert (`runtime/server.ts`, ehrliche
+  Capabilities) und wird von den Connector-Routen injiziert
+  (`ctx.runtime`). `git-backup` läuft über den EINEN Vertrag: Revision =
+  Inhalts-Hash (No-Op, erkennt auch unkommittierte Edits); `push`
+  schreibt den deterministischen Snapshot OHNE die eigene volatile
+  Sync-Buchführung (sonst wäre jedes Backup „geändert") und committet;
+  Modus `backup` = Einbahnstraße §8.2 (Pull lehnt ab, kein
+  Konflikt-Check — Working Tree ist Spiegel), `bidirectional` =
+  Konfliktregel §6.2 beim Push + Rücklesen beim Sync: Snapshot-Dateien
+  laut Manifest als Restore ihrer kanonischen Graphen (Runner-Capability
+  `restoresCanonicalGraphs`, EINE Transaktion; acl/vocab/shapes/inferred
+  nie — Negativtest), fremde RDF-Dateien in den Import-Graphen; nach
+  einem Restore projiziert die Sync-Route die Workspace-Dateien neu.
+  Pfad-Politik `data/` + `OW_GIT_ROOTS`; Empfehlung: `data/graph` für
+  `backup`, eigenes Verzeichnis (z. B. `data/backup`) für
+  `bidirectional`. UI: git-backup im Katalog (Pfad/Modus/Remote/Branch,
+  „Backup erstellen"; Sync-Button nur bei bidirectional). Abnahme in
+  BEIDEN Bindungen: `tests/graph/git-provider.test.ts`,
+  `tests/graph/git-backup.test.ts`.
 - **Invarianten** (Review-Blocker, SPEC §2): RDF ist die eine Wahrheit;
   Wissen ≠ Präsentation; asserted ≠ inferred; ein Connector-Vertrag für
   alles Externe; kein `any` unter `src/lib/graph/` (ESLint-Error);
@@ -134,9 +191,10 @@ und backend-unabhängig** — Details in [docs/ai-platform.md](./docs/ai-platfor
 - **UI**: AI-Hub (`/ai`), Skills (`/skills`), MCP-Verwaltung in `/tools`,
   A2A-Discovery in `/agents`, ModelPicker in beiden Chat-Oberflächen.
 
-Build, Typecheck, Lint (0 Errors), 206 Unit-Tests und das **blockierende
+Build, Typecheck, Lint (0 Errors), 244 Unit-Tests und das **blockierende
 E2E-Gate** (`e2e/mobile-navigation`, `e2e/mobile-ux`, `e2e/a11y` inkl. der
-Seiten `/ai`, `/skills` und `/graph/connectors`) laufen grün.
+Seiten `/ai`, `/skills`, `/graph/connectors` und `/graph/sparql`) laufen
+grün.
 
 **Bevor du etwas Neues baust, lies in dieser Reihenfolge:**
 1. [GRAPH_CORE_SPEC.md](./GRAPH_CORE_SPEC.md) — verbindliche Spec des
@@ -146,15 +204,16 @@ Seiten `/ai`, `/skills` und `/graph/connectors`) laufen grün.
 4. [TODO.md](./TODO.md) — Roadmap als abhakbare Liste (inkl. Graph Core)
 5. Diesen Abschnitt hier für die Architektur-Prinzipien
 
-**Nächste sinnvolle Schritte**: Graph Core M6 (Git-Sync in allen drei
-Runtimes: Modi `backup`/`bidirectional`, `git-backup` als regulärer
-Connector, Runtime-Adapter `local` mit OPFS/isomorphic-git — SPEC §5.2/§8;
-Abnahme: minimale lesbare Diffs, externe `.ttl`-Edits kommen per Pull an)
-und die Umstellung der Schreibpfade auf den Store (Rest von M1,
-`// MIGRATION:`-Marker auflösen); offen aus M2: SPARQL-Editor-UI (die
-gespeicherten Query-Views aus M5 sind dafür die Vorstufe). Parallel weiter
-sinnvoll: i18n mit `next-intl` (P0); Abbau der `no-explicit-any`-Warnings
-außerhalb des Graph-Codes; CopilotKit-Entscheidung.
+**Nächste sinnvolle Schritte**: Graph Core M7 (Reasoning: SHACL-Validierung
+an den drei Stellen aus SPEC §7.2, OWL RL Tier 1 mit
+`graph/<u>/inferred/<scope>` und vollständigem Replace, DL-Sidecar
+optional — Abnahme: `ow:blockedBy`/`ow:blocks` und
+`skos:broader`-Transitivität nachweislich inferiert, kein inferiertes
+Tripel je in `graph/workspace`; Library-Entscheidung shacl-engine vs.
+rdf-validate-shacl mit Messwerten nach `docs/decisions/`). Danach M8
+(Suche + Multi-Hop-Retrieval nach §7.5). Parallel weiter sinnvoll: i18n
+mit `next-intl` (P0); Abbau der `no-explicit-any`-Warnings außerhalb des
+Graph-Codes; CopilotKit-Entscheidung.
 
 **Arbeitsprinzip dieses Repos**: Keine Attrappen. Lieber ein Feature ehrlich als
 „geplant" kennzeichnen, als tote Buttons stehen lassen.

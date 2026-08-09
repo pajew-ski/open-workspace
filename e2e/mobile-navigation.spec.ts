@@ -126,7 +126,12 @@ test('Hintergrund-Scroll ist gesperrt, solange der Drawer offen ist', async ({ p
 
 test('Tab-Fokus bleibt im offenen Drawer gefangen', async ({ page }) => {
     await page.goto('/');
-    await openDrawer(page);
+    const { drawer } = await openDrawer(page);
+
+    // Erst warten, bis der initiale Fokus im Dialog gelandet ist — sonst
+    // rast das erste Tab dem asynchronen focus() davon und misst die
+    // Öffnungs-Latenz statt der Fokus-Falle.
+    await expect(drawer.getByRole('button', { name: 'Menü schließen' })).toBeFocused();
 
     // Mehr Tabs als der Drawer Elemente hat — der Fokus muss zyklisch
     // im Dialog bleiben und darf nie in den Hintergrund entweichen

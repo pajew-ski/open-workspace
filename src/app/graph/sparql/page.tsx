@@ -387,7 +387,9 @@ export default function SparqlEditorPage() {
                         SPARQL-Query <span className={styles.operationTag}>{operationLabel[operation]}</span>
                     </label>
                     <div className={styles.editorShell}>
-                        <pre ref={highlightRef} className={styles.highlightLayer} aria-hidden="true">
+                        {/* tabIndex -1: Chromium macht Scroll-Container sonst
+                            fokussierbar — ein aria-hidden-Layer darf das nie sein. */}
+                        <pre ref={highlightRef} className={styles.highlightLayer} aria-hidden="true" tabIndex={-1}>
                             <code
                                 className="language-sparql"
                                 // Prism-Ausgabe ist escaptes HTML aus eigener Erzeugung.

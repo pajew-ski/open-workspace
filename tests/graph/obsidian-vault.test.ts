@@ -102,7 +102,7 @@ Body bleibt Byte für Byte erhalten.
 `,
 };
 
-function makeVault(files: Record<string, string>, root: string = VAULT): FileSystemLike & { files: Map<string, string> } {
+function makeVault(files: Record<string, string>, root: string = VAULT): FileSystemLike & { files: Map<string, string | Uint8Array> } {
     const fs = createMemoryFileSystem();
     for (const [path, content] of Object.entries(files)) {
         fs.files.set(`${root}/${path}`, content);

@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, CloudDownload, FileCode2, GitBranch, RefreshCw, Trash2, Upload } from 'lucide-react';
+import { Archive, BookOpen, CloudDownload, FileCode2, GitBranch, LayoutDashboard, RefreshCw, Trash2, Upload } from 'lucide-react';
 import { AppShell } from '@/components/layout';
 import { Button, ConfirmDialog, FloatingActionButton } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
@@ -60,7 +60,18 @@ const KIND_ICONS: Record<string, React.ReactNode> = {
     'rdf-file': <FileCode2 size={12} aria-hidden="true" />,
     'github-rdf': <GitBranch size={12} aria-hidden="true" />,
     'obsidian-vault': <BookOpen size={12} aria-hidden="true" />,
+    'json-canvas': <LayoutDashboard size={12} aria-hidden="true" />,
+    'git-backup': <Archive size={12} aria-hidden="true" />,
 };
+
+/** Modus einer git-backup-Instanz aus dem Locator (`pfad?mode=…`). */
+function gitBackupMode(connector: ConnectorView): 'backup' | 'bidirectional' | null {
+    if (connector.kind !== 'git-backup') return null;
+    const queryIndex = connector.locator.indexOf('?');
+    if (queryIndex === -1) return 'bidirectional';
+    const mode = new URLSearchParams(connector.locator.slice(queryIndex + 1)).get('mode');
+    return mode === 'backup' ? 'backup' : 'bidirectional';
+}
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
     const response = await fetch(url, init);
@@ -102,6 +113,11 @@ export default function GraphConnectorsPage() {
     const [formRef, setFormRef] = useState('');
     const [formPath, setFormPath] = useState('');
     const [formVaultPath, setFormVaultPath] = useState('');
+    const [formCanvasPath, setFormCanvasPath] = useState('');
+    const [formRepoPath, setFormRepoPath] = useState('data/backup');
+    const [formGitMode, setFormGitMode] = useState<'backup' | 'bidirectional'>('bidirectional');
+    const [formRemote, setFormRemote] = useState('');
+    const [formBranch, setFormBranch] = useState('main');
 
     const { data, isLoading } = useQuery<{ connectors: ConnectorView[]; kinds: ConnectorKindInfo[] }>({
         queryKey: ['graph-connectors'],
@@ -120,11 +136,25 @@ export default function GraphConnectorsPage() {
         setFormRef('');
         setFormPath('');
         setFormVaultPath('');
+        setFormCanvasPath('');
+        setFormRepoPath('data/backup');
+        setFormGitMode('bidirectional');
+        setFormRemote('');
+        setFormBranch('main');
     };
 
     const configForForm = (): unknown => {
         if (formKind === 'rdf-file') return { url: formUrl.trim() };
         if (formKind === 'obsidian-vault') return { path: formVaultPath.trim() };
+        if (formKind === 'json-canvas') return { path: formCanvasPath.trim() };
+        if (formKind === 'git-backup') {
+            return {
+                path: formRepoPath.trim(),
+                mode: formGitMode,
+                remote: formRemote.trim() || undefined,
+                branch: formBranch.trim() || 'main',
+            };
+        }
         return {
             repo: formRepo.trim(),
             ref: formRef.trim() || undefined,
@@ -135,6 +165,8 @@ export default function GraphConnectorsPage() {
     const formReady = formName.trim() !== '' && (
         formKind === 'rdf-file' ? formUrl.trim() !== ''
         : formKind === 'obsidian-vault' ? formVaultPath.trim() !== ''
+        : formKind === 'json-canvas' ? formCanvasPath.trim() !== ''
+        : formKind === 'git-backup' ? formRepoPath.trim() !== ''
         : formRepo.trim() !== ''
     );
 
@@ -150,7 +182,14 @@ export default function GraphConnectorsPage() {
             resetForm();
             invalidate();
             toast.success(`Quelle „${created.connector.name}" angelegt`);
-            await handleSync(created.connector.id, created.connector.name);
+            if (created.connector.kind === 'git-backup') {
+                // Backup-Repos werden nicht auto-synchronisiert: im Modus
+                // „backup" gibt es keinen Rücklese-Pfad, und bidirektionale
+                // Repos existieren oft erst nach dem ersten Backup.
+                toast.info('Starte mit „Backup erstellen", um den ersten Snapshot zu committen.');
+            } else {
+                await handleSync(created.connector.id, created.connector.name);
+            }
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Anlegen fehlgeschlagen');
         } finally {
@@ -307,15 +346,19 @@ export default function GraphConnectorsPage() {
                                         </details>
                                     )}
                                     <div className={styles.cardFooter}>
-                                        <Button
-                                            variant="secondary"
-                                            size="sm"
-                                            onClick={() => handleSync(connector.id, connector.name)}
-                                            disabled={busyId !== null}
-                                        >
-                                            <RefreshCw size={14} aria-hidden="true" className={busyId === connector.id ? styles.spinning : undefined} />
-                                            {busyId === connector.id ? 'Synchronisiere…' : 'Synchronisieren'}
-                                        </Button>
+                                        {gitBackupMode(connector) !== 'backup' && (
+                                            // Modus „backup" ist eine Einbahnstraße Store → Git
+                                            // (SPEC §8.2) — ein Sync-Button wäre eine Attrappe.
+                                            <Button
+                                                variant="secondary"
+                                                size="sm"
+                                                onClick={() => handleSync(connector.id, connector.name)}
+                                                disabled={busyId !== null}
+                                            >
+                                                <RefreshCw size={14} aria-hidden="true" className={busyId === connector.id ? styles.spinning : undefined} />
+                                                {busyId === connector.id ? 'Synchronisiere…' : 'Synchronisieren'}
+                                            </Button>
+                                        )}
                                         {kindInfo?.capabilities?.write && (
                                             <Button
                                                 variant="secondary"
@@ -324,7 +367,7 @@ export default function GraphConnectorsPage() {
                                                 disabled={busyId !== null}
                                             >
                                                 <Upload size={14} aria-hidden="true" />
-                                                Exportieren
+                                                {connector.kind === 'git-backup' ? 'Backup erstellen' : 'Exportieren'}
                                             </Button>
                                         )}
                                         <button
@@ -385,6 +428,50 @@ export default function GraphConnectorsPage() {
                                         placeholder="data/vaults/mein-vault"
                                     />
                                 </label>
+                            ) : formKind === 'json-canvas' ? (
+                                <label className={styles.field}>
+                                    <span>.canvas-Datei (unter data/vaults/ oder einer Wurzel aus OW_VAULT_ROOTS)</span>
+                                    <input
+                                        value={formCanvasPath}
+                                        onChange={e => setFormCanvasPath(e.target.value)}
+                                        placeholder="data/vaults/mein-vault/plan.canvas"
+                                    />
+                                </label>
+                            ) : formKind === 'git-backup' ? (
+                                <>
+                                    <label className={styles.field}>
+                                        <span>Repo-Ordner (unter data/ oder einer Wurzel aus OW_GIT_ROOTS)</span>
+                                        <input
+                                            value={formRepoPath}
+                                            onChange={e => setFormRepoPath(e.target.value)}
+                                            placeholder="data/backup"
+                                        />
+                                    </label>
+                                    <label className={styles.field}>
+                                        <span>Modus</span>
+                                        <select value={formGitMode} onChange={e => setFormGitMode(e.target.value as 'backup' | 'bidirectional')}>
+                                            <option value="bidirectional">bidirektional — externe Edits fließen beim Sync zurück</option>
+                                            <option value="backup">backup — Einbahnstraße Store → Git</option>
+                                        </select>
+                                    </label>
+                                    <label className={styles.field}>
+                                        <span>Remote-URL (optional — leer = nur lokale Commits)</span>
+                                        <input
+                                            type="url"
+                                            value={formRemote}
+                                            onChange={e => setFormRemote(e.target.value)}
+                                            placeholder="https://git.example.org/backup.git"
+                                        />
+                                    </label>
+                                    <label className={styles.field}>
+                                        <span>Branch</span>
+                                        <input
+                                            value={formBranch}
+                                            onChange={e => setFormBranch(e.target.value)}
+                                            placeholder="main"
+                                        />
+                                    </label>
+                                </>
                             ) : (
                                 <>
                                     <label className={styles.field}>
@@ -417,11 +504,13 @@ export default function GraphConnectorsPage() {
 
                 <ConfirmDialog
                     isOpen={exporting !== null}
-                    title="In die Quelle exportieren?"
+                    title={exporting?.kind === 'git-backup' ? 'Backup erstellen?' : 'In die Quelle exportieren?'}
                     message={exporting
-                        ? `Der Import-Graph von „${exporting.name}" wird als Markdown in den Vault geschrieben und überschreibt dort geänderte Dateien. Typisierte Verknüpfungen werden dabei zu einfachen Wikilinks abgeflacht (verlustbehafteter Export). Wurde der Vault seit dem letzten Sync extern verändert, wird nichts geschrieben.`
+                        ? exporting.kind === 'git-backup'
+                            ? `Der Graph-Snapshot wird in „${exporting.locator.split('?')[0]}" geschrieben und als Git-Commit festgehalten (deterministische Serialisierung, minimale Diffs). ${gitBackupMode(exporting) === 'bidirectional' ? 'Weicht das Repo vom Stand des letzten Sync ab, wird nichts geschrieben (erst synchronisieren).' : 'Modus „backup": das Repo ist ein Spiegel des Stores, externe Änderungen darin werden überschrieben.'}`
+                            : `Der Import-Graph von „${exporting.name}" wird als Markdown in den Vault geschrieben und überschreibt dort geänderte Dateien. Typisierte Verknüpfungen werden dabei zu einfachen Wikilinks abgeflacht (verlustbehafteter Export). Wurde der Vault seit dem letzten Sync extern verändert, wird nichts geschrieben.`
                         : ''}
-                    confirmText="Exportieren"
+                    confirmText={exporting?.kind === 'git-backup' ? 'Backup erstellen' : 'Exportieren'}
                     onConfirm={handleExport}
                     onCancel={() => setExporting(null)}
                 />

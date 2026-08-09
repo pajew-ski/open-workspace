@@ -10,10 +10,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerGraph, persistServerGraphSnapshot } from '@/lib/graph/server/instance';
+import { getServerGraph, persistServerGraphSnapshot, reprojectWorkspaceFiles } from '@/lib/graph/server/instance';
 import { getConnector } from '@/lib/graph/connectors/registry';
 import { syncConnector } from '@/lib/graph/connectors/sync';
 import { createNodeFileSystem } from '@/lib/platform/runtime/node-fs';
+import { createServerRuntimeAdapter } from '@/lib/platform/runtime/server';
 
 interface RouteContext {
     params: Promise<{ id: string }>;
@@ -31,7 +32,15 @@ export async function POST(_request: NextRequest, context: RouteContext) {
         if (!(await getConnector(handle, id))) {
             return NextResponse.json({ error: 'Connector nicht gefunden' }, { status: 404 });
         }
-        const result = await syncConnector(handle, id, { files: createNodeFileSystem() });
+        const result = await syncConnector(handle, id, {
+            files: createNodeFileSystem(),
+            runtime: createServerRuntimeAdapter(),
+        });
+        // Wiederhergestellte kanonische Graphen (git-backup, SPEC §8.2):
+        // die Datei-Projektionen folgen dem Store.
+        if (result.restoredGraphs.length > 0) {
+            await reprojectWorkspaceFiles();
+        }
         await persistServerGraphSnapshot();
         const connector = await getConnector(handle, id);
         return NextResponse.json({ result, connector });
