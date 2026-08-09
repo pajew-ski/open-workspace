@@ -95,6 +95,28 @@ export const OW = {
     trustLevel: ow('trustLevel'),
     // Präsentationsbezug
     rendersNode: ow('rendersNode'),
+    // Canvas-Layout (nur graph/presentation, SPEC §9 / M5)
+    CanvasNode: ow('CanvasNode'),
+    CanvasEdge: ow('CanvasEdge'),
+    nodeKind: ow('nodeKind'),
+    xPosition: ow('xPosition'),
+    yPosition: ow('yPosition'),
+    filePath: ow('filePath'),
+    background: ow('background'),
+    backgroundStyle: ow('backgroundStyle'),
+    viewportX: ow('viewportX'),
+    viewportY: ow('viewportY'),
+    viewportZoom: ow('viewportZoom'),
+    edgeFrom: ow('edgeFrom'),
+    edgeTo: ow('edgeTo'),
+    fromSide: ow('fromSide'),
+    toSide: ow('toSide'),
+    fromEnd: ow('fromEnd'),
+    toEnd: ow('toEnd'),
+    // Generierte Query-Views (SPEC §9 / M5)
+    QueryView: ow('QueryView'),
+    queryText: ow('queryText'),
+    layoutMethod: ow('layoutMethod'),
 } as const;
 
 export type OwTerm = (typeof OW)[keyof typeof OW];
@@ -114,6 +136,7 @@ export const SCHEMA = {
     Conversation: schemaOrg('Conversation'),
     Message: schemaOrg('Message'),
     SoftwareApplication: schemaOrg('SoftwareApplication'),
+    WebPage: schemaOrg('WebPage'),
     name: schemaOrg('name'),
     alternateName: schemaOrg('alternateName'),
     author: schemaOrg('author'),
@@ -129,6 +152,11 @@ export const SCHEMA = {
     isPartOf: schemaOrg('isPartOf'),
     keywords: schemaOrg('keywords'),
     error: schemaOrg('error'),
+    url: schemaOrg('url'),
+    /** Präsentationswerte (nur graph/presentation): Invariante 8 vor eigenem Term. */
+    width: schemaOrg('width'),
+    height: schemaOrg('height'),
+    color: schemaOrg('color'),
     ActiveActionStatus: schemaOrg('ActiveActionStatus'),
     CompletedActionStatus: schemaOrg('CompletedActionStatus'),
     PotentialActionStatus: schemaOrg('PotentialActionStatus'),

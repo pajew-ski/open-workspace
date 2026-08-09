@@ -29,6 +29,7 @@ import type { GraphStore } from '../store/types';
 import type { IriFactory } from '../iri';
 import { factory, namedNode, literal, typedLiteral } from '../rdf';
 import { DCTERMS, OW, PROV, RDF, SCHEMA } from '../vocab';
+import { pruneOrphanCanvasLayouts } from '../presentation/layout';
 import type { ConnectorInstanceView, ConnectorSyncState, QuarantineEntry } from './types';
 
 export interface GraphHandle {
@@ -248,7 +249,9 @@ export async function saveConnectorState(handle: GraphHandle, view: ConnectorIns
 /**
  * Entfernt Instanz-Knoten, letzten Lauf UND den Import-Graphen. Der
  * Import-Graph gehört dem Connector (SPEC §6.2) — ohne Connector bliebe
- * er als herrenloser Spiegel zurück.
+ * er als herrenloser Spiegel zurück. Layout-Gruppen in
+ * graph/<u>/presentation, deren Canvas mit dem Import verschwindet,
+ * werden in derselben Transaktion mit ausgeräumt (SPEC §9, M5).
  */
 export async function deleteConnector(handle: GraphHandle, id: string): Promise<boolean> {
     const existing = await getConnector(handle, id);
@@ -257,6 +260,7 @@ export async function deleteConnector(handle: GraphHandle, id: string): Promise<
         const txHandle = { store: tx, iri: handle.iri };
         await replaceConnectorNodes(txHandle, id, null);
         await tx.load([], namedNode(existing.targetGraph), { replace: true });
+        await pruneOrphanCanvasLayouts(tx, handle.iri);
     });
     return true;
 }

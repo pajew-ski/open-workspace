@@ -25,6 +25,7 @@ import { createNodeFileSystem } from '@/lib/platform/runtime/node-fs';
 import { parseRdf } from '../serialize/io';
 import { restoreSnapshot, writeSnapshot, type SnapshotReport } from '../serialize/snapshot';
 import { buildWorkspaceQuads, type MigrationCounts, type WorkspaceSnapshotInput } from '../migrate/from-files';
+import { buildNativeCanvasLayout, pruneOrphanCanvasLayouts, replaceCanvasLayouts } from '../presentation/layout';
 import { namedNode } from '../rdf';
 import { listDocs } from '@/lib/storage/docs';
 import { listTasks } from '@/lib/storage/tasks';
@@ -128,6 +129,9 @@ function hashInput(input: WorkspaceSnapshotInput): string {
 /**
  * // MIGRATION: Dateien → Workspace-Graph, inhalts-gehasht. Entfällt mit
  * der Umstellung der Schreibpfade auf den Store (TODO.md, Graph-Core M1).
+ * Seit M5 wird dabei auch das Canvas-Layout nach graph/<u>/presentation
+ * gespiegelt (Wissen und Darstellung getrennt, SPEC §9) und verwaiste
+ * Layout-Gruppen gelöschter Canvases werden ausgeräumt.
  */
 export async function syncWorkspaceFromFiles(state?: ServerGraphState): Promise<MigrationCounts | null> {
     const s = state ?? (await getState());
@@ -138,6 +142,12 @@ export async function syncWorkspaceFromFiles(state?: ServerGraphState): Promise<
         if (s.lastWorkspaceHash === hash) return null;
         const { quads, counts } = buildWorkspaceQuads(input, s.iri);
         await s.store.load(quads, namedNode(s.iri.graph('workspace')), { replace: true });
+        await replaceCanvasLayouts(
+            s.store,
+            s.iri,
+            input.canvases.map(canvas => buildNativeCanvasLayout(canvas, s.iri)),
+        );
+        await pruneOrphanCanvasLayouts(s.store, s.iri);
         s.lastWorkspaceHash = hash;
         return counts;
     });

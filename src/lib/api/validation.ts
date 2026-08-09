@@ -239,7 +239,7 @@ export const updateDocSchema = z.object({
 // Canvas (action-based endpoint)
 // ---------------------------------------------------------------------------
 
-const canvasCardTypeSchema = z.enum(['note', 'task', 'link', 'image']);
+const canvasCardTypeSchema = z.enum(['note', 'task', 'link', 'image', 'file', 'group']);
 const canvasConnectionTypeSchema = z.enum(['simple', 'directional', 'bidirectional']);
 
 const canvasCardUpdatesSchema = z.object({
@@ -271,6 +271,12 @@ export const canvasActionSchema = z.discriminatedUnion('action', [
         action: z.literal('create'),
         name: z.string().min(1, 'Name ist erforderlich').max(300),
         description: z.string().max(2_000).optional(),
+    }),
+    z.object({
+        action: z.literal('import'),
+        name: z.string().min(1, 'Name ist erforderlich').max(300),
+        /** Inhalt einer `.canvas`-Datei (JSON Canvas 1.0). */
+        json: z.string().min(1, 'Dateiinhalt fehlt').max(5_000_000),
     }),
     z.object({
         action: z.literal('updateMeta'),
@@ -490,4 +496,11 @@ export const createGraphConnectorSchema = z.object({
     kind: z.string().min(1).max(100),
     name: z.string().min(1, 'Name ist erforderlich').max(200),
     config: z.unknown(),
+});
+
+/** Generierte Query-View (GRAPH_CORE_SPEC §9, M5). */
+export const createGraphViewSchema = z.object({
+    name: z.string().min(1, 'Name ist erforderlich').max(200),
+    queryText: z.string().min(1, 'SPARQL-Query ist erforderlich').max(100_000),
+    layoutMethod: z.enum(['force-directed', 'hierarchical', 'radial']),
 });

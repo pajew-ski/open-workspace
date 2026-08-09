@@ -4,12 +4,16 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { AppShell } from '@/components/layout';
 import { Button, IconButton, ConfirmDialog, useToast } from '@/components/ui';
+import { nativeCanvasToJsonCanvas } from '@/lib/graph/connectors/json-canvas/native';
+import { serializeJsonCanvas } from '@/lib/graph/connectors/json-canvas/format';
 import styles from './page.module.css';
 
 // Types
 interface CanvasCard {
     id: string;
-    type: 'note' | 'task' | 'link' | 'image';
+    // 'file' und 'group' kommen aus dem JSON-Canvas-Import (M5):
+    // file = Dateireferenz (Pfad in content), group = reiner Rahmen.
+    type: 'note' | 'task' | 'link' | 'image' | 'file' | 'group';
     title: string;
     content?: string;
     x: number;
@@ -85,6 +89,7 @@ export default function CanvasEditorPage() {
     const [snapToGrid, setSnapToGrid] = useState(true);
 
     const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'card' | 'connection'; id: string; title: string } | null>(null);
+    const [exportConfirm, setExportConfirm] = useState(false);
 
     const canvasRef = useRef<HTMLDivElement>(null);
 
@@ -371,6 +376,27 @@ export default function CanvasEditorPage() {
         if (rect) createCard(e.clientX - rect.left, e.clientY - rect.top);
     };
 
+    /**
+     * Export als JSON Canvas 1.0 (SPEC §9, M5). Verlustbehaftet — der
+     * Bestätigungsdialog benennt die Verlustrichtung, bevor geschrieben
+     * wird; Details in docs/obsidian-kompatibilitaet.md.
+     */
+    const exportAsJsonCanvas = () => {
+        setExportConfirm(false);
+        if (!canvas) return;
+        const text = serializeJsonCanvas(nativeCanvasToJsonCanvas({ cards, connections }));
+        const blob = new Blob([text], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `${canvas.name}.canvas`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(url);
+        toast.success('Als .canvas exportiert');
+    };
+
     const handleWheel = (e: React.WheelEvent) => {
         e.preventDefault();
         const delta = e.deltaY > 0 ? 0.9 : 1.1;
@@ -456,6 +482,13 @@ export default function CanvasEditorPage() {
         return { minX: Math.min(...xs) - 100, minY: Math.min(...ys) - 100, maxX: Math.max(...xs) + 100, maxY: Math.max(...ys) + 100 };
     }, [cards]);
 
+    // Gruppen (JSON Canvas 1.0) liegen als Rahmen HINTER den Karten —
+    // DOM-Reihenfolge bestimmt die Stapelung, sonst bleibt alles gleich.
+    const cardsInRenderOrder = useMemo(
+        () => [...cards].sort((a, b) => (a.type === 'group' ? 0 : 1) - (b.type === 'group' ? 0 : 1)),
+        [cards],
+    );
+
     if (isLoading) return <AppShell title="Canvas"><p>Laden...</p></AppShell>;
     if (!canvas) return <AppShell title="Canvas"><p>Canvas nicht gefunden</p></AppShell>;
 
@@ -477,6 +510,7 @@ export default function CanvasEditorPage() {
                             </select>
                         )}
                         <Button variant="ghost" size="sm" onClick={() => { const rect = canvasRef.current?.getBoundingClientRect(); if (rect) createCard(rect.width / 2, rect.height / 2); }}>+ Karte</Button>
+                        <Button variant="ghost" size="sm" onClick={() => setExportConfirm(true)}>Exportieren</Button>
                     </div>
                     <div className={styles.toolGroup}>
                         <Button variant={snapToGrid ? 'secondary' : 'ghost'} size="sm" onClick={() => setSnapToGrid(!snapToGrid)}>⊞ Raster</Button>
@@ -504,8 +538,8 @@ export default function CanvasEditorPage() {
                 <div ref={canvasRef} className={`${styles.canvas} ${connectionMode === 'connecting' ? styles.connectingMode : ''}`} onMouseDown={handleCanvasMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} onDoubleClick={handleDoubleClick} onWheel={handleWheel}>
                     <div className={styles.grid} style={{ transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`, transformOrigin: '0 0' }}>
                         <svg className={styles.connections}>{connections.map(renderConnection)}{renderPendingConnection}</svg>
-                        {cards.map(card => (
-                            <div key={card.id} className={`${styles.card} ${selectedCards.has(card.id) ? styles.selected : ''} ${connectionMode === 'connecting' ? styles.connectable : ''}`} style={{ left: card.x, top: card.y, width: card.width, height: card.height, borderColor: card.color || 'var(--color-border)' }} onMouseDown={(e) => handleCardMouseDown(e, card.id)} onDoubleClick={(e) => { e.stopPropagation(); setEditingCardId(card.id); }}>
+                        {cardsInRenderOrder.map(card => (
+                            <div key={card.id} className={`${styles.card} ${card.type === 'group' ? styles.groupCard : ''} ${selectedCards.has(card.id) ? styles.selected : ''} ${connectionMode === 'connecting' ? styles.connectable : ''}`} style={{ left: card.x, top: card.y, width: card.width, height: card.height, borderColor: card.color || 'var(--color-border)' }} onMouseDown={(e) => handleCardMouseDown(e, card.id)} onDoubleClick={(e) => { e.stopPropagation(); setEditingCardId(card.id); }}>
                                 <div className={styles.cardHeader} style={{ backgroundColor: card.color ? `${card.color}20` : undefined }}>
                                     {editingCardId === card.id ? (
                                         <input className={styles.cardTitleInput} value={card.title} onChange={(e) => updateCard(card.id, { title: e.target.value })} onBlur={(e) => {
@@ -521,19 +555,23 @@ export default function CanvasEditorPage() {
                                     )}
                                     <button className={styles.cardDelete} onClick={() => setDeleteConfirm({ type: 'card', id: card.id, title: card.title })} onMouseDown={(e) => e.stopPropagation()}>×</button>
                                 </div>
-                                <div className={styles.cardBody}>
-                                    {editingCardId === card.id ? (
-                                        <textarea className={styles.cardContentEdit} value={card.content || ''} onChange={(e) => updateCard(card.id, { content: e.target.value })} onBlur={(e) => {
-                                            updateCard(card.id, { content: card.content }, true);
-                                            const relatedTarget = e.relatedTarget as HTMLElement;
-                                            if (!relatedTarget?.closest(`.${styles.card}`)) {
-                                                setEditingCardId(null);
-                                            }
-                                        }} onMouseDown={(e) => e.stopPropagation()} placeholder="Markdown schreiben..." />
-                                    ) : (
-                                        <div className={styles.cardContent} dangerouslySetInnerHTML={{ __html: parseMarkdown(card.content || '') }} />
-                                    )}
-                                </div>
+                                {card.type !== 'group' && (
+                                    <div className={styles.cardBody}>
+                                        {editingCardId === card.id ? (
+                                            <textarea className={styles.cardContentEdit} value={card.content || ''} onChange={(e) => updateCard(card.id, { content: e.target.value })} onBlur={(e) => {
+                                                updateCard(card.id, { content: card.content }, true);
+                                                const relatedTarget = e.relatedTarget as HTMLElement;
+                                                if (!relatedTarget?.closest(`.${styles.card}`)) {
+                                                    setEditingCardId(null);
+                                                }
+                                            }} onMouseDown={(e) => e.stopPropagation()} placeholder={card.type === 'file' ? 'Dateipfad...' : 'Markdown schreiben...'} />
+                                        ) : card.type === 'file' ? (
+                                            <div className={styles.cardContent}>📄 {card.content || 'Keine Datei verknüpft'}</div>
+                                        ) : (
+                                            <div className={styles.cardContent} dangerouslySetInnerHTML={{ __html: parseMarkdown(card.content || '') }} />
+                                        )}
+                                    </div>
+                                )}
                                 <div className={styles.cardFooter}>
                                     {CARD_COLORS.map(color => (
                                         <button key={color} className={`${styles.colorDot} ${card.color === color ? styles.colorActive : ''}`} style={{ backgroundColor: color }} onClick={() => updateCard(card.id, { color })} onMouseDown={(e) => e.stopPropagation()} />
@@ -570,6 +608,21 @@ export default function CanvasEditorPage() {
                 variant="danger"
                 onConfirm={() => deleteConfirm?.type === 'card' ? confirmDeleteCard() : confirmDeleteConnection()}
                 onCancel={() => setDeleteConfirm(null)}
+            />
+
+            <ConfirmDialog
+                isOpen={exportConfirm}
+                title="Als .canvas exportieren?"
+                message={
+                    'Der Export nach JSON Canvas 1.0 ist verlustbehaftet: Verbindungstypen werden zu ' +
+                    'einfachen Pfeilenden abgeflacht, das Ansichtsfenster (Zoom/Position) und die ' +
+                    'Karten-Zeitstempel gehen verloren. Karten-Titel werden zur Markdown-Überschrift.'
+                }
+                confirmText="Exportieren"
+                cancelText="Abbrechen"
+                variant="info"
+                onConfirm={exportAsJsonCanvas}
+                onCancel={() => setExportConfirm(false)}
             />
         </AppShell>
     );

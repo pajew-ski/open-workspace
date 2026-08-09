@@ -36,7 +36,12 @@ export type EntityType =
     | 'query'
     | 'activity'
     /** Reifier-Knoten einer annotierten Kante (RDF 1.2, rdf:reifies). */
-    | 'link';
+    | 'link'
+    /** Layout-Elemente in graph/presentation (SPEC §9 / M5). */
+    | 'canvas-node'
+    | 'canvas-edge'
+    /** Generierte Query-View (SPEC §9 / M5). */
+    | 'view';
 
 /**
  * Prüft eine Instanz-Base: absolute HTTP(S)-IRI mit abschließendem `/`
