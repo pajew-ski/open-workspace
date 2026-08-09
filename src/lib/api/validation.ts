@@ -10,6 +10,7 @@
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { ShaclViolationError } from '@/lib/graph/reasoning/shacl';
 
 export type ParsedBody<T> =
     | { ok: true; data: T }
@@ -55,6 +56,27 @@ export async function parseBody<S extends z.ZodType>(
     }
 
     return { ok: true, data: parsed.data };
+}
+
+/**
+ * SHACL-Blockade (GRAPH_CORE_SPEC §7.2, M7): Der Store-first-Schreibpfad
+ * lehnt Mutationen ab, die NEUE sh:Violation-Verstöße einführen. Diese
+ * Helper-Funktion übersetzt den Fehler in eine 422-Antwort mit dem
+ * vollständigen Befund; für alle anderen Fehler liefert sie null und der
+ * Route-eigene Catch greift wie bisher.
+ */
+export function shaclErrorResponse(error: unknown): NextResponse | null {
+    if (error instanceof ShaclViolationError) {
+        return NextResponse.json(
+            {
+                error: 'Änderung verletzt die Datenqualitäts-Regeln (SHACL)',
+                details: error.message,
+                violations: error.violations,
+            },
+            { status: 422 },
+        );
+    }
+    return null;
 }
 
 /** String that must be a syntactically valid http(s) URL. */

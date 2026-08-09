@@ -14,7 +14,7 @@ import {
     deleteConnection,
     updateViewport,
 } from '@/lib/storage';
-import { canvasActionSchema, parseBody } from '@/lib/api/validation';
+import { canvasActionSchema, parseBody, shaclErrorResponse } from '@/lib/api/validation';
 import { parseJsonCanvas } from '@/lib/graph/connectors/json-canvas/format';
 import { jsonCanvasToNative } from '@/lib/graph/connectors/json-canvas/native';
 
@@ -173,6 +173,8 @@ export async function POST(request: NextRequest) {
                 return NextResponse.json({ error: 'Unbekannte Aktion' }, { status: 400 });
         }
     } catch (error) {
+        const shacl = shaclErrorResponse(error);
+        if (shacl) return shacl;
         console.error('Canvas action error:', error);
         return NextResponse.json({ error: 'Aktion fehlgeschlagen' }, { status: 500 });
     }

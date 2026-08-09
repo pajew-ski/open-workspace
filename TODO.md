@@ -105,8 +105,33 @@
       (minimale lesbare Diffs in beiden Bindungen, externe
       .ttl-/Snapshot-Edits kommen per Pull an):
       `tests/graph/git-provider.test.ts`, `tests/graph/git-backup.test.ts`
-- [ ] **M7 Reasoning** (SHACL, OWL RL Tier 1, `graph/<u>/inferred/<scope>`,
-      DL-Sidecar optional)
+- [x] **M7 Reasoning**: SHACL an den DREI Stellen aus §7.2 —
+      (1) vor jedem UI/API-Schreibvorgang (`workspace/crud.ts`, blockierend
+      NUR bei sh:Violation und nur wenn die Mutation den Verstoß NEU
+      einführt; API antwortet 422), (2) nach jedem Connector-Pull
+      (Sync-Runner: berichtend, nie blockierend — Bericht als
+      sh:ValidationReport-Graph in `graph/meta`, Kurzfassung im
+      Connector-Lesemodell und auf `/graph/connectors`), (3) on demand
+      (`POST /api/graph/validate` + Explorer-Panel). Kern-Shapes
+      `ontology/shapes/core.ttl` (inkl. Layout-Blacklist als Shape,
+      Invariante 2), beim Start nach `graph/shapes`;
+      Library-Entscheidung mit Messwerten:
+      docs/decisions/0002-shacl-library.md (rdf-validate-shacl,
+      `bun run bench:shacl`). OWL RL Tier 1 als eigene Regelmenge über
+      das §7.3-Fragment (`src/lib/graph/reasoning/owl-rl.ts`; subClassOf/
+      subPropertyOf, domain/range, inverseOf, Transitive/Symmetric,
+      equivalentClass/-Property, sameAs), Schema-Axiome
+      `ontology/rules/reasoning.ttl` (skos:broader transitiv);
+      Materialisierung scope-partitioniert nach
+      `graph/<u>/inferred/<workspace|public>` mit vollständigem Replace +
+      PROV (`reasoning/run.ts`), läuft beim Start, nach jedem Import/
+      Connector-Löschen und auf Anforderung (`POST /api/graph/reasoning`);
+      nie persistiert, nie im Default-Dataset. Explorer zeigt inferierte
+      Kanten gestrichelt, per Default aus. DL-Sidecar bleibt optional
+      (nicht gebaut — kein Bedarf, Invariante 10) — Abnahme
+      (blockedBy/blocks + skos:broader-Transitivität inferiert, kein
+      inferiertes Tripel in graph/workspace, Scope-Leak-Negativtest):
+      `tests/graph/reasoning.test.ts`, `tests/graph/shacl.test.ts`
 - [ ] **M8 Suche + Multi-Hop-Retrieval** (§7.5-Pipeline, `workspace_finder`
       auf den Graphen)
 - [ ] **M9 Agents/Skills/Tools als Graph-Bürger**
@@ -231,4 +256,4 @@
 
 ---
 
-*Last updated: 2026-08-09 (M1-Rest §12.4 + M2-Rest Editor + M6 Git-Sync)*
+*Last updated: 2026-08-09 (M7 Reasoning: SHACL + OWL RL Tier 1)*

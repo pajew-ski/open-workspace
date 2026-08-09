@@ -28,8 +28,9 @@ import type { NamedNode, Quad } from '@rdfjs/types';
 import type { GraphStore } from '../store/types';
 import type { IriFactory } from '../iri';
 import { factory, namedNode, literal, typedLiteral } from '../rdf';
-import { DCTERMS, OW, PROV, RDF, SCHEMA } from '../vocab';
+import { DCTERMS, OW, PREFIXES, PROV, RDF, SCHEMA } from '../vocab';
 import { pruneOrphanCanvasLayouts } from '../presentation/layout';
+import { connectorValidationIri, removeConnectorValidationReport, runReasoning } from '../reasoning/run';
 import type { ConnectorInstanceView, ConnectorSyncState, QuarantineEntry } from './types';
 
 export interface GraphHandle {
@@ -105,6 +106,22 @@ function viewFromIndex(
     const runEntry = index.get(runIriFor(handle.iri, id));
     const runAt = firstValue(runEntry, PROV.generatedAtTime);
 
+    // SHACL-Kurzfassung aus dem sh:ValidationReport-Knoten (SPEC §7.2) —
+    // eine Quelle: der Bericht in graph/meta, keine zweite Buchführung.
+    const sh = PREFIXES.sh;
+    const reportEntry = index.get(connectorValidationIri(handle.iri, id));
+    let validation: NonNullable<ConnectorInstanceView['lastRun']>['validation'];
+    if (reportEntry) {
+        const counts = { violations: 0, warnings: 0, infos: 0 };
+        for (const resultQuad of reportEntry.byPredicate.get(`${sh}result`) ?? []) {
+            const severity = firstValue(index.get(resultQuad.object.value), `${sh}resultSeverity`);
+            if (severity === `${sh}Violation`) counts.violations += 1;
+            else if (severity === `${sh}Warning`) counts.warnings += 1;
+            else if (severity === `${sh}Info`) counts.infos += 1;
+        }
+        validation = { conforms: firstValue(reportEntry, `${sh}conforms`) === 'true', ...counts };
+    }
+
     return {
         id,
         iri: connectorIri,
@@ -122,6 +139,7 @@ function viewFromIndex(
                 revision: firstValue(runEntry, OW.revision),
                 summary: firstValue(runEntry, SCHEMA.description),
                 errors: (runEntry.byPredicate.get(SCHEMA.error) ?? []).map(q => q.object.value).sort(),
+                validation,
             }
             : undefined,
     };
@@ -262,9 +280,13 @@ export async function deleteConnector(handle: GraphHandle, id: string): Promise<
     await handle.store.transaction(async tx => {
         const txHandle = { store: tx, iri: handle.iri };
         await replaceConnectorNodes(txHandle, id, null);
+        await removeConnectorValidationReport(txHandle, id);
         await tx.load([], namedNode(existing.targetGraph), { replace: true });
         await pruneOrphanCanvasLayouts(tx, handle.iri);
     });
+    // Der Import-Graph ist weg — die Inferenz-Graphen folgen dem Bestand
+    // (SPEC §7.3: Lauf nach jeder Import-Änderung, vollständiger Replace).
+    await runReasoning(handle);
     return true;
 }
 

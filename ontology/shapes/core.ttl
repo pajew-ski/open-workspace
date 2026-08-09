@@ -1,0 +1,229 @@
+@prefix sh:      <http://www.w3.org/ns/shacl#> .
+@prefix ow:      <https://pajew-ski.github.io/open-workspace/ns/v1#> .
+@prefix owsh:    <https://pajew-ski.github.io/open-workspace/ns/shapes#> .
+@prefix schema:  <https://schema.org/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+#################################################################
+# SHACL-Kern-Shapes (GRAPH_CORE_SPEC §7.2, M7)
+#
+# Geladen beim Start nach graph/shapes (wie ontology/ow.ttl nach
+# graph/vocab — mitgelieferte Kopie, kein Netzzugriff). Validiert an
+# drei Stellen: vor jedem UI-Schreibvorgang (blockierend NUR bei
+# sh:Violation, und nur wenn die Mutation den Verstoß NEU einführt),
+# nach jedem Connector-Pull (nie blockierend — Bericht als Graph in
+# graph/meta) und on demand im Graph-Explorer.
+#
+# Der Shapes-Namespace owsh: liegt bewusst außerhalb von /ns/v1#:
+# Shapes sind Konfiguration, kein Produktvokabular — der Ontologie-
+# CI-Check (check:ontology) prüft nur /ns/v1#-Terme.
+#################################################################
+
+#################################################################
+# Aufgaben
+#################################################################
+
+owsh:TaskShape a sh:NodeShape ;
+    sh:targetClass ow:Task ;
+    sh:name "Aufgabe"@de ;
+    sh:property [
+        sh:path schema:name ;
+        sh:minCount 1 ;
+        sh:minLength 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Eine Aufgabe braucht einen nicht-leeren Titel (schema:name)."@de ;
+    ] ;
+    sh:property [
+        sh:path ow:priority ;
+        sh:in ( "low" "medium" "high" "urgent" ) ;
+        sh:severity sh:Violation ;
+        sh:message "Priorität muss 'low', 'medium', 'high' oder 'urgent' sein."@de ;
+    ] ;
+    sh:property [
+        sh:path ow:workflowStatus ;
+        sh:in ( "backlog" "todo" "in-progress" "review" "done" "on-hold" ) ;
+        sh:severity sh:Violation ;
+        sh:message "Workflow-Status einer Aufgabe muss 'backlog', 'todo', 'in-progress', 'review', 'done' oder 'on-hold' sein."@de ;
+    ] ;
+    sh:property [
+        sh:path ow:taskKind ;
+        sh:in ( "task" "bug" "feature" "milestone" ) ;
+        sh:severity sh:Violation ;
+        sh:message "Aufgabenart muss 'task', 'bug', 'feature' oder 'milestone' sein."@de ;
+    ] ;
+    sh:property [
+        sh:path schema:endTime ;
+        sh:datatype xsd:dateTime ;
+        sh:severity sh:Violation ;
+        sh:message "Fälligkeit (schema:endTime) muss ein xsd:dateTime sein."@de ;
+    ] ;
+    sh:property [
+        sh:path ow:blockedBy ;
+        sh:nodeKind sh:IRI ;
+        sh:severity sh:Violation ;
+        sh:message "ow:blockedBy muss auf eine IRI zeigen, nicht auf ein Literal."@de ;
+    ] ;
+    sh:property [
+        sh:path ow:blockedBy ;
+        sh:class ow:Task ;
+        sh:severity sh:Warning ;
+        sh:message "ow:blockedBy zeigt auf einen Knoten, der (noch) keine ow:Task ist — hängende Abhängigkeit?"@de ;
+    ] ;
+    sh:property [
+        sh:path ow:inProject ;
+        sh:class ow:Project ;
+        sh:severity sh:Warning ;
+        sh:message "ow:inProject zeigt auf einen Knoten, der (noch) kein ow:Project ist."@de ;
+    ] .
+
+#################################################################
+# Dokumente
+#################################################################
+
+owsh:DocumentShape a sh:NodeShape ;
+    sh:targetClass ow:Document ;
+    sh:name "Dokument"@de ;
+    sh:property [
+        sh:path schema:name ;
+        sh:minCount 1 ;
+        sh:minLength 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Ein Dokument braucht einen nicht-leeren Titel (schema:name)."@de ;
+    ] ;
+    sh:property [
+        sh:path dcterms:identifier ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "Dokument ohne dcterms:identifier (Slug) — Verweise darauf sind nicht stabil."@de ;
+    ] ;
+    sh:property [
+        sh:path schema:inLanguage ;
+        sh:minCount 1 ;
+        sh:severity sh:Info ;
+        sh:message "Dokument ohne schema:inLanguage — Sprachfilter greifen nicht."@de ;
+    ] .
+
+#################################################################
+# Projekte
+#################################################################
+
+owsh:ProjectShape a sh:NodeShape ;
+    sh:targetClass ow:Project ;
+    sh:name "Projekt"@de ;
+    sh:property [
+        sh:path schema:name ;
+        sh:minCount 1 ;
+        sh:minLength 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Ein Projekt braucht einen nicht-leeren Titel (schema:name)."@de ;
+    ] ;
+    sh:property [
+        sh:path ow:workflowStatus ;
+        sh:in ( "planning" "active" "completed" "archived" ) ;
+        sh:severity sh:Violation ;
+        sh:message "Workflow-Status eines Projekts muss 'planning', 'active', 'completed' oder 'archived' sein."@de ;
+    ] .
+
+#################################################################
+# Pinnwände
+#################################################################
+
+owsh:CanvasShape a sh:NodeShape ;
+    sh:targetClass ow:Canvas ;
+    sh:name "Pinnwand"@de ;
+    sh:property [
+        sh:path schema:name ;
+        sh:minCount 1 ;
+        sh:minLength 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Eine Pinnwand braucht einen nicht-leeren Namen (schema:name)."@de ;
+    ] .
+
+#################################################################
+# Tags
+#################################################################
+
+owsh:TagShape a sh:NodeShape ;
+    sh:targetClass skos:Concept ;
+    sh:name "Tag"@de ;
+    sh:property [
+        sh:path skos:prefLabel ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "Tag ohne skos:prefLabel — in der UI nicht darstellbar."@de ;
+    ] .
+
+#################################################################
+# Connector-Registry (graph/meta)
+#################################################################
+
+owsh:ConnectorShape a sh:NodeShape ;
+    sh:targetClass ow:Connector ;
+    sh:name "Connector"@de ;
+    sh:property [
+        sh:path ow:connectorKind ;
+        sh:minCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Eine Connector-Instanz braucht ow:connectorKind."@de ;
+    ] ;
+    sh:property [
+        sh:path ow:locator ;
+        sh:minCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Eine Connector-Instanz braucht ow:locator (Quelladresse)."@de ;
+    ] ;
+    sh:property [
+        sh:path ow:syncState ;
+        sh:in ( "idle" "syncing" "error" "conflict" ) ;
+        sh:severity sh:Warning ;
+        sh:message "Unbekannter Sync-Zustand — erwartet: 'idle', 'syncing', 'error' oder 'conflict'."@de ;
+    ] .
+
+#################################################################
+# Trennung Wissen/Präsentation (Invariante 2 als Shape)
+#
+# Layout-Terme dürfen nur in graph/<u>/presentation stehen. Die
+# Validierung läuft ausschließlich über Wissens-Graphen (workspace,
+# public, import/*, meta) — taucht dort ein Layout-Prädikat auf, ist
+# das ein Verstoß. sh:maxCount 0 auf targetSubjectsOf meldet jeden
+# Träger des Prädikats.
+#################################################################
+
+owsh:NoLayoutInKnowledgeXPosition a sh:NodeShape ;
+    sh:targetSubjectsOf ow:xPosition ;
+    sh:property [
+        sh:path ow:xPosition ;
+        sh:maxCount 0 ;
+        sh:severity sh:Violation ;
+        sh:message "Layout-Wert (ow:xPosition) im semantischen Graphen — Präsentation gehört nach graph/<u>/presentation."@de ;
+    ] .
+
+owsh:NoLayoutInKnowledgeYPosition a sh:NodeShape ;
+    sh:targetSubjectsOf ow:yPosition ;
+    sh:property [
+        sh:path ow:yPosition ;
+        sh:maxCount 0 ;
+        sh:severity sh:Violation ;
+        sh:message "Layout-Wert (ow:yPosition) im semantischen Graphen — Präsentation gehört nach graph/<u>/presentation."@de ;
+    ] .
+
+owsh:NoLayoutInKnowledgeViewport a sh:NodeShape ;
+    sh:targetSubjectsOf ow:viewportZoom ;
+    sh:property [
+        sh:path ow:viewportZoom ;
+        sh:maxCount 0 ;
+        sh:severity sh:Violation ;
+        sh:message "Layout-Wert (ow:viewportZoom) im semantischen Graphen — Präsentation gehört nach graph/<u>/presentation."@de ;
+    ] .
+
+owsh:NoLayoutInKnowledgeRendersNode a sh:NodeShape ;
+    sh:targetSubjectsOf ow:rendersNode ;
+    sh:property [
+        sh:path ow:rendersNode ;
+        sh:maxCount 0 ;
+        sh:severity sh:Violation ;
+        sh:message "ow:rendersNode im semantischen Graphen — die Brücke Layout→Wissen lebt in graph/<u>/presentation."@de ;
+    ] .

@@ -17,9 +17,11 @@ import type { Doc, DocType } from '@/types/doc';
 import type { Task, TaskDependency, TaskPriority, TaskStatus, TaskType } from '@/lib/storage/tasks';
 import type { Project, ProjectStatus } from '@/lib/storage/projects';
 import type { CanvasCard, CanvasConnection, CanvasData, CanvasIndex, ImportCanvasInput } from '@/lib/storage/canvas';
+import type { Quad } from '@rdfjs/types';
 import type { GraphStore } from '../store/types';
 import type { IriFactory } from '../iri';
 import { namedNode } from '../rdf';
+import { newViolations, ShaclViolationError, validateQuads } from '../reasoning/shacl';
 import { buildWorkspaceQuads, slugifyTitle, type MigrationCounts, type WorkspaceSnapshotInput } from '../migrate/from-files';
 import {
     buildNativeCanvasLayout,
@@ -68,9 +70,34 @@ export async function readWorkspace(ctx: Pick<WorkspaceContext, 'store' | 'iri'>
 }
 
 /**
- * Mutations-Grundmuster: Store lesen, Draft ändern, zurückschreiben,
- * projizieren, persistieren. `null` aus dem Mutator heißt „Ziel existiert
- * nicht" — dann wird nichts geschrieben.
+ * SHACL-Stelle 1 (SPEC §7.2): Validierung VOR jedem Schreibvorgang aus
+ * UI/API. Blockierend sind ausschließlich sh:Violation-Ergebnisse, die
+ * die Mutation NEU einführt — Altbestand mit Verstößen bleibt bearbeitbar,
+ * darf aber nicht schlechter werden. Ohne geladene Shapes (nackte
+ * Test-Stores) ist der Befund trivial konform.
+ */
+async function assertDraftConforms(
+    ctx: Pick<WorkspaceContext, 'store' | 'iri'>,
+    previous: WorkspaceSnapshotInput,
+    draft: WorkspaceSnapshotInput,
+): Promise<void> {
+    const shapes: Quad[] = [];
+    for await (const q of ctx.store.dump(namedNode(ctx.iri.sharedGraph('shapes')))) {
+        shapes.push(q);
+    }
+    if (shapes.length === 0) return;
+    const before = await validateQuads(shapes, buildWorkspaceQuads(previous, ctx.iri).quads);
+    const after = await validateQuads(shapes, buildWorkspaceQuads(draft, ctx.iri).quads);
+    const fresh = newViolations(before, after);
+    if (fresh.length > 0) {
+        throw new ShaclViolationError(fresh);
+    }
+}
+
+/**
+ * Mutations-Grundmuster: Store lesen, Draft ändern, validieren (SHACL,
+ * §7.2), zurückschreiben, projizieren, persistieren. `null` aus dem
+ * Mutator heißt „Ziel existiert nicht" — dann wird nichts geschrieben.
  */
 async function mutate<T>(
     ctx: WorkspaceContext,
@@ -81,6 +108,7 @@ async function mutate<T>(
         const draft = structuredClone(previous);
         const result = mutator(draft);
         if (result === null) return null;
+        await assertDraftConforms(ctx, previous, draft);
         await writeWorkspaceToStore(ctx.store, ctx.iri, draft);
         await projectWorkspaceFiles(draft, previous, ctx.paths);
         await ctx.persistSnapshot();
