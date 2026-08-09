@@ -4,8 +4,8 @@
 
 ## Hier weitermachen (Einstieg für neue Sessions)
 
-**Stand 2026-08-09 (6. Ausbaustufe, Graph Core M0–M8 inkl. §12.4)**: Der
-**RDF-Graph ist das kanonische Datenmodell — und seit dieser Stufe die
+**Stand 2026-08-09 (7. Ausbaustufe, Graph Core M0–M9 inkl. §12.4)**: Der
+**RDF-Graph ist das kanonische Datenmodell — und seit der 6. Stufe die
 einzige Wahrheit auch für die Schreibpfade**. Die verbindliche Spezifikation
 inklusive aller Meilensteine M0–M13 liegt in
 [GRAPH_CORE_SPEC.md](./GRAPH_CORE_SPEC.md) — **Arbeitsmodus: ein Meilenstein
@@ -18,7 +18,7 @@ Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
   (SPARQL 1.1 Query/Update, RDF 1.2/RDF-star, Quads) + ehrliches
   In-Memory-Test-Double. Kein Default-Graph-Schreibpfad — jedes Tripel hat
   einen Named Graph, per Store erzwungen.
-- **Vokabular** (`ontology/ow.ttl` + `src/lib/graph/vocab.ts`): 34 eigene
+- **Vokabular** (`ontology/ow.ttl` + `src/lib/graph/vocab.ts`): 66 eigene
   Terme unter der produktweit konstanten Base
   `https://pajew-ski.github.io/open-workspace/ns/v1#`, jeder mit
   de/en-Labels und Begründung. CI-Check `bun run check:ontology` erzwingt
@@ -232,6 +232,40 @@ Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
   zweiten, anders befüllten Store; Hub-Kappung an einem Tag mit 120
   Dokumenten samt Gegenprobe; Token-Budget; includeInferred) und
   `tests/graph/search.test.ts`.
+- **Agents, Skills, Tools als Graph-Bürger (M9)**
+  (`src/lib/graph/connectors/a2a-agent-card.ts`, `…/mcp-server.ts`,
+  `src/lib/graph/meta/ai.ts`): Die Abnahmefrage „welche Skills benötigen
+  welche Tools, und welcher Agent bietet sie an" ist per SPARQL
+  beantwortbar — über drei Quellen. (1) Connector `a2a-agent-card`:
+  Card-Discovery in der Reihenfolge des A2A-Clients
+  (`agentCardCandidates`, Netz über den SSRF-Guard), Revision =
+  Inhalts-Hash; Agent als foaf:Agent + ow:Agent +
+  schema:SoftwareApplication (`ow:agentCardUrl`/`ow:endpoint`/
+  `ow:securityScheme` als quelltreues JSON-Literal), Card-Skills als
+  `ow:Skill` mit `ow:providesSkill`; unbrauchbare Cards/Einzel-Skills
+  werden quarantäniert, nie fatal. (2) Connector `mcp-server`: läuft durch
+  den ECHTEN SDK-Client (`describeMcpServer` — Server-Info, Tools, Prompts
+  über EINE Verbindung; Transporte akzeptieren injiziertes fetch →
+  SSRF-Guard gilt), Revision = Hash des sortierten Inventars; Server →
+  `ow:ToolProvider` (`ow:endpoint`, `ow:transport` = verbundener
+  Transport), Tools → `ow:Tool` mit `ow:inputSchema` (JSON-Schema als
+  Literal) + `ow:providedBy`, Prompts → `ow:Skill`. (3) AI-Spiegel
+  (§18-Muster) nach `graph/meta`: Skills aus `data/ai/skills.json`
+  (`ow:trigger` = SKILL.md-Description, `ow:skillSource` = Ladeweg,
+  `schema:text` = Anleitung → volltext-suchbar, `[[TOOL:…]]`-Bedarf als
+  `ow:requiresTool` ⊑ schema:tool [neuer Term, §4.3]), Agenten aus
+  `data/agents/config.json` (Remote-A2A inkl. Card-Capabilities als
+  Skills), Builtins + API-Tools als `ow:Tool` unter dem Anbieter
+  „Open Workspace" (Beschreibungen aus `tools.shared.ts` — keine zweite
+  Kopie), konfigurierte MCP-Server als `ow:ToolProvider` OHNE erfundenes
+  Tool-Inventar (das liefert der Connector). Wahrheits-Semantik: die
+  JSON-Bestände bleiben operative Konfiguration (AI-Schicht läuft auch
+  serverlos), der Spiegel wird GENERIERT — beim Start und nach jeder
+  Mutation (`refreshAiMirror`, aufgerufen von den Skills-/Agents-/Tools-/
+  MCP-Server-Routen), deterministisch (dateTime-Vergleich als Zeitpunkt,
+  diff-stabile Snapshots), abschnittsweiser Replace neben der
+  Connector-Registry. Abnahme: `tests/graph/agents-skills-tools.test.ts`
+  (inkl. MCP end-to-end gegen einen Streamable-HTTP-Stub).
 - **Invarianten** (Review-Blocker, SPEC §2): RDF ist die eine Wahrheit;
   Wissen ≠ Präsentation; asserted ≠ inferred; ein Connector-Vertrag für
   alles Externe; kein `any` unter `src/lib/graph/` (ESLint-Error);
@@ -261,7 +295,7 @@ und backend-unabhängig** — Details in [docs/ai-platform.md](./docs/ai-platfor
 - **UI**: AI-Hub (`/ai`), Skills (`/skills`), MCP-Verwaltung in `/tools`,
   A2A-Discovery in `/agents`, ModelPicker in beiden Chat-Oberflächen.
 
-Build, Typecheck, Lint (0 Errors), 322 Unit-Tests und das **blockierende
+Build, Typecheck, Lint (0 Errors), 337 Unit-Tests und das **blockierende
 E2E-Gate** (`e2e/mobile-navigation`, `e2e/mobile-ux`, `e2e/a11y` inkl. der
 Seiten `/ai`, `/skills`, `/graph/connectors` und `/graph/sparql`) laufen
 grün.
@@ -274,15 +308,18 @@ grün.
 4. [TODO.md](./TODO.md) — Roadmap als abhakbare Liste (inkl. Graph Core)
 5. Diesen Abschnitt hier für die Architektur-Prinzipien
 
-**Nächste sinnvolle Schritte**: Graph Core M9 (Agents, Skills, Tools als
-Graph-Bürger nach SPEC §4.2/§13: A2A-Agent-Cards als `ow:Agent`/
-`foaf:Agent`-Knoten [Connector `a2a-agent-card`], MCP-Server als
-`ow:ToolProvider` mit `ow:Tool`-Knoten samt `ow:inputSchema` [Connector
-`mcp-server`], Skills als `ow:Skill` mit `ow:trigger`/`ow:skillSource`;
-Abnahme: der Assistent kann per SPARQL beantworten, welche Skills welche
-Tools benötigen und welcher Agent sie anbietet). Danach M10 (MCP-Server
-`/api/mcp` nach §7.6 — `graph_search`/`graph_retrieve` liegen mit M8
-bereit). Parallel weiter sinnvoll: i18n mit `next-intl` (P0); Abbau der
+**Nächste sinnvolle Schritte**: Graph Core M10 (MCP-**Server** `/api/mcp`
+nach SPEC §7.6: Streamable HTTP + SSE-Fallback über
+`@modelcontextprotocol/sdk`, nur Runtimes `ha-addon`/`server`
+[`capabilities.mcpServer`]; Tools `graph_search`/`graph_retrieve`/
+`graph_neighbors`/`graph_describe`/`graph_sparql` — Suche und
+Retrieval-Pipeline liegen mit M8 bereit, `graph_write` bleibt per Default
+aus; Knoten als Resources `graph://<iri>` [Turtle + JSON-LD],
+Retrieval-Profile als Prompts; identische Authz wie SPARQL/Retrieval,
+Rate-Limits und Timeouts Pflicht. Abnahme: externer MCP-Client ruft
+`graph_retrieve` mit Provenienz ab; Negativtest: Token ohne Leserecht
+sieht einen Graphen auch über Hops nicht). Danach M11 (Föderation).
+Parallel weiter sinnvoll: i18n mit `next-intl` (P0); Abbau der
 `no-explicit-any`-Warnings außerhalb des Graph-Codes;
 CopilotKit-Entscheidung.
 

@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Archive, BookOpen, CloudDownload, FileCode2, GitBranch, LayoutDashboard, RefreshCw, Trash2, Upload } from 'lucide-react';
+import { Archive, BookOpen, Bot, CloudDownload, FileCode2, GitBranch, LayoutDashboard, Plug, RefreshCw, Trash2, Upload } from 'lucide-react';
 import { AppShell } from '@/components/layout';
 import { Button, ConfirmDialog, FloatingActionButton } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
@@ -81,6 +81,8 @@ const KIND_ICONS: Record<string, React.ReactNode> = {
     'obsidian-vault': <BookOpen size={12} aria-hidden="true" />,
     'json-canvas': <LayoutDashboard size={12} aria-hidden="true" />,
     'git-backup': <Archive size={12} aria-hidden="true" />,
+    'a2a-agent-card': <Bot size={12} aria-hidden="true" />,
+    'mcp-server': <Plug size={12} aria-hidden="true" />,
 };
 
 /** Modus einer git-backup-Instanz aus dem Locator (`pfad?mode=…`). */
@@ -137,6 +139,9 @@ export default function GraphConnectorsPage() {
     const [formGitMode, setFormGitMode] = useState<'backup' | 'bidirectional'>('bidirectional');
     const [formRemote, setFormRemote] = useState('');
     const [formBranch, setFormBranch] = useState('main');
+    const [formCardUrl, setFormCardUrl] = useState('');
+    const [formMcpUrl, setFormMcpUrl] = useState('');
+    const [formMcpTransport, setFormMcpTransport] = useState<'auto' | 'streamable-http' | 'sse'>('auto');
 
     const { data, isLoading } = useQuery<{ connectors: ConnectorView[]; kinds: ConnectorKindInfo[] }>({
         queryKey: ['graph-connectors'],
@@ -160,10 +165,15 @@ export default function GraphConnectorsPage() {
         setFormGitMode('bidirectional');
         setFormRemote('');
         setFormBranch('main');
+        setFormCardUrl('');
+        setFormMcpUrl('');
+        setFormMcpTransport('auto');
     };
 
     const configForForm = (): unknown => {
         if (formKind === 'rdf-file') return { url: formUrl.trim() };
+        if (formKind === 'a2a-agent-card') return { url: formCardUrl.trim() };
+        if (formKind === 'mcp-server') return { url: formMcpUrl.trim(), transport: formMcpTransport };
         if (formKind === 'obsidian-vault') return { path: formVaultPath.trim() };
         if (formKind === 'json-canvas') return { path: formCanvasPath.trim() };
         if (formKind === 'git-backup') {
@@ -183,6 +193,8 @@ export default function GraphConnectorsPage() {
 
     const formReady = formName.trim() !== '' && (
         formKind === 'rdf-file' ? formUrl.trim() !== ''
+        : formKind === 'a2a-agent-card' ? formCardUrl.trim() !== ''
+        : formKind === 'mcp-server' ? formMcpUrl.trim() !== ''
         : formKind === 'obsidian-vault' ? formVaultPath.trim() !== ''
         : formKind === 'json-canvas' ? formCanvasPath.trim() !== ''
         : formKind === 'git-backup' ? formRepoPath.trim() !== ''
@@ -446,6 +458,36 @@ export default function GraphConnectorsPage() {
                                         placeholder="https://example.org/daten.ttl"
                                     />
                                 </label>
+                            ) : formKind === 'a2a-agent-card' ? (
+                                <label className={styles.field}>
+                                    <span>Agent-URL (Origin, JSON-RPC-Endpoint oder direkte Card-URL)</span>
+                                    <input
+                                        type="url"
+                                        value={formCardUrl}
+                                        onChange={e => setFormCardUrl(e.target.value)}
+                                        placeholder="https://agent.example.org"
+                                    />
+                                </label>
+                            ) : formKind === 'mcp-server' ? (
+                                <>
+                                    <label className={styles.field}>
+                                        <span>Endpoint-URL des MCP-Servers</span>
+                                        <input
+                                            type="url"
+                                            value={formMcpUrl}
+                                            onChange={e => setFormMcpUrl(e.target.value)}
+                                            placeholder="https://mcp.example.org/mcp"
+                                        />
+                                    </label>
+                                    <label className={styles.field}>
+                                        <span>Transport</span>
+                                        <select value={formMcpTransport} onChange={e => setFormMcpTransport(e.target.value as 'auto' | 'streamable-http' | 'sse')}>
+                                            <option value="auto">auto — Streamable HTTP, dann SSE-Fallback</option>
+                                            <option value="streamable-http">streamable-http</option>
+                                            <option value="sse">sse (Legacy)</option>
+                                        </select>
+                                    </label>
+                                </>
                             ) : formKind === 'obsidian-vault' ? (
                                 <label className={styles.field}>
                                     <span>Vault-Ordner (unter data/vaults/ oder einer Wurzel aus OW_VAULT_ROOTS)</span>

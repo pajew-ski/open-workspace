@@ -4,6 +4,12 @@
   "instanceBase": "urn:ow:14b46c31-2026-4d79-9fe6-4516cf791ea6:",
   "graphs": [
     {
+      "iri": "urn:ow:14b46c31-2026-4d79-9fe6-4516cf791ea6:graph/meta",
+      "file": "meta.nq",
+      "quads": 22,
+      "sha256": "7b497fba079722e11a6038076310f240ed0f7bb4a284c7f7394039f2a3ab2bc8"
+    },
+    {
       "iri": "urn:ow:14b46c31-2026-4d79-9fe6-4516cf791ea6:graph/u/default/presentation",
       "file": "presentation.nq",
       "quads": 126,

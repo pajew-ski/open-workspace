@@ -157,7 +157,30 @@
       Abnahme (Reproduzierbarkeit inkl. zweitem Store, explain vollständig,
       Hub-Kappung an Tag mit 120 Dokumenten + Gegenprobe, Token-Budget):
       `tests/graph/retrieval.test.ts`, `tests/graph/search.test.ts`
-- [ ] **M9 Agents/Skills/Tools als Graph-Bürger**
+- [x] **M9 Agents/Skills/Tools als Graph-Bürger**: zwei neue Connectors
+      über den EINEN Vertrag — `a2a-agent-card` (Card-Discovery-Reihenfolge
+      aus dem A2A-Client, Revision = Inhalts-Hash; foaf:Agent/ow:Agent/
+      schema:SoftwareApplication mit ow:agentCardUrl/ow:endpoint/
+      ow:securityScheme [JSON-Literal], Card-Skills als ow:Skill mit
+      ow:providesSkill; unbrauchbare Cards/Skills → Quarantäne, nie fatal)
+      und `mcp-server` (ECHTER SDK-Client, `describeMcpServer` über EINE
+      Verbindung mit injiziertem SSRF-Guard-fetch; Revision = Hash des
+      sortierten Inventars; Server → ow:ToolProvider mit ow:endpoint/
+      ow:transport, Tools → ow:Tool mit ow:inputSchema [JSON-Literal] +
+      ow:providedBy, Prompts → ow:Skill mit ow:providesSkill); NATIV der
+      AI-Spiegel `src/lib/graph/meta/ai.ts` (§18-Muster) nach graph/meta:
+      Skills (ow:trigger/ow:skillSource/schema:text, [[TOOL:…]]-Bedarf als
+      neues `ow:requiresTool` ⊑ schema:tool), Agenten (Remote-A2A inkl.
+      Card-Capabilities als Skills), Builtins + API-Tools unter dem
+      Anbieter „Open Workspace" (Beschreibungen aus tools.shared.ts),
+      MCP-Server-Configs als ow:ToolProvider ohne erfundenes Inventar;
+      generiert beim Start + nach jeder Mutation (`refreshAiMirror` in den
+      Skills-/Agents-/Tools-/MCP-Routen), deterministisch, abschnittsweiser
+      Replace neben der Connector-Registry; UI: beide Arten unter
+      /graph/connectors — Abnahme (SPARQL beantwortet „welche Skills
+      welche Tools benötigen und welcher Agent sie anbietet" über Spiegel +
+      Import-Graphen; MCP end-to-end gegen Streamable-HTTP-Stub):
+      `tests/graph/agents-skills-tools.test.ts`
 - [ ] **M10 MCP-Server** (`/api/mcp`, graph_search/retrieve/neighbors/
       describe/sparql)
 - [ ] **M11 Föderation** (Endpoint-Registry, SERVICE, Authz-Rewriting,
@@ -279,4 +302,4 @@
 
 ---
 
-*Last updated: 2026-08-09 (M8 Suche + Multi-Hop-Retrieval)*
+*Last updated: 2026-08-09 (M9 Agents/Skills/Tools als Graph-Bürger)*

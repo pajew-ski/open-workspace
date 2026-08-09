@@ -37,6 +37,8 @@ import { writeWorkspaceToStore, type WorkspaceContext } from '../workspace/crud'
 import { workspaceFromStore } from '../workspace/read';
 import { defaultWorkspaceFilePaths, projectWorkspaceFiles, readWorkspaceFiles } from '../workspace/files';
 import { invalidateSearchIndexes } from '../search/cache';
+import { replaceAiMirror } from '../meta/ai';
+import { loadAiMirrorInput } from '../meta/ai-input.server';
 
 export interface ServerGraph {
     store: OxigraphStore;
@@ -108,9 +110,16 @@ async function createState(): Promise<ServerGraphState> {
     // 4. Bootstrap: Dateibestand einmalig (re-)migrieren, wenn der Snapshot
     //    fehlt oder noch aus der Dateien-als-Quelle-Ära stammt (v1).
     const manifest = await readManifest(fs, GRAPH_DIR());
-    if (!manifest || manifest.schemaVersion < SNAPSHOT_SCHEMA_VERSION) {
+    const migrated = !manifest || manifest.schemaVersion < SNAPSHOT_SCHEMA_VERSION;
+    if (migrated) {
         const input = await readWorkspaceFiles();
         await writeWorkspaceToStore(state.store, state.iri, input);
+    }
+    // 4b. AI-Spiegel (M9, SPEC §18-Muster): Skills, Agenten und Werkzeuge
+    //     der Installation werden bei jedem Start aus der operativen
+    //     Konfiguration nach graph/meta generiert, nie von Hand gepflegt.
+    const mirror = await replaceAiMirror(state, await loadAiMirrorInput());
+    if (migrated || mirror.changed) {
         await writeSnapshot(state.store, fs, GRAPH_DIR(), state.iri.instanceBase);
     }
     // 5. Inferenz-Graphen materialisieren (nie persistiert, SPEC §8.1).
@@ -172,6 +181,38 @@ async function runExclusive<T>(fn: () => Promise<T>): Promise<T> {
 export async function persistServerGraphSnapshot(): Promise<SnapshotReport> {
     const state = await getState();
     return runExclusive(() => writeSnapshot(state.store, createNodeFileSystem(), GRAPH_DIR(), state.iri.instanceBase));
+}
+
+/**
+ * Erneuert den AI-Spiegel in `graph/meta` (M9) aus der operativen
+ * Konfiguration — von den Mutations-Routen der AI-Schicht (Skills,
+ * Agenten, Werkzeuge, MCP-Server) nach jedem erfolgreichen Schreiben
+ * aufgerufen. Ändert sich der Spiegel, folgen Reasoning-Lauf (die
+ * ow:Agent-⊑-foaf:Agent-Hülle lebt in graph/inferred) und Snapshot.
+ */
+export async function refreshAiMirror(): Promise<void> {
+    const state = await getState();
+    await runExclusive(async () => {
+        const mirror = await replaceAiMirror(state, await loadAiMirrorInput());
+        if (!mirror.changed) return;
+        await runReasoning(state);
+        await writeSnapshot(state.store, createNodeFileSystem(), GRAPH_DIR(), state.iri.instanceBase);
+    });
+}
+
+/**
+ * Wie `refreshAiMirror`, aber nicht-fatal — für die Mutations-Routen der
+ * AI-Schicht: deren operativer Schreibvorgang ist bereits gelungen; ein
+ * Spiegel-Fehler wird protokolliert und heilt sich beim nächsten Start
+ * oder der nächsten Mutation selbst (der Spiegel wird stets vollständig
+ * neu generiert).
+ */
+export async function refreshAiMirrorAfterMutation(context: string): Promise<void> {
+    try {
+        await refreshAiMirror();
+    } catch (error) {
+        console.error(`AI-Spiegel nach Mutation (${context}) nicht aktualisiert:`, error);
+    }
 }
 
 /**
