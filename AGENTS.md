@@ -4,7 +4,7 @@
 
 ## Hier weitermachen (Einstieg für neue Sessions)
 
-**Stand 2026-08-09 (5. Ausbaustufe, Graph Core M0–M7 inkl. §12.4)**: Der
+**Stand 2026-08-09 (6. Ausbaustufe, Graph Core M0–M8 inkl. §12.4)**: Der
 **RDF-Graph ist das kanonische Datenmodell — und seit dieser Stufe die
 einzige Wahrheit auch für die Schreibpfade**. Die verbindliche Spezifikation
 inklusive aller Meilensteine M0–M13 liegt in
@@ -190,6 +190,48 @@ Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
   DL-Sidecar (Tier 2) bewusst nicht gebaut — optional laut SPEC, kein
   Bedarf, keine Attrappe. Abnahme: `tests/graph/reasoning.test.ts`
   (inkl. Scope-Leak-Negativtest) und `tests/graph/shacl.test.ts`.
+- **Suche + Multi-Hop-Retrieval (M8)** (`src/lib/graph/search/`):
+  Volltext-Index über ALLE Literale als eigene, leichte JS-Lösung
+  (invertierter Index, Levenshtein-Fuzzy + Präfix über sortiertes
+  Vokabular; Einträge tragen Subjekt-IRI/Prädikat/Graph → nach Graphen
+  filterbar, §17.4). Optionaler Vektorindex separat vom Store (jeder
+  Vektor trägt die Subjekt-IRI; Embedding-Provider aus der AI-Schicht per
+  `OW_EMBEDDING_PROVIDER`/`OW_EMBEDDING_MODEL`, openai-kompatibel oder
+  Ollama — ohne Konfiguration ehrlich „nicht verfügbar"). Beide Indizes
+  werden NIE persistiert (reproduzierbar wie graph/inferred): WeakMap-
+  Cache pro Store, invalidiert im Mutations-Pfad (`runExclusive`) und in
+  der SPARQL-Update-Route. Retrieval-Pipeline nach SPEC §7.5
+  (`search/retrieval.ts`) mit vier einzeln exportierten Phasen: Seeding
+  (IRI exakt + Volltext + Vektor, still gefiltert gegen das erlaubte
+  Dataset), Expansion (BFS bis maxHops über die Wissens-Graphen
+  workspace+public+import/*+meta — presentation/acl/vocab/shapes nie,
+  inferred/workspace nur bei `includeInferred: true`; Richtung,
+  edgeTypes/nodeTypes, Grad-Kappung maxDegree als Hub-Schutz,
+  Zyklenschutz, harte Knoten-/Kanten-/Laufzeit-Obergrenzen; rdf:type ist
+  per Default keine Traversal-Kante), Scoring (deterministisch:
+  seed × decay^hop × Kantengewichts-Pfad [`ow:weight` am RDF-1.2-Reifier]
+  × Zentralität × Aktualität — normiert gegen Zeitstempel IM Ergebnis,
+  kein Wall-Clock-Bezug) und Assembly (Kanten-Hülle über den
+  aufgenommenen Knoten + zitierfähiger [n]-Kontext, Token-Budget entlang
+  der Score-Reihenfolge). `explain` + `provenance` sind Pflicht: jeder
+  Knoten weist hop/via/scoreParts aus, jede Quelle Graph + Connector.
+  Retrieval-Profile sind `ow:RetrievalProfile`-Entitäten in `graph/meta`
+  (`ow:retrievalConfig` als JSON-Literal). APIs: `GET /api/graph/search`
+  (eigene Such-API mit ehrlicher Embedding-Diagnose),
+  `POST /api/graph/retrieve` (zod-validiert; `profile` als Basis,
+  Body-Felder überschreiben), `GET|POST /api/graph/retrieval-profiles`
+  (+ `DELETE /[id]`). Der Global Finder (`/api/finder`,
+  `workspace_finder`) ist auf den Graphen UMGESTELLT, nicht ersetzt:
+  Dokumente/Aufgaben/Projekte kommen aus dem Index (Fuzzy-Verhalten und
+  matchScore-Ranking erhalten), Chats/Termine ehrlich weiter aus ihren
+  Storages, bis sie Graph-Bürger sind (M9+). Bekannte Grenze: oxigraph-js
+  kann keine Custom-SPARQL-Functions — die §7.7-Custom-Function ist eine
+  erstklassige Funktion der Suchschicht; `FulltextIndex.search` ist der
+  Einhängepunkt, sobald die Bindung es exponiert. Abnahme:
+  `tests/graph/retrieval.test.ts` (Reproduzierbarkeit auch über einen
+  zweiten, anders befüllten Store; Hub-Kappung an einem Tag mit 120
+  Dokumenten samt Gegenprobe; Token-Budget; includeInferred) und
+  `tests/graph/search.test.ts`.
 - **Invarianten** (Review-Blocker, SPEC §2): RDF ist die eine Wahrheit;
   Wissen ≠ Präsentation; asserted ≠ inferred; ein Connector-Vertrag für
   alles Externe; kein `any` unter `src/lib/graph/` (ESLint-Error);
@@ -219,7 +261,7 @@ und backend-unabhängig** — Details in [docs/ai-platform.md](./docs/ai-platfor
 - **UI**: AI-Hub (`/ai`), Skills (`/skills`), MCP-Verwaltung in `/tools`,
   A2A-Discovery in `/agents`, ModelPicker in beiden Chat-Oberflächen.
 
-Build, Typecheck, Lint (0 Errors), 276 Unit-Tests und das **blockierende
+Build, Typecheck, Lint (0 Errors), 322 Unit-Tests und das **blockierende
 E2E-Gate** (`e2e/mobile-navigation`, `e2e/mobile-ux`, `e2e/a11y` inkl. der
 Seiten `/ai`, `/skills`, `/graph/connectors` und `/graph/sparql`) laufen
 grün.
@@ -232,18 +274,16 @@ grün.
 4. [TODO.md](./TODO.md) — Roadmap als abhakbare Liste (inkl. Graph Core)
 5. Diesen Abschnitt hier für die Architektur-Prinzipien
 
-**Nächste sinnvolle Schritte**: Graph Core M8 (Suche + Multi-Hop-Retrieval
-nach SPEC §7.5/§7.7: Volltext-Index über alle Literale [leichte
-JS-Lösung, Browser + Server identisch], optionale Embeddings, die
-vier-Phasen-Retrieval-Pipeline Seeding → Expansion → Scoring → Assembly
-als erstklassige API mit Pflicht-`explain`/-`provenance`, Umstellung des
-`workspace_finder` auf den Graphen, Retrieval-Profile als
-`ow:`-Entitäten — Abnahme: reproduzierbare Knotenmenge samt
-Score-Reihenfolge bei `maxHops: 2`, Hub-Kappung nachweislich, Kontext
-hält das Token-Budget; `includeInferred: false` als Default nutzt die
-M7-Inferenz-Graphen nur auf Anforderung). Danach M9 (Agents/Skills/Tools
-als Graph-Bürger). Parallel weiter sinnvoll: i18n mit `next-intl` (P0);
-Abbau der `no-explicit-any`-Warnings außerhalb des Graph-Codes;
+**Nächste sinnvolle Schritte**: Graph Core M9 (Agents, Skills, Tools als
+Graph-Bürger nach SPEC §4.2/§13: A2A-Agent-Cards als `ow:Agent`/
+`foaf:Agent`-Knoten [Connector `a2a-agent-card`], MCP-Server als
+`ow:ToolProvider` mit `ow:Tool`-Knoten samt `ow:inputSchema` [Connector
+`mcp-server`], Skills als `ow:Skill` mit `ow:trigger`/`ow:skillSource`;
+Abnahme: der Assistent kann per SPARQL beantworten, welche Skills welche
+Tools benötigen und welcher Agent sie anbietet). Danach M10 (MCP-Server
+`/api/mcp` nach §7.6 — `graph_search`/`graph_retrieve` liegen mit M8
+bereit). Parallel weiter sinnvoll: i18n mit `next-intl` (P0); Abbau der
+`no-explicit-any`-Warnings außerhalb des Graph-Codes;
 CopilotKit-Entscheidung.
 
 **Arbeitsprinzip dieses Repos**: Keine Attrappen. Lieber ein Feature ehrlich als

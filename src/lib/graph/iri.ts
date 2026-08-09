@@ -41,7 +41,9 @@ export type EntityType =
     | 'canvas-node'
     | 'canvas-edge'
     /** Generierte Query-View (SPEC §9 / M5). */
-    | 'view';
+    | 'view'
+    /** Gespeichertes Retrieval-Profil (SPEC §7.5 / M8). */
+    | 'profile';
 
 /**
  * Prüft eine Instanz-Base: absolute HTTP(S)-IRI mit abschließendem `/`

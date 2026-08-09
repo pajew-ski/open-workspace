@@ -127,6 +127,10 @@ export const OW = {
     QueryView: ow('QueryView'),
     queryText: ow('queryText'),
     layoutMethod: ow('layoutMethod'),
+    // Suche + Multi-Hop-Retrieval (SPEC §7.5/§7.7 / M8)
+    RetrievalProfile: ow('RetrievalProfile'),
+    retrievalConfig: ow('retrievalConfig'),
+    weight: ow('weight'),
 } as const;
 
 export type OwTerm = (typeof OW)[keyof typeof OW];

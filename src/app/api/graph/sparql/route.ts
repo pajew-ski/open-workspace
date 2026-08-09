@@ -13,6 +13,7 @@
 import type { NextRequest } from 'next/server';
 import { getServerGraph } from '@/lib/graph/server/instance';
 import { executeSparqlProtocol, type SparqlProtocolRequest } from '@/lib/graph/sparql/protocol';
+import { invalidateSearchIndexes } from '@/lib/graph/search/cache';
 
 const MAX_BODY_BYTES = 1_000_000;
 
@@ -62,7 +63,13 @@ async function handle(request: NextRequest, method: 'GET' | 'POST'): Promise<Res
             }
         }
 
-        return toResponse(await executeSparqlProtocol(store, iri, protocolRequest));
+        const result = await executeSparqlProtocol(store, iri, protocolRequest);
+        // Ein erfolgreiches UPDATE (204) läuft am Mutations-Pfad von
+        // server/instance.ts vorbei — Suchindizes hier invalidieren (M8).
+        if (result.status === 204) {
+            invalidateSearchIndexes(store);
+        }
+        return toResponse(result);
     } catch (error) {
         console.error('SPARQL Endpoint Error:', error);
         return new Response('Interner Fehler im SPARQL-Endpoint.\n', { status: 500 });

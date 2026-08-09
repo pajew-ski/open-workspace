@@ -490,3 +490,26 @@ ow:layoutMethod a owl:DatatypeProperty ;
     rdfs:label "Layout-Verfahren"@de, "layout method"@en ;
     rdfs:comment "Layout-Verfahren einer generierten View: 'force-directed', 'hierarchical' oder 'radial' (SPEC §9). Ein Verfahren statt persistierter Koordinaten — deshalb kein Fall für die Canvas-Layout-Terme; kein Standard-Äquivalent."@de ;
     rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+#################################################################
+# Suche und Multi-Hop-Retrieval (SPEC §7.5/§7.7 / M8)
+#################################################################
+
+ow:RetrievalProfile a owl:Class ;
+    rdfs:subClassOf schema:CreativeWork ;
+    rdfs:label "Retrieval-Profil"@de, "retrieval profile"@en ;
+    rdfs:comment "Gespeicherter Parametersatz der Multi-Hop-Retrieval-Pipeline (SPEC §7.5): Seeds-Strategie, Hop-Tiefe, Filter, Decay, Kappungen. Als Graph-Entität selbst abfragbar — ein Profil ist Konfigurations-Wissen, keine externe Datei. Kein Standard-Vokabular modelliert Retrieval-Parameter."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:retrievalConfig a owl:DatatypeProperty ;
+    rdfs:domain ow:RetrievalProfile ;
+    rdfs:range xsd:string ;
+    rdfs:label "Retrieval-Konfiguration"@de, "retrieval configuration"@en ;
+    rdfs:comment "Die RetrievalRequest-Parameter des Profils als JSON-Literal (Muster wie ow:inputSchema): eine tripelweise RDF-Abbildung jedes Einzelparameters wäre verlustbehaftet gegenüber der verbindlichen TypeScript-Schnittstelle aus SPEC §7.5 und für den Zweck (Wiederausführung) kontraproduktiv."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:weight a owl:DatatypeProperty ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "Kantengewicht"@de, "edge weight"@en ;
+    rdfs:comment "Relevanz-Gewicht einer einzelnen Kante als RDF-1.2-Annotation am benannten Reifier (rdf:reifies + Triple Term), ausgewertet vom Retrieval-Scoring (SPEC §7.5: 'Kantengewicht aus RDF-star-Annotation, falls vorhanden'). Werte in (0,10], Default ohne Annotation ist 1. Kein Standard-Term modelliert Statement-Gewichte; schema:weight existiert nicht, Fuzzy-/Ranking-Vokabulare sind nicht etabliert."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
