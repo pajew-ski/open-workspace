@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTask, updateTask, deleteTask } from '@/lib/storage';
-import { parseBody, updateTaskSchema } from '@/lib/api/validation';
+import { parseBody, shaclErrorResponse, updateTaskSchema } from '@/lib/api/validation';
 
 interface RouteParams {
     params: Promise<{ id: string }>;
@@ -48,6 +48,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
         return NextResponse.json({ task });
     } catch (error) {
+        const shacl = shaclErrorResponse(error);
+        if (shacl) return shacl;
         console.error('Task update error:', error);
         return NextResponse.json(
             { error: 'Aufgabe konnte nicht aktualisiert werden' },

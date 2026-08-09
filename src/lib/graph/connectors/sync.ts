@@ -25,6 +25,8 @@ import type { FileSystemLike, RuntimeAdapter } from '@/lib/platform/runtime/type
 import { factory, namedNode, literal, typedLiteral } from '../rdf';
 import { OW, PROV } from '../vocab';
 import { replaceCanvasLayouts } from '../presentation/layout';
+import { runReasoning, saveConnectorValidationReport, validateStoreGraphs } from '../reasoning/run';
+import type { ShaclReport } from '../reasoning/shacl';
 import { snapshotFileForGraph } from '../serialize/snapshot';
 import { getConnectorKind } from './catalog';
 import { createGuardedFetch } from './http';
@@ -69,13 +71,26 @@ function provQuads(view: ConnectorInstanceView, revision: string | undefined, no
     return quads;
 }
 
-function summarize(quadCount: number, quarantined: QuarantineEntry[], restoredGraphs: string[] = []): string {
+function summarize(
+    quadCount: number,
+    quarantined: QuarantineEntry[],
+    restoredGraphs: string[] = [],
+    validation?: ShaclReport,
+): string {
     const parts = [`${quadCount} Aussagen importiert`];
     if (restoredGraphs.length > 0) {
         parts.push(`${restoredGraphs.length} Graph(en) wiederhergestellt`);
     }
     if (quarantined.length > 0) {
         parts.push(`${quarantined.length} Quell-Einheit(en) quarantäniert`);
+    }
+    if (validation && !validation.conforms) {
+        const details = [
+            validation.counts.violations > 0 ? `${validation.counts.violations} Verstoß/Verstöße` : '',
+            validation.counts.warnings > 0 ? `${validation.counts.warnings} Warnung(en)` : '',
+            validation.counts.infos > 0 ? `${validation.counts.infos} Hinweis(e)` : '',
+        ].filter(Boolean);
+        parts.push(`SHACL: ${details.join(', ')}`);
     }
     return `${parts.join(', ')}.`;
 }
@@ -189,7 +204,9 @@ export async function syncConnector(handle: GraphHandle, connectorId: string, op
 
         let added = 0;
         let removed = 0;
+        let validation: ShaclReport | undefined;
         await handle.store.transaction(async tx => {
+            const txHandle = { store: tx, iri: handle.iri };
             const report = await tx.load(quads, namedNode(view.targetGraph), { replace: true });
             added = report.added;
             removed = report.removed;
@@ -205,7 +222,13 @@ export async function syncConnector(handle: GraphHandle, connectorId: string, op
             if (presentationGroups.length > 0) {
                 await replaceCanvasLayouts(tx, handle.iri, presentationGroups);
             }
-            await saveConnectorState({ store: tx, iri: handle.iri }, {
+            // SHACL-Stelle 2 (SPEC §7.2): nach jedem Pull berichtend
+            // validieren — Quell-Qualität bricht NIE ab. Der Bericht liegt
+            // als sh:ValidationReport-Graph in graph/meta (ersetzt pro
+            // Instanz), die Kurzfassung wandert in die Lauf-Zusammenfassung.
+            validation = await validateStoreGraphs(txHandle, [view.targetGraph, ...restoredGraphs]);
+            await saveConnectorValidationReport(txHandle, view.id, validation, importFinishedIso);
+            await saveConnectorState(txHandle, {
                 ...view,
                 syncState: 'idle',
                 revision: ref.revision ?? view.revision,
@@ -213,11 +236,22 @@ export async function syncConnector(handle: GraphHandle, connectorId: string, op
                 lastRun: {
                     at: importFinishedIso,
                     revision: ref.revision,
-                    summary: summarize(pulled.length, quarantined, restoredGraphs),
+                    summary: summarize(pulled.length, quarantined, restoredGraphs, validation),
                     errors: runErrors(quarantined),
                 },
             });
         });
+
+        // Reasoning-Refresh (SPEC §7.3): der Reasoner läuft nach jedem
+        // Import und ersetzt graph/<u>/inferred/<scope> vollständig. Ein
+        // Fehler hier macht den GELUNGENEN Import nicht ungeschehen —
+        // er wird gemeldet, nicht zum Laufstatus.
+        let reasoningNote = '';
+        try {
+            await runReasoning(handle, { now });
+        } catch (error) {
+            reasoningNote = ` Reasoning-Lauf fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`;
+        }
 
         return {
             connectorId: view.id,
@@ -228,7 +262,8 @@ export async function syncConnector(handle: GraphHandle, connectorId: string, op
             removed,
             restoredGraphs,
             quarantined,
-            message: summarize(pulled.length, quarantined, restoredGraphs),
+            validation,
+            message: `${summarize(pulled.length, quarantined, restoredGraphs, validation)}${reasoningNote}`,
             finishedAt: importFinishedIso,
         };
     } catch (error) {

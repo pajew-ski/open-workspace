@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { listProjects, createProject } from '@/lib/storage';
-import { createProjectSchema, parseBody } from '@/lib/api/validation';
+import { createProjectSchema, parseBody, shaclErrorResponse } from '@/lib/api/validation';
 
 export async function GET() {
     try {
@@ -34,6 +34,8 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ project }, { status: 201 });
     } catch (error) {
+        const shacl = shaclErrorResponse(error);
+        if (shacl) return shacl;
         console.error('Project create error:', error);
         return NextResponse.json(
             { error: 'Projekt konnte nicht erstellt werden' },

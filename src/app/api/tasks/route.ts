@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { listTasks, createTask, getTasksByStatus } from '@/lib/storage';
-import { createTaskSchema, parseBody, taskStatusSchema } from '@/lib/api/validation';
+import { createTaskSchema, parseBody, shaclErrorResponse, taskStatusSchema } from '@/lib/api/validation';
 
 export async function GET(request: NextRequest) {
     try {
@@ -60,6 +60,8 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ task }, { status: 201 });
     } catch (error) {
+        const shacl = shaclErrorResponse(error);
+        if (shacl) return shacl;
         console.error('Task create error:', error);
         return NextResponse.json(
             { error: 'Aufgabe konnte nicht erstellt werden' },

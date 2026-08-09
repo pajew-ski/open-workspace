@@ -26,6 +26,7 @@
 import type { Quad } from '@rdfjs/types';
 import type { GraphStore } from '../store/types';
 import type { IriFactory } from '../iri';
+import type { ShaclReport } from '../reasoning/shacl';
 import type { FileSystemLike, RuntimeAdapter } from '@/lib/platform/runtime/types';
 
 export type ConnectorMode = 'materialize' | 'federate';
@@ -209,6 +210,16 @@ export interface ConnectorInstanceView {
         revision?: string;
         summary?: string;
         errors: string[];
+        /**
+         * SHACL-Befund des letzten Imports (SPEC §7.2 — Bericht liegt als
+         * sh:ValidationReport-Graph in graph/meta, hier die Kurzfassung).
+         */
+        validation?: {
+            conforms: boolean;
+            violations: number;
+            warnings: number;
+            infos: number;
+        };
     };
 }
 
@@ -228,6 +239,11 @@ export interface SyncResult {
      */
     restoredGraphs: string[];
     quarantined: QuarantineEntry[];
+    /**
+     * SHACL-Befund des importierten Bestands (SPEC §7.2, Stelle 2) —
+     * berichtend, nie blockierend; fehlt bei No-Op und Fehlläufen.
+     */
+    validation?: ShaclReport;
     /** Menschlich lesbare Zusammenfassung (deutsch). */
     message: string;
     finishedAt: string;
