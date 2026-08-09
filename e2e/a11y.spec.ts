@@ -24,6 +24,7 @@ const PAGES = [
     '/tools',
     '/graph',
     '/graph/connectors',
+    '/graph/sparql',
     '/settings',
     '/assistant',
 ];

@@ -18,17 +18,32 @@
       dem Store, `color`/`val` entfernt (UI berechnet Präsentation), alte
       Generatoren → `src/lib/graph/projection/` (seo.ts, schema-org.ts),
       kein `any` im Graph-Pfad (ESLint-Error)
-  - [ ] **M1-Rest: Schreibpfade umstellen** — `src/lib/storage/*` schreibt
-        über den Store als Wahrheitsquelle; danach die
-        `// MIGRATION:`-Marker auflösen:
-        `src/lib/graph/server/instance.ts#syncWorkspaceFromFiles`
+  - [x] **M1-Rest: Schreibpfade umstellen** — Store-first-CRUD
+        (`src/lib/graph/workspace/`): Mutation → Store (EINE Transaktion:
+        Workspace, Layout, Projekt-Farben, Waisen) → Datei-Projektion →
+        Snapshot; `src/lib/storage/*` sind Fassaden, Lesepfade kommen aus
+        dem Store (SPEC §16). Quelltreue-Terme (ow:workflowStatus,
+        ow:priority, ow:taskKind, ow:deferredUntil,
+        ow:estimated-/actualEffort, ow:dependencyKind als
+        RDF-1.2-Kanten-Annotation, ow:cardKind in presentation,
+        completedAt als prov:endedAtTime); Bootstrap re-migriert
+        v1-Snapshots einmalig aus dem Dateibestand (Manifest v2); alle
+        `// MIGRATION:`-Marker aufgelöst — Abnahme (Round-Trip exakt +
+        Fixpunkt, Store-first-CRUD, Marker-Scan):
+        `tests/graph/workspace-roundtrip.test.ts`
 - [x] **M2 SPARQL (Protokoll)**: `GET|POST /api/graph/sparql` nach
       SPARQL 1.1 Protocol; SELECT/CONSTRUCT/ASK/DESCRIBE + UPDATE;
       Content Negotiation (SPARQL-JSON, CSV, TSV, Turtle, JSON-LD, N-Quads,
       TriG); Dataset-Injektion überschreibt `FROM`; `graph/acl` unerreichbar;
       Updates transaktional mit Schutz systemverwalteter Graphen
-  - [ ] M2-Rest: SPARQL-Editor-UI (Syntax-Highlighting, Prefix-Vervollständigung,
-        Ergebnis-als-Graph), gespeicherte Queries als Graph-Entitäten
+  - [x] M2-Rest: SPARQL-Editor-UI (`/graph/sparql`): Prism-Highlighting
+        (scroll-synchrones Overlay), Prefix-Autovervollständigung aus
+        graph/vocab (ow:-Terme + de-Labels per SPARQL), Ergebnistabelle,
+        ASK-Wahrheitswert, Ergebnis-als-Graph
+        (`POST /api/graph/views/preview`), geschützter Update-Pfad;
+        gespeicherte Queries als ow:QueryView in graph/meta (SELECT/ASK
+        speicherbar, Updates nicht; Nicht-Graph-Queries öffnen auf /graph
+        den Editor) — Abnahme: `tests/graph/sparql-editor.test.ts`
 - [x] **M3 Connector-Framework** + `rdf-file` + `github-rdf`
       (`src/lib/graph/connectors/`): ein Vertrag für alles Externe (§6.1
       inkl. Locator↔Config-Abbildung), Registry als `ow:Connector`-Knoten in
@@ -71,8 +86,25 @@
       hierarchisch/radial im Explorer) — Abnahme als Tests:
       `tests/graph/json-canvas.test.ts`; Verlustpositionen:
       docs/obsidian-kompatibilitaet.md
-- [ ] **M6 Git-Sync** in allen drei Runtimes (`backup`/`bidirectional`,
-      `git-backup` als regulärer Connector)
+- [x] **M6 Git-Sync** in allen drei Runtimes: `GitProvider`-Interface mit
+      zwei Bindungen (`process-git` für server/ha-addon — ein Image,
+      `isomorphic-git` über FileSystemLike für local; OPFS-Packaging folgt
+      M12 über dieselben Interfaces), Binär-Ebene + Frische-Signale in
+      FileSystemLike, `server`-RuntimeAdapter
+      (`src/lib/platform/runtime/server.ts`, von den Connector-Routen
+      injiziert); `git-backup` als regulärer Connector (Inhalts-Hash-
+      Revision, deterministischer Snapshot ohne eigene volatile
+      Buchführung, Modus `backup` = Einbahnstraße, `bidirectional` =
+      Konfliktregel §6.2 + Rücklesen: Snapshot-Dateien als Restore der
+      kanonischen Graphen in EINER Runner-Transaktion
+      [`restoresCanonicalGraphs`, acl/vocab/shapes/inferred nie —
+      Negativtest], fremde RDF-Dateien in den Import-Graphen,
+      Datei-Reprojektion nach Restore); Pfad-Politik `data/` +
+      `OW_GIT_ROOTS`; UI: git-backup-Formular (Pfad/Modus/Remote/Branch),
+      „Backup erstellen", Sync-Button nur bei bidirectional — Abnahme
+      (minimale lesbare Diffs in beiden Bindungen, externe
+      .ttl-/Snapshot-Edits kommen per Pull an):
+      `tests/graph/git-provider.test.ts`, `tests/graph/git-backup.test.ts`
 - [ ] **M7 Reasoning** (SHACL, OWL RL Tier 1, `graph/<u>/inferred/<scope>`,
       DL-Sidecar optional)
 - [ ] **M8 Suche + Multi-Hop-Retrieval** (§7.5-Pipeline, `workspace_finder`
@@ -199,4 +231,4 @@
 
 ---
 
-*Last updated: 2026-08-09 (M5)*
+*Last updated: 2026-08-09 (M1-Rest §12.4 + M2-Rest Editor + M6 Git-Sync)*

@@ -42,9 +42,12 @@ export const MAX_STORED_ERRORS = 50;
 
 const SYNC_STATES: ReadonlySet<string> = new Set(['idle', 'syncing', 'error', 'conflict']);
 
-function runIriFor(iri: IriFactory, connectorId: string): string {
+/** IRI des Lauf-Knotens (prov:Activity) einer Connector-Instanz. */
+export function syncRunIri(iri: IriFactory, connectorId: string): string {
     return iri.entity('activity', `sync-${connectorId}`);
 }
+
+const runIriFor = syncRunIri;
 
 export function connectorIdFromIri(iri: IriFactory, connectorIri: string): string | null {
     const prefix = `${iri.instanceBase}u/${encodeURIComponent(iri.userId)}/connector/`;

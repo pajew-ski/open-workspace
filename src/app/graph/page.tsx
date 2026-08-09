@@ -5,7 +5,8 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { AppShell } from '@/components/layout';
 import { Card, CardContent, Button, ConfirmDialog, FloatingActionButton } from '@/components/ui';
-import { Settings2, X, RotateCcw, CloudDownload } from 'lucide-react';
+import { Settings2, X, RotateCcw, CloudDownload, TerminalSquare } from 'lucide-react';
+import { isGraphQuery } from '@/lib/graph/sparql/classify';
 import styles from './page.module.css';
 import { Graph } from 'schema-dts';
 
@@ -683,15 +684,28 @@ export default function GraphExplorerPage() {
                                         <ul className={styles.viewList}>
                                             {views.map(view => (
                                                 <li key={view.id} className={styles.viewItem}>
-                                                    <button
-                                                        type="button"
-                                                        className={styles.viewApply}
-                                                        onClick={() => applyView(view.id)}
-                                                        disabled={viewBusy}
-                                                    >
-                                                        {view.name}
-                                                        <span className={styles.viewLayout}>{LAYOUT_LABELS[view.layoutMethod]}</span>
-                                                    </button>
+                                                    {isGraphQuery(view.queryText) ? (
+                                                        <button
+                                                            type="button"
+                                                            className={styles.viewApply}
+                                                            onClick={() => applyView(view.id)}
+                                                            disabled={viewBusy}
+                                                        >
+                                                            {view.name}
+                                                            <span className={styles.viewLayout}>{LAYOUT_LABELS[view.layoutMethod]}</span>
+                                                        </button>
+                                                    ) : (
+                                                        // Gespeicherte SELECT/ASK-Queries (SPARQL-Editor, M2)
+                                                        // sind keine Graph-Views — ehrlich verlinken statt
+                                                        // eines toten Anwenden-Buttons (Invariante 10).
+                                                        <Link
+                                                            className={styles.viewApply}
+                                                            href={`/graph/sparql?view=${encodeURIComponent(view.id)}`}
+                                                        >
+                                                            {view.name}
+                                                            <span className={styles.viewLayout}>im Editor öffnen</span>
+                                                        </Link>
+                                                    )}
                                                     <button
                                                         type="button"
                                                         className={styles.viewDelete}
@@ -740,7 +754,10 @@ export default function GraphExplorerPage() {
                                 </div>
 
                                 <div className={styles.section}>
-                                    <h4>Quellen</h4>
+                                    <h4>Quellen &amp; Abfragen</h4>
+                                    <Link href="/graph/sparql" className={styles.sourcesLink}>
+                                        <TerminalSquare size={14} aria-hidden="true" /> SPARQL-Editor
+                                    </Link>
                                     <Link href="/graph/connectors" className={styles.sourcesLink}>
                                         <CloudDownload size={14} aria-hidden="true" /> Externe Quellen verwalten
                                     </Link>

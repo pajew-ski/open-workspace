@@ -142,6 +142,17 @@ export interface Connector<TConfig = unknown> {
         write: boolean;
         watch: boolean;
         lossyExport: boolean;
+        /**
+         * Store-Serialisierungs-Connector (SPEC §8.2, git-backup): `pull`
+         * darf Quads mit expliziter Graph-Komponente liefern; der Runner
+         * ersetzt diese kanonischen Graphen in derselben Transaktion wie
+         * den Import-Graphen — aber ausschließlich Snapshot-fähige Ziele
+         * (workspace, public, presentation, meta, Import- und
+         * Shared-Graphen); acl, vocab, shapes und Inferenz-Graphen sind
+         * nie wiederherstellbar. Für alle anderen Connectors gilt
+         * unverändert §6.2: Schreiben nur in den eigenen Import-Graphen.
+         */
+        restoresCanonicalGraphs?: boolean;
     };
     /** Anzeigename und Kurzbeschreibung für die UI (deutsch). */
     readonly label: string;
@@ -210,6 +221,12 @@ export interface SyncResult {
     added: number;
     /** Beim Replace entfernte Quads. */
     removed: number;
+    /**
+     * Kanonische Graphen, die dieser Lauf wiederhergestellt hat
+     * (nur Store-Serialisierungs-Connectors, SPEC §8.2 — z. B. git-backup).
+     * Der Aufrufer projiziert danach die Workspace-Dateien neu.
+     */
+    restoredGraphs: string[];
     quarantined: QuarantineEntry[];
     /** Menschlich lesbare Zusammenfassung (deutsch). */
     message: string;

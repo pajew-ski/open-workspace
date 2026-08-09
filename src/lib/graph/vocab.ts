@@ -75,6 +75,15 @@ export const OW = {
     blocks: ow('blocks'),
     subTaskOf: ow('subTaskOf'),
     inProject: ow('inProject'),
+    // Quelltreue nativer Entitäten (Abschluss SPEC §12.4): exakter
+    // Zustand neben der gröberen Standard-Projektion (Muster wie fm: in M4)
+    workflowStatus: ow('workflowStatus'),
+    priority: ow('priority'),
+    taskKind: ow('taskKind'),
+    deferredUntil: ow('deferredUntil'),
+    estimatedEffort: ow('estimatedEffort'),
+    actualEffort: ow('actualEffort'),
+    dependencyKind: ow('dependencyKind'),
     // Skills/Agenten/Werkzeuge
     trigger: ow('trigger'),
     skillSource: ow('skillSource'),
@@ -99,6 +108,7 @@ export const OW = {
     CanvasNode: ow('CanvasNode'),
     CanvasEdge: ow('CanvasEdge'),
     nodeKind: ow('nodeKind'),
+    cardKind: ow('cardKind'),
     xPosition: ow('xPosition'),
     yPosition: ow('yPosition'),
     filePath: ow('filePath'),
@@ -199,6 +209,8 @@ export const PROV = {
     wasAttributedTo: `${PREFIXES.prov}wasAttributedTo`,
     wasGeneratedBy: `${PREFIXES.prov}wasGeneratedBy`,
     generatedAtTime: `${PREFIXES.prov}generatedAtTime`,
+    /** Abschluss-Zeitpunkt (completedAt einer Aufgabe — schema:endTime trägt bereits die Fälligkeit, SPEC §4.2). */
+    endedAtTime: `${PREFIXES.prov}endedAtTime`,
     Activity: `${PREFIXES.prov}Activity`,
     SoftwareAgent: `${PREFIXES.prov}SoftwareAgent`,
 } as const;

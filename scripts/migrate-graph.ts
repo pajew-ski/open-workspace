@@ -1,22 +1,30 @@
 /**
- * Einmaliger Migrator Bestand → data/graph/ (SPEC §12.2).
+ * Migrator Bestand → data/graph/ (SPEC §12.2, §12.4).
  *
- * Liest data/docs/*.md, data/tasks/*.json, data/canvas/*.json und erzeugt
- * den kanonischen Graph-Snapshot (workspace.nq + manifest.json).
- * Idempotent: wiederholte Läufe auf unverändertem Bestand erzeugen
- * byte-identische Dateien. Mit Vorher-Nachher-Bericht.
+ * Liest data/docs/*.md, data/tasks/*.json, data/canvas/*.json, schreibt
+ * sie als Wahrheit in den Store (Workspace- + Presentation-Graph) und
+ * persistiert den kanonischen Snapshot (workspace.nq, presentation.nq,
+ * manifest.json …). Idempotent: wiederholte Läufe auf unverändertem
+ * Bestand erzeugen byte-identische Dateien. Mit Vorher-Nachher-Bericht.
+ *
+ * Seit dem Abschluss von §12.4 läuft dieselbe Übernahme automatisch beim
+ * ersten Start (Bootstrap in server/instance.ts, Manifest v1 → v2).
+ * Dieses Skript bleibt der EXPLIZITE Weg, den Dateibestand erneut zum
+ * Stand des Stores zu erklären — z. B. nach Hand-Edits an data/docs, die
+ * ausnahmsweise nicht über einen Connector zurückfließen sollen.
  *
  * Aufruf: `bun run migrate:graph`
  */
 
 import path from 'node:path';
-import { getServerGraph, readWorkspaceInput } from '../src/lib/graph/server/instance';
-import { buildWorkspaceQuads } from '../src/lib/graph/migrate/from-files';
+import { getServerGraph } from '../src/lib/graph/server/instance';
+import { writeWorkspaceToStore } from '../src/lib/graph/workspace/crud';
+import { readWorkspaceFiles } from '../src/lib/graph/workspace/files';
 import { writeSnapshot } from '../src/lib/graph/serialize/snapshot';
 import { createNodeFileSystem } from '../src/lib/platform/runtime/node-fs';
 
 async function main(): Promise<void> {
-    const input = await readWorkspaceInput();
+    const input = await readWorkspaceFiles();
     console.log('Bestand (Dateien):');
     console.log(`  Dokumente: ${input.docs.length}`);
     console.log(`  Aufgaben:  ${input.tasks.length}`);
@@ -24,7 +32,7 @@ async function main(): Promise<void> {
     console.log(`  Canvases:  ${input.canvases.length} (Karten: ${input.canvases.reduce((n, c) => n + c.cards.length, 0)})`);
 
     const { store, iri } = await getServerGraph();
-    const { counts } = buildWorkspaceQuads(input, iri);
+    const counts = await writeWorkspaceToStore(store, iri, input);
 
     console.log('\nGraph (nach Migration):');
     console.log(`  Dokumente: ${counts.docs}`);
