@@ -273,6 +273,155 @@ ow:trustLevel a owl:DatatypeProperty ;
 #################################################################
 
 ow:rendersNode a owl:ObjectProperty ;
+    rdfs:domain ow:CanvasNode ;
     rdfs:label "stellt Knoten dar"@de, "renders node"@en ;
     rdfs:comment "Verbindet ein Layout-Element in graph/presentation mit dem semantischen Knoten, den es darstellt. Die einzige Brücke zwischen Präsentations- und Wissensschicht; Layout-Werte selbst (Position, Farbe) stehen nie im semantischen Graphen."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+#################################################################
+# Canvas-Layout (graph/presentation, SPEC §9 / M5)
+#
+# Diese Terme beschreiben ausschließlich DARSTELLUNG und stehen nur
+# in graph/<u>/presentation — nie im semantischen Graphen (der
+# Blacklist-Test in tests/graph/migrate.test.ts erzwingt das).
+# Breite/Höhe/Farbe nutzen schema:width/schema:height/schema:color
+# (Invariante 8: fremdes Vokabular vor eigenem); für 2D-Position,
+# Viewport und die JSON-Canvas-1.0-Attribute existiert kein
+# etabliertes RDF-Vokabular, daher eigene Terme.
+#################################################################
+
+ow:CanvasNode a owl:Class ;
+    rdfs:label "Canvas-Knoten"@de, "canvas node"@en ;
+    rdfs:comment "Platziertes Layout-Element auf einem Canvas (JSON Canvas 1.0 'node'): Position, Größe, Farbe, Darstellungsart. Referenziert den dargestellten Wissensknoten über ow:rendersNode und sein Canvas über schema:isPartOf. Kein Standard-Vokabular modelliert 2D-Canvas-Layout; schema:width/height/color werden als Werte-Properties wiederverwendet."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:CanvasEdge a owl:Class ;
+    rdfs:label "Canvas-Kante"@de, "canvas edge"@en ;
+    rdfs:comment "Gezeichnete Verbindungslinie zwischen zwei Canvas-Knoten (JSON Canvas 1.0 'edge'): Anker-Seiten, Pfeilenden, Farbe, Beschriftung. Reine Darstellung — die Wissens-Behauptung der Verbindung ist ein ow:linksTo-Tripel im semantischen Graphen (SPEC §9)."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:nodeKind a owl:DatatypeProperty ;
+    rdfs:domain ow:CanvasNode ;
+    rdfs:range xsd:string ;
+    rdfs:label "Darstellungsart"@de, "node kind"@en ;
+    rdfs:comment "Darstellungsart des Canvas-Knotens nach JSON Canvas 1.0: 'text', 'file', 'link' oder 'group'. Explizit gespeichert statt aus dem semantischen Gegenstück inferiert, damit der Export deterministisch bleibt. Kein Standard-Äquivalent."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:xPosition a owl:DatatypeProperty ;
+    rdfs:domain ow:CanvasNode ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "X-Position"@de, "x position"@en ;
+    rdfs:comment "Horizontale Position des Layout-Elements in Canvas-Koordinaten (JSON Canvas 1.0 'x'). schema:position ist eine Ordnungszahl in Serien, keine 2D-Koordinate; ein etabliertes Layout-Vokabular existiert nicht."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:yPosition a owl:DatatypeProperty ;
+    rdfs:domain ow:CanvasNode ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "Y-Position"@de, "y position"@en ;
+    rdfs:comment "Vertikale Position des Layout-Elements in Canvas-Koordinaten (JSON Canvas 1.0 'y'). Begründung wie ow:xPosition."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:filePath a owl:DatatypeProperty ;
+    rdfs:domain ow:CanvasNode ;
+    rdfs:range xsd:string ;
+    rdfs:label "Dateipfad"@de, "file path"@en ;
+    rdfs:comment "Vault-relativer Pfad eines file-Knotens (JSON Canvas 1.0 'file', optional mit angehängtem '#subpath' — Obsidian verbietet '#' in Dateinamen, die Trennung ist eindeutig). Quelltreue-Träger für den Round-Trip; die Wissens-Referenz auf das Dokument läuft über ow:rendersNode."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:background a owl:DatatypeProperty ;
+    rdfs:domain ow:CanvasNode ;
+    rdfs:range xsd:string ;
+    rdfs:label "Hintergrundbild"@de, "background image"@en ;
+    rdfs:comment "Pfad des Hintergrundbilds einer Gruppe (JSON Canvas 1.0 'background'). Reines Darstellungsattribut; schema:image würde eine Bild-Aussage über ein Wissens-Ding treffen."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:backgroundStyle a owl:DatatypeProperty ;
+    rdfs:domain ow:CanvasNode ;
+    rdfs:range xsd:string ;
+    rdfs:label "Hintergrund-Stil"@de, "background style"@en ;
+    rdfs:comment "Darstellung des Gruppen-Hintergrundbilds nach JSON Canvas 1.0: 'cover', 'ratio' oder 'repeat'. Kein Standard-Äquivalent."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:viewportX a owl:DatatypeProperty ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "Ansichts-X"@de, "viewport x"@en ;
+    rdfs:comment "Horizontale Verschiebung des gespeicherten Ansichtsfensters eines Canvas (am ow:Canvas-Subjekt, nur in graph/presentation). JSON Canvas 1.0 kennt kein Viewport — natives Workspace-Layout braucht es; kein Standard-Äquivalent."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:viewportY a owl:DatatypeProperty ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "Ansichts-Y"@de, "viewport y"@en ;
+    rdfs:comment "Vertikale Verschiebung des gespeicherten Ansichtsfensters eines Canvas. Begründung wie ow:viewportX."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:viewportZoom a owl:DatatypeProperty ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "Ansichts-Zoom"@de, "viewport zoom"@en ;
+    rdfs:comment "Zoomfaktor des gespeicherten Ansichtsfensters eines Canvas. Begründung wie ow:viewportX."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:edgeFrom a owl:ObjectProperty ;
+    rdfs:domain ow:CanvasEdge ;
+    rdfs:range ow:CanvasNode ;
+    rdfs:label "Kante von"@de, "edge from"@en ;
+    rdfs:comment "Start-Layout-Knoten einer gezeichneten Canvas-Kante (JSON Canvas 1.0 'fromNode'). Verbindet Layout-Elemente, nicht Wissensknoten — auch Gruppen ohne semantisches Gegenstück sind gültige Endpunkte."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:edgeTo a owl:ObjectProperty ;
+    rdfs:domain ow:CanvasEdge ;
+    rdfs:range ow:CanvasNode ;
+    rdfs:label "Kante nach"@de, "edge to"@en ;
+    rdfs:comment "Ziel-Layout-Knoten einer gezeichneten Canvas-Kante (JSON Canvas 1.0 'toNode'). Begründung wie ow:edgeFrom."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:fromSide a owl:DatatypeProperty ;
+    rdfs:domain ow:CanvasEdge ;
+    rdfs:range xsd:string ;
+    rdfs:label "Start-Seite"@de, "from side"@en ;
+    rdfs:comment "Anker-Seite der Kante am Start-Knoten nach JSON Canvas 1.0: 'top', 'right', 'bottom' oder 'left'. Nur gespeichert, wenn die Quelle sie explizit setzt (Round-Trip-Treue). Kein Standard-Äquivalent."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:toSide a owl:DatatypeProperty ;
+    rdfs:domain ow:CanvasEdge ;
+    rdfs:range xsd:string ;
+    rdfs:label "Ziel-Seite"@de, "to side"@en ;
+    rdfs:comment "Anker-Seite der Kante am Ziel-Knoten. Begründung wie ow:fromSide."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:fromEnd a owl:DatatypeProperty ;
+    rdfs:domain ow:CanvasEdge ;
+    rdfs:range xsd:string ;
+    rdfs:label "Start-Ende"@de, "from end"@en ;
+    rdfs:comment "Linienende am Start der Kante nach JSON Canvas 1.0: 'none' oder 'arrow' (Default 'none'). Nur gespeichert, wenn die Quelle es explizit setzt. Kein Standard-Äquivalent."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:toEnd a owl:DatatypeProperty ;
+    rdfs:domain ow:CanvasEdge ;
+    rdfs:range xsd:string ;
+    rdfs:label "Ziel-Ende"@de, "to end"@en ;
+    rdfs:comment "Linienende am Ziel der Kante nach JSON Canvas 1.0: 'none' oder 'arrow' (Default 'arrow'). Nur gespeichert, wenn die Quelle es explizit setzt. Kein Standard-Äquivalent."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+#################################################################
+# Generierte Query-Views (SPEC §9 / M5)
+#################################################################
+
+ow:QueryView a owl:Class ;
+    rdfs:subClassOf schema:CreativeWork ;
+    rdfs:label "Query-View"@de, "query view"@en ;
+    rdfs:comment "Generierte Graph-Ansicht aus einer gespeicherten SPARQL-Query (Live-Subgraph): hat kein persistiertes Layout, sondern ein Layout-Verfahren (SPEC §9). Abgegrenzt von ow:Canvas, dessen Anordnung manuell kuratiert und persistiert ist. Kein Standard-Vokabular modelliert gespeicherte Graph-Views."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:queryText a owl:DatatypeProperty ;
+    rdfs:domain ow:QueryView ;
+    rdfs:range xsd:string ;
+    rdfs:label "Query-Text"@de, "query text"@en ;
+    rdfs:comment "SPARQL-Text der gespeicherten Query (CONSTRUCT/DESCRIBE). sh:select trägt SHACL-Constraint-Semantik, spin:text ist kein gepflegter Standard, schema:text ist Anzeige-Inhalt von Werken — daher eigener Term."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:layoutMethod a owl:DatatypeProperty ;
+    rdfs:domain ow:QueryView ;
+    rdfs:range xsd:string ;
+    rdfs:label "Layout-Verfahren"@de, "layout method"@en ;
+    rdfs:comment "Layout-Verfahren einer generierten View: 'force-directed', 'hierarchical' oder 'radial' (SPEC §9). Ein Verfahren statt persistierter Koordinaten — deshalb kein Fall für die Canvas-Layout-Terme; kein Standard-Äquivalent."@de ;
     rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .

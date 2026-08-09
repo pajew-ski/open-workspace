@@ -53,8 +53,24 @@
       (Round-Trip markdown-identisch bis auf normalisierte
       Frontmatter-Reihenfolge, zweiter Round-Trip byte-identisch) als
       Tests: `tests/graph/obsidian-vault.test.ts`
-- [ ] **M5 Canvas/Präsentationsschicht** (`graph/<u>/presentation`,
-      JSON-Canvas 1.0, generierte Query-Views; Layout-Blacklist-Test existiert)
+- [x] **M5 Canvas/Präsentationsschicht**: `graph/<u>/presentation` mit
+      gruppenweisem Replace + Orphan-Bereinigung
+      (`src/lib/graph/presentation/layout.ts`; Layout-Terme
+      `ow:CanvasNode`/`ow:CanvasEdge`/… in Ontologie + vocab.ts, Werte via
+      `schema:width`/`height`/`color`), nativer Layout-Spiegel in
+      `syncWorkspaceFromFiles` (Snapshot `presentation.nq`);
+      JSON Canvas 1.0 (`connectors/json-canvas/`): pures
+      Parse-/Serialisier-Modul (fehlertolerant, deterministisch),
+      `json-canvas`-Connector über den EINEN Vertrag (Layout via neuem
+      `ctx.presentation()`-Collector, Push-Konfliktregel §6.2, zweiter
+      Push byte-identisch), UI-Import unter `/canvas` + Export mit
+      Verlust-Hinweis (Kartentypen `file`/`group` ergänzt; Gruppen ohne
+      semantisches Gegenstück); generierte Query-Views (`ow:QueryView` in
+      `graph/meta`, `/api/graph/views`, Auflösung über `resolveDataset` —
+      presentation bleibt unsichtbar, Layout-Verfahren force-directed/
+      hierarchisch/radial im Explorer) — Abnahme als Tests:
+      `tests/graph/json-canvas.test.ts`; Verlustpositionen:
+      docs/obsidian-kompatibilitaet.md
 - [ ] **M6 Git-Sync** in allen drei Runtimes (`backup`/`bidirectional`,
       `git-backup` als regulärer Connector)
 - [ ] **M7 Reasoning** (SHACL, OWL RL Tier 1, `graph/<u>/inferred/<scope>`,
@@ -183,4 +199,4 @@
 
 ---
 
-*Last updated: 2026-08-09*
+*Last updated: 2026-08-09 (M5)*

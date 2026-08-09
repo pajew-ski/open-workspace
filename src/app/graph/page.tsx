@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { AppShell } from '@/components/layout';
-import { Card, CardContent, Button, FloatingActionButton } from '@/components/ui';
+import { Card, CardContent, Button, ConfirmDialog, FloatingActionButton } from '@/components/ui';
 import { Settings2, X, RotateCcw, CloudDownload } from 'lucide-react';
 import styles from './page.module.css';
 import { Graph } from 'schema-dts';
@@ -19,12 +19,89 @@ interface GraphNode {
     type: string;
     color: string;
     group?: number;
+    /** Hop-Tiefe für hierarchisches/radiales Layout (Query-Views). */
+    depth?: number;
+    /** Fixierte Y-Koordinate (hierarchisches Layout). */
+    fy?: number;
 }
 
 interface GraphLink {
     source: string;
     target: string;
     type: string; // Predicate label
+}
+
+/** Gespeicherte Query-View (ow:QueryView, GRAPH_CORE_SPEC §9 / M5). */
+interface QueryViewRecord {
+    id: string;
+    name: string;
+    queryText: string;
+    layoutMethod: 'force-directed' | 'hierarchical' | 'radial';
+}
+
+interface ResolvedViewPayload {
+    view: QueryViewRecord;
+    nodes: Array<{ id: string; name: string; type: string }>;
+    links: Array<{ source: string; target: string; type: string }>;
+    truncated: boolean;
+}
+
+const LAYOUT_LABELS: Record<QueryViewRecord['layoutMethod'], string> = {
+    'force-directed': 'kräftebasiert',
+    hierarchical: 'hierarchisch',
+    radial: 'radial',
+};
+
+const DEFAULT_VIEW_QUERY = `CONSTRUCT { ?s ?p ?o }
+WHERE { ?s ?p ?o . ?s a <https://pajew-ski.github.io/open-workspace/ns/v1#Document> }`;
+
+/** Deterministische Farbe für unbekannte Typen einer Query-View. */
+function typeColor(type: string): string {
+    let hash = 0;
+    for (const char of type) {
+        hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+    }
+    return `hsl(${hash % 360}, 45%, 42%)`;
+}
+
+/**
+ * Hop-Tiefe je Knoten (BFS von den Wurzeln — Knoten ohne eingehende
+ * Kanten; Zyklen ohne Wurzel starten bei 0). Grundlage für
+ * hierarchisches und radiales Layout.
+ */
+function computeDepths(
+    nodes: Array<{ id: string }>,
+    links: Array<{ source: string; target: string }>,
+): Map<string, number> {
+    const outgoing = new Map<string, string[]>();
+    const hasIncoming = new Set<string>();
+    for (const link of links) {
+        outgoing.set(link.source, [...(outgoing.get(link.source) ?? []), link.target]);
+        hasIncoming.add(link.target);
+    }
+    const depths = new Map<string, number>();
+    const queue: string[] = [];
+    for (const node of nodes) {
+        if (!hasIncoming.has(node.id)) {
+            depths.set(node.id, 0);
+            queue.push(node.id);
+        }
+    }
+    if (queue.length === 0 && nodes.length > 0) {
+        depths.set(nodes[0].id, 0);
+        queue.push(nodes[0].id);
+    }
+    while (queue.length > 0) {
+        const current = queue.shift() as string;
+        const depth = depths.get(current) ?? 0;
+        for (const next of outgoing.get(current) ?? []) {
+            if (!depths.has(next)) {
+                depths.set(next, depth + 1);
+                queue.push(next);
+            }
+        }
+    }
+    return depths;
 }
 
 /**
@@ -128,6 +205,149 @@ export default function GraphExplorerPage() {
 
     const graphRef = useRef<any>(null);
     const dragRef = useRef<{ startX: number, startY: number, startPosX: number, startPosY: number } | null>(null);
+
+    // --- Query-Views (GRAPH_CORE_SPEC §9 / M5) ---
+    const [views, setViews] = useState<QueryViewRecord[]>([]);
+    const [activeView, setActiveView] = useState<{
+        record: QueryViewRecord;
+        nodes: GraphNode[];
+        links: GraphLink[];
+        truncated: boolean;
+    } | null>(null);
+    const [viewError, setViewError] = useState<string | null>(null);
+    const [viewBusy, setViewBusy] = useState(false);
+    const [viewDeleteConfirm, setViewDeleteConfirm] = useState<QueryViewRecord | null>(null);
+    const [viewName, setViewName] = useState('');
+    const [viewQuery, setViewQuery] = useState(DEFAULT_VIEW_QUERY);
+    const [viewLayout, setViewLayout] = useState<QueryViewRecord['layoutMethod']>('force-directed');
+
+    const fetchViews = useCallback(async () => {
+        try {
+            const response = await fetch('/api/graph/views');
+            if (!response.ok) return;
+            const data = await response.json();
+            setViews(data.views ?? []);
+        } catch {
+            // Views sind optional — der Standard-Graph funktioniert ohne.
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchViews();
+    }, [fetchViews]);
+
+    const applyView = useCallback(async (id: string) => {
+        setViewBusy(true);
+        setViewError(null);
+        try {
+            const response = await fetch(`/api/graph/views/${encodeURIComponent(id)}/resolve`);
+            const data = await response.json();
+            if (!response.ok) {
+                setViewError(data.details || data.error || 'View nicht auflösbar');
+                return;
+            }
+            const payload = data as ResolvedViewPayload;
+            const depths = computeDepths(payload.nodes, payload.links);
+            const hierarchical = payload.view.layoutMethod === 'hierarchical';
+            const nodes: GraphNode[] = payload.nodes.map(node => {
+                const style = NODE_STYLE[node.type];
+                const depth = depths.get(node.id) ?? 0;
+                return {
+                    id: node.id,
+                    name: node.name,
+                    type: node.type,
+                    val: style?.val ?? 3,
+                    color: style?.color ?? typeColor(node.type),
+                    depth,
+                    ...(hierarchical ? { fy: depth * 140 } : {}),
+                };
+            });
+            setActiveView({
+                record: payload.view,
+                nodes,
+                links: payload.links,
+                truncated: payload.truncated,
+            });
+        } catch (error) {
+            setViewError(error instanceof Error ? error.message : 'View nicht auflösbar');
+        } finally {
+            setViewBusy(false);
+        }
+    }, []);
+
+    const clearView = useCallback(() => {
+        setActiveView(null);
+        setViewError(null);
+    }, []);
+
+    const createView = useCallback(async () => {
+        if (viewName.trim() === '' || viewQuery.trim() === '') {
+            setViewError('Name und SPARQL-Query sind erforderlich.');
+            return;
+        }
+        setViewBusy(true);
+        setViewError(null);
+        try {
+            const response = await fetch('/api/graph/views', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: viewName.trim(), queryText: viewQuery, layoutMethod: viewLayout }),
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                setViewError(data.details || data.error || 'View konnte nicht angelegt werden');
+                return;
+            }
+            setViewName('');
+            await fetchViews();
+            await applyView(data.view.id);
+        } catch (error) {
+            setViewError(error instanceof Error ? error.message : 'View konnte nicht angelegt werden');
+        } finally {
+            setViewBusy(false);
+        }
+    }, [applyView, fetchViews, viewLayout, viewName, viewQuery]);
+
+    const deleteView = useCallback(async (view: QueryViewRecord) => {
+        setViewDeleteConfirm(null);
+        try {
+            const response = await fetch(`/api/graph/views/${encodeURIComponent(view.id)}`, { method: 'DELETE' });
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                setViewError(data.details || data.error || 'View konnte nicht gelöscht werden');
+                return;
+            }
+            if (activeView?.record.id === view.id) setActiveView(null);
+            await fetchViews();
+        } catch (error) {
+            setViewError(error instanceof Error ? error.message : 'View konnte nicht gelöscht werden');
+        }
+    }, [activeView, fetchViews]);
+
+    // Radiales Layout: eigene d3-Kraft zieht Knoten auf Ringe je Hop-Tiefe.
+    useEffect(() => {
+        const fg = graphRef.current;
+        if (!fg) return;
+        if (activeView?.record.layoutMethod === 'radial') {
+            let simNodes: Array<GraphNode & { x: number; y: number; vx: number; vy: number }> = [];
+            const force = (alpha: number) => {
+                for (const node of simNodes) {
+                    const radius = 80 + (node.depth ?? 0) * 130;
+                    const distance = Math.hypot(node.x, node.y) || 1e-6;
+                    const strength = ((radius - distance) / distance) * alpha * 0.25;
+                    node.vx += node.x * strength;
+                    node.vy += node.y * strength;
+                }
+            };
+            force.initialize = (nodes: typeof simNodes) => {
+                simNodes = nodes;
+            };
+            fg.d3Force('radial', force);
+        } else {
+            fg.d3Force('radial', null);
+        }
+        fg.d3ReheatSimulation();
+    }, [activeView, isLoading]);
 
     // Reset Function
     const handleReset = () => {
@@ -238,6 +458,12 @@ export default function GraphExplorerPage() {
         return { nodes: activeNodes, links: activeLinks };
     }, [graphData, showDocs, showTasks, showProjects, showCanvas, showTags, showDependencies]);
 
+    // Aktive Query-View ersetzt den Standard-Graphen (Live-Subgraph).
+    const displayData = useMemo(
+        () => (activeView ? { nodes: activeView.nodes, links: activeView.links } : filteredData),
+        [activeView, filteredData],
+    );
+
     // --- Physics Update ---
     useEffect(() => {
         if (graphRef.current) {
@@ -302,7 +528,7 @@ export default function GraphExplorerPage() {
                     ) : (
                         <ForceGraph2D
                             ref={graphRef}
-                            graphData={filteredData}
+                            graphData={displayData}
                             nodeLabel="name"
                             nodeColor="color"
                             nodeVal="val"
@@ -436,6 +662,84 @@ export default function GraphExplorerPage() {
                                 </div>
 
                                 <div className={styles.section}>
+                                    <h4>Query-Views</h4>
+                                    {activeView ? (
+                                        <div className={styles.activeView}>
+                                            <span>
+                                                Aktiv: {activeView.record.name} ({LAYOUT_LABELS[activeView.record.layoutMethod]})
+                                                {activeView.truncated ? ' — Ergebnis gekürzt' : ''}
+                                            </span>
+                                            <Button variant="ghost" size="sm" onClick={clearView}>Standard-Graph</Button>
+                                        </div>
+                                    ) : (
+                                        views.length === 0 && (
+                                            <p className={styles.viewsHint}>
+                                                Noch keine gespeicherten Views — eine View ist eine SPARQL-Query
+                                                (CONSTRUCT/DESCRIBE) mit Layout-Verfahren.
+                                            </p>
+                                        )
+                                    )}
+                                    {views.length > 0 && (
+                                        <ul className={styles.viewList}>
+                                            {views.map(view => (
+                                                <li key={view.id} className={styles.viewItem}>
+                                                    <button
+                                                        type="button"
+                                                        className={styles.viewApply}
+                                                        onClick={() => applyView(view.id)}
+                                                        disabled={viewBusy}
+                                                    >
+                                                        {view.name}
+                                                        <span className={styles.viewLayout}>{LAYOUT_LABELS[view.layoutMethod]}</span>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className={styles.viewDelete}
+                                                        aria-label={`View "${view.name}" löschen`}
+                                                        onClick={() => setViewDeleteConfirm(view)}
+                                                    >
+                                                        <X size={16} aria-hidden="true" />
+                                                    </button>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                    {viewError && <p className={styles.viewError} role="alert">{viewError}</p>}
+                                    <details className={styles.viewForm}>
+                                        <summary>Neue View anlegen</summary>
+                                        <label className={styles.viewField}>
+                                            Name
+                                            <input
+                                                type="text"
+                                                value={viewName}
+                                                onChange={e => setViewName(e.target.value)}
+                                                placeholder="z. B. Dokument-Netz"
+                                            />
+                                        </label>
+                                        <label className={styles.viewField}>
+                                            Layout-Verfahren
+                                            <select value={viewLayout} onChange={e => setViewLayout(e.target.value as QueryViewRecord['layoutMethod'])}>
+                                                <option value="force-directed">kräftebasiert</option>
+                                                <option value="hierarchical">hierarchisch</option>
+                                                <option value="radial">radial</option>
+                                            </select>
+                                        </label>
+                                        <label className={styles.viewField}>
+                                            SPARQL (CONSTRUCT oder DESCRIBE)
+                                            <textarea
+                                                value={viewQuery}
+                                                onChange={e => setViewQuery(e.target.value)}
+                                                rows={5}
+                                                spellCheck={false}
+                                            />
+                                        </label>
+                                        <Button variant="primary" size="sm" onClick={createView} disabled={viewBusy}>
+                                            {viewBusy ? 'Speichert…' : 'View speichern'}
+                                        </Button>
+                                    </details>
+                                </div>
+
+                                <div className={styles.section}>
                                     <h4>Quellen</h4>
                                     <Link href="/graph/connectors" className={styles.sourcesLink}>
                                         <CloudDownload size={14} aria-hidden="true" /> Externe Quellen verwalten
@@ -446,6 +750,17 @@ export default function GraphExplorerPage() {
                     </div>
                 )}
             </div>
+
+            <ConfirmDialog
+                isOpen={viewDeleteConfirm !== null}
+                title="Query-View löschen?"
+                message={`Möchtest du die View "${viewDeleteConfirm?.name}" wirklich löschen? Die gespeicherte SPARQL-Query geht verloren.`}
+                confirmText="Löschen"
+                cancelText="Abbrechen"
+                variant="danger"
+                onConfirm={() => viewDeleteConfirm && deleteView(viewDeleteConfirm)}
+                onCancel={() => setViewDeleteConfirm(null)}
+            />
         </AppShell>
     );
 }

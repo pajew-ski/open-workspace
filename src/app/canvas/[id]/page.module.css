@@ -405,3 +405,15 @@
         display: none;
     }
 }
+/* Gruppen-Rahmen (JSON Canvas 1.0, M5): liegt hinter den Karten,
+   gestrichelt, durchscheinend — reine Darstellung ohne Inhalt. */
+.groupCard {
+    background-color: color-mix(in srgb, var(--color-surface-elevated) 35%, transparent);
+    border-style: dashed;
+    box-shadow: none;
+    overflow: visible;
+}
+
+.groupCard:hover {
+    box-shadow: none;
+}

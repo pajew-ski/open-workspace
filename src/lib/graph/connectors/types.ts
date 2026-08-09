@@ -50,6 +50,14 @@ export interface QuarantineEntry {
     reason: string;
 }
 
+/** Layout-Gruppe eines Canvas für `graph/<u>/presentation` (SPEC §9). */
+export interface PresentationGroup {
+    /** IRI des ow:Canvas-Knotens, dem das Layout gehört. */
+    canvasIri: string;
+    /** Layout-Quads ohne Graph-Komponente — den Ziel-Graphen erzwingt der Runner. */
+    quads: Quad[];
+}
+
 export interface ConnectorContext {
     store: GraphStore;
     iri: IriFactory;
@@ -63,6 +71,14 @@ export interface ConnectorContext {
     report(progress: { done: number; total?: number; note?: string }): void;
     /** Meldet eine nicht importierbare Quell-Einheit (Fehlerbericht). */
     quarantine(entry: QuarantineEntry): void;
+    /**
+     * Meldet die Layout-Gruppe eines Canvas (SPEC §9, M5): Quads für
+     * `graph/<u>/presentation`, gruppiert unter der ow:Canvas-IRI. Der
+     * Runner ersetzt die Gruppe in derselben Transaktion wie den
+     * Import-Graphen — Layout-Werte erreichen nie einen semantischen
+     * Graphen (Invariante 2), Connectors schreiben nie selbst dorthin.
+     */
+    presentation(group: PresentationGroup): void;
     /**
      * Dateizugriff der Runtime (SPEC §5.2, `files()` des RuntimeAdapters).
      * Vom Aufrufer injiziert (Server: node:fs, Tests: Memory-FS); Connectors
