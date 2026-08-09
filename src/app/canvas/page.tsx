@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/layout';
-import { Card, CardContent, Button, Input, ConfirmDialog, FloatingActionButton } from '@/components/ui';
+import { Card, CardContent, Button, Input, ConfirmDialog, FloatingActionButton, useToast } from '@/components/ui';
 import { JsonLdScript } from '@/components/seo/JsonLdScript';
 import { generateCanvasListJsonLd } from '@/lib/graph/projection/seo';
 import { useMemo } from 'react';
@@ -19,16 +20,56 @@ interface CanvasItem {
 }
 
 export default function CanvasOverviewPage() {
+    const router = useRouter();
+    const toast = useToast();
     const [canvases, setCanvases] = useState<CanvasItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
+    const [isImporting, setIsImporting] = useState(false);
     const [newName, setNewName] = useState('');
     const [newDescription, setNewDescription] = useState('');
     const [deleteConfirm, setDeleteConfirm] = useState<CanvasItem | null>(null);
+    const importInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         fetchCanvases();
     }, []);
+
+    /**
+     * Import einer .canvas-Datei (JSON Canvas 1.0, z. B. aus Obsidian).
+     * Fehlertolerant: übersprungene Einträge meldet der Server, die
+     * Pinnwand öffnet trotzdem (M5-Abnahme: „öffnet im Workspace").
+     */
+    const importCanvasFile = async (file: File) => {
+        setIsImporting(true);
+        try {
+            const json = await file.text();
+            const name = file.name.replace(/\.canvas$/i, '') || 'Importierte Pinnwand';
+            const response = await fetch('/api/canvas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'import', name, json }),
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                const details = Array.isArray(data.details) ? `: ${data.details[0]}` : '';
+                toast.error(`${data.error || 'Import fehlgeschlagen'}${details}`);
+                return;
+            }
+            if (Array.isArray(data.skipped) && data.skipped.length > 0) {
+                toast.error(`${data.skipped.length} Einträge übersprungen — Pinnwand wurde trotzdem angelegt`);
+            } else {
+                toast.success('Pinnwand importiert');
+            }
+            router.push(`/canvas/${data.canvas.id}`);
+        } catch (error) {
+            console.error('Fehler beim Import:', error);
+            toast.error('Import fehlgeschlagen');
+        } finally {
+            setIsImporting(false);
+            if (importInputRef.current) importInputRef.current.value = '';
+        }
+    };
 
     const fetchCanvases = async () => {
         try {
@@ -110,6 +151,26 @@ export default function CanvasOverviewPage() {
                     <div>
                         <h1>Pinnwand Übersicht</h1>
                         <p className={styles.subtitle}>Erstelle und verwalte deine visuellen Planungen</p>
+                    </div>
+                    <div>
+                        <input
+                            ref={importInputRef}
+                            type="file"
+                            accept=".canvas,application/json"
+                            className={styles.importInput}
+                            aria-label=".canvas-Datei auswählen"
+                            onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) importCanvasFile(file);
+                            }}
+                        />
+                        <Button
+                            variant="secondary"
+                            onClick={() => importInputRef.current?.click()}
+                            disabled={isImporting}
+                        >
+                            {isImporting ? 'Importiert…' : 'Importieren (.canvas)'}
+                        </Button>
                     </div>
                 </div>
 

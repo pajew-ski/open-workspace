@@ -24,6 +24,7 @@ import type { Quad } from '@rdfjs/types';
 import type { FileSystemLike } from '@/lib/platform/runtime/types';
 import { factory, namedNode, literal, typedLiteral } from '../rdf';
 import { OW, PROV } from '../vocab';
+import { replaceCanvasLayouts } from '../presentation/layout';
 import { getConnectorKind } from './catalog';
 import { createGuardedFetch } from './http';
 import { getConnector, runErrors, saveConnectorState, type GraphHandle } from './registry';
@@ -31,6 +32,7 @@ import {
     ConnectorConflictError,
     type ConnectorContext,
     type ConnectorInstanceView,
+    type PresentationGroup,
     type QuarantineEntry,
     type SourceRef,
     type SyncResult,
@@ -90,6 +92,7 @@ export async function syncConnector(handle: GraphHandle, connectorId: string, op
     }
 
     const quarantined: QuarantineEntry[] = [];
+    const presentationGroups: PresentationGroup[] = [];
     const abort = new AbortController();
     const onOuterAbort = () => abort.abort();
     options.signal?.addEventListener('abort', onOuterAbort, { once: true });
@@ -105,6 +108,7 @@ export async function syncConnector(handle: GraphHandle, connectorId: string, op
         files: options.files,
         report: progress => options.onProgress?.(progress),
         quarantine: entry => quarantined.push(entry),
+        presentation: group => presentationGroups.push(group),
     };
 
     try {
@@ -154,6 +158,12 @@ export async function syncConnector(handle: GraphHandle, connectorId: string, op
             const report = await tx.load(quads, namedNode(view.targetGraph), { replace: true });
             added = report.added;
             removed = report.removed;
+            // Layout-Schicht (SPEC §9): gemeldete Gruppen ersetzen die
+            // Layouts ihrer Canvases in graph/<u>/presentation — in
+            // derselben Transaktion wie der Import-Replace.
+            if (presentationGroups.length > 0) {
+                await replaceCanvasLayouts(tx, handle.iri, presentationGroups);
+            }
             await saveConnectorState({ store: tx, iri: handle.iri }, {
                 ...view,
                 syncState: 'idle',
@@ -240,6 +250,9 @@ export async function pushConnector(handle: GraphHandle, connectorId: string, op
         files: options.files,
         report: progress => options.onProgress?.(progress),
         quarantine: entry => quarantined.push(entry),
+        // Export-Läufe importieren nichts — Layout-Meldungen wären ein
+        // Connector-Fehler und verhallen bewusst.
+        presentation: () => undefined,
     };
 
     try {

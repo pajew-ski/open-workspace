@@ -4,7 +4,7 @@
 
 ## Hier weitermachen (Einstieg für neue Sessions)
 
-**Stand 2026-08-09 (4. Ausbaustufe, Graph Core M0–M4)**: Der **RDF-Graph ist
+**Stand 2026-08-09 (4. Ausbaustufe, Graph Core M0–M5)**: Der **RDF-Graph ist
 das kanonische Datenmodell**. Die verbindliche Spezifikation inklusive aller
 Meilensteine M0–M13 liegt in
 [GRAPH_CORE_SPEC.md](./GRAPH_CORE_SPEC.md) — **Arbeitsmodus: ein Meilenstein
@@ -76,9 +76,34 @@ Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
   `FileSystemLike` in den ConnectorContext (`files`, injiziert von Route
   bzw. Test — node-fs/memfs). Alle Verlustpositionen:
   [docs/obsidian-kompatibilitaet.md](./docs/obsidian-kompatibilitaet.md).
+- **Canvas/Präsentationsschicht (M5)** (`src/lib/graph/presentation/layout.ts`
+  + `src/lib/graph/connectors/json-canvas/` +
+  `src/lib/graph/projection/json-canvas.ts`): Layout — Position, Größe,
+  Farbe, Gruppen, Viewport — lebt AUSSCHLIESSLICH in
+  `graph/<u>/presentation` als `ow:CanvasNode`/`ow:CanvasEdge`-Gruppen
+  (`schema:isPartOf` = Eigentum, `ow:rendersNode` = Brücke zum
+  semantischen Knoten; Werte via `schema:width`/`height`/`color`,
+  Position/Anker/Viewport als eigene ow:-Terme). Ersetzt wird immer
+  gruppenweise (native Pinnwände und Connector-Importe koexistieren),
+  Verwaiste räumt `pruneOrphanCanvasLayouts` auf. JSON Canvas 1.0:
+  pures Format-Modul (tolerant parsen, deterministisch serialisieren),
+  `json-canvas`-Connector über den EINEN Vertrag — `pull` liefert
+  Wissen in den Import-Graphen und meldet Layout über den neuen
+  Collector `ctx.presentation()` (Runner ersetzt beides in einer
+  Transaktion); Push mit Konfliktregel §6.2, zweiter Push
+  byte-identisch. Gruppen-Knoten bekommen KEIN semantisches Gegenstück
+  (SPEC §9). UI: `.canvas`-Import auf `/canvas`, Export auf der
+  Pinnwand mit Verlust-Hinweis vor dem Schreiben (Kartentypen
+  `file`/`group` ergänzt). Generierte Query-Views: `ow:QueryView` in
+  `graph/meta` (`/api/graph/views` + Sektion im Graph-Explorer),
+  Auflösung über `resolveDataset` — Layout-Quads sind dort nachweislich
+  unsichtbar; Layout-Verfahren force-directed/hierarchisch/radial.
+  Abnahme: `tests/graph/json-canvas.test.ts`; Verlustpositionen:
+  [docs/obsidian-kompatibilitaet.md](./docs/obsidian-kompatibilitaet.md).
 - **Übergangszustand** (`// MIGRATION:`-Marker): Die Dateien unter
   `data/docs|tasks|canvas` bleiben operative Quelle; der Store spiegelt sie
-  inhalts-gehasht (`src/lib/graph/server/instance.ts#syncWorkspaceFromFiles`).
+  inhalts-gehasht (`src/lib/graph/server/instance.ts#syncWorkspaceFromFiles`),
+  seit M5 inklusive des Canvas-Layouts nach `graph/<u>/presentation`.
   Endet mit der Umstellung der Schreibpfade (TODO „Graph Core").
 - **Invarianten** (Review-Blocker, SPEC §2): RDF ist die eine Wahrheit;
   Wissen ≠ Präsentation; asserted ≠ inferred; ein Connector-Vertrag für
@@ -109,7 +134,7 @@ und backend-unabhängig** — Details in [docs/ai-platform.md](./docs/ai-platfor
 - **UI**: AI-Hub (`/ai`), Skills (`/skills`), MCP-Verwaltung in `/tools`,
   A2A-Discovery in `/agents`, ModelPicker in beiden Chat-Oberflächen.
 
-Build, Typecheck, Lint (0 Errors), 185 Unit-Tests und das **blockierende
+Build, Typecheck, Lint (0 Errors), 206 Unit-Tests und das **blockierende
 E2E-Gate** (`e2e/mobile-navigation`, `e2e/mobile-ux`, `e2e/a11y` inkl. der
 Seiten `/ai`, `/skills` und `/graph/connectors`) laufen grün.
 
@@ -121,14 +146,15 @@ Seiten `/ai`, `/skills` und `/graph/connectors`) laufen grün.
 4. [TODO.md](./TODO.md) — Roadmap als abhakbare Liste (inkl. Graph Core)
 5. Diesen Abschnitt hier für die Architektur-Prinzipien
 
-**Nächste sinnvolle Schritte**: Graph Core M5 (Canvas als
-Präsentationsschicht: `graph/<u>/presentation`, JSON-Canvas-1.0-Import/
--Export, generierte Query-Views — SPEC §9; der Layout-Blacklist-Test
-existiert bereits in `tests/graph/migrate.test.ts`) und die Umstellung der
-Schreibpfade auf den Store (Rest von M1, `// MIGRATION:`-Marker auflösen);
-offen aus M2: SPARQL-Editor-UI. Parallel weiter sinnvoll: i18n mit
-`next-intl` (P0); Abbau der `no-explicit-any`-Warnings außerhalb des
-Graph-Codes; CopilotKit-Entscheidung.
+**Nächste sinnvolle Schritte**: Graph Core M6 (Git-Sync in allen drei
+Runtimes: Modi `backup`/`bidirectional`, `git-backup` als regulärer
+Connector, Runtime-Adapter `local` mit OPFS/isomorphic-git — SPEC §5.2/§8;
+Abnahme: minimale lesbare Diffs, externe `.ttl`-Edits kommen per Pull an)
+und die Umstellung der Schreibpfade auf den Store (Rest von M1,
+`// MIGRATION:`-Marker auflösen); offen aus M2: SPARQL-Editor-UI (die
+gespeicherten Query-Views aus M5 sind dafür die Vorstufe). Parallel weiter
+sinnvoll: i18n mit `next-intl` (P0); Abbau der `no-explicit-any`-Warnings
+außerhalb des Graph-Codes; CopilotKit-Entscheidung.
 
 **Arbeitsprinzip dieses Repos**: Keine Attrappen. Lieber ein Feature ehrlich als
 „geplant" kennzeichnen, als tote Buttons stehen lassen.

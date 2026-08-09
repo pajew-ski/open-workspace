@@ -7,9 +7,10 @@
  * wiederholte Läufe byte-identische Snapshots erzeugen.
  *
  * Wissen/Präsentation-Trennung (Invariante 2): Layout-Werte (x/y/Breite/
- * Höhe/Farbe/Viewport) werden NICHT migriert. Sie bleiben bis zur
- * Präsentationsschicht (M5) in den Canvas-/Projekt-Dateien; der
- * semantische Graph enthält sie zu keinem Zeitpunkt.
+ * Höhe/Farbe/Viewport) werden hier NICHT migriert — der semantische Graph
+ * enthält sie zu keinem Zeitpunkt. Seit M5 spiegelt
+ * `presentation/layout.ts#buildNativeCanvasLayout` sie separat nach
+ * `graph/<u>/presentation`; Projekt-Farben bleiben vorerst in der Datei.
  */
 
 import type { Quad } from '@rdfjs/types';
@@ -33,6 +34,7 @@ export interface MigrationCounts {
     tasks: number;
     projects: number;
     canvases: number;
+    /** Semantische Karten — Gruppen zählen nicht (reine Darstellung, SPEC §9). */
     cards: number;
     tags: number;
     links: number;
@@ -211,20 +213,36 @@ export function buildWorkspaceQuads(
         add(canvasIri, DCTERMS.created, typedLiteral.dateTime(canvas.createdAt));
         add(canvasIri, DCTERMS.modified, typedLiteral.dateTime(canvas.updatedAt));
 
+        // Gruppen sind reine Darstellung (SPEC §9): implizit über Position
+        // definiert, keine Hierarchie-Behauptung — sie bekommen KEIN
+        // semantisches Gegenstück; ihr Layout lebt in graph/presentation.
+        const groupIds = new Set(canvas.cards.filter(card => card.type === 'group').map(card => card.id));
+
         const cardIri = (cardId: string) => iri.entity('card', `${canvas.id}/${cardId}`);
         for (const card of canvas.cards) {
+            if (card.type === 'group') continue;
             counts.cards += 1;
             const cIri = cardIri(card.id);
-            addIri(cIri, RDF.type, SCHEMA.CreativeWork);
+            if (card.type === 'link') {
+                addIri(cIri, RDF.type, SCHEMA.WebPage);
+                if (card.content) add(cIri, SCHEMA.url, typedLiteral.anyUri(card.content));
+            } else if (card.type === 'file' || card.type === 'image') {
+                addIri(cIri, RDF.type, SCHEMA.DigitalDocument);
+            } else {
+                addIri(cIri, RDF.type, SCHEMA.CreativeWork);
+                if (card.content) add(cIri, SCHEMA.text, literal(card.content));
+            }
             add(cIri, SCHEMA.name, literal(card.title));
-            if (card.content) add(cIri, SCHEMA.text, literal(card.content));
             add(cIri, DCTERMS.created, typedLiteral.dateTime(card.createdAt));
             add(cIri, DCTERMS.modified, typedLiteral.dateTime(card.updatedAt));
             addIri(canvasIri, SCHEMA.hasPart, cIri);
-            // card.x/y/width/height/color: Präsentation, nicht migriert (M5).
+            // card.x/y/width/height/color: Präsentation — gespiegelt nach
+            // graph/<u>/presentation (presentation/layout.ts), nie hierher.
         }
         // JSON-Canvas-Regel (SPEC §9): untypisierte Kanten → ow:linksTo.
+        // Kanten an Gruppen sind reine Zeichnung ohne Wissens-Behauptung.
         for (const connection of canvas.connections) {
+            if (groupIds.has(connection.fromId) || groupIds.has(connection.toId)) continue;
             addIri(cardIri(connection.fromId), OW.linksTo, cardIri(connection.toId));
             counts.links += 1;
         }

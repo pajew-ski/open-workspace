@@ -3,6 +3,7 @@ import {
     listCanvases,
     getCanvas,
     createCanvas,
+    importCanvas,
     updateCanvasMeta,
     deleteCanvas,
     createCard,
@@ -14,6 +15,8 @@ import {
     updateViewport,
 } from '@/lib/storage';
 import { canvasActionSchema, parseBody } from '@/lib/api/validation';
+import { parseJsonCanvas } from '@/lib/graph/connectors/json-canvas/format';
+import { jsonCanvasToNative } from '@/lib/graph/connectors/json-canvas/native';
 
 export async function GET(request: NextRequest) {
     try {
@@ -49,6 +52,37 @@ export async function POST(request: NextRequest) {
                 const { logActivity } = await import('@/lib/activity');
                 await logActivity('canvas_created', canvas.id, `Canvas erstellt: ${canvas.name}`);
                 return NextResponse.json({ canvas }, { status: 201 });
+            }
+
+            // Import einer .canvas-Datei (JSON Canvas 1.0, SPEC §9 / M5).
+            // Fehlertolerant: ungültige Einträge werden übersprungen und
+            // gemeldet; nur eine komplett leere Quelle ist ein Fehler.
+            case 'import': {
+                const parsed = parseJsonCanvas(body.json, `${body.name}.canvas`);
+                if (parsed.canvas.nodes.length === 0 && parsed.issues.length > 0) {
+                    return NextResponse.json(
+                        {
+                            error: 'Datei konnte nicht als JSON Canvas 1.0 gelesen werden',
+                            details: parsed.issues.map(issue => `${issue.source}: ${issue.reason}`),
+                        },
+                        { status: 400 },
+                    );
+                }
+                const native = jsonCanvasToNative(parsed.canvas);
+                const canvas = await importCanvas({
+                    name: body.name,
+                    cards: native.cards,
+                    connections: native.connections,
+                });
+                const { logActivity } = await import('@/lib/activity');
+                await logActivity('canvas_created', canvas.id, `Canvas importiert: ${canvas.name}`);
+                return NextResponse.json(
+                    {
+                        canvas,
+                        skipped: parsed.issues.map(issue => `${issue.source}: ${issue.reason}`),
+                    },
+                    { status: 201 },
+                );
             }
 
             case 'updateMeta': {

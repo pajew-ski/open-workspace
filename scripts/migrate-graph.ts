@@ -45,7 +45,12 @@ async function main(): Promise<void> {
     assertEqual('Aufgaben', input.tasks.length, counts.tasks);
     assertEqual('Projekte', input.projects.length, counts.projects);
     assertEqual('Canvases', input.canvases.length, counts.canvases);
-    assertEqual('Karten', input.canvases.reduce((n, c) => n + c.cards.length, 0), counts.cards);
+    // Gruppen sind reine Darstellung (SPEC §9) und zählen semantisch nicht.
+    assertEqual(
+        'Karten',
+        input.canvases.reduce((n, c) => n + c.cards.filter(card => card.type !== 'group').length, 0),
+        counts.cards,
+    );
 
     const dir = path.join(process.cwd(), 'data', 'graph');
     const report = await writeSnapshot(store, createNodeFileSystem(), dir, iri.instanceBase);
