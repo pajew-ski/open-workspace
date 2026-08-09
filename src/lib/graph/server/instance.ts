@@ -36,6 +36,7 @@ import { runReasoning } from '../reasoning/run';
 import { writeWorkspaceToStore, type WorkspaceContext } from '../workspace/crud';
 import { workspaceFromStore } from '../workspace/read';
 import { defaultWorkspaceFilePaths, projectWorkspaceFiles, readWorkspaceFiles } from '../workspace/files';
+import { invalidateSearchIndexes } from '../search/cache';
 
 export interface ServerGraph {
     store: OxigraphStore;
@@ -144,10 +145,18 @@ export async function getServerGraph(): Promise<ServerGraph> {
     return { store: state.store, iri: state.iri };
 }
 
-/** Reiht eine Funktion in die prozessweite Mutations-Kette ein. */
+/**
+ * Reiht eine Funktion in die prozessweite Mutations-Kette ein. Nach jedem
+ * Durchlauf werden die Suchindizes invalidiert (M8): alle Mutationspfade
+ * außer dem SPARQL-Update-Endpoint laufen hierüber (Workspace-CRUD,
+ * Connector-Sync/-Löschen, Snapshot, Restore); die SPARQL-Route
+ * invalidiert selbst.
+ */
 async function runExclusive<T>(fn: () => Promise<T>): Promise<T> {
     const state = await getState();
-    const run = state.mutationChain.then(fn);
+    const run = state.mutationChain
+        .then(fn)
+        .finally(() => invalidateSearchIndexes(state.store));
     state.mutationChain = run.catch(() => undefined);
     return run;
 }
