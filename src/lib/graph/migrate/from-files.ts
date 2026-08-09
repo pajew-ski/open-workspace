@@ -1,16 +1,21 @@
 /**
- * Migration Bestand → Graph (SPEC §12.2).
+ * Vorwärts-Abbildung Domänenmodell → Workspace-Graph.
  *
- * Pure Quad-Builder: nehmen die bestehenden Datei-Entitäten (Docs, Tasks,
- * Projekte, Canvases) und erzeugen den Workspace-Graphen. Idempotent und
- * deterministisch — bewusst ohne Zeitstempel des Migrationslaufs, damit
- * wiederholte Läufe byte-identische Snapshots erzeugen.
+ * Historisch der Migrator (SPEC §12.2); seit dem Abschluss von §12.4 ist
+ * dies DIE Abbildung des Schreibpfads: jede Mutation baut hierüber den
+ * Workspace-Graphen, die Dateien unter data/ sind Projektion. Die
+ * Rück-Abbildung (Store → Domänenmodell) liegt in `workspace/read.ts`;
+ * der Round-Trip ist als Test verankert
+ * (`tests/graph/workspace-roundtrip.test.ts`).
+ *
+ * Pure Quad-Builder: idempotent und deterministisch — bewusst ohne
+ * Zeitstempel des Laufs, damit wiederholte Läufe byte-identische
+ * Snapshots erzeugen.
  *
  * Wissen/Präsentation-Trennung (Invariante 2): Layout-Werte (x/y/Breite/
- * Höhe/Farbe/Viewport) werden hier NICHT migriert — der semantische Graph
- * enthält sie zu keinem Zeitpunkt. Seit M5 spiegelt
- * `presentation/layout.ts#buildNativeCanvasLayout` sie separat nach
- * `graph/<u>/presentation`; Projekt-Farben bleiben vorerst in der Datei.
+ * Höhe/Farbe/Viewport, Projekt-Farben) werden hier NICHT abgebildet — der
+ * semantische Graph enthält sie zu keinem Zeitpunkt. Das übernimmt
+ * `presentation/layout.ts` nach `graph/<u>/presentation`.
  */
 
 import type { Quad } from '@rdfjs/types';
@@ -19,7 +24,7 @@ import type { Task } from '@/lib/storage/tasks';
 import type { Project } from '@/lib/storage/projects';
 import type { CanvasData } from '@/lib/storage/canvas';
 import { factory, namedNode, typedLiteral, literal } from '../rdf';
-import { DCTERMS, OW, RDF, SCHEMA, SKOS } from '../vocab';
+import { DCTERMS, OW, PROV, RDF, SCHEMA, SKOS } from '../vocab';
 import type { IriFactory } from '../iri';
 
 export interface WorkspaceSnapshotInput {
@@ -58,14 +63,28 @@ export function slugifyTitle(title: string): string {
         .slice(0, 50);
 }
 
-function docSchemaType(doc: Doc): string {
-    switch (doc.type) {
-        case 'TechArticle': return SCHEMA.TechArticle;
-        case 'BlogPosting': return SCHEMA.BlogPosting;
-        case 'HowTo': return SCHEMA.HowTo;
-        case 'DefinedTerm': return SCHEMA.DefinedTerm;
-        default: return SCHEMA.TechArticle;
-    }
+/**
+ * Polymorpher Doc-Typ ↔ schema.org-Klasse. Bijektiv, damit der Round-Trip
+ * Store → Doc den exakten Frontmatter-Typ zurückliefert (Abschluss §12.4):
+ * auch 'CreativeWork' wird materialisiert, ein fehlender Typ gar nicht.
+ */
+const DOC_TYPE_TO_SCHEMA: ReadonlyArray<readonly [Doc['type'] & string, string]> = [
+    ['TechArticle', SCHEMA.TechArticle],
+    ['BlogPosting', SCHEMA.BlogPosting],
+    ['HowTo', SCHEMA.HowTo],
+    ['DefinedTerm', SCHEMA.DefinedTerm],
+    ['CreativeWork', SCHEMA.CreativeWork],
+];
+
+function docSchemaType(doc: Doc): string | null {
+    if (!doc.type) return null;
+    const entry = DOC_TYPE_TO_SCHEMA.find(([docType]) => docType === doc.type);
+    return entry ? entry[1] : null;
+}
+
+export function docTypeFromSchemaTypes(schemaTypes: ReadonlySet<string>): Doc['type'] | undefined {
+    const entry = DOC_TYPE_TO_SCHEMA.find(([, schemaType]) => schemaTypes.has(schemaType));
+    return entry ? entry[0] : undefined;
 }
 
 function taskStatusIri(status: Task['status']): string {
@@ -132,7 +151,8 @@ export function buildWorkspaceQuads(
         counts.docs += 1;
         addIri(docIri, RDF.type, SCHEMA.DigitalDocument);
         addIri(docIri, RDF.type, OW.Document);
-        addIri(docIri, RDF.type, docSchemaType(doc));
+        const polymorphType = docSchemaType(doc);
+        if (polymorphType) addIri(docIri, RDF.type, polymorphType);
         const lang = doc.inLanguage || 'de';
         add(docIri, SCHEMA.name, literal(doc.title, lang));
         add(docIri, SCHEMA.text, literal(doc.content, lang));
@@ -171,9 +191,11 @@ export function buildWorkspaceQuads(
         add(projectIri, SCHEMA.name, literal(project.title));
         if (project.description) add(projectIri, SCHEMA.description, literal(project.description));
         add(projectIri, DCTERMS.identifier, literal(project.prefix));
+        add(projectIri, OW.workflowStatus, literal(project.status));
         add(projectIri, DCTERMS.created, typedLiteral.dateTime(project.createdAt));
         add(projectIri, DCTERMS.modified, typedLiteral.dateTime(project.updatedAt));
-        // project.color ist Präsentation und bleibt in der Datei (M5).
+        // project.color ist Präsentation: graph/<u>/presentation
+        // (presentation/layout.ts#buildProjectPresentation), nie hier.
     }
 
     // --- Aufgaben ------------------------------------------------------
@@ -184,21 +206,37 @@ export function buildWorkspaceQuads(
         addIri(taskIri, RDF.type, OW.Task);
         add(taskIri, SCHEMA.name, literal(task.title));
         if (task.description) add(taskIri, SCHEMA.description, literal(task.description));
+        // Doppel-Muster (Abschluss §12.4): grobe Standard-Projektion für
+        // Interop PLUS exakter nativer Zustand als Quelltreue-Träger.
         addIri(taskIri, SCHEMA.actionStatus, taskStatusIri(task.status));
+        add(taskIri, OW.workflowStatus, literal(task.status));
+        add(taskIri, OW.priority, literal(task.priority));
+        add(taskIri, OW.taskKind, literal(task.type));
         if (task.projectId) addIri(taskIri, OW.inProject, iri.entity('project', task.projectId));
         if (task.startDate) add(taskIri, SCHEMA.startTime, typedLiteral.dateTime(task.startDate));
         if (task.dueDate) add(taskIri, SCHEMA.endTime, typedLiteral.dateTime(task.dueDate));
+        if (task.deferredUntil) add(taskIri, OW.deferredUntil, typedLiteral.dateTime(task.deferredUntil));
+        if (task.estimatedEffort !== undefined) add(taskIri, OW.estimatedEffort, typedLiteral.decimal(task.estimatedEffort));
+        if (task.actualEffort !== undefined) add(taskIri, OW.actualEffort, typedLiteral.decimal(task.actualEffort));
+        if (task.completedAt) add(taskIri, PROV.endedAtTime, typedLiteral.dateTime(task.completedAt));
         add(taskIri, DCTERMS.created, typedLiteral.dateTime(task.createdAt));
         add(taskIri, DCTERMS.modified, typedLiteral.dateTime(task.updatedAt));
         for (const tag of task.tags) {
             addIri(taskIri, SCHEMA.about, ensureTag(tag));
         }
-        // Alle Abhängigkeitstypen (FS/SS/FF/SF) werden als ow:blockedBy
-        // angenähert; die Feintypisierung folgt mit RDF-star-Annotationen,
-        // sobald der Schreibpfad auf den Store umgestellt ist.
+        // Abhängigkeiten als ow:blockedBy; Nicht-Default-Typen (SS/FF/SF)
+        // als RDF-1.2-Annotation am benannten Reifier der Kante — dasselbe
+        // Muster wie Alias/Einbettung beim Obsidian-Connector (M4).
         for (const dep of task.dependencies) {
-            addIri(taskIri, OW.blockedBy, iri.entity('task', dep.id));
+            const target = iri.entity('task', dep.id);
+            addIri(taskIri, OW.blockedBy, target);
             counts.links += 1;
+            if (dep.type !== 'FS') {
+                const reifier = iri.entity('link', `dep/${task.id}/${dep.id}`);
+                const depTriple = factory.quad(namedNode(taskIri), namedNode(OW.blockedBy), namedNode(target));
+                quads.push(factory.quad(namedNode(reifier), namedNode(RDF.reifies), depTriple));
+                add(reifier, OW.dependencyKind, literal(dep.type));
+            }
         }
     }
 

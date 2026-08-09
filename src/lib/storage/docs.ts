@@ -1,171 +1,33 @@
-import { promises as fs } from 'fs';
-import path from 'path';
-import { Doc, DocFrontmatter, DocType } from '@/types/doc';
-import { withFileLock, writeFileAtomic } from './atomic';
-
-const DATA_DIR = path.join(process.cwd(), 'data', 'docs');
-
 /**
- * All doc mutations are serialized on the docs directory (used as lock key),
- * because update/delete scan the directory and rename files.
+ * Dokumente — Fassade über den Store-first-Schreibpfad (Abschluss
+ * SPEC §12.4): Wahrheit ist der RDF-Store (`graph/<u>/workspace`), die
+ * Markdown-Dateien unter `data/docs/` sind Projektion und werden von
+ * `src/lib/graph/workspace/files.ts` geschrieben. Diese Fassade hält die
+ * bisherige API für Routen und Module stabil.
  */
-const DOCS_LOCK = DATA_DIR;
 
-/**
- * Parse YAML frontmatter from Markdown content
- */
-function parseFrontmatter(content: string): { frontmatter: DocFrontmatter | null; body: string } {
-    const frontmatterRegex = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/;
+import { Doc, DocType } from '@/types/doc';
+import { getWorkspaceContext } from '@/lib/graph/server/instance';
+import * as crud from '@/lib/graph/workspace/crud';
+import { slugifyTitle } from '@/lib/graph/migrate/from-files';
 
-    const match = content.match(frontmatterRegex);
-
-    if (!match) {
-        return { frontmatter: null, body: content };
-    }
-
-    const yamlContent = match[1];
-    const body = match[2];
-
-    const frontmatter: Record<string, string | string[]> = {};
-    const lines = yamlContent.split('\n');
-
-    for (const line of lines) {
-        const colonIndex = line.indexOf(':');
-        if (colonIndex === -1) continue;
-
-        const key = line.slice(0, colonIndex).trim();
-        let value = line.slice(colonIndex + 1).trim();
-
-        // Handle arrays (tags)
-        if (value.startsWith('[') && value.endsWith(']')) {
-            value = value.slice(1, -1);
-            frontmatter[key] = value.split(',').map(s => s.trim().replace(/^["']|["']$/g, ''));
-        } else {
-            // Remove quotes if present
-            frontmatter[key] = value.replace(/^["']|["']$/g, '');
-        }
-    }
-
-    return {
-        frontmatter: frontmatter as unknown as DocFrontmatter,
-        body: body.trim(),
-    };
-}
-
-/**
- * Generate YAML frontmatter string
- */
-function generateFrontmatter(meta: DocFrontmatter): string {
-    const lines = [
-        '---',
-        `id: "${meta.id}"`,
-        `slug: "${meta.slug}"`,
-        `title: "${meta.title}"`,
-    ];
-
-    if (meta.category) lines.push(`category: "${meta.category}"`);
-    if (meta.author) lines.push(`author: "${meta.author}"`);
-    if (meta.type) lines.push(`type: "${meta.type}"`);
-    if (meta.inLanguage) lines.push(`inLanguage: "${meta.inLanguage}"`);
-
-    const tagsStr = meta.tags.map(t => `"${t}"`).join(', ');
-    lines.push(`tags: [${tagsStr}]`);
-    lines.push(`createdAt: "${meta.createdAt}"`);
-    lines.push(`updatedAt: "${meta.updatedAt}"`);
-    lines.push('---');
-
-    return lines.join('\n');
-}
-
-/**
- * Generate a unique ID
- */
-function generateId(): string {
-    return `doc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-/**
- * Sanitize filename from title (german to english transliteration simple)
- */
-function sanitizeFilename(title: string): string {
-    return title
-        .toLowerCase()
-        .replace(/[äÄ]/g, 'ae')
-        .replace(/[öÖ]/g, 'oe')
-        .replace(/[üÜ]/g, 'ue')
-        .replace(/ß/g, 'ss')
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '')
-        .slice(0, 50);
-}
-
-/**
- * Generate English slug (simple placeholder logic for now)
- */
+/** Englischer Slug aus dem Titel (identische Logik wie die Graph-Abbildung). */
 export function generateSlug(title: string): string {
-    return sanitizeFilename(title);
+    return slugifyTitle(title);
 }
 
-/**
- * Ensure data directory exists
- */
-async function ensureDataDir(): Promise<void> {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-}
-
-/**
- * List all docs
- */
 export async function listDocs(): Promise<Doc[]> {
-    await ensureDataDir();
-
-    try {
-        const files = await fs.readdir(DATA_DIR);
-        const mdFiles = files.filter(f => f.endsWith('.md'));
-
-        const docs: Doc[] = [];
-
-        for (const file of mdFiles) {
-            const content = await fs.readFile(path.join(DATA_DIR, file), 'utf-8');
-            const { frontmatter, body } = parseFrontmatter(content);
-
-            if (frontmatter) {
-                docs.push({
-                    ...frontmatter,
-                    tags: frontmatter.tags || [],
-                    content: body,
-                });
-            }
-        }
-
-        // Sort by updatedAt descending
-        return docs.sort((a, b) =>
-            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-        );
-    } catch {
-        return [];
-    }
+    return crud.listDocs(await getWorkspaceContext());
 }
 
-/**
- * Get a single doc by ID
- */
 export async function getDoc(id: string): Promise<Doc | null> {
-    const docs = await listDocs();
-    return docs.find(n => n.id === id) || null;
+    return crud.getDoc(await getWorkspaceContext(), id);
 }
 
-/**
- * Get a single doc by Slug
- */
 export async function getDocBySlug(slug: string): Promise<Doc | null> {
-    const docs = await listDocs();
-    return docs.find(n => n.slug === slug) || null;
+    return crud.getDocBySlug(await getWorkspaceContext(), slug);
 }
 
-/**
- * Create a new doc
- */
 export async function createDoc(data: {
     title: string;
     content: string;
@@ -173,41 +35,9 @@ export async function createDoc(data: {
     type?: DocType;
     tags?: string[];
 }): Promise<Doc> {
-    return withFileLock(DOCS_LOCK, async () => {
-        await ensureDataDir();
-
-        const now = new Date().toISOString();
-        const id = generateId();
-        const slug = generateSlug(data.title);
-
-        const doc: Doc = {
-            id,
-            slug,
-            title: data.title,
-            content: data.content,
-            category: data.category,
-            tags: data.tags || [],
-            type: data.type || 'CreativeWork', // Default
-            author: 'default-author', // Should be configured via ENV or Context
-            inLanguage: 'de',
-            createdAt: now,
-            updatedAt: now,
-        };
-
-        const frontmatter = generateFrontmatter(doc);
-
-        // Filename uses the slug for cleaner FS
-        const filename = `${slug}.md`;
-
-        await writeFileAtomic(path.join(DATA_DIR, filename), `${frontmatter}\n\n${doc.content}`);
-
-        return doc;
-    });
+    return crud.createDoc(await getWorkspaceContext(), data);
 }
 
-/**
- * Update an existing doc
- */
 export async function updateDoc(id: string, data: {
     title?: string;
     content?: string;
@@ -216,78 +46,9 @@ export async function updateDoc(id: string, data: {
     type?: DocType;
     slug?: string;
 }): Promise<Doc | null> {
-    return withFileLock(DOCS_LOCK, async () => {
-        const docs = await listDocs();
-        const existing = docs.find(n => n.id === id);
-
-        if (!existing) return null;
-
-        // Locate the file currently holding this doc (filename may differ from slug)
-        let oldFilePath: string | null = null;
-        const files = await fs.readdir(DATA_DIR);
-        for (const file of files) {
-            if (!file.endsWith('.md')) continue;
-            const content = await fs.readFile(path.join(DATA_DIR, file), 'utf-8');
-            const { frontmatter } = parseFrontmatter(content);
-            if (frontmatter?.id === id) {
-                oldFilePath = path.join(DATA_DIR, file);
-                break;
-            }
-        }
-
-        const now = new Date().toISOString();
-        const updated: Doc = {
-            ...existing,
-            title: data.title ?? existing.title,
-            content: data.content ?? existing.content,
-            category: data.category ?? existing.category,
-            tags: data.tags ?? existing.tags,
-            type: data.type ?? existing.type,
-            slug: data.slug ?? existing.slug,
-            updatedAt: now,
-        };
-
-        const frontmatter = generateFrontmatter(updated);
-
-        // Filename always follows the slug
-        const newFilePath = path.join(DATA_DIR, `${updated.slug}.md`);
-
-        // Write the new content FIRST (atomically), only then remove a stale
-        // old file. This way a crash in between never loses the document.
-        await writeFileAtomic(newFilePath, `${frontmatter}\n\n${updated.content}`);
-
-        if (oldFilePath && path.resolve(oldFilePath) !== path.resolve(newFilePath)) {
-            await fs.unlink(oldFilePath).catch(error => {
-                console.error(`[docs] Failed to remove old doc file ${oldFilePath}:`, error);
-            });
-        }
-
-        return updated;
-    });
+    return crud.updateDoc(await getWorkspaceContext(), id, data);
 }
 
-/**
- * Delete a doc
- */
 export async function deleteDoc(id: string): Promise<boolean> {
-    return withFileLock(DOCS_LOCK, async () => {
-        try {
-            const files = await fs.readdir(DATA_DIR);
-
-            for (const file of files) {
-                if (!file.endsWith('.md')) continue;
-                const content = await fs.readFile(path.join(DATA_DIR, file), 'utf-8');
-                const { frontmatter } = parseFrontmatter(content);
-
-                if (frontmatter?.id === id) {
-                    await fs.unlink(path.join(DATA_DIR, file));
-                    return true;
-                }
-            }
-
-            return false;
-        } catch {
-            return false;
-        }
-    });
+    return crud.deleteDoc(await getWorkspaceContext(), id);
 }
