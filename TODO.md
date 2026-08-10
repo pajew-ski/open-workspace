@@ -369,6 +369,10 @@
 - [x] AI-Hub (/ai): Provider-Karten, Presets, Routing-Badges, WebLLM-Manager
 - [x] Skills (/skills): Verwaltung + Lade-Flows
 - [x] Werkzeuge: MCP-Server-Verwaltung (Status, Tools, Prompts→Skills)
+- [x] Graph (/graph + /graph/sparql|connectors|federation|access): Explorer
+      mit Filtern, Herkunft und Reasoning-Panel, SPARQL-Editor,
+      Connector-Verwaltung, Föderation, Zugriff & Freigaben
+- [x] Einführung (/onboarding): geführte Strecke durch den eigenen Graphen
 - [ ] Kommunikation (Matrix) — Seite kennzeichnet Planungsstand, siehe P1
 
 ## AI-Integration
@@ -410,31 +414,61 @@
 - [x] Credentials: kein Ciphertext-Leak, WORKSPACE_MASTER_KEY-Option, Keyfile 0600
 - [x] API-Key nur serverseitig (LLM_API_KEY)
 - [x] Tool-Executor: SSRF-Schutz, Timeout, JSON-sichere Platzhalter
-- [ ] Rate Limiting am Chat-Endpunkt — P2
-- [ ] Optionale Auth (Passkey/WebAuthn) für Nicht-localhost-Deployments — P2
+- [x] Identität aus der Umgebung (`OW_AUTH_MODE`: ha-ingress, proxy-header,
+      oidc-bearer mit JWKS-Prüfung) — ohne geprüfte Identität ist eine
+      Anfrage anonym, nicht der Einzelnutzer (M12/M13)
+- [x] Rechte pro Named Graph als Web-Access-Control-RDF in `graph/acl`,
+      durchgesetzt im Dataset-Resolver (M13, §17)
+- [x] Rate Limiting an MCP-, Föderations- und anonymen Routen (gleitendes
+      Minutenfenster, 429 + Retry-After)
+- [ ] Rate Limiting am Chat-Endpunkt — P2 (die anderen Routen haben es)
+- [ ] Optionale Auth (Passkey/WebAuthn) als EIGENER Anmeldefluss — P2;
+      heute führt ihn bewusst die Schicht davor (oauth2-proxy, HA-Ingress)
 
-## Offen (priorisiert — Details in ANALYSE.md §5)
+## Offen (priorisiert — Herkunft der Nummerierung: ANALYSE.md §5)
+
+> Der Graph-Ausbau nach GRAPH_CORE_SPEC ist mit M14 vollständig. Was hier
+> steht, ist bewusst NICHT Teil der Spec und will einzeln entschieden
+> werden.
 
 ### P0
 - [ ] i18n mit next-intl (de/en, Umschalter, dynamisches html lang)
-- [ ] no-explicit-any-Abbau (135 Warnings → typisierte Module)
+- [ ] no-explicit-any-Abbau (aktuell 91 Warnings außerhalb von
+      `src/lib/graph/`; dort ist `any` bereits ESLint-Error)
 - [ ] Frontmatter-Parser durch yaml/gray-matter ersetzen
 
 ### P1
-- [x] A2A, MCP, natives Tool-Calling (siehe AI-Integration)
-- [ ] GitHub-Sync (OAuth Device Flow, Commit/Pull von data/docs)
-- [ ] IndexedDB-Spiegel + Background-Sync-Queue für Workspace-INHALTE
-      (Docs/Tasks/Canvas — die AI-Schicht inkl. Chats ist bereits serverlos-fähig)
+- [x] A2A, MCP (Client UND Server), natives Tool-Calling (siehe AI-Integration)
+- [x] Git-Sync über den Connector-Vertrag: `git-backup` (Backup oder
+      bidirektional mit Konfliktregel §6.2) und `github-rdf` (lesend,
+      commit-gepinnt) — M6/M3. Offen bleibt nur der bequemere Zugang:
+- [ ] GitHub OAuth Device Flow statt Token aus der Umgebung
+- [ ] **Anwendung auf die Runtime `local` stellen**: die Bausteine stehen
+      seit M12 (Store im Web Worker, OPFS, isomorphic-git), die
+      Graph-Oberflächen laufen aber weiterhin gegen das Backend — rund 30
+      Routen unter `/api/graph` brauchen eine Browser-Bindung. Ersetzt den
+      früheren Punkt „IndexedDB-Spiegel für Workspace-Inhalte"
+- [ ] Chats, Termine und Einstellungen zu Graph-Bürgern machen — dann
+      erben sie Nutzergraphen, ACL und Export ohne neuen Mechanismus
 - [ ] Matrix-Chat (matrix-js-sdk, E2EE)
 
 ### P2
 - [x] Accessibility-Durchgang (Fokus-Management, ARIA, Reduced Motion, Kontraste,
       Touch-Targets — automatisiert abgesichert via e2e/a11y + e2e/mobile-*)
 - [ ] A11y-Feinschliff: Chat-Verlauf als Live-Region, Dark-Mode-Scans auf alle Seiten ausweiten
-- [ ] Versionshistorie für Dokumente
-- [x] Export: Workspace-Backup als JSON-Download (Settings → Daten)
-- [ ] Import/Restore aus Backup (mit Validierung und Sicherung des Ist-Stands)
-- [ ] Kollaboration (CRDT/Yjs), Plugin-System via MCP, GitLab-Sync
+- [ ] Versionshistorie für Dokumente als UI (die Daten liegen mit
+      `git-backup` bereits versioniert vor)
+- [x] Export: Workspace-Backup als JSON-Download (Settings → Daten;
+      nutzerskaliert seit M13 — nur die eigenen Verzeichnisse)
+- [x] Restore aus dem Snapshot: `git-backup` im Modus `bidirectional`
+      liest kanonische Graphen laut Manifest zurück (acl/vocab/shapes/
+      inferred nie) und projiziert die Dateien danach neu (M6)
+- [ ] Import/Restore aus einem JSON-Backup in der UI (mit Validierung und
+      Sicherung des Ist-Stands)
+- [ ] Kollaboration (CRDT/Yjs) — für v1 bewusst ausgeschlossen (SPEC §15:
+      der Store bleibt single-writer pro Graph)
+- [ ] GitLab-Sync (Plugin-Erweiterung: MCP und der Connector-Vertrag sind
+      die beiden vorgesehenen Erweiterungspunkte)
 
 ---
 

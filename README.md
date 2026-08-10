@@ -24,7 +24,8 @@ konfigurierte Tools selbstständig aus.
   Chats (IndexedDB), Skills und Inference vollständig im Browser weiter
 - **Übersicht (Dashboard)**: Echtzeit-Übersicht mit adaptivem Masonry-Layout
 - **Wissensbasis**: Markdown-Dokumente mit Editor, JSON-LD-Ontologie (Schema.org) und Wiki-Links
-- **Knowledge Graph**: Interaktiver Force-Graph über alle Inhalte (JSON-LD `@graph`)
+- **Knowledge Graph**: Interaktiver Force-Graph über alle Inhalte, mit
+  Filtern, Herkunft (nativ/importiert/inferiert) und Reasoning-Panel
 - **Aufgaben**: Projekte und Aufgaben im Kanban-Stil mit Prioritäten und Fälligkeiten
 - **Pinnwand (Canvas)**: Visuelle Planung mit Karten und Verbindungen
 - **Kalender**: ICS/iCal-Provider mit Monats-/Wochenansicht
@@ -52,7 +53,7 @@ konfigurierte Tools selbstständig aus.
   Verwalten), per Default gehört jeder Graph nur seinem Eigentümer. Der
   öffentliche Teilgraph ist anonym lesbar und föderierbar
   (`/.well-known/void`, dereferenzierbare Entitäts-IRIs)
-- **Selbstmodell & Einführung** (`/onboarding`): Der Workspace beschreibt sich
+- **Selbstmodell & Einführung** (`/onboarding`, [docs/selbstmodell.md](./docs/selbstmodell.md)): Der Workspace beschreibt sich
   in seinem eigenen Graphen — Module, verwaltete Entitätstypen, einbindbare
   Quellen und die aktiven Fähigkeiten der Laufzeitumgebung stehen als RDF in
   `graph/meta` und werden beim Start aus dem Code erzeugt; der Assistent holt
@@ -159,7 +160,10 @@ bun run test:e2e   # Playwright E2E (braucht Build; LLM-Test skippt ohne Endpunk
 bun run build      # Produktion
 ```
 
-CI läuft via GitHub Actions (`.github/workflows/ci.yml`): Lint → Typecheck → Tests → Build.
+CI läuft via GitHub Actions (`.github/workflows/ci.yml`): Lint → Typecheck →
+Ontologie-Check (`ow.ttl` ↔ `vocab.ts`) → Unit-Tests → Build; auf Pull
+Requests zusätzlich das blockierende E2E-Gate (Playwright: Mobile-UX,
+Accessibility, Home-Assistant-Ingress).
 
 ## Design-Philosophie
 
@@ -176,27 +180,38 @@ Neutrale Töne mit `#00674F`-Teal-Akzent. Hell-/Dunkelmodus mit System-Erkennung
   Path-Traversal-Schutz, SSRF-Schutz im Tool-Executor
 - **Anmeldung**: Die App führt bewusst keinen eigenen Anmeldefluss. Sie liest
   die Identität aus ihrer Umgebung (`OW_AUTH_MODE`: Home-Assistant-Ingress,
-  vorgelagerter OIDC-Proxy, oder ein selbst geprüftes Bearer-Token) und zeigt
-  sie an; die Durchsetzung übernimmt der Proxy vor der App. Das
-  Server-Compose bringt ihn mit ([docs/deployment.md](./docs/deployment.md)).
-- **Scope**: Rechte pro Nutzer und Graph sind noch nicht implementiert
-  (Graph Core M13, [GRAPH_CORE_SPEC.md](./GRAPH_CORE_SPEC.md) §17) —
-  `capabilities.multiUser` steht deshalb auf `false`. Ohne Auth-Proxy davor
-  ist die Installation Einzelnutzer-Betrieb.
+  vorgelagerter OIDC-Proxy, oder ein selbst geprüftes Bearer-Token); WER
+  hereinkommt, entscheidet der Proxy davor. Das Server-Compose bringt ihn
+  mit ([docs/deployment.md](./docs/deployment.md)).
+- **Rechte**: WAS eine Identität sehen und ändern darf, steht als
+  Web-Access-Control-RDF in `graph/acl` — pro Named Graph, per Default
+  gehört jeder Graph nur seinem Eigentümer, und jeder Lesepfad (SPARQL,
+  Retrieval, MCP, Föderation, Suche, Export) bezieht sein Dataset vom
+  Resolver ([docs/multi-user.md](./docs/multi-user.md)). Ohne
+  Anmeldeverfahren ist die Installation Einzelnutzer-Betrieb — dann gehört
+  ihr alles selbst.
 
 ## Projekt-Struktur
 
 ```
 src/
-├── app/            # Seiten und API-Routen
-├── components/     # UI-Komponenten (a2ui, assistant, dashboard, pwa, …)
-├── lib/            # Core: inference, storage (atomar), tools, settings, security
+├── app/            # Seiten und API-Routen (App Router), inkl. /graph/* und /onboarding
+├── components/     # UI-Komponenten (ui, layout, a2ui, assistant, dashboard, pwa, …)
+├── lib/
+│   ├── graph/      # Der Kern: Store, Serialisierung, Workspace-CRUD, Connectors,
+│   │               #   SPARQL, Reasoning, Suche/Retrieval, Föderation, ACL, MCP,
+│   │               #   Selbstmodell (meta/) und Einführungsstrecke (onboarding/)
+│   ├── platform/   # Runtime-Adapter (server | ha-addon | local), Auth, Base-Path
+│   ├── ai/         # Provider, isomorphe Engine, MCP-/A2A-Clients
+│   ├── app/        # Modul-Registry: eine Quelle für Navigation und Selbstmodell
+│   └── …           # skills, tools, agents, chat, calendar, security, storage
 └── types/          # TypeScript-Definitionen
-data/               # Local-First-Datenhaltung (JSON/Markdown), data/secure ausgenommen
+ontology/           # ow.ttl (Produktvokabular), rules/ (Reasoning), shapes/ (SHACL)
+data/               # Projektionen (docs/tasks/canvas) + Graph-Snapshot (data/graph)
 public/             # PWA: sw.js, icons, offline.html (Manifest ist eine Route)
 deploy/             # Packaging: HA-Add-on (config.yaml) und server-Compose
 scripts/            # Start-Einstieg des Images, Base-Path-Rewrite, Ingress-Proxy
-e2e/                # Playwright-Tests
+tests/ e2e/         # Vitest-Suiten und Playwright-Gate
 ```
 
 ## API-Routen (Auszug)

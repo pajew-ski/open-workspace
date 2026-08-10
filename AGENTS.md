@@ -507,7 +507,8 @@ Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
   Grant-Berechnung) zieht sie nach: Auffüller wie beim Start, No-Op ohne
   neue Graphen. Abnahme: `tests/graph/self-model.test.ts`,
   `tests/graph/onboarding.test.ts` (inkl. dieses Falls: erst ohne Regel
-  unsichtbar, dann mit).
+  unsichtbar, dann mit). Doku:
+  [docs/selbstmodell.md](./docs/selbstmodell.md).
 - **Invarianten** (Review-Blocker, SPEC §2/§17.3): RDF ist die eine
   Wahrheit; Wissen ≠ Präsentation; asserted ≠ inferred; ein
   Connector-Vertrag für alles Externe; kein `any` unter `src/lib/graph/`
@@ -559,10 +560,13 @@ vorinstallierten Browser (die Konfiguration wertet die Variable aus).
    Graph-Ausbaus (M0–M14, Invarianten, Abnahmen) — Pflicht für Graph-Arbeit
 2. [docs/multi-user.md](./docs/multi-user.md) — Identität, ACL und
    Durchsetzung (§17) — Pflicht, sobald ein Lesepfad berührt wird
-3. [docs/ai-platform.md](./docs/ai-platform.md) — Architektur der AI-Schicht
-4. [ANALYSE.md](./ANALYSE.md) — Bestandsaufnahme + **§5 Roadmap** (P0/P1/P2)
-5. [TODO.md](./TODO.md) — Roadmap als abhakbare Liste (inkl. Graph Core)
-6. Diesen Abschnitt hier für die Architektur-Prinzipien
+3. [docs/selbstmodell.md](./docs/selbstmodell.md) — Selbstmodell,
+   Modul-Registry und Einführungsstrecke (§18) — Pflicht, sobald eine
+   Seite dazukommt oder verschwindet
+4. [docs/ai-platform.md](./docs/ai-platform.md) — Architektur der AI-Schicht
+5. [ANALYSE.md](./ANALYSE.md) — historische Bestandsaufnahme + **§5 Roadmap**
+6. [TODO.md](./TODO.md) — Roadmap als abhakbare Liste (inkl. Graph Core)
+7. Diesen Abschnitt hier für die Architektur-Prinzipien
 
 **Nächste sinnvolle Schritte**: Der Graph-Ausbau nach GRAPH_CORE_SPEC ist
 mit M14 **vollständig** — auch §18 ist umgesetzt. Was jetzt kommt, steht
@@ -605,58 +609,59 @@ Der **Persönliche Assistent** ist der zentrale AI-Agent und einziger Ansprechpa
 - **Allgegenwärtig**: Als Chat-Widget unten rechts auf allen Seiten verfügbar
 
 ### Fähigkeiten
-- Wissensbasis durchsuchen und bearbeiten (Professional Editor)
-- Canvas-Karten erstellen und verknüpfen
-- Aufgaben verwalten und priorisieren
-- Global Finder nutzen (`workspace_finder`) für kontext-sensitive Suchen
+- Dokumente (`/docs`) durchsuchen, anlegen und bearbeiten
+- Pinnwand-Karten (`/canvas`) erstellen und verknüpfen
+- Aufgaben und Projekte (`/tasks`) verwalten und priorisieren
+- Global Finder nutzen (`workspace_finder`, seit M8 auf dem Graph-Index)
 - A2A-Agenten koordinieren und delegieren
-- Tools via MCP aufrufen
+- Werkzeuge aufrufen: Builtins, API-Tools, MCP-Tools
 - Code generieren und analysieren
-- Markdown-Dokumente erstellen
 
 ### Kontext-Informationen
 Der Assistent erhält automatisch:
 - Aktuelle Seite/Modul
 - Sichtbare Inhalte im Browser (Dynamic `viewState`)
 - Ausgewählte Elemente
-- Ausgewählte Elemente
 - Letzte Aktionen des Nutzers
 - Relevante Daten aus der Wissensbasis
+- **Systemkontext aus dem Selbstmodell** (§18, M14): Module, ihre Routen,
+  die von ihnen verwalteten Entitätstypen, die einbindbaren Quellen und
+  die aktiven Fähigkeiten dieser Runtime — per SPARQL aus `graph/meta`
+  abgefragt, nicht im Prompt gepflegt. Ohne erreichbares Backend fehlt
+  dieser Block ehrlich, statt veraltet zu sein.
 
 ### Architektur
 
 ```
 open-workspace/
 ├── src/
-│   ├── app/
-│   │   ├── page.tsx              # Dashboard
-│   │   ├── knowledge/            # Wissensbasis
-│   │   ├── canvas/               # Visuelle Planung
-│   │   ├── tasks/                # Aufgaben
-│   │   ├── calendar/             # Kalender (ICS)
-│   │   ├── agents/               # A2A Agenten
-│   │   ├── communication/        # Matrix Chat
-│   │   ├── settings/             # Einstellungen
-│   │   └── api/                  # API-Routen
-│   │       ├── chat/             # AI Chat + Health + Conversations
-│   │       ├── calendar/         # Calendar Providers + Events
-│   │       ├── notes/            # Notes CRUD
-│   │       └── tasks/            # Tasks CRUD
-│   ├── components/
-│   │   ├── ui/                   # Base UI (Material Design)
-│   │   ├── layout/               # App Shell
-│   │   └── assistant/            # Persönlicher Assistent
+│   ├── app/                      # Seiten + API-Routen (App Router)
+│   │   ├── page.tsx              # Übersicht (Dashboard)
+│   │   ├── docs/ tasks/ canvas/ calendar/ communication/
+│   │   ├── agents/ ai/ skills/ tools/ assistant/ settings/
+│   │   ├── onboarding/           # Einführungsstrecke (§18)
+│   │   ├── graph/                # Explorer + sparql/ connectors/
+│   │   │                         #   federation/ access/
+│   │   ├── u/[userId]/…          # Dereferenzierbare Entitäts-IRIs (§17.5)
+│   │   └── api/                  # chat, docs, tasks, projects, canvas,
+│   │                             #   calendar, finder, graph/*, mcp,
+│   │                             #   onboarding, runtime, …
+│   ├── components/               # ui, layout, a2ui, assistant, dashboard,
+│   │                             #   finder, notifications, pwa, seo, …
 │   └── lib/
-│       ├── inference/            # Ollama Client
-│       ├── calendar/             # ICS Parser
-│       └── storage/              # Notes, Tasks, Chat, Calendar
-├── data/
-│   ├── notes/                    # Markdown-Notizen (GitHub-sync)
-│   ├── tasks/                    # Aufgaben (JSON)
-│   ├── canvas/                   # Canvas-Karten (JSON)
-│   ├── chat/                     # Konversationen (JSON)
-│   └── calendar/                 # Kalender-Provider & Events (JSON)
-└── public/                       # Static Assets
+│       ├── graph/                # DER Kern: store, serialize, workspace,
+│       │                         #   connectors, sparql, reasoning, search,
+│       │                         #   federation, authz, mcp, meta, onboarding
+│       ├── platform/             # Runtime-Adapter, Auth, Base-Path
+│       ├── ai/                   # Provider, Engine, MCP-/A2A-Clients
+│       ├── app/modules.ts        # Modul-Registry (Navigation + Selbstmodell)
+│       ├── skills/ tools/ agents/ chat/ calendar/ connections/ security/
+│       └── storage/              # Fassaden über die Store-first-CRUD
+├── ontology/                     # ow.ttl, rules/, shapes/
+├── data/                         # Projektionen + Snapshot (siehe Data Layer)
+├── deploy/                       # server-Compose, HA-Add-on
+├── scripts/                      # start.mjs, base-path, migrate, checks
+└── tests/ e2e/                   # Vitest + Playwright
 ```
 
 ## Core Protokolle
@@ -756,31 +761,43 @@ Keys AES-256-GCM-verschlüsselt oder browser-lokal):
 
 ## Data Layer
 
-### Documents (Markdown + JSON-LD)
-Refactored from "Notes". Stored as `.md` files in `data/docs/`.
-- **Structure**: Markdown with YAML Frontmatter
-- **Ontology**: Schema.org compliant JSON-LD injected automatically.
-  - `TechArticle`, `BlogPosting`, `HowTo`, `DefinedTerm`.
-  - Polymorphic typing based on tags and content.
-  - Internal links `[[Link]]` are resolved to Graph edges (`mentions`).
-  - **Single Source of Truth**: All Knowledge is here.
-- **Multilingual**: URLs are English slugs, Content is German, `inLanguage: de`.
+**Die Wahrheit ist der RDF-Store** (SPEC §12.4/§16). Alles unter `data/`
+außer `data/graph/` ist **Projektion**: lesbar für Git und Obsidian,
+geschrieben von `src/lib/graph/workspace/files.ts`, nie direkt von der App
+gelesen. Externe Bearbeitung dieser Dateien ist erlaubt und kommt über den
+regulären Connector-Weg zurück (`obsidian-vault`, `git-backup`) — nicht
+über einen zweiten Lesepfad.
 
-### Tasks (JSON + JSON-LD)
-Stored in `data/tasks/tasks.json`.
-- **Ontology**: Mapped to `schema.org/Project` (Projects) and `schema.org/Action` (Tasks).
-- **Status**: Mapped to `ActiveActionStatus`, `CompletedActionStatus`.
+### Dokumente (Projektion: `data/docs/*.md`)
+- Markdown mit YAML-Frontmatter; Wikilinks `[[Ziel]]` sind `ow:linksTo`,
+  Tags `skos:Concept` mit `skos:broader`.
+- Typen: `ow:Document` ⊑ `schema:DigitalDocument`, polymorph verfeinert
+  (`TechArticle`, `BlogPosting`, `HowTo`, `DefinedTerm`).
+- Mehrsprachig gedacht: englische Slugs in der URL, deutscher Inhalt,
+  `inLanguage: de`.
 
-### Canvas (JSON + JSON-LD)
-Stored in `data/canvas/`.
-- **Ontology**: Mapped to `schema.org/CreativeWork` (VisualArtwork).
-- **Graph**: Diagram nodes represent `hasPart`.
+### Aufgaben und Projekte (Projektion: `data/tasks/*.json`)
+- `ow:Task` ⊑ `schema:Action`, `ow:Project` ⊑ `schema:Project`; Status als
+  `ActiveActionStatus`/`CompletedActionStatus`, der exakte native Zustand
+  zusätzlich in Quelltreue-Termen (`ow:workflowStatus`, `ow:priority`, …).
 
-### Kalender (ICS/JSON)
-Provider-Konfiguration in `data/calendar/providers.json`. Gecachte Events in `data/calendar/events.json`.
+### Pinnwände (Projektion: `data/canvas/*.json`)
+- `ow:Canvas` ⊑ `schema:CreativeWork` im Wissensgraphen; **Layout**
+  (Position, Größe, Farbe, Viewport) ausschließlich in
+  `graph/<u>/presentation` (Invariante 2).
 
-### Chat (JSON)
-Historie und Konversationen in `data/chat/conversations.json`.
+### Graph-Snapshot (`data/graph/`)
+- Deterministische N-Quads je kanonischem Graphen plus `manifest.json`
+  (RDFC-1.0, byte-identisch → git-tauglich). `acl.nq` liegt NEBEN dem
+  Manifest (§17.4). `inferred/*` und die Suchindizes werden nie
+  persistiert — sie entstehen beim Start neu.
+
+### Noch keine Graph-Bürger (instanzweit, nicht nutzerskaliert)
+- Kalender: `data/calendar/providers.json` + `events.json`
+- Chat-Historie: `data/chat/conversations.json`
+- AI-Schicht: `data/ai/`, `data/agents/`, `data/tools/` — bleiben operative
+  Konfiguration, weil sie auch serverlos im Browser laufen; ihr Spiegel in
+  `graph/meta` wird generiert (M9).
 
 ## Modul-Agenten
 
@@ -789,17 +806,19 @@ Die Anwendung unterstützt nun **Dynamisches Agenten-Management**:
 - **Remote (A2A)**: Agenten, die extern laufen und via HTTP/A2A kommunizieren.
 - **Connections**: Remote Agenten können mit sicheren Credentials (z.B. Bearer Token) verknüpft werden.
 
-Siehe [architecture_agents.md](docs/architecture_agents.md) für die detaillierte Architektur-Vision.
+Welche Module es gibt und was sie verwalten, steht nicht mehr in einer
+Tabelle, sondern im **Selbstmodell** (`graph/meta`, erzeugt aus
+`src/lib/app/modules.ts`) — abfragbar per SPARQL:
 
-| Modul | Agent-Rolle | Kontext-Zugriff |
-|-------|------------|-----------------|
-| Übersicht | Übersicht-Assistent | System-Metriken, aktuelle Items |
-| Wissensbasis | Recherche-Assistent | Notizen, Dokumente, Artefakte |
-| Pinnwand | Planungs-Assistent | Karten, Verbindungen, Layout |
-| Aufgaben | Projekt-Assistent | Tasks, Deadlines, Fortschritt |
-| Kalender | Zeit-Assistent | Termine, Verfügbarkeit |
-| Agenten | A2A Koordinator | Agent-Configs, MCP Tools |
-| Kommunikation | Chat-Assistent | Matrix Rooms, Nachrichten |
+```sparql
+SELECT ?label ?route ?typ WHERE {
+  GRAPH <…graph/meta> { ?m a ow:Module ; schema:name ?label ; ow:route ?route .
+                        OPTIONAL { ?m ow:entityType ?typ } }
+} ORDER BY ?route
+```
+
+Der Assistent bezieht seinen Modul-Kontext genau daraus; eine gepflegte
+Kopie wäre die vierte Wahrheit (§18).
 
 ## Entwicklung
 
@@ -817,7 +836,9 @@ bun run build      # Produktion
 
 - **Sprache**: TypeScript (strict mode)
 - **API**: Englisch
-- **UI-Labels**: Deutsch (Standard), Englisch (umschaltbar)
+- **UI-Labels**: Deutsch. Englisch ist geplant, aber NICHT gebaut —
+  `next-intl` steht als P0 in TODO.md; bis dahin keine Sprach-Umschalter
+  in der UI behaupten (Invariante 10)
 - **Anrede**: Immer informell (du-Form, nie Sie-Form)
 - **Umlaute**: Korrekte ä, ö, ü, ß verwenden (nie ae, oe, ue)
 - **Design**: **Mobile First!**

@@ -20,7 +20,6 @@ import { resolveDataset, type DatasetAuthz } from '../sparql/protocol';
 import type { SelfModelApp, SelfModelModule, SelfModelView } from './self-model-view';
 
 export type { SelfModelApp, SelfModelModule, SelfModelView } from './self-model-view';
-export { moduleForPath, systemContextText } from './self-model-view';
 
 interface Dataset {
     defaultGraphs: NamedNode[];

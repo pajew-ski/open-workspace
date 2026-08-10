@@ -753,7 +753,7 @@ SPARQL SELECT · SPARQL DESCRIBE · SPARQL mit manipuliertem `FROM` · SPARQL UP
 
 ## 18. Selbstmodell des Systems
 
-Übernommen als Muster aus temet-nosce, nicht als Code. Der Workspace beschreibt sich selbst in seinem eigenen Graphen. **Umgesetzt mit M14** (siehe §13): Generator `src/lib/graph/meta/self-model.ts` aus der Modul-Registry `src/lib/app/modules.ts`, Einführungsstrecke unter `/onboarding`, Abnahme in `tests/graph/self-model.test.ts` und `tests/graph/onboarding.test.ts`.
+Übernommen als Muster aus temet-nosce, nicht als Code. Der Workspace beschreibt sich selbst in seinem eigenen Graphen. **Umgesetzt mit M14** (siehe §13): Generator `src/lib/graph/meta/self-model.ts` aus der Modul-Registry `src/lib/app/modules.ts`, Einführungsstrecke unter `/onboarding`, Abnahme in `tests/graph/self-model.test.ts` und `tests/graph/onboarding.test.ts`; Betriebsdoku: [docs/selbstmodell.md](./docs/selbstmodell.md).
 
 - In `graph/meta` liegt ein Modell der Anwendung: Module, Seiten, Entitätstypen, verfügbare Connectors, Tools, Skills, Agenten, aktive Capabilities der Runtime, Schema-Version. Alles als reguläre Knoten mit demselben Vokabular wie Nutzerinhalte.
 - Damit sind Fragen wie „was kann dieses System", „welche Quellen sind eingebunden", „welche Skills brauchen welche Tools", „was ist seit dem letzten Sync passiert" **abfragbar** statt hartkodiert — und über den MCP-Server auch für externe Agenten beantwortbar.
