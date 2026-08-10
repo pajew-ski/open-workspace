@@ -21,6 +21,62 @@
     color: var(--color-error-text);
 }
 
+.controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+}
+
+.searchLabel {
+    flex: 1 1 220px;
+    min-width: 0;
+}
+
+.search {
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+    font-size: var(--text-sm);
+}
+
+.toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+}
+
+.hint {
+    margin: 0;
+    font-size: var(--text-xs);
+    color: var(--color-text-tertiary);
+}
+
+.toolTag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: var(--space-2);
+    padding: 1px 6px;
+    border-radius: var(--radius-full);
+    background: var(--color-primary-subtle);
+    color: var(--color-primary);
+    font-size: 11px;
+    font-weight: 500;
+    vertical-align: middle;
+}
+
+.modelNote {
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+}
+
 .modelList {
     list-style: none;
     margin: 0;
