@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react';
 import { WidgetWrapper } from './WidgetWrapper';
 import { ActivityEvent } from '@/lib/activity';
 import { FileText, CheckSquare, Layout, Box } from 'lucide-react';
+import type { BaseWidgetProps } from './types';
 import styles from './Widgets.module.css';
 
-export function ActivityWidget({ id, title, isEditing, onDelete }: any) {
+export function ActivityWidget({ id, title, isEditing, onDelete }: BaseWidgetProps) {
     const [activities, setActivities] = useState<ActivityEvent[]>([]);
 
     useEffect(() => {

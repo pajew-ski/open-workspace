@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { Button, Input, Card, CardContent } from '@/components/ui';
 import styles from './AddApiToolDialog.module.css';
+import type { CreateToolRequest } from '@/lib/tools/types';
 
 interface AddApiToolDialogProps {
     onClose: () => void;
-    onAdd: (data: any) => Promise<void>;
+    onAdd: (data: CreateToolRequest) => Promise<void>;
 }
 
 export function AddApiToolDialog({ onClose, onAdd }: AddApiToolDialogProps) {

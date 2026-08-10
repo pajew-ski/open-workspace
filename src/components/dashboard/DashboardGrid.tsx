@@ -1,24 +1,17 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { WidgetWrapper } from './WidgetWrapper';
 import { WelcomeWidget } from './WelcomeWidget';
 import { StatsWidget } from './StatsWidget';
 import { ActivityWidget } from './ActivityWidget';
 import { ImageWidget } from './ImageWidget';
 import { QuickAccessWidget } from './QuickAccessWidget';
-import { Plus, GripHorizontal } from 'lucide-react';
+import { GripHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui';
 import styles from './DashboardGrid.module.css';
 
-export interface Widget {
-    id: string;
-    type: 'welcome' | 'stats' | 'activity' | 'image' | 'quick-access';
-    order: number;
-    content?: string;
-    url?: string;
-    [key: string]: any;
-}
+export type { Widget, WidgetType } from './types';
+import type { Widget, WidgetType } from './types';
 
 interface DashboardGridProps {
     widgets: Widget[];
@@ -90,14 +83,14 @@ export function DashboardGrid({ widgets, isEditing, setWidgets }: DashboardGridP
         setWidgets(widgets.filter(w => w.id !== id));
     };
 
-    const updateWidget = (id: string, updates: any) => {
+    const updateWidget = (id: string, updates: Partial<Widget>) => {
         setWidgets(widgets.map(w => w.id === id ? { ...w, ...updates } : w));
     };
 
-    const addWidget = (type: string) => {
+    const addWidget = (type: WidgetType) => {
         const newWidget: Widget = {
             id: `${type}-${Date.now()}`,
-            type: type as any,
+            type,
             order: widgets.length,
             content: type === 'welcome' ? '<h2>Neuer Text</h2><p>Bearbeite mich...</p>' : undefined
         };

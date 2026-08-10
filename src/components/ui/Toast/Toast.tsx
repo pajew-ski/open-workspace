@@ -63,22 +63,24 @@ export function useToast() {
         return () => { listeners.delete(listener); };
     }, []);
 
+    // Modul-Singleton: über die Lebenszeit der App identisch, deshalb
+    // taugt es als Dependency, ohne die Callbacks instabil zu machen.
     const store = getToastStore();
 
     return {
         toasts: store.toasts,
         success: useCallback((message: string, undoAction?: () => void) => {
             return store.add({ message, type: 'success', undoAction });
-        }, []),
+        }, [store]),
         error: useCallback((message: string) => {
             return store.add({ message, type: 'error', duration: 8000 });
-        }, []),
+        }, [store]),
         info: useCallback((message: string) => {
             return store.add({ message, type: 'info' });
-        }, []),
+        }, [store]),
         remove: useCallback((id: string) => {
             store.remove(id);
-        }, []),
+        }, [store]),
     };
 }
 
