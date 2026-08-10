@@ -18,8 +18,8 @@
     {
       "iri": "urn:ow:14b46c31-2026-4d79-9fe6-4516cf791ea6:graph/u/default/workspace",
       "file": "workspace.nq",
-      "quads": 208,
-      "sha256": "138845f645e29af3cb33c266c62d58b3c20da5ab248369bf2409315b1ec32d8b"
+      "quads": 226,
+      "sha256": "bed9336f0af6e7c9b19b29abf54d06d3f955271bf63f1e173b492f5c55011eb0"
     }
   ]
 }

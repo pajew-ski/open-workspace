@@ -114,6 +114,35 @@ function docFileContent(doc: Doc): string {
 
 // --- Bootstrap-Leser -----------------------------------------------------
 
+/**
+ * Ohne diese Felder gibt es kein Dokument: `id` trägt die IRI, `slug` den
+ * Dateinamen, die Zeitstempel die Ordnung. Fehlt eines, entstünde eine
+ * Entität mit `undefined` im Bezeichner — schlimmer als gar keine.
+ */
+const REQUIRED_FRONTMATTER_KEYS = ['id', 'slug', 'title', 'createdAt', 'updatedAt'] as const;
+
+/**
+ * Eine Markdown-Datei zu einem Dokument machen — oder begründen, warum
+ * nicht. Vorher fiel eine Datei ohne Frontmatter hier stillschweigend
+ * heraus: Sie lag sichtbar in `data/docs`, tauchte aber in keiner
+ * Ansicht und keinem Graphen auf, und nichts sagte einem das. Genau die
+ * Sorte Attrappe, die dieses Repo nicht haben will.
+ */
+export function docFromMarkdown(raw: string): { doc: Doc } | { skipped: string } {
+    const { frontmatter, body } = parseFrontmatter(raw);
+    if (!frontmatter) {
+        return { skipped: 'kein Frontmatter (--- am Dateianfang)' };
+    }
+    const missing = REQUIRED_FRONTMATTER_KEYS.filter(key => {
+        const value = frontmatter[key];
+        return typeof value !== 'string' || value.trim() === '';
+    });
+    if (missing.length > 0) {
+        return { skipped: `Frontmatter unvollständig, fehlt: ${missing.join(', ')}` };
+    }
+    return { doc: { ...frontmatter, tags: frontmatter.tags || [], content: body } };
+}
+
 async function readDocsFromDir(docsDir: string): Promise<Doc[]> {
     let entries: string[];
     try {
@@ -124,10 +153,12 @@ async function readDocsFromDir(docsDir: string): Promise<Doc[]> {
     const docs: Doc[] = [];
     for (const file of entries.filter(f => f.endsWith('.md')).sort()) {
         const raw = await fs.readFile(path.join(docsDir, file), 'utf-8');
-        const { frontmatter, body } = parseFrontmatter(raw);
-        if (frontmatter) {
-            docs.push({ ...frontmatter, tags: frontmatter.tags || [], content: body });
+        const result = docFromMarkdown(raw);
+        if ('doc' in result) {
+            docs.push(result.doc);
+            continue;
         }
+        console.warn(`[workspace] ${path.join(docsDir, file)} wird übergangen: ${result.skipped}`);
     }
     return docs;
 }
