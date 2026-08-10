@@ -3,22 +3,9 @@
 import { useCopilotReadable, useCopilotAction } from "@copilotkit/react-core";
 import { usePathname, useRouter } from "next/navigation";
 import { useAssistantContext } from "@/lib/assistant/context";
+import { useCurrentModule } from "@/lib/assistant/useSelfModel";
 import { ReactNode } from "react";
 
-/**
- * Module context mapping for human-readable descriptions
- */
-const MODULE_CONTEXT: Record<string, { name: string; description: string }> = {
-    '/': { name: 'Dashboard', description: 'Ubersicht und Schnellzugriff' },
-    '/docs': { name: 'Dokumente', description: 'Notizen und Dokumente (Wissensbasis)' },
-    '/canvas': { name: 'Canvas', description: 'Visuelle Planung (Pinnwand)' },
-    '/tasks': { name: 'Aufgaben', description: 'Projekt- und Aufgabenverwaltung' },
-    '/calendar': { name: 'Kalender', description: 'Termine und Zeitplanung' },
-    '/agents': { name: 'Agenten', description: 'A2A Agent-Konfiguration' },
-    '/communication': { name: 'Kommunikation', description: 'Matrix Chat' },
-    '/settings': { name: 'Einstellungen', description: 'App-Konfiguration' },
-    '/graph': { name: 'Ontologie-Graph', description: 'Wissensvisualisierung' },
-};
 
 /**
  * CopilotStateProvider
@@ -31,14 +18,12 @@ export function CopilotStateProvider({ children }: { children: ReactNode }) {
     const router = useRouter();
     const { viewState } = useAssistantContext();
 
-    // Determine current module from pathname
-    const getCurrentModule = () => {
-        const routes = Object.keys(MODULE_CONTEXT).sort((a, b) => b.length - a.length);
-        const match = routes.find(r => pathname === r || (r !== '/' && pathname.startsWith(r)));
-        return match ? MODULE_CONTEXT[match] : MODULE_CONTEXT['/'];
-    };
-
-    const currentModule = getCurrentModule();
+    // Modul-Kontext aus dem Selbstmodell des Graphen (SPEC §18) statt aus
+    // einer zweiten gepflegten Tabelle neben dem Assistenten.
+    const active = useCurrentModule(pathname);
+    const currentModule = active
+        ? { name: active.label, description: active.description, route: active.route }
+        : null;
 
     // Expose current route and module
     useCopilotReadable({
@@ -47,7 +32,7 @@ export function CopilotStateProvider({ children }: { children: ReactNode }) {
     });
 
     useCopilotReadable({
-        description: "Current module name and description",
+        description: "Current module name and description (from the graph self-model)",
         value: currentModule
     });
 

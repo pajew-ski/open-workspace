@@ -93,10 +93,16 @@ Vaults und Git-Ziele unter `/share`.
 | `oidc-bearer` | `Authorization: Bearer …` | Clients mit eigenem Token; Signatur, Issuer, Audience und Ablauf werden gegen die JWKS des Issuers geprüft (`src/lib/platform/auth/oidc.ts`) |
 
 Die Identität wird **gelesen und angezeigt** (`GET /api/runtime`, Karte
-„System" in den Einstellungen). Zugriffsrechte pro Graph sind M13 (SPEC
-§17); bis dahin steht die Durchsetzung vor der App — beim `server` der
-oauth2-proxy, beim Add-on Home Assistant. `capabilities.multiUser` bleibt
-deshalb `false`.
+„System" in den Einstellungen). WER hereinkommt, entscheidet weiterhin die
+Schicht davor — beim `server` der oauth2-proxy, beim Add-on Home Assistant.
+WAS eine Identität dann sehen und ändern darf, steht seit M13 als
+Web-Access-Control-RDF in `graph/acl` (SPEC §17,
+[multi-user.md](./multi-user.md)); `capabilities.multiUser` steht deshalb
+für `server` und `ha-addon` auf `true`.
+
+**Sicherheitskritisch**: Läuft ein Anmeldeverfahren und kommt eine Anfrage
+ohne geprüfte Identität an, ist sie **anonym** — nicht der Einzelnutzer.
+Ein fehlender Header ist damit kein Generalschlüssel.
 
 ## Runtime `local` (Browser)
 

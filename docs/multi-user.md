@@ -122,6 +122,16 @@ Der Update-Guard vergleicht Fingerabdrücke vor und nach der Transaktion und
 rollt zurück; die Ablehnung unterscheidet nicht zwischen
 „systemverwaltet", „fremd" und „existiert nicht".
 
+### Graphen, die erst zur Laufzeit entstehen
+
+Der Grant kommt ausschließlich aus `graph/acl`, und die Standardregeln
+entstehen beim Start. Ein Graph, der DANACH angelegt wird — der
+Import-Graph eines Connector-Laufs, ein Inferenz-Graph des Reasoners —
+hätte deshalb keine Regel und wäre bis zum nächsten Neustart unsichtbar.
+`ensureGraphAuthorizations` (aufgerufen im Anfrage-Kontext, vor der
+Grant-Berechnung) zieht sie nach: derselbe Auffüller wie beim Start,
+No-Op ohne neue Graphen, und niemals ein Zurücksetzer bestehender Regeln.
+
 ## Nebenkanäle (§17.4)
 
 | Kanal | Umsetzung |

@@ -34,6 +34,19 @@ interface GraphLink {
     inferred?: boolean;
 }
 
+/** Herkunft der Aussagen (GET /api/graph/provenance, GRAPH_CORE_SPEC §18). */
+interface ProvenanceBucketPayload {
+    graph: string;
+    scope: string;
+    statements: number;
+}
+
+interface ProvenancePayload {
+    native: ProvenanceBucketPayload[];
+    imported: ProvenanceBucketPayload[];
+    inferred: ProvenanceBucketPayload[];
+}
+
 /** Reasoning-Zustand (GET /api/graph/reasoning, GRAPH_CORE_SPEC §7.3). */
 interface ReasoningPayload {
     status: Array<{ scope: string; graph: string; inferred: number; generatedAt?: string }>;
@@ -257,6 +270,32 @@ export default function GraphExplorerPage() {
         } finally {
             setReasoningBusy(false);
         }
+    }, []);
+
+    // --- Herkunft (M14, GRAPH_CORE_SPEC §11/§18) ---
+    // Nativ, importiert, inferiert sind drei Graph-Familien, keine
+    // Anzeige-Konvention. Die Zahlen kommen aus derselben Quelle wie in
+    // der Einführungsstrecke; ohne Backend bleibt der Abschnitt leer.
+    const [provenance, setProvenance] = useState<ProvenancePayload | null>(null);
+    const [provenanceError, setProvenanceError] = useState<string | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const response = await fetch('/api/graph/provenance');
+                const data = await response.json();
+                if (cancelled) return;
+                if (!response.ok) {
+                    setProvenanceError(data.details || data.error || 'Herkunft nicht ermittelbar');
+                    return;
+                }
+                setProvenance(data as ProvenancePayload);
+            } catch (error) {
+                if (!cancelled) setProvenanceError(error instanceof Error ? error.message : 'Herkunft nicht ermittelbar');
+            }
+        })();
+        return () => { cancelled = true; };
     }, []);
 
     // Inferenz-Kanten nachladen, sobald die Überlagerung eingeschaltet wird.
@@ -909,6 +948,39 @@ export default function GraphExplorerPage() {
                                                 </ul>
                                             )}
                                         </div>
+                                    )}
+                                </div>
+
+                                <div className={styles.section}>
+                                    <h4>Herkunft</h4>
+                                    {provenanceError && <p className={styles.hint}>{provenanceError}</p>}
+                                    {!provenance && !provenanceError && <p className={styles.hint}>Wird gezählt …</p>}
+                                    {provenance && (
+                                        <>
+                                            {([
+                                                { key: 'native', label: 'Nativ (von dir behauptet)', buckets: provenance.native },
+                                                { key: 'imported', label: 'Importiert (aus Quellen)', buckets: provenance.imported },
+                                                { key: 'inferred', label: 'Inferiert (abgeleitet)', buckets: provenance.inferred },
+                                            ] as const).map(group => (
+                                                <div key={group.key} className={styles.provenanceGroup}>
+                                                    <span className={styles.provenanceLabel}>
+                                                        {group.label}
+                                                        <strong>{group.buckets.reduce((sum, bucket) => sum + bucket.statements, 0)}</strong>
+                                                    </span>
+                                                    {group.buckets.length === 0
+                                                        ? <span className={styles.hint}>keine</span>
+                                                        : group.buckets.map(bucket => (
+                                                            <span key={bucket.graph} className={styles.hint}>
+                                                                {bucket.scope}: {bucket.statements}
+                                                            </span>
+                                                        ))}
+                                                </div>
+                                            ))}
+                                            <p className={styles.hint}>
+                                                Inferiertes steht in eigenen Graphen und wird nie behauptet — im Bild
+                                                erscheint es nur über die Überlagerung „Inferierte Kanten anzeigen&ldquo;.
+                                            </p>
+                                        </>
                                     )}
                                 </div>
 
