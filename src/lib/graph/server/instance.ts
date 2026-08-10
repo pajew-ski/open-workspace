@@ -50,6 +50,8 @@ import { projectWorkspaceFiles, readWorkspaceFiles, workspaceFilePathsFor } from
 import { invalidateSearchIndexes } from '../search/cache';
 import { replaceAiMirror } from '../meta/ai';
 import { loadAiMirrorInput } from '../meta/ai-input.server';
+import { replaceSelfModel } from '../meta/self-model';
+import { loadSelfModelInput } from '../meta/self-model-input.server';
 import { ensureDefaultAuthorizations } from '../authz/acl-graph';
 import { ensureUser, spaceOwners } from '../authz/principals';
 
@@ -63,6 +65,8 @@ interface ServerGraphState extends ServerGraph {
     mutationChain: Promise<unknown>;
     /** Nutzer, deren Erstkontakt in diesem Prozess schon erledigt ist (M13). */
     bootstrappedUsers: Set<string>;
+    /** Graphen, für die die Standardregeln schon aufgefüllt wurden (M13/M14). */
+    authorizedGraphs: Set<string>;
 }
 
 /**
@@ -126,6 +130,7 @@ async function createState(): Promise<ServerGraphState> {
         iri: createIriFactory(instanceBase),
         mutationChain: Promise.resolve(),
         bootstrappedUsers: new Set<string>(),
+        authorizedGraphs: new Set<string>(),
     };
     const fs = createNodeFileSystem();
     // 2. Vokabular + Reasoning-Axiome nach graph/vocab, Shapes nach
@@ -149,15 +154,22 @@ async function createState(): Promise<ServerGraphState> {
     //     der Installation werden bei jedem Start aus der operativen
     //     Konfiguration nach graph/meta generiert, nie von Hand gepflegt.
     const mirror = await replaceAiMirror(state, await loadAiMirrorInput());
+    // 4c. Selbstmodell (M14, SPEC §18): Module, Entitätstypen,
+    //     Connector-Arten, aktive Runtime-Fähigkeiten und Schema-Version
+    //     werden bei jedem Start aus dem CODE nach graph/meta erzeugt.
+    //     Es ändert sich nur mit dem Build — deshalb reicht der Start.
+    const selfModel = await replaceSelfModel(state, loadSelfModelInput());
     // 5. Zugriffsregeln: gesicherte Regeln zurücklesen, dann auffüllen.
     //    Vor dem Snapshot, weil der Erstkontakt den Nutzerknoten in
     //    graph/meta anlegt — und der gehört mit in dieselbe Datei.
     await restoreAclSnapshot(state.store, fs, GRAPH_DIR(), namedNode(state.iri.sharedGraph('acl')));
     const accessChanged = await bootstrapAccess(state, DEFAULT_USER_ID);
-    if (migrated || mirror.changed || accessChanged) {
+    if (migrated || mirror.changed || selfModel.changed || accessChanged) {
         await writeSnapshot(state.store, fs, GRAPH_DIR(), state.iri.instanceBase);
     }
     // 6. Inferenz-Graphen materialisieren (nie persistiert, SPEC §8.1).
+    //    Sie entstehen NACH den Standardregeln aus Schritt 5 und bekommen
+    //    ihre deshalb beim nächsten Auffüllen (ensureGraphAuthorizations).
     await runReasoning(state);
     return state;
 }
@@ -185,6 +197,7 @@ async function bootstrapAccess(state: ServerGraphState, userId: string, displayN
         ],
     });
     state.bootstrappedUsers.add(userId);
+    for (const graph of await state.store.graphs()) state.authorizedGraphs.add(graph.value);
     if (report.created.length > 0) {
         await writeAclSnapshot(state.store, createNodeFileSystem(), GRAPH_DIR(), namedNode(state.iri.sharedGraph('acl')));
     }
@@ -204,6 +217,37 @@ export async function ensureUserBootstrap(userId: string, displayName?: string):
         const changed = await bootstrapAccess(state, userId, displayName);
         if (changed) {
             await writeSnapshot(state.store, createNodeFileSystem(), GRAPH_DIR(), state.iri.instanceBase);
+        }
+    });
+}
+
+/**
+ * Füllt fehlende Standardregeln für Graphen auf, die ERST ZUR LAUFZEIT
+ * entstehen (SPEC §17.2): Import-Graphen eines Connector-Laufs und die
+ * Inferenz-Graphen des Reasoners. Beim Start greift `bootstrapAccess` nur
+ * für den Bestand, den es zu diesem Zeitpunkt gibt — ohne dieses
+ * Nachziehen bliebe ein frisch importierter Graph bis zum nächsten
+ * Neustart unsichtbar, weil der Grant ausschließlich aus `graph/acl`
+ * kommt und dort keine Regel stünde.
+ *
+ * Auffüller, kein Zurücksetzer: Bestehende Regeln bleiben unangetastet
+ * (`ensureDefaultAuthorizations`), und ein Lauf ohne neue Graphen ist ein
+ * No-Op ohne Schreibvorgang.
+ */
+export async function ensureGraphAuthorizations(): Promise<void> {
+    const state = await getState();
+    const existing = (await state.store.graphs()).map(graph => graph.value);
+    if (existing.every(graph => state.authorizedGraphs.has(graph))) return;
+    await runExclusive(async () => {
+        const handle = { store: state.store, iri: state.iri };
+        const report = await ensureDefaultAuthorizations(handle, {
+            admins: adminUsers(),
+            spaceOwners: await spaceOwners(handle),
+        });
+        for (const graph of existing) state.authorizedGraphs.add(graph);
+        if (report.created.length > 0) {
+            const fs = createNodeFileSystem();
+            await writeAclSnapshot(state.store, fs, GRAPH_DIR(), namedNode(state.iri.sharedGraph('acl')));
         }
     });
 }
@@ -300,6 +344,17 @@ export async function refreshAiMirrorAfterMutation(context: string): Promise<voi
     } catch (error) {
         console.error(`AI-Spiegel nach Mutation (${context}) nicht aktualisiert:`, error);
     }
+}
+
+/**
+ * Materialisiert die Inferenz-Graphen neu (SPEC §7.3). Import und
+ * Connector-Löschen bringen den Lauf selbst mit; Workspace-Mutationen, die
+ * einen Inferenz-Stand veralten lassen (Einführungsstrecke, M14), rufen
+ * ihn hierüber auf.
+ */
+export async function runServerReasoning(): Promise<void> {
+    const state = await getState();
+    await runExclusive(() => runReasoning(state));
 }
 
 /**

@@ -1,4 +1,5 @@
 import type { SkillMeta } from '@/lib/skills/types';
+import { systemContextText, type SelfModelView } from '@/lib/graph/meta/self-model-view';
 
 /**
  * System prompt builder for the personal assistant — shared by the
@@ -14,6 +15,15 @@ export interface PromptContext {
     viewState?: Record<string, unknown>;
     /** Compact summary of the components currently on the generative surface */
     activeSurface?: Array<Record<string, unknown>>;
+    /**
+     * Selbstmodell der Installation (GRAPH_CORE_SPEC §18): Module, Routen,
+     * verwaltete Entitätstypen, aktive Fähigkeiten der Runtime — per
+     * SPARQL aus `graph/meta` abgefragt, nicht hier gepflegt. Fehlt es
+     * (kein Backend erreichbar, kein Leserecht), behauptet der Prompt
+     * nichts über das System: eine veraltete Liste wäre schlechter als
+     * keine.
+     */
+    selfModel?: SelfModelView;
 }
 
 export interface PromptToolInfo {
@@ -97,12 +107,18 @@ export function buildSystemPrompt(options: BuildPromptOptions): string {
         skillsContext = `\n${parts.join('\n\n')}`;
     }
 
+    // §18: Der Systemkontext kommt aus dem Selbstmodell des Graphen. Ein
+    // Modul, das sich dort registriert, ist dem Assistenten damit ohne
+    // Prompt-Pflege bekannt.
+    const systemModel = context.selfModel ? systemContextText(context.selfModel, context.pathname) : '';
+    const systemContext = systemModel ? `\n\n${systemModel}` : '';
+
     return `Du bist der Persönliche Assistent im Open Workspace. Deine Aufgaben:
 
 KONTEXT:
 - Der Nutzer befindet sich gerade im Modul: ${context.module}
 - Modul-Beschreibung: ${context.moduleDescription}
-- Aktuelle Seite: ${context.pathname}${viewStateContext}${surfaceContext}${toolsContext}${agentsContext}${skillsContext}
+- Aktuelle Seite: ${context.pathname}${systemContext}${viewStateContext}${surfaceContext}${toolsContext}${agentsContext}${skillsContext}
 
 DEINE EIGENSCHAFTEN:
 - Du sprichst den Nutzer immer mit "du" an (informell, nie "Sie")
@@ -152,16 +168,6 @@ WEITERE A2UI-KOMPONENTEN & Props:
 - **List**: \`items\` | **Table**: \`columns\`, \`rows\` | **Progress**, **Chip**, **Badge**
 - **Button**: \`label\`, \`onPress\` ({ actionId }) | **Input**: \`label\`, \`placeholder\`, \`onChange\` ({ actionId })
 - **Select**: \`label\`, \`options\`, \`onSelect\` | **Checkbox**: \`label\`, \`onChange\`
-
-DEINE FÄHIGKEITEN:
-- Wissensbasis durchsuchen und bearbeiten (Professional Editor)
-- Pinnwand-Karten (Canvas) erstellen und verknüpfen
-- Aufgaben verwalten und priorisieren
-- Global Finder nutzen (@task, @note, etc.)
-- Code generieren und analysieren
-
-HINWEIS: Das Modul "Canvas" wird im UI als "Pinnwand" bezeichnet.
-Die ganzseitige Assistent-Ansicht ist unter /assistant erreichbar.
 
 Antworte immer auf Deutsch, es sei denn der Nutzer schreibt auf Englisch.
 Halte deine Antworten präzise und hilfreich.`;

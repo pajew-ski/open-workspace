@@ -86,8 +86,12 @@ test.describe('Home-Assistant-Ingress', () => {
             authenticated: true,
             userId: 'ha-e2e-user',
         });
-        // Ehrliche Fähigkeiten: Mehrbenutzerbetrieb gibt es hier nicht.
-        expect(result.body.capabilities.multiUser).toBe(false);
+        // Ehrliche Fähigkeiten: `ha-addon` und `server` sind dasselbe Image
+        // (M12) und haben deshalb dieselben Fähigkeiten — seit M13 gehört
+        // die ACL-Durchsetzung pro Named Graph dazu. Dass hier faktisch ein
+        // Nutzer arbeitet, ist eine Frage des Anmeldeverfahrens
+        // (`OW_AUTH_MODE=ha-ingress`), keine fehlende Fähigkeit.
+        expect(result.body.capabilities.multiUser).toBe(true);
         expect(result.body.capabilities.mcpServer).toBe(true);
     });
 

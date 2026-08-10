@@ -4,11 +4,11 @@
 
 ## Hier weitermachen (Einstieg für neue Sessions)
 
-**Stand 2026-08-10 (11. Ausbaustufe, Graph Core M0–M13 inkl. §12.4 —
-der Vollausbau der Spec ist damit abgeschlossen)**: Der
+**Stand 2026-08-10 (12. Ausbaustufe, Graph Core M0–M14 inkl. §12.4 und
+§18 — der Vollausbau der Spec ist damit abgeschlossen)**: Der
 **RDF-Graph ist das kanonische Datenmodell — und seit der 6. Stufe die
 einzige Wahrheit auch für die Schreibpfade**. Die verbindliche Spezifikation
-inklusive aller Meilensteine M0–M13 liegt in
+inklusive aller Meilensteine M0–M14 liegt in
 [GRAPH_CORE_SPEC.md](./GRAPH_CORE_SPEC.md) — **Arbeitsmodus: ein Meilenstein
 = eine Session = ein Branch = ein PR**; jede Session liest zuerst diesen
 Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
@@ -468,6 +468,46 @@ Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
   `tests/graph/multi-user.test.ts` (Matrix §17.6, jede Zeile ein eigener
   Negativtest über einen ECHTEN Leak-Pfad — die Kante liegt im erlaubten
   Graphen, nur ihr Ziel nicht) und `tests/graph/acl.test.ts`.
+- **Selbstmodell und Einführungsstrecke (M14)** (`src/lib/app/modules.ts`,
+  `src/lib/graph/meta/self-model*.ts`, `src/lib/graph/onboarding/`,
+  `/onboarding`): Der Workspace beschreibt sich in seinem eigenen Graphen
+  (SPEC §18). In `graph/meta` liegen die Anwendung (`schema:SoftwareApplication`
+  mit `ow:runtime`, `ow:capability`, `ow:availableConnectorKind`,
+  `schema:softwareVersion`/`schema:schemaVersion`) und ihre Module
+  (`ow:Module` mit `ow:route`, `ow:entityType`, `schema:isPartOf`) — beim
+  Start GENERIERT aus dem Code, nie gepflegt. **Die eine Quelle ist die
+  Modul-Registry** `src/lib/app/modules.ts`: Aus ihr entstehen die
+  Sidebar-Navigation UND das Selbstmodell; Icons bleiben in der Sidebar,
+  weil sie Darstellung sind. Die früher doppelt gepflegte
+  `MODULE_CONTEXT`-Tabelle (Assistent + CopilotKit-Provider) ist gelöscht,
+  und ein Test verbietet ihre Rückkehr genauso wie eine Registry, die von
+  `src/app/**/page.tsx` abweicht. **Ehrlich statt vollständig**: Ein Modul,
+  dessen Runtime-Fähigkeit fehlt (`/graph/sparql` in `local`), steht nicht
+  im Modell. Der **Assistent** bezieht seinen Systemkontext aus der Abfrage
+  (`readSelfModel` → `systemContextText`), serverseitig gelesen und vom
+  Grant geklammert — was der Client mitschickt, ist Eingabe, keine
+  Wahrheit; ohne Backend behauptet der Prompt nichts über das System.
+  **Einführungsstrecke** `/onboarding`: vier reale Schritte — Selbstmodell
+  abfragen, eigenen Knoten über die Store-first-CRUD anlegen,
+  prima-materia über den EINEN Connector-Vertrag importieren, Herkunft
+  vergleichen. Kein Übungsmodus, keine Beispieldaten; der Fortschritt ist
+  eine `ow:OnboardingStep`-Aktivität pro Nutzer in `graph/meta`
+  (`prov:used`/`prov:generated`), also geräteübergreifend und per SPARQL
+  prüfbar, und „rückgängig" löscht das Erzeugte samt Aufzeichnung
+  (Nachweis: kanonischer Dump vor/nach ist byte-identisch). Ein
+  fehlgeschlagener Import gilt nicht als erledigt. Die Herkunfts-Zählung
+  (`graph/provenance.ts`, `GET /api/graph/provenance`) speist auch den
+  Abschnitt „Herkunft" im Graph-Explorer: nativ, importiert und inferiert
+  mit denselben Zahlen, inferierte Kanten weiterhin gestrichelt und per
+  Default aus. **Dabei repariert**: Der Grant kommt ausschließlich aus
+  `graph/acl`, dessen Standardregeln beim Start entstehen — ein Graph, der
+  erst zur Laufzeit angelegt wird (Connector-Import, Inferenz-Lauf), hatte
+  keine Regel und war damit bis zum nächsten Neustart unsichtbar.
+  `ensureGraphAuthorizations` (aufgerufen im Anfrage-Kontext, vor der
+  Grant-Berechnung) zieht sie nach: Auffüller wie beim Start, No-Op ohne
+  neue Graphen. Abnahme: `tests/graph/self-model.test.ts`,
+  `tests/graph/onboarding.test.ts` (inkl. dieses Falls: erst ohne Regel
+  unsichtbar, dann mit).
 - **Invarianten** (Review-Blocker, SPEC §2/§17.3): RDF ist die eine
   Wahrheit; Wissen ≠ Präsentation; asserted ≠ inferred; ein
   Connector-Vertrag für alles Externe; kein `any` unter `src/lib/graph/`
@@ -500,13 +540,13 @@ und backend-unabhängig** — Details in [docs/ai-platform.md](./docs/ai-platfor
 - **UI**: AI-Hub (`/ai`), Skills (`/skills`), MCP-Verwaltung in `/tools`,
   A2A-Discovery in `/agents`, ModelPicker in beiden Chat-Oberflächen.
 
-Build, Typecheck, Lint (0 Errors), 470 Unit-Tests (plus der Live-Test
+Build, Typecheck, Lint (0 Errors), 495 Unit-Tests (plus der Live-Test
 gegen Wikidata, der ohne `OW_FEDERATION_LIVE=1` sichtbar übersprungen
 wird) und das **blockierende E2E-Gate** (`e2e/mobile-navigation`,
 `e2e/mobile-ux`, `e2e/a11y` inkl. der Seiten `/ai`, `/skills`, `/tools`,
-`/graph/connectors`, `/graph/sparql`, `/graph/federation` und
-`/graph/access`, dazu seit M12 `e2e/ingress.spec.ts` im eigenen
-Playwright-Projekt `ingress`)
+`/graph/connectors`, `/graph/sparql`, `/graph/federation`,
+`/graph/access` und seit M14 `/onboarding`, dazu seit M12
+`e2e/ingress.spec.ts` im eigenen Playwright-Projekt `ingress`)
 laufen grün. Der Ingress-Lauf baut sich beim ersten Mal einen zweiten
 Build (`.next-ingress`, Base-Path-Platzhalter) und startet die
 Supervisor→Proxy→App-Kette selbst; für einen frischen Build das
@@ -516,7 +556,7 @@ vorinstallierten Browser (die Konfiguration wertet die Variable aus).
 
 **Bevor du etwas Neues baust, lies in dieser Reihenfolge:**
 1. [GRAPH_CORE_SPEC.md](./GRAPH_CORE_SPEC.md) — verbindliche Spec des
-   Graph-Ausbaus (M0–M13, Invarianten, Abnahmen) — Pflicht für Graph-Arbeit
+   Graph-Ausbaus (M0–M14, Invarianten, Abnahmen) — Pflicht für Graph-Arbeit
 2. [docs/multi-user.md](./docs/multi-user.md) — Identität, ACL und
    Durchsetzung (§17) — Pflicht, sobald ein Lesepfad berührt wird
 3. [docs/ai-platform.md](./docs/ai-platform.md) — Architektur der AI-Schicht
@@ -525,22 +565,23 @@ vorinstallierten Browser (die Konfiguration wertet die Variable aus).
 6. Diesen Abschnitt hier für die Architektur-Prinzipien
 
 **Nächste sinnvolle Schritte**: Der Graph-Ausbau nach GRAPH_CORE_SPEC ist
-mit M13 **vollständig** — was jetzt kommt, steht nicht mehr in der Spec und
-will zuerst entschieden werden. Naheliegend, in dieser Reihenfolge:
+mit M14 **vollständig** — auch §18 ist umgesetzt. Was jetzt kommt, steht
+nicht mehr in der Spec und will zuerst entschieden werden. Naheliegend, in
+dieser Reihenfolge:
 
 1. **Die Anwendung selbst auf die Runtime `local` stellen**. Die Bausteine
    stehen seit M12 (Store im Web Worker, OPFS als `FileSystemLike`,
    isomorphic-git), die Graph-Oberflächen laufen aber weiterhin gegen das
-   Backend — das ist die größte ehrlich benannte Lücke im Repo.
+   Backend — das ist die größte ehrlich benannte Lücke im Repo. Umfang:
+   rund 30 Routen unter `/api/graph` brauchen eine Bindung im Browser;
+   das ist mehr als eine Session.
 2. **Nachziehen auf Multi-User, was noch keine Graph-Bürger sind**: Chats,
    Termine und Einstellungen liegen instanzweit in `data/` und sind
    deshalb weder nutzerskaliert noch im Export eines Nutzers enthalten
    (dokumentiert in docs/multi-user.md). Werden sie Graph-Bürger, erben
-   sie Nutzergraphen und ACL ohne neuen Mechanismus.
-3. **Onboarding-Strecke nach §18**: eine geführte Einführung, die den
-   Graphen an sich selbst erklärt (Selbstmodell ansehen → eigenen Knoten
-   anlegen → prima-materia importieren → nativ/importiert/inferiert im
-   Explorer unterscheiden). Der einzige Punkt aus §18, der noch fehlt.
+   sie Nutzergraphen und ACL ohne neuen Mechanismus — und sie tauchen als
+   Entitätstypen ihrer Module im Selbstmodell auf, das seit M14 darauf
+   wartet.
 
 Parallel weiter sinnvoll: i18n mit `next-intl` (P0); Abbau der
 `no-explicit-any`-Warnings außerhalb des Graph-Codes;

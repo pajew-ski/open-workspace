@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAssistantContext } from '@/lib/assistant/context';
+import { useSelfModel } from '@/lib/assistant/useSelfModel';
+import { moduleForPath } from '@/lib/graph/meta/self-model-view';
 import { ConfirmDialog } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { A2UIRenderer } from '../a2ui/A2UIRenderer';
@@ -33,17 +35,6 @@ interface Conversation {
     updatedAt: string;
 }
 
-const MODULE_CONTEXT: Record<string, { name: string; description: string }> = {
-    '/': { name: 'Dashboard', description: 'Ubersicht und Schnellzugriff' },
-    '/docs': { name: 'Dokumente', description: 'Notizen und Dokumente (Wissensbasis)' },
-    '/canvas': { name: 'Canvas', description: 'Visuelle Planung' },
-    '/tasks': { name: 'Aufgaben', description: 'Projekt- und Aufgabenverwaltung' },
-    '/calendar': { name: 'Kalender', description: 'Termine und Zeitplanung' },
-    '/agents': { name: 'Agenten', description: 'A2A Agent-Konfiguration' },
-    '/communication': { name: 'Kommunikation', description: 'Matrix Chat' },
-    '/settings': { name: 'Einstellungen', description: 'App-Konfiguration' },
-    '/graph': { name: 'Ontologie', description: 'Wissensvisualisierung' },
-};
 
 const MIN_WIDTH = 320;
 const MIN_HEIGHT = 400;
@@ -141,12 +132,14 @@ export function AssistantChat() {
         }
     }, []);
 
-    // Improved context matching
-    const currentModule = useMemo(() => {
-        const routes = Object.keys(MODULE_CONTEXT).sort((a, b) => b.length - a.length);
-        const match = routes.find(r => pathname === r || (r !== '/' && pathname.startsWith(r)));
-        return match ? MODULE_CONTEXT[match] : MODULE_CONTEXT['/'];
-    }, [pathname]);
+    // Modul und Systemkontext kommen aus dem Selbstmodell des Graphen
+    // (SPEC §18) — es gibt keine gepflegte Modul-Tabelle mehr. Ohne
+    // erreichbares Backend bleibt beides leer statt veraltet.
+    const { view: selfModel } = useSelfModel();
+    const currentModule = useMemo(
+        () => (selfModel ? moduleForPath(selfModel.modules, pathname) : null),
+        [selfModel, pathname],
+    );
 
     // Check mobile
     useEffect(() => {
@@ -580,11 +573,14 @@ export function AssistantChat() {
                     content: m.content,
                 })),
                 context: {
-                    module: currentModule.name,
-                    moduleDescription: currentModule.description + additionalContext,
+                    module: currentModule?.label ?? 'Open Workspace',
+                    moduleDescription: (currentModule?.description ?? '') + additionalContext,
                     pathname,
                     viewState,
                     activeSurface,
+                    // Für den Browser-Pfad (serverlos): der Serverpfad liest
+                    // das Modell selbst aus dem Graphen.
+                    ...(selfModel ? { selfModel } : {}),
                 },
                 provider,
                 model,
@@ -628,7 +624,7 @@ export function AssistantChat() {
         } finally {
             setIsLoading(false);
         }
-    }, [messages, activeConversation, currentModule, pathname, viewState, provider, model]);
+    }, [messages, activeConversation, currentModule, selfModel, pathname, viewState, provider, model]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -895,7 +891,7 @@ export function AssistantChat() {
                         <div className={styles.headerInfo}>
                             <span className={styles.title}>{activeConversation?.title || 'Neuer Chat'}</span>
                             <span className={styles.context}>
-                                {currentModule.name}
+                                {currentModule?.label ?? 'Open Workspace'}
                                 <span className={`${styles.status} ${styles[connectionStatus]}`} />
                             </span>
                         </div>

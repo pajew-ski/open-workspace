@@ -52,6 +52,14 @@ konfigurierte Tools selbstständig aus.
   Verwalten), per Default gehört jeder Graph nur seinem Eigentümer. Der
   öffentliche Teilgraph ist anonym lesbar und föderierbar
   (`/.well-known/void`, dereferenzierbare Entitäts-IRIs)
+- **Selbstmodell & Einführung** (`/onboarding`): Der Workspace beschreibt sich
+  in seinem eigenen Graphen — Module, verwaltete Entitätstypen, einbindbare
+  Quellen und die aktiven Fähigkeiten der Laufzeitumgebung stehen als RDF in
+  `graph/meta` und werden beim Start aus dem Code erzeugt; der Assistent holt
+  seinen Systemkontext von dort statt aus gepflegtem Prompt-Text. Die geführte
+  Einführung erklärt den Graphen an sich selbst: Selbstmodell abfragen, eigenen
+  Knoten anlegen, prima-materia importieren, Herkunft vergleichen — reale
+  Aktionen im echten Graphen, jede einzeln rückgängig zu machen
 - **Agenten (A2A)**: Remote-Agenten per Agent-Card-Discovery verbinden
   (JSON-RPC `message/send`, Task-Polling) und lokale Personas definieren —
   der Assistent delegiert im Chat via `[[AGENT:id:…]]`
@@ -220,6 +228,9 @@ e2e/                # Playwright-Tests
 | `GET /api/graph/access` | Identität, sichtbare Graphen, Freigaben, Räume |
 | `POST/DELETE /api/graph/access/authorizations`, `/spaces`, `/groups` | Freigaben, geteilte Räume, Gruppen verwalten |
 | `POST /api/graph/access/publish` | Knoten freigeben (kopieren/verschieben, als `prov:Activity` protokolliert) |
+| `GET /api/graph/self-model` | Selbstmodell der Installation (Module, Fähigkeiten, Connector-Arten) |
+| `GET /api/graph/provenance` | Aussagen je Herkunft (nativ, importiert, inferiert) |
+| `GET/POST/DELETE /api/onboarding` | Einführungsstrecke: Zustand, Schritt ausführen, zurücknehmen |
 | `GET /.well-known/void` | VoID-Beschreibung des sichtbaren Datasets |
 | `GET /u/<userId>/<type>/<id>` | Dereferenzierung einer Entität (Turtle/JSON-LD/HTML) |
 | `GET/POST/PUT/DELETE /api/agents` | Agenten-Verwaltung |

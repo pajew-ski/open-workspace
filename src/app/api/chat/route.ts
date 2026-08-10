@@ -6,6 +6,9 @@ import { buildSystemPrompt } from '@/lib/ai/prompt';
 import { runEngineTurn } from '@/lib/ai/engine';
 import { buildServerEngineDeps } from '@/lib/ai/server/deps';
 import { toPromptInfo } from '@/lib/ai/tools.shared';
+import { getRequestGraph } from '@/lib/graph/server/context';
+import { readSelfModel } from '@/lib/graph/meta/self-model-query';
+import type { SelfModelView } from '@/lib/graph/meta/self-model-view';
 
 /**
  * Server chat route on the isomorphic engine.
@@ -42,6 +45,21 @@ export interface ChatRequestBody {
     model?: string;
 }
 
+/**
+ * Selbstmodell der Instanz für den Prompt. Ein Fehler darf den Chat nicht
+ * kosten: Ohne Modell sagt der Prompt nichts über das System, statt eine
+ * veraltete Liste zu behaupten (Invariante 10).
+ */
+async function currentSelfModel(): Promise<SelfModelView | undefined> {
+    try {
+        const { store, iri, grant } = await getRequestGraph();
+        return await readSelfModel(store, iri, { allowedGraphs: grant.readableGraphs });
+    } catch (error) {
+        console.error('Selbstmodell für den Prompt nicht ladbar:', error);
+        return undefined;
+    }
+}
+
 export async function POST(request: NextRequest) {
     try {
         const body: ChatRequestBody = await request.json();
@@ -73,10 +91,14 @@ export async function POST(request: NextRequest) {
         const adapter = getAdapter(resolved.protocol);
         const nativeTools = resolved.provider.toolCalls !== 'text' && adapter.supportsNativeTools;
 
+        // Systemkontext nach SPEC §18: Das Selbstmodell wird HIER aus dem
+        // Graphen gelesen, nicht aus dem Anfrage-Körper übernommen — was
+        // der Client mitschickt, ist Eingabe, keine Wahrheit über das
+        // System (und was er sehen darf, klammert derselbe Grant).
         const systemMessage: EngineMessage = {
             role: 'system',
             content: buildSystemPrompt({
-                context,
+                context: { ...context, selfModel: await currentSelfModel() },
                 tools: deps.tools.map(toPromptInfo),
                 agents: deps.agents,
                 skills: deps.skills,
