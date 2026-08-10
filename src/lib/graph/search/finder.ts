@@ -7,10 +7,12 @@
  * Wissens-Datasets. Damit findet der Finder auch Frontmatter-Werte,
  * Tag-Namen und Dokument-Körper, die die alte Titel-+Body-Suche nicht sah.
  *
- * Dieses Modul deckt die Graph-Bürger ab (Dokumente, Aufgaben, Projekte).
- * Chats und Kalender-Termine sind noch KEINE Graph-Bürger (Conversation/
- * Event kommen mit M9+) — die Finder-Route ergänzt sie weiterhin ehrlich
- * aus ihren Storages, statt so zu tun, als kämen sie aus dem Graphen.
+ * Seit M15 deckt es ALLE Graph-Bürger des Workspace ab: Dokumente,
+ * Aufgaben, Projekte — und Kalender-Termine sowie Chats, die bis dahin
+ * an der Finder-Route vorbei aus ihren Storages kamen. Damit gilt für
+ * sie dasselbe Fuzzy-Verhalten wie für alles andere, und eine
+ * Chat-Nachricht führt zu ihrer Unterhaltung (der Index kennt jedes
+ * Literal, auch den Nachrichtentext).
  */
 
 import type { IriFactory } from '../iri';
@@ -18,7 +20,7 @@ import type { WorkspaceSnapshotInput } from '../migrate/from-files';
 import type { FulltextIndex } from './fulltext';
 
 export interface FinderHit {
-    type: 'doc' | 'task' | 'project';
+    type: 'doc' | 'task' | 'project' | 'chat' | 'calendar';
     id: string;
     title: string;
     subtitle: string;
@@ -31,19 +33,29 @@ export interface FinderHit {
 
 export type FinderTypeFilter = 'doc' | 'note' | 'task' | 'project' | 'chat' | 'calendar';
 
+type EntityKind = 'doc' | 'task' | 'project' | 'event' | 'conversation' | 'message';
+
 interface ParsedEntity {
-    kind: 'doc' | 'task' | 'project';
+    kind: EntityKind;
     id: string;
 }
 
-/** IRI → Entitäts-Typ/-ID (Umkehrung von IriFactory.entity). */
+const ENTITY_KINDS: readonly EntityKind[] = ['doc', 'task', 'project', 'event', 'conversation', 'message'];
+
+/**
+ * IRI → Entitäts-Typ/-ID (Umkehrung von IriFactory.entity). Nur
+ * Nachrichten tragen eine zusammengesetzte ID (`<dialog>/<nachricht>`) —
+ * bei allen anderen Arten schließt ein Schrägstrich einen Treffer aus,
+ * damit Unter-Entitäten (Karten) nicht als Hauptentität erscheinen.
+ */
 export function parseEntityIri(iri: IriFactory, value: string): ParsedEntity | null {
-    for (const kind of ['doc', 'task', 'project'] as const) {
+    for (const kind of ENTITY_KINDS) {
         const prefix = iri.entity(kind, '');
-        if (value.startsWith(prefix)) {
-            const id = decodeURIComponent(value.slice(prefix.length));
-            if (id !== '' && !id.includes('/')) return { kind, id };
-        }
+        if (!value.startsWith(prefix)) continue;
+        const id = decodeURIComponent(value.slice(prefix.length));
+        if (id === '') return null;
+        if (kind === 'message') return id.includes('/') ? { kind, id } : null;
+        return id.includes('/') ? null : { kind, id };
     }
     return null;
 }
@@ -69,7 +81,8 @@ function formatDate(iso: string): string {
 export function searchWorkspaceGraph(
     index: FulltextIndex,
     iri: IriFactory,
-    workspace: Pick<WorkspaceSnapshotInput, 'docs' | 'tasks' | 'projects'>,
+    workspace: Pick<WorkspaceSnapshotInput, 'docs' | 'tasks' | 'projects'> &
+        Partial<Pick<WorkspaceSnapshotInput, 'calendars' | 'events' | 'conversations'>>,
     query: string,
     typeFilter?: string | null,
 ): FinderHit[] {
@@ -78,16 +91,64 @@ export function searchWorkspaceGraph(
     const tasksById = new Map(workspace.tasks.map(t => [t.id, t]));
     const projectsById = new Map(workspace.projects.map(p => [p.id, p]));
     const projectTitles = new Map(workspace.projects.map(p => [p.id, p.title]));
+    const enabledCalendars = new Set((workspace.calendars ?? []).filter(c => c.enabled).map(c => c.id));
+    const eventsById = new Map((workspace.events ?? []).map(e => [e.id, e]));
+    const conversationsById = new Map((workspace.conversations ?? []).map(c => [c.id, c]));
 
     const wantDocs = !typeFilter || typeFilter === 'doc' || typeFilter === 'note';
     const wantTasks = !typeFilter || typeFilter === 'task';
     const wantProjects = !typeFilter || typeFilter === 'project';
+    const wantChats = !typeFilter || typeFilter === 'chat';
+    const wantEvents = !typeFilter || typeFilter === 'calendar';
+
+    // Eine Unterhaltung kann über ihren Titel UND über mehrere
+    // Nachrichten treffen — sie erscheint trotzdem einmal, mit dem
+    // besten Treffer (der Index liefert absteigend sortiert).
+    const seenConversations = new Set<string>();
 
     const results: FinderHit[] = [];
     for (const hit of hits) {
         const entity = parseEntityIri(iri, hit.iri);
         if (!entity) continue;
         const matchScore = LABEL_MATCH_SCORE[hit.labelMatch] ?? 1;
+        if (entity.kind === 'event') {
+            if (!wantEvents) continue;
+            const event = eventsById.get(entity.id);
+            // Termine abgeschalteter Kalender erscheinen nicht — dieselbe
+            // Sichtbarkeitsregel wie in der Kalender-Ansicht.
+            if (!event || !enabledCalendars.has(event.providerId)) continue;
+            results.push({
+                type: 'calendar',
+                id: event.id,
+                title: event.title,
+                subtitle: `Termin • ${formatDate(event.startDate)}`,
+                url: `/calendar?date=${event.startDate.split('T')[0]}`,
+                matchScore,
+                score: hit.score,
+            });
+            continue;
+        }
+        if (entity.kind === 'conversation' || entity.kind === 'message') {
+            if (!wantChats) continue;
+            const conversationId = entity.kind === 'message' ? entity.id.split('/')[0] : entity.id;
+            const conversation = conversationsById.get(conversationId);
+            if (!conversation || seenConversations.has(conversationId)) continue;
+            seenConversations.add(conversationId);
+            results.push({
+                type: 'chat',
+                id: conversation.id,
+                title: conversation.title,
+                subtitle: entity.kind === 'message'
+                    ? `Konversation • Treffer in einer Nachricht`
+                    : 'Konversation',
+                url: `/assistant?id=${conversation.id}`,
+                // Ein Treffer im Nachrichtentext ist ein Inhalts-Treffer,
+                // kein Titel-Treffer — sonst überholte er jedes Dokument.
+                matchScore: entity.kind === 'message' ? Math.min(matchScore, 1) : matchScore,
+                score: hit.score,
+            });
+            continue;
+        }
         if (entity.kind === 'doc' && wantDocs) {
             const doc = docsById.get(entity.id);
             if (!doc) continue;

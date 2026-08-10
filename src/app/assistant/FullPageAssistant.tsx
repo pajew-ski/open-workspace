@@ -7,7 +7,7 @@ import { A2UIRenderer } from '@/components/a2ui/A2UIRenderer';
 import { MessageContent } from '@/components/assistant/MessageContent';
 import { ModelPicker } from '@/components/assistant/ModelPicker';
 import { useAIState, useActiveSelection } from '@/lib/ai/useAI';
-import { listConversations, createConversation } from '@/lib/chat/gateway';
+import { listConversations, createConversation, setActiveConversation } from '@/lib/chat/gateway';
 import '@/components/assistant/MessageContent.css';
 import styles from './FullPageAssistant.module.css';
 
@@ -62,10 +62,19 @@ export function FullPageAssistant() {
                 const { conversations, activeId } = await listConversations();
                 if (cancelled) return;
 
-                const active = conversations.find(c => c.id === activeId) || conversations[0];
+                // `?id=` öffnet eine bestimmte Unterhaltung — so landet ein
+                // Finder-Treffer (M15: Chats sind Graph-Bürger und damit
+                // suchbar) im richtigen Dialog statt nur auf der Seite.
+                const requestedId = new URLSearchParams(window.location.search).get('id');
+                const requested = requestedId ? conversations.find(c => c.id === requestedId) : undefined;
+                const active = requested || conversations.find(c => c.id === activeId) || conversations[0];
                 if (active) {
                     setConversationId(active.id);
                     loadMessages((active.messages || []) as UIMessage[]);
+                    if (requested && requested.id !== activeId) {
+                        // Die Auswahl überlebt den nächsten Aufruf ohne Parameter.
+                        await setActiveConversation(requested.id).catch(() => undefined);
+                    }
                 } else {
                     const created = await createConversation();
                     if (!cancelled) setConversationId(created.id);

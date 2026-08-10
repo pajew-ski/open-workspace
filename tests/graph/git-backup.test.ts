@@ -48,6 +48,7 @@ function fixture(title = 'Erster Eintrag'): WorkspaceSnapshotInput {
             },
         ],
         tasks: [], projects: [], canvases: [],
+        calendars: [], events: [], conversations: [],
     };
 }
 

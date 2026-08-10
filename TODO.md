@@ -414,7 +414,9 @@
       Provider (auto-Probe), Browser-Keys, serverlose Persistenz (localStorage +
       IndexedDB-Chats), isomorphe Engine auf beiden Pfaden
 - [x] **WebLLM**: Inference im Browser via WebGPU, Modell-Manager mit
-      Download-Fortschritt und Cache-Status (offline-fähig)
+      Download-Fortschritt und Cache-Status (offline-fähig); Modell-Liste
+      auf dem Stand des mitgelieferten Builds inkl. der Modelle mit
+      Tool-Calling-Freigabe, plus durchsuchbarer Voll-Katalog
 - [x] Natives Function Calling (OpenAI/Anthropic/Ollama `tools`) mit
       automatischem Text-Syntax-Fallback
 - [x] A2A-Protokoll: Agent-Card-Discovery, JSON-RPC message/send,
@@ -472,8 +474,14 @@
       Graph-Oberflächen laufen aber weiterhin gegen das Backend — rund 30
       Routen unter `/api/graph` brauchen eine Browser-Bindung. Ersetzt den
       früheren Punkt „IndexedDB-Spiegel für Workspace-Inhalte"
-- [ ] Chats, Termine und Einstellungen zu Graph-Bürgern machen — dann
-      erben sie Nutzergraphen, ACL und Export ohne neuen Mechanismus
+- [x] **Chats und Termine zu Graph-Bürgern machen (M15)**: Kalender als
+      `schema:DataFeed` + `schema:Event`, Chats als `schema:Conversation`
+      + `schema:Message`, Store-first wie Aufgaben und Dokumente; die
+      AI-Konfiguration als generierter Spiegel (`ow:InferenceProvider`,
+      `ow:Model`). Sie erben damit Nutzergraphen, ACL, Volltextsuche und
+      Export ohne neuen Mechanismus und stehen als `entityTypes` an ihren
+      Modulen. Einstellungen bleiben bewusst instanzweit — sie
+      beschreiben die Installation, nicht ihr Wissen.
 - [ ] Matrix-Chat (matrix-js-sdk, E2EE)
 
 ### P2
@@ -496,4 +504,4 @@
 
 ---
 
-*Last updated: 2026-08-10 (M14 Selbstmodell + Einführungsstrecke, §18)*
+*Last updated: 2026-08-10 (M15 Kalender/Chats/AI-Konfiguration als Graph-Bürger)*

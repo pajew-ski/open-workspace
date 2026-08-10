@@ -224,8 +224,10 @@ Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
   (+ `DELETE /[id]`). Der Global Finder (`/api/finder`,
   `workspace_finder`) ist auf den Graphen UMGESTELLT, nicht ersetzt:
   Dokumente/Aufgaben/Projekte kommen aus dem Index (Fuzzy-Verhalten und
-  matchScore-Ranking erhalten), Chats/Termine ehrlich weiter aus ihren
-  Storages, bis sie Graph-Bürger sind (M9+). Bekannte Grenze: oxigraph-js
+  matchScore-Ranking erhalten); seit M15 gilt das auch für Termine und
+  Chats — sie sind Graph-Bürger, der Sonderweg an ihren Storages vorbei
+  ist entfallen (ein Treffer im Nachrichtentext führt zur Unterhaltung).
+  Bekannte Grenze: oxigraph-js
   kann keine Custom-SPARQL-Functions — die §7.7-Custom-Function ist eine
   erstklassige Funktion der Suchschicht; `FulltextIndex.search` ist der
   Einhängepunkt, sobald die Bindung es exponiert. Abnahme:
@@ -569,9 +571,10 @@ vorinstallierten Browser (die Konfiguration wertet die Variable aus).
 7. Diesen Abschnitt hier für die Architektur-Prinzipien
 
 **Nächste sinnvolle Schritte**: Der Graph-Ausbau nach GRAPH_CORE_SPEC ist
-mit M14 **vollständig** — auch §18 ist umgesetzt. Was jetzt kommt, steht
-nicht mehr in der Spec und will zuerst entschieden werden. Naheliegend, in
-dieser Reihenfolge:
+mit M14 **vollständig** — auch §18 ist umgesetzt. Punkt 2 der früheren
+Liste ist mit M15 erledigt (Kalender, Chats, AI-Konfiguration sind
+Graph-Bürger). Was jetzt kommt, steht nicht mehr in der Spec und will
+zuerst entschieden werden. Naheliegend, in dieser Reihenfolge:
 
 1. **Die Anwendung selbst auf die Runtime `local` stellen**. Die Bausteine
    stehen seit M12 (Store im Web Worker, OPFS als `FileSystemLike`,
@@ -579,13 +582,10 @@ dieser Reihenfolge:
    Backend — das ist die größte ehrlich benannte Lücke im Repo. Umfang:
    rund 30 Routen unter `/api/graph` brauchen eine Bindung im Browser;
    das ist mehr als eine Session.
-2. **Nachziehen auf Multi-User, was noch keine Graph-Bürger sind**: Chats,
-   Termine und Einstellungen liegen instanzweit in `data/` und sind
-   deshalb weder nutzerskaliert noch im Export eines Nutzers enthalten
-   (dokumentiert in docs/multi-user.md). Werden sie Graph-Bürger, erben
-   sie Nutzergraphen und ACL ohne neuen Mechanismus — und sie tauchen als
-   Entitätstypen ihrer Module im Selbstmodell auf, das seit M14 darauf
-   wartet.
+2. **Matrix-Chat** (`/communication`): die letzte Seite ohne
+   Entitätstypen. Die Seite kennzeichnet ihren Planungsstand ehrlich;
+   mit `matrix-js-sdk` bekäme sie echte Räume und Nachrichten — die
+   Chat-Modellierung aus M15 (schema:Conversation/Message) steht bereit.
 
 Parallel weiter sinnvoll: i18n mit `next-intl` (P0); CopilotKit-Entscheidung.
 Der `no-explicit-any`-Abbau ist erledigt — `bun run lint` steht auf 0
@@ -793,12 +793,23 @@ regulären Connector-Weg zurück (`obsidian-vault`, `git-backup`) — nicht
   Manifest (§17.4). `inferred/*` und die Suchindizes werden nie
   persistiert — sie entstehen beim Start neu.
 
+### Kalender und Chats (Projektion: `data/calendar/*.json`, `data/chat/conversations.json`)
+- Seit M15 Graph-Bürger und damit nutzerskaliert: `schema:DataFeed` +
+  `schema:Event`, `schema:Conversation` + `schema:Message` in
+  `graph/<u>/workspace`; Kalenderfarbe, A2UI-Oberfläche einer Antwort und
+  die zuletzt geöffnete Unterhaltung liegen in `graph/<u>/presentation`
+  (Invariante 2). `storage/calendar.ts` und `storage/chat.ts` sind
+  Fassaden über `workspace/crud.ts`; der ICS-Abruf bleibt ein Netz-Lauf
+  und schreibt sein Ergebnis in EINER Mutation mit replace-Semantik.
+
 ### Noch keine Graph-Bürger (instanzweit, nicht nutzerskaliert)
-- Kalender: `data/calendar/providers.json` + `events.json`
-- Chat-Historie: `data/chat/conversations.json`
+- Einstellungen: `data/settings.json`, `data/dashboard.json` — sie
+  beschreiben die Installation, nicht ihr Wissen.
 - AI-Schicht: `data/ai/`, `data/agents/`, `data/tools/` — bleiben operative
   Konfiguration, weil sie auch serverlos im Browser laufen; ihr Spiegel in
-  `graph/meta` wird generiert (M9).
+  `graph/meta` wird generiert (M9, seit M15 inklusive Inference-Provider
+  als `ow:InferenceProvider` und ihrer konfigurierten `ow:Model`e — ohne
+  Geheimnisse und ohne erfundenes Live-Modellinventar).
 
 ## Modul-Agenten
 

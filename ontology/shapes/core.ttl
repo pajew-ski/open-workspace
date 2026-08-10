@@ -143,6 +143,91 @@ owsh:CanvasShape a sh:NodeShape ;
     ] .
 
 #################################################################
+# Kalender und Termine (M15)
+#################################################################
+
+owsh:CalendarFeedShape a sh:NodeShape ;
+    sh:targetClass schema:DataFeed ;
+    sh:name "Abonnierter Kalender"@de ;
+    sh:property [
+        sh:path schema:name ;
+        sh:minCount 1 ;
+        sh:minLength 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Ein abonnierter Kalender braucht einen nicht-leeren Namen (schema:name)."@de ;
+    ] ;
+    sh:property [
+        sh:path schema:url ;
+        sh:minCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Ein abonnierter Kalender braucht seine Quell-URL (schema:url)."@de ;
+    ] .
+
+owsh:EventShape a sh:NodeShape ;
+    sh:targetClass schema:Event ;
+    sh:name "Termin"@de ;
+    sh:property [
+        sh:path schema:name ;
+        sh:minCount 1 ;
+        sh:minLength 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Ein Termin braucht einen nicht-leeren Titel (schema:name)."@de ;
+    ] ;
+    sh:property [
+        sh:path schema:startDate ;
+        sh:minCount 1 ;
+        sh:datatype xsd:dateTime ;
+        sh:severity sh:Violation ;
+        sh:message "Ein Termin braucht einen Beginn als xsd:dateTime (schema:startDate)."@de ;
+    ] ;
+    sh:property [
+        sh:path schema:endDate ;
+        sh:datatype xsd:dateTime ;
+        sh:severity sh:Violation ;
+        sh:message "Das Ende eines Termins muss ein xsd:dateTime sein (schema:endDate)."@de ;
+    ] ;
+    sh:property [
+        # Ein Termin ohne Quelle wäre in keiner Ansicht sichtbar (die
+        # Kalender-Ansicht filtert über das Abonnement) — meldenswert,
+        # aber kein Grund, einen Import scheitern zu lassen.
+        sh:path schema:isPartOf ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "Termin ohne abonnierten Kalender (schema:isPartOf) — in der Kalender-Ansicht unsichtbar."@de ;
+    ] .
+
+#################################################################
+# Chats (M15)
+#################################################################
+
+owsh:ConversationShape a sh:NodeShape ;
+    sh:targetClass schema:Conversation ;
+    sh:name "Unterhaltung"@de ;
+    sh:property [
+        sh:path schema:name ;
+        sh:minCount 1 ;
+        sh:minLength 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Eine Unterhaltung braucht einen nicht-leeren Titel (schema:name)."@de ;
+    ] .
+
+owsh:MessageShape a sh:NodeShape ;
+    sh:targetClass schema:Message ;
+    sh:name "Nachricht"@de ;
+    sh:property [
+        sh:path ow:messageRole ;
+        sh:in ( "user" "assistant" ) ;
+        sh:severity sh:Violation ;
+        sh:message "Die Rolle einer Nachricht muss 'user' oder 'assistant' sein."@de ;
+    ] ;
+    sh:property [
+        sh:path schema:dateSent ;
+        sh:datatype xsd:dateTime ;
+        sh:severity sh:Violation ;
+        sh:message "Der Versandzeitpunkt einer Nachricht muss ein xsd:dateTime sein (schema:dateSent)."@de ;
+    ] .
+
+#################################################################
 # Tags
 #################################################################
 

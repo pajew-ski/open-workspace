@@ -66,6 +66,32 @@ const fixture = (): WorkspaceSnapshotInput => ({
             createdAt: '2026-01-07T09:00:00.000Z', updatedAt: '2026-01-07T11:00:00.000Z',
         },
     ],
+    calendars: [
+        {
+            id: 'cal-1', name: 'Tango', url: 'https://example.org/kalender.ics',
+            color: '#be185d', enabled: true, lastSync: '2026-01-08T10:00:00.000Z',
+        },
+    ],
+    events: [
+        {
+            id: 'evt-1', providerId: 'cal-1', title: 'Milonga', location: 'Alte Mälzerei',
+            startDate: '2026-01-09T18:30:00.000Z', endDate: '2026-01-09T22:30:00.000Z', allDay: false,
+        },
+    ],
+    conversations: [
+        {
+            id: 'conv-1', title: 'Erste Frage',
+            messages: [
+                { id: 'msg-1', role: 'user', content: 'Was steht an?', timestamp: '2026-01-10T10:00:00.000Z' },
+                {
+                    id: 'msg-2', role: 'assistant', content: 'Zwei Aufgaben.',
+                    timestamp: '2026-01-10T10:00:01.000Z', uiComponents: [{ type: 'list' }],
+                },
+            ],
+            createdAt: '2026-01-10T09:59:00.000Z', updatedAt: '2026-01-10T10:00:01.000Z',
+        },
+    ],
+    activeConversationId: 'conv-1',
 });
 
 describe('Migrator (SPEC §12.2)', () => {

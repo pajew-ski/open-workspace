@@ -22,6 +22,8 @@ import type { GraphStore } from '../store/types';
 import type { IriFactory } from '../iri';
 import type { CanvasData } from '@/lib/storage/canvas';
 import type { Project } from '@/lib/storage/projects';
+import type { CalendarProvider } from '@/lib/storage/calendar';
+import type { Conversation } from '@/lib/storage/chat';
 import { factory, namedNode, literal, typedLiteral } from '../rdf';
 import { DCTERMS, OW, RDF, SCHEMA } from '../vocab';
 
@@ -122,34 +124,64 @@ async function dumpGraph(store: GraphStore, graphIri: string): Promise<Quad[]> {
 }
 
 /**
- * Projekt-Farben (Abschluss SPEC §12.4): `<projekt> schema:color "#…"` im
- * Presentation-Graphen — die Farbe ist Darstellung, kein Wissen
- * (Invariante 2). Bis zur Umstellung der Schreibpfade blieb sie in der
- * Datei; mit dem Store als Wahrheitsquelle lebt sie hier. Ersetzt werden
- * alle Projekt-Subjekte vollständig, ohne Canvas-Layout-Gruppen
- * anzufassen; läuft auf dem übergebenen Store — innerhalb einer
- * Transaktion ist das die tx-Sicht.
+ * Darstellungswerte, die an einer Entität selbst hängen statt an einer
+ * Canvas-Layout-Gruppe (Abschluss SPEC §12.4, erweitert in M15):
+ *
+ *  - Projekt-Farbe   `<projekt> schema:color "#…"`
+ *  - Kalender-Farbe  `<kalender> schema:color "#…"`
+ *  - Chat-Auswahl    `<unterhaltung> ow:selected true`
+ *  - A2UI-Oberfläche `<nachricht> ow:generativeSurface "<json>"`
+ *
+ * Alles davon ist Darstellung, kein Wissen (Invariante 2) — und keines
+ * davon trägt `schema:isPartOf`, damit `pruneOrphanCanvasLayouts` diese
+ * Subjekte nicht für Layout-Gruppen einer gelöschten Pinnwand hält.
+ * Ersetzt werden alle Subjekte der genannten Entitätsarten vollständig,
+ * ohne Canvas-Layout-Gruppen anzufassen; läuft auf dem übergebenen Store
+ * — innerhalb einer Transaktion ist das die tx-Sicht.
  */
-export async function replaceProjectPresentation(
+export async function replaceEntityPresentation(
     store: GraphStore,
     iri: IriFactory,
-    projects: ReadonlyArray<Project>,
+    input: {
+        projects: ReadonlyArray<Project>;
+        calendars: ReadonlyArray<CalendarProvider>;
+        conversations: ReadonlyArray<Conversation>;
+        activeConversationId?: string | null;
+    },
 ): Promise<void> {
     const graphIri = iri.graph('presentation');
-    const projectPrefix = `${iri.instanceBase}u/${encodeURIComponent(iri.userId)}/project/`;
+    const owned = (['project', 'calendar', 'conversation', 'message'] as const)
+        .map(kind => `${iri.instanceBase}u/${encodeURIComponent(iri.userId)}/${kind}/`);
     const existing = await dumpGraph(store, graphIri);
-    const remaining = existing.filter(q =>
-        !(q.subject.termType === 'NamedNode' && q.subject.value.startsWith(projectPrefix)),
+    const next = existing.filter(q =>
+        !(q.subject.termType === 'NamedNode' && owned.some(prefix => q.subject.value.startsWith(prefix))),
     );
-    const next = [...remaining];
-    for (const project of projects) {
+    const add = (subject: string, predicate: string, object: Quad['object']) => {
+        next.push(factory.quad(namedNode(subject), namedNode(predicate), object));
+    };
+
+    for (const project of input.projects) {
         if (project.color === '') continue;
-        next.push(factory.quad(
-            namedNode(iri.entity('project', project.id)),
-            namedNode(SCHEMA.color),
-            literal(project.color),
-        ));
+        add(iri.entity('project', project.id), SCHEMA.color, literal(project.color));
     }
+    for (const calendar of input.calendars) {
+        if (calendar.color === '') continue;
+        add(iri.entity('calendar', calendar.id), SCHEMA.color, literal(calendar.color));
+    }
+    for (const conversation of input.conversations) {
+        if (conversation.id === input.activeConversationId) {
+            add(iri.entity('conversation', conversation.id), OW.selected, typedLiteral.boolean(true));
+        }
+        for (const message of conversation.messages) {
+            if (!message.uiComponents || message.uiComponents.length === 0) continue;
+            add(
+                iri.entity('message', `${conversation.id}/${message.id}`),
+                OW.generativeSurface,
+                literal(JSON.stringify(message.uiComponents)),
+            );
+        }
+    }
+
     await store.load(next, namedNode(graphIri), { replace: true });
 }
 

@@ -1,10 +1,21 @@
-import path from 'path';
-import { parseICS } from '@/lib/calendar/ical';
-import { readJsonSafe, withFileLock, writeJsonAtomic } from './atomic';
+/**
+ * Kalender — Fassade über den Store-first-Schreibpfad (M15).
+ *
+ * Abonnierte Kalender und ihre Termine sind seit M15 Graph-Bürger:
+ * Wahrheit ist der RDF-Store (`schema:DataFeed` + `schema:Event`),
+ * `data/calendar/*.json` ist Projektion. Damit erben sie Nutzergraphen,
+ * ACL, Export und Suche ohne eigenen Mechanismus — vorher lagen sie
+ * instanzweit neben dem Graphen.
+ *
+ * Was hier BLEIBT, ist der Abruf selbst: ICS holen und parsen ist ein
+ * Netz-Lauf, kein Store-Vorgang. Sein Ergebnis geht in EINER Mutation in
+ * den Store (`replaceCalendarEvents`) — dieselbe replace-Semantik wie ein
+ * Connector-Import (SPEC §6.2).
+ */
 
-const DATA_DIR = path.join(process.cwd(), 'data', 'calendar');
-const PROVIDERS_FILE = path.join(DATA_DIR, 'providers.json');
-const EVENTS_FILE = path.join(DATA_DIR, 'events.json');
+import { parseICS } from '@/lib/calendar/ical';
+import { getWorkspaceContext } from '@/lib/graph/server/instance';
+import * as crud from '@/lib/graph/workspace/crud';
 
 export interface CalendarProvider {
     id: string;
@@ -26,124 +37,55 @@ export interface CalendarEvent {
     location?: string;
 }
 
-interface ProvidersData {
-    providers: CalendarProvider[];
-}
-
-interface EventsData {
-    events: CalendarEvent[];
-    updatedAt: string;
-}
-
-// Helpers
-async function readProviders(): Promise<CalendarProvider[]> {
-    const data = await readJsonSafe<ProvidersData>(PROVIDERS_FILE, { providers: [] });
-    return data.providers ?? [];
-}
-
-async function writeProviders(providers: CalendarProvider[]) {
-    await writeJsonAtomic(PROVIDERS_FILE, { providers });
-}
-
-async function readEvents(): Promise<CalendarEvent[]> {
-    const data = await readJsonSafe<EventsData>(EVENTS_FILE, {
-        events: [],
-        updatedAt: new Date().toISOString(),
-    });
-    return data.events ?? [];
-}
-
-async function writeEvents(events: CalendarEvent[]) {
-    const data: EventsData = { events, updatedAt: new Date().toISOString() };
-    await writeJsonAtomic(EVENTS_FILE, data);
-}
-
 // Provider Operations
-export async function listProviders() {
-    return await readProviders();
+export async function listProviders(): Promise<CalendarProvider[]> {
+    return crud.listCalendars(await getWorkspaceContext());
 }
 
-export async function addProvider(name: string, url: string, color: string) {
-    const newProvider = await withFileLock(PROVIDERS_FILE, async () => {
-        const providers = await readProviders();
-        const provider: CalendarProvider = {
-            id: `cal-${Date.now()}`,
-            name,
-            url,
-            color,
-            enabled: true,
-            lastSync: null
-        };
-        providers.push(provider);
-        await writeProviders(providers);
-        return provider;
-    });
+export async function addProvider(name: string, url: string, color: string): Promise<CalendarProvider> {
+    const provider = await crud.createCalendar(await getWorkspaceContext(), { name, url, color });
 
-    // Sync immediately
+    // Sofort abrufen — ein leerer Kalender direkt nach dem Anlegen sähe
+    // aus wie ein kaputter. Scheitert der Abruf, bleibt das Abonnement
+    // bestehen und meldet es beim nächsten Sync.
     try {
-        await syncProvider(newProvider.id);
+        await syncProvider(provider.id);
     } catch (e) {
         console.error(`Failed to initial sync provider ${name}:`, e);
     }
 
-    return newProvider;
+    return provider;
 }
 
-export async function updateProvider(id: string, updates: Partial<CalendarProvider>) {
-    return withFileLock(PROVIDERS_FILE, async () => {
-        const providers = await readProviders();
-        const index = providers.findIndex(p => p.id === id);
-        if (index === -1) return null;
-
-        providers[index] = { ...providers[index], ...updates };
-        await writeProviders(providers);
-        return providers[index];
-    });
+export async function updateProvider(
+    id: string,
+    updates: Partial<Omit<CalendarProvider, 'id'>>,
+): Promise<CalendarProvider | null> {
+    return crud.updateCalendar(await getWorkspaceContext(), id, updates);
 }
 
-export async function deleteProvider(id: string) {
-    const removed = await withFileLock(PROVIDERS_FILE, async () => {
-        const providers = await readProviders();
-        const newProviders = providers.filter(p => p.id !== id);
-        if (newProviders.length === providers.length) return false;
-
-        await writeProviders(newProviders);
-        return true;
-    });
-
-    if (!removed) return false;
-
-    // Clean up events
-    await withFileLock(EVENTS_FILE, async () => {
-        const events = await readEvents();
-        const newEvents = events.filter(e => e.providerId !== id);
-        await writeEvents(newEvents);
-    });
-
-    return true;
+export async function deleteProvider(id: string): Promise<boolean> {
+    return crud.deleteCalendar(await getWorkspaceContext(), id);
 }
 
 // Sync Operation
-export async function syncProvider(id: string) {
-    const providers = await readProviders();
-    const provider = providers.find(p => p.id === id);
+export async function syncProvider(id: string): Promise<number> {
+    const ctx = await getWorkspaceContext();
+    const provider = (await crud.listCalendars(ctx)).find(entry => entry.id === id);
     if (!provider) throw new Error('Provider not found');
 
     try {
-        // 1. Fetch ICS data
         console.log(`[Calendar] Fetching ${provider.url}...`);
         const response = await fetch(provider.url);
         if (!response.ok) throw new Error(`Fetch failed: ${response.statusText}`);
         const icsData = await response.text();
         console.log(`[Calendar] Fetched ${icsData.length} bytes`);
 
-        // 2. Parse events
         console.log(`[Calendar] Parsing ICS data...`);
         const parsedEvents = await parseICS(icsData);
         console.log(`[Calendar] Parsed ${parsedEvents.length} events`);
 
-        // 3. Map to internal format
-        const newEvents: CalendarEvent[] = parsedEvents.map(e => ({
+        const events: CalendarEvent[] = parsedEvents.map(e => ({
             id: `evt-${provider.id}-${e.uid || Math.random().toString(36)}`,
             providerId: provider.id,
             title: e.summary || '(Ohne Titel)',
@@ -151,45 +93,18 @@ export async function syncProvider(id: string) {
             startDate: e.start.toISOString(),
             endDate: e.end.toISOString(),
             allDay: e.allDay || false,
-            location: e.location
+            location: e.location,
         }));
 
-        // 4. Update events store (read-modify-write under lock)
-        await withFileLock(EVENTS_FILE, async () => {
-            const allEvents = await readEvents();
-            // Remove old events from this provider
-            const otherEvents = allEvents.filter(e => e.providerId !== id);
-            // Add new events
-            await writeEvents([...otherEvents, ...newEvents]);
-        });
-
-        // 5. Update provider lastSync
-        await updateProvider(id, { lastSync: new Date().toISOString() });
-
-        return newEvents.length;
+        const count = await crud.replaceCalendarEvents(ctx, provider.id, events, new Date().toISOString());
+        if (count === null) throw new Error('Provider not found');
+        return count;
     } catch (error) {
         console.error(`Sync error for ${provider.name}:`, error);
         throw error;
     }
 }
 
-export async function getEvents(start?: string, end?: string) {
-    const events = await readEvents();
-    // Filter by enabled providers
-    const providers = await readProviders();
-    const enabledIds = new Set(providers.filter(p => p.enabled).map(p => p.id));
-
-    let validEvents = events.filter(e => enabledIds.has(e.providerId));
-
-    if (start && end) {
-        const startDate = new Date(start);
-        const endDate = new Date(end);
-        validEvents = validEvents.filter(e => {
-            const eStart = new Date(e.startDate);
-            const eEnd = new Date(e.endDate);
-            return eStart < endDate && eEnd > startDate;
-        });
-    }
-
-    return validEvents.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+export async function getEvents(start?: string, end?: string): Promise<CalendarEvent[]> {
+    return crud.listEvents(await getWorkspaceContext(), { start, end });
 }
