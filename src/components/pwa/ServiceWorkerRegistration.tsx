@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { withBasePath } from "@/lib/platform/base-path";
 
 /**
  * Registriert den Service Worker (/public/sw.js) — nur im Production-Build
@@ -36,7 +37,9 @@ export function ServiceWorkerRegistration() {
     };
 
     navigator.serviceWorker
-      .register("/sw.js")
+      // Unter Ingress liegen Worker-Datei UND Scope hinter dem Präfix (M12) —
+      // der Worker liest seinen Base-Path anschließend aus dem Scope.
+      .register(withBasePath("/sw.js"), { scope: withBasePath("/") })
       .then((registration) => {
         // Bereits wartende Version direkt aktivieren.
         activateWaiting(registration.waiting);

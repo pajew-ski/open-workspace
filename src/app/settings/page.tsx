@@ -3,6 +3,8 @@ import { Card, CardHeader, CardContent } from '@/components/ui';
 import { ThemeSelector } from './ThemeSelector';
 import { CalendarSettings } from './CalendarSettings';
 import { AISettings } from './AISettings';
+import { RuntimeSettings } from './RuntimeSettings';
+import { withBasePath } from '@/lib/platform/base-path';
 import styles from './page.module.css';
 
 // Force dynamic rendering to use ThemeProvider context
@@ -49,6 +51,15 @@ export default function SettingsPage() {
 
                 <Card>
                     <CardHeader>
+                        <h3>System</h3>
+                    </CardHeader>
+                    <CardContent>
+                        <RuntimeSettings />
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
                         <h3>Daten</h3>
                     </CardHeader>
                     <CardContent>
@@ -60,7 +71,7 @@ export default function SettingsPage() {
                                     als JSON-Backup herunter (ohne gespeicherte Zugangsdaten)
                                 </span>
                             </div>
-                            <a href="/api/export" download className={styles.exportButton}>
+                            <a href={withBasePath('/api/export')} download className={styles.exportButton}>
                                 Backup herunterladen
                             </a>
                         </div>
