@@ -68,6 +68,9 @@ export const OW = {
     ToolProvider: ow('ToolProvider'),
     Connector: ow('Connector'),
     FederatedEndpoint: ow('FederatedEndpoint'),
+    // Selbstmodell und Einführungsstrecke (SPEC §18 / M14)
+    Module: ow('Module'),
+    OnboardingStep: ow('OnboardingStep'),
     // Vernetzung
     linksTo: ow('linksTo'),
     inFolder: ow('inFolder'),
@@ -137,6 +140,12 @@ export const OW = {
     // Multi-User (SPEC §17.1 / M13)
     Space: ow('Space'),
     spaceGraph: ow('spaceGraph'),
+    // Selbstmodell (SPEC §18 / M14)
+    route: ow('route'),
+    entityType: ow('entityType'),
+    capability: ow('capability'),
+    runtime: ow('runtime'),
+    availableConnectorKind: ow('availableConnectorKind'),
 } as const;
 
 export type OwTerm = (typeof OW)[keyof typeof OW];
@@ -176,6 +185,8 @@ export const SCHEMA = {
     error: schemaOrg('error'),
     url: schemaOrg('url'),
     softwareVersion: schemaOrg('softwareVersion'),
+    /** Schema-Version der Persistenz (Snapshot-Manifest, SPEC §8.1/§18). */
+    schemaVersion: schemaOrg('schemaVersion'),
     /** Präsentationswerte (nur graph/presentation): Invariante 8 vor eigenem Term. */
     width: schemaOrg('width'),
     height: schemaOrg('height'),
@@ -221,6 +232,10 @@ export const PROV = {
     wasDerivedFrom: `${PREFIXES.prov}wasDerivedFrom`,
     wasAttributedTo: `${PREFIXES.prov}wasAttributedTo`,
     wasGeneratedBy: `${PREFIXES.prov}wasGeneratedBy`,
+    /** Umkehrung von wasGeneratedBy — was eine Aktivität erzeugt hat (§18). */
+    generated: `${PREFIXES.prov}generated`,
+    /** Was eine Aktivität verwendet/betrachtet hat (§18). */
+    used: `${PREFIXES.prov}used`,
     generatedAtTime: `${PREFIXES.prov}generatedAtTime`,
     /** Abschluss-Zeitpunkt (completedAt einer Aufgabe — schema:endTime trägt bereits die Fälligkeit, SPEC §4.2). */
     endedAtTime: `${PREFIXES.prov}endedAtTime`,

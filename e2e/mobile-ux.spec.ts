@@ -33,6 +33,7 @@ const PAGES = [
     '/graph/access',
     '/settings',
     '/assistant',
+    '/onboarding',
 ];
 
 for (const path of PAGES) {

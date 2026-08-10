@@ -17,6 +17,8 @@ const SUGGESTIONS = [
     'Durchsuche die Wissensbasis nach Architektur',
     'Gib mir einen Überblick über den Workspace',
 ];
+import { useSelfModel } from '@/lib/assistant/useSelfModel';
+import { moduleForPath } from '@/lib/graph/meta/self-model-view';
 
 /**
  * Full-page assistant: dialog on the left, generative stage on the right.
@@ -31,11 +33,19 @@ export function FullPageAssistant() {
     const [stageOpen, setStageOpen] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
+    // Modul-Angaben aus dem Selbstmodell (SPEC §18) statt aus einer
+    // handgeschriebenen Zeile; ohne Backend bleibt es beim Pfad.
+    const { view: selfModel } = useSelfModel();
+    const currentModule = useMemo(
+        () => (selfModel ? moduleForPath(selfModel.modules, '/assistant') : null),
+        [selfModel],
+    );
     const context = useMemo(() => ({
-        module: 'Assistent',
-        moduleDescription: 'Ganzseitige Assistent-Ansicht mit generativer Bühne',
+        module: currentModule?.label ?? 'Assistent',
+        moduleDescription: currentModule?.description ?? '',
         pathname: '/assistant',
-    }), []);
+        ...(selfModel ? { selfModel } : {}),
+    }), [currentModule, selfModel]);
 
     const { data: aiState } = useAIState();
     const { provider, model } = useActiveSelection(aiState);

@@ -5,7 +5,7 @@
 > (hat Vorrang vor ANALYSE §5, wo sie widersprechen). Arbeitsmodus:
 > ein Meilenstein = eine Session = ein Branch = ein PR.
 
-## Graph Core (SPEC „Vollausbau", M0–M13)
+## Graph Core (SPEC „Vollausbau", M0–M14)
 
 - [x] **M0 Fundament**: Vokabular `ontology/ow.ttl` (33 Terme, de/en,
       CI-Check `check:ontology`), IRI-Strategie (drei Basen, nutzerskalierte
@@ -302,6 +302,29 @@
       Doku: docs/multi-user.md — Abnahme: `tests/graph/multi-user.test.ts`
       (Matrix §17.6, jede Zeile ein Negativtest) und
       `tests/graph/acl.test.ts`
+- [x] **M14 Selbstmodell + Einführungsstrecke (§18)**: Modell der Anwendung
+      in `graph/meta` — Anwendung (`ow:runtime`, `ow:capability`,
+      `ow:availableConnectorKind`, `schema:softwareVersion`/`schemaVersion`)
+      und Module (`ow:Module` mit `ow:route`, `ow:entityType`,
+      `schema:isPartOf`), beim Start GENERIERT aus der EINEN Code-Quelle
+      `src/lib/app/modules.ts` (aus ihr kommt auch die Sidebar); ein Modul
+      ohne aktive Runtime-Fähigkeit erscheint nicht. Der **Assistent**
+      bezieht seinen Systemkontext aus der SPARQL-Abfrage
+      (`GET /api/graph/self-model`, serverseitig gelesen und vom Grant
+      geklammert) — die doppelt gepflegte `MODULE_CONTEXT`-Tabelle ist
+      gelöscht, ein Test verbietet ihre Rückkehr und erzwingt Registry ↔
+      `src/app/**/page.tsx`. **Einführungsstrecke** `/onboarding`: vier
+      reale Schritte (Selbstmodell abfragen → eigenen Knoten anlegen →
+      prima-materia importieren → Herkunft vergleichen), Fortschritt als
+      `ow:OnboardingStep` in `graph/meta` (`prov:used`/`prov:generated`),
+      Rückgängig stellt den Vorzustand kanonisch byte-identisch her, ein
+      fehlgeschlagener Import gilt nicht als erledigt. Herkunfts-Zählung
+      (`GET /api/graph/provenance`) auch als Abschnitt „Herkunft" im
+      Graph-Explorer. Dabei repariert: Graphen, die erst zur Laufzeit
+      entstehen (Import, Inferenz), bekommen ihre ACL-Standardregeln
+      nachgezogen (`ensureGraphAuthorizations` im Anfrage-Kontext) — vorher
+      waren sie bis zum nächsten Neustart unsichtbar — Abnahme:
+      `tests/graph/self-model.test.ts` und `tests/graph/onboarding.test.ts`
 
 ## Fundament (fertig)
 
@@ -415,4 +438,4 @@
 
 ---
 
-*Last updated: 2026-08-09 (M9 Agents/Skills/Tools als Graph-Bürger)*
+*Last updated: 2026-08-10 (M14 Selbstmodell + Einführungsstrecke, §18)*

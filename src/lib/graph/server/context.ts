@@ -20,6 +20,11 @@
  * vergessen werden können — hier ist Vergessen unmöglich, weil es keine
  * zweite Quelle gibt.
  *
+ * **Neue Graphen**: `graph/acl` ist die einzige Quelle des Grants, und die
+ * Standardregeln entstehen beim Start. Ein Import- oder Inferenz-Graph, der
+ * danach angelegt wird, bekommt seine Regel deshalb hier — vor der
+ * Grant-Berechnung, idempotent und ohne Schreibvorgang, wenn nichts neu ist.
+ *
  * **Erstkontakt**: Meldet sich eine Identität zum ersten Mal an, entstehen
  * ihr Nutzerknoten in `graph/meta` und die Standard-ACL-Regeln für ihre
  * Graphen (§17.2: nur der Eigentümer, `control`). Das passiert genau
@@ -31,7 +36,7 @@ import { createIriFactory, DEFAULT_USER_ID, type IriFactory } from '../iri';
 import { resolveIdentity, type ResolvedIdentity } from '@/lib/platform/auth/identity';
 import type { AccessGrant } from '../authz/grant';
 import { ANONYMOUS_IDENTITY, grantForIdentity, type AuthzIdentity } from '../authz/resolve';
-import { getServerGraph, ensureUserBootstrap } from './instance';
+import { getServerGraph, ensureGraphAuthorizations, ensureUserBootstrap } from './instance';
 import type { OxigraphStore } from '../store/oxigraph';
 
 export interface RequestGraph {
@@ -89,6 +94,11 @@ export async function getRequestGraph(options: { sparql?: boolean } = {}): Promi
         ? instanceIri
         : createIriFactory(instanceIri.instanceBase, userId);
     if (authz.userId) await ensureUserBootstrap(authz.userId, identity.displayName);
+    // Graphen, die erst zur Laufzeit entstehen (Connector-Import,
+    // Inferenz), bekommen ihre Standardregeln nachgezogen — sonst wäre
+    // frisch Importiertes bis zum nächsten Neustart unsichtbar, weil der
+    // Grant ausschließlich aus `graph/acl` kommt (§17.2/§17.3).
+    await ensureGraphAuthorizations();
     const grant = await grantForIdentity({ store, iri }, authz, {
         // Die eingeloggte Oberfläche darf rohes SPARQL stellen — was sie
         // dabei sieht, klammert derselbe Grant. Ein Extra-Recht ist das

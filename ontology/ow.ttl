@@ -537,3 +537,53 @@ ow:spaceGraph a owl:ObjectProperty ;
     rdfs:label "Raum-Graph"@de, "space graph"@en ;
     rdfs:comment "Named Graph, in dem der Inhalt eines geteilten Raums liegt (graph/shared/<id>). Bewusst nicht ow:targetGraph: dessen rdfs:domain ist ow:Connector, und ein bestehender Term wird nach SPEC §4.4 nie umdefiniert — eine Domain-Erweiterung würde über OWL RL jeden Raum zum Connector machen. Kein Standard-Term benennt den Graphen einer Entität; sd:name aus der SPARQL-Service-Description beschreibt Graphen eines Dienstes, nicht die Zugehörigkeit zu einer Anwendungsentität."@de ;
     rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+#################################################################
+# Selbstmodell und Einführungsstrecke (SPEC §18 / M14)
+#################################################################
+
+ow:Module a owl:Class ;
+    rdfs:subClassOf schema:WebPage ;
+    rdfs:label "Modul"@de, "module"@en ;
+    rdfs:comment "Funktionsbereich der Anwendung im Selbstmodell (SPEC §18): eine Seite mit Route, Beschreibung und den Entitätstypen, die sie verwaltet. schema:WebPage trägt die Seiten-Semantik, unterscheidet aber nicht zwischen der Selbstbeschreibung dieser Installation und Webseiten importierter Quellen — die Frage 'welche Module hat dieses System' braucht genau diese Trennung. Wird beim Start aus der Modul-Registry im Code erzeugt, nie von Hand gepflegt."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:route a owl:DatatypeProperty ;
+    rdfs:domain ow:Module ;
+    rdfs:range xsd:string ;
+    rdfs:label "Route"@de, "route"@en ;
+    rdfs:comment "Anwendungspfad eines Moduls ('/tasks'). Bewusst nicht schema:url: Die URL einer Installation hängt vom Base-Path ab (Home-Assistant-Ingress steht erst zur Installationszeit fest, SPEC §5.2/M12) und wäre damit deployment-spezifisch; die Route ist die installationsunabhängige Identität der Seite und das, worauf der Assistent den aktuellen Standort des Nutzers abbildet."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:entityType a owl:ObjectProperty ;
+    rdfs:domain ow:Module ;
+    rdfs:label "Entitätstyp"@de, "entity type"@en ;
+    rdfs:comment "Klasse, deren Entitäten ein Modul verwaltet (ow:Task für /tasks). Damit ist 'wo bearbeite ich diesen Knotentyp' abfragbar, statt im Prompt-Text zu stehen. void:class beschreibt die Partition eines Datensatzes und hat void:Dataset als Domain, nicht die Zuständigkeit eines Anwendungsteils; schema:about wäre unspezifisch, weil es Themen und nicht Typen benennt."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:capability a owl:DatatypeProperty ;
+    rdfs:domain schema:SoftwareApplication ;
+    rdfs:range xsd:string ;
+    rdfs:label "Fähigkeit"@de, "capability"@en ;
+    rdfs:comment "Aktive Fähigkeit der laufenden Runtime, ein Schlüssel aus fester Menge (sparqlEndpoint, mcpServer, federationOutbound, federationInbound, multiUser) bzw. Schlüssel:Wert für abgestufte Fähigkeiten (reasoning:rl). Nur was die Runtime wirklich kann, wird behauptet (Invariante 10) — deshalb kein boolesches Feld pro Fähigkeit, dessen 'false' erst gelesen werden müsste. schema:featureList ist eine Freitext-Aufzählung für die Beschreibung von Software, kein Schlüsselraum, gegen den sich Abfragen formulieren lassen."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:runtime a owl:DatatypeProperty ;
+    rdfs:domain schema:SoftwareApplication ;
+    rdfs:range xsd:string ;
+    rdfs:label "Laufzeitumgebung"@de, "runtime"@en ;
+    rdfs:comment "Kennung der laufenden Runtime (local | ha-addon | server, SPEC §5.2). Sie entscheidet, welche Fähigkeiten überhaupt möglich sind, und gehört deshalb in die Selbstbeschreibung. schema:operatingSystem und schema:runtimePlatform benennen die technische Plattform (Node, Browser), nicht die Betriebsart dieser Anwendung."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:availableConnectorKind a owl:DatatypeProperty ;
+    rdfs:domain schema:SoftwareApplication ;
+    rdfs:range xsd:string ;
+    rdfs:label "Verfügbare Connector-Art"@de, "available connector kind"@en ;
+    rdfs:comment "Connector-Art, die dieser Build anbietet (Katalog aus connectors/catalog.ts) — die Antwort auf 'welche Quellen kann dieses System einbinden', im Unterschied zu 'welche sind eingebunden' (das sagen die ow:Connector-Instanzen). Bewusst nicht ow:connectorKind: dessen rdfs:domain ist ow:Connector, und ein bestehender Term wird nach SPEC §4.4 nie umdefiniert — über OWL RL wäre die Anwendung sonst selbst ein Connector."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:OnboardingStep a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "Einführungsschritt"@de, "onboarding step"@en ;
+    rdfs:comment "Ausgeführter Schritt der Einführungsstrecke (SPEC §18) als reale Aktivität im Graphen: wer ihn wann ausgeführt hat (prov:wasAttributedTo, prov:endedAtTime) und was dabei entstanden ist (prov:generated). Der Fortschritt ist damit abfragbar statt UI-Zustand, und 'rückgängig' heißt: den Schritt und das von ihm Erzeugte löschen. prov:Activity trägt die Semantik, benennt aber nicht die Rolle im Ablauf — ohne Markierung wäre ein Einführungsschritt von jedem Sync-Lauf und jeder Freigabe ununterscheidbar."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
