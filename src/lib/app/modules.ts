@@ -70,7 +70,7 @@ export const APP_MODULES: readonly AppModule[] = [
         route: '/assistant',
         label: 'Assistent',
         description: 'Ganzseitige Assistent-Ansicht: Dialog links, generative Bühne rechts.',
-        entityTypes: [],
+        entityTypes: [SCHEMA.Conversation, SCHEMA.Message],
         navigation: 'primary',
     },
     {
@@ -86,7 +86,7 @@ export const APP_MODULES: readonly AppModule[] = [
         route: '/calendar',
         label: 'Kalender',
         description: 'Termine aus ICS-Providern in Monats- und Wochenansicht.',
-        entityTypes: [SCHEMA.Event],
+        entityTypes: [SCHEMA.Event, SCHEMA.DataFeed],
         navigation: 'primary',
     },
     {
@@ -126,7 +126,7 @@ export const APP_MODULES: readonly AppModule[] = [
         route: '/ai',
         label: 'AI-Hub',
         description: 'Inference-Provider, Modelle, Routing und Diagnose.',
-        entityTypes: [],
+        entityTypes: [OW.InferenceProvider, OW.Model],
         navigation: 'primary',
     },
     {

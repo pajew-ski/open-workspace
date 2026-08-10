@@ -1,9 +1,12 @@
 /**
- * AI-Spiegel in `graph/meta` (SPEC §18-Muster, Meilenstein M9): die
- * Skills, Agenten und Werkzeuge DIESER Installation sind Graph-Bürger —
+ * AI-Spiegel in `graph/meta` (SPEC §18-Muster, Meilenstein M9, erweitert
+ * in M15): die Skills, Agenten, Werkzeuge UND die Inference-Provider samt
+ * ihren konfigurierten Modellen DIESER Installation sind Graph-Bürger —
  * Knoten im Graphen, keine Einträge, die nur in JSON-Dateien leben
  * (Invariante 6). Damit ist die M9-Abnahmefrage per SPARQL beantwortbar:
- * welche Skills welche Tools benötigen und welcher Agent sie anbietet.
+ * welche Skills welche Tools benötigen und welcher Agent sie anbietet —
+ * und seit M15 auch: welche Modelle hinter welcher Quelle stehen und
+ * welche davon Werkzeuge nativ aufrufen kann (ow:toolCallMode).
  *
  * Wahrheits-Semantik (bewusst anders als die Store-first-CRUD aus §12.4):
  * Die JSON-Bestände (`data/ai/skills.json`, `data/agents/config.json`,
@@ -19,8 +22,11 @@
  * sodass `[[TOOL:…]]`-Referenzen aus Skill-Inhalten auf die Tool-Knoten
  * zeigen. MCP-Server erscheinen als konfigurierte ow:ToolProvider OHNE
  * Tool-Liste — das Live-Inventar liefert ehrlich nur der `mcp-server`-
- * Connector (Discovery ist ein Netz-Lauf, keine Konfigurationstatsache).
- * System-Prompts lokaler Agenten werden bewusst nicht gespiegelt
+ * Connector (Discovery ist ein Netz-Lauf, keine Konfigurationstatsache);
+ * genauso erscheinen bei einem Inference-Provider nur die KONFIGURIERTEN
+ * Modelle (Voreinstellung und gepinnte), nie ein abgefragtes Live-Inventar.
+ * System-Prompts lokaler Agenten und jede Form von Geheimnis
+ * (`apiKeyEnc`, Auth-Header) werden bewusst nicht gespiegelt
  * (Konfiguration, kein Wissen).
  */
 
@@ -28,7 +34,7 @@ import type { Quad } from '@rdfjs/types';
 import type { Skill } from '@/lib/skills/types';
 import type { Agent } from '@/lib/agents/types';
 import type { Tool } from '@/lib/tools/types';
-import type { McpServerConfig } from '@/lib/ai/types';
+import type { AIDefaults, AIProvider, McpServerConfig } from '@/lib/ai/types';
 import { apiToolToEngineTool, makeFinderTool, makeUseSkillTool } from '@/lib/ai/tools.shared';
 import type { GraphStore } from '../store/types';
 import type { IriFactory } from '../iri';
@@ -40,6 +46,10 @@ export interface AiMirrorInput {
     agents: Agent[];
     apiTools: Tool[];
     mcpServers: McpServerConfig[];
+    /** Konfigurierte Inferenz-Quellen (M15). */
+    providers: AIProvider[];
+    /** Vorauswahl von Provider und Modell (M15). */
+    defaults: AIDefaults;
 }
 
 /** Anbieter-Knoten der eingebauten und selbst konfigurierten Werkzeuge. */
@@ -224,6 +234,59 @@ export function aiMirrorQuads(iri: IriFactory, input: AiMirrorInput): Quad[] {
         }
     }
 
+    // Inference-Provider und ihre Modelle (M15). Gespiegelt wird die
+    // KONFIGURATION, nie ein Geheimnis: `apiKeyEnc` und Header-Werte
+    // bleiben in der operativen Konfiguration. Modelle erscheinen nur,
+    // soweit sie konfiguriert SIND (Voreinstellung + gepinnte Modelle) —
+    // ein Live-Inventar ist ein Netz-Lauf und wird nicht erfunden
+    // (Invariante 10, dasselbe Prinzip wie beim MCP-Tool-Inventar).
+    for (const provider of [...input.providers].filter(p => p.enabled).sort((a, b) => a.id.localeCompare(b.id))) {
+        const node = namedNode(iri.entity('ai-provider', provider.id));
+        quads.push(
+            factory.quad(node, type, namedNode(OW.InferenceProvider)),
+            factory.quad(node, type, namedNode(SCHEMA.Service)),
+            factory.quad(node, namedNode(SCHEMA.name), literal(provider.label)),
+            factory.quad(node, namedNode(DCTERMS.identifier), literal(provider.id)),
+            factory.quad(node, namedNode(OW.providerKind), literal(provider.kind)),
+            factory.quad(node, namedNode(OW.toolCallMode), literal(provider.toolCalls)),
+            factory.quad(node, namedNode(DCTERMS.created), typedLiteral.dateTime(provider.createdAt)),
+            factory.quad(node, namedNode(DCTERMS.modified), typedLiteral.dateTime(provider.updatedAt)),
+        );
+        // WebLLM läuft im Browser und hat deshalb keinen Endpoint — ein
+        // leerer wäre eine Behauptung über eine Adresse, die es nicht gibt.
+        if (provider.baseUrl !== '') {
+            quads.push(factory.quad(node, namedNode(OW.endpoint), typedLiteral.anyUri(provider.baseUrl)));
+        }
+        const models = [...new Set([
+            ...(provider.defaultModel ? [provider.defaultModel] : []),
+            ...(provider.pinnedModels ?? []),
+            // Das workspace-weit vorausgewählte Modell ist an diesem
+            // Provider konfiguriert, auch wenn es nicht sein eigener
+            // Default ist — sonst fehlte im Spiegel genau das Modell,
+            // mit dem die Installation tatsächlich antwortet.
+            ...(input.defaults.providerId === provider.id && input.defaults.model
+                ? [input.defaults.model]
+                : []),
+        ].filter(name => name.trim() !== ''))].sort();
+        for (const name of models) {
+            const modelNode = namedNode(iri.entity('model', `${provider.id}/${name}`));
+            quads.push(
+                factory.quad(modelNode, type, namedNode(OW.Model)),
+                factory.quad(modelNode, type, namedNode(SCHEMA.SoftwareApplication)),
+                factory.quad(modelNode, namedNode(SCHEMA.name), literal(name)),
+                factory.quad(modelNode, namedNode(DCTERMS.identifier), literal(name)),
+                factory.quad(modelNode, namedNode(SCHEMA.provider), node),
+            );
+        }
+        if (provider.defaultModel && provider.defaultModel.trim() !== '') {
+            quads.push(factory.quad(
+                node,
+                namedNode(OW.defaultModel),
+                namedNode(iri.entity('model', `${provider.id}/${provider.defaultModel}`)),
+            ));
+        }
+    }
+
     return quads;
 }
 
@@ -251,7 +314,8 @@ function quadKey(quad: Quad): string {
 
 /** Die Entitäts-Präfixe, deren meta-Knoten dem Spiegel gehören. */
 function mirrorPrefixes(iri: IriFactory): string[] {
-    return (['skill', 'agent', 'tool', 'tool-provider'] as const).map(kind => `${iri.entity(kind, 'x').slice(0, -1)}`);
+    return (['skill', 'agent', 'tool', 'tool-provider', 'ai-provider', 'model'] as const)
+        .map(kind => `${iri.entity(kind, 'x').slice(0, -1)}`);
 }
 
 export interface AiMirrorReport {

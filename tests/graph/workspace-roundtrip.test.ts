@@ -124,6 +124,46 @@ const fixture = (): WorkspaceSnapshotInput => ({
             createdAt: '2026-01-07T09:00:00.000Z', updatedAt: '2026-01-07T11:00:00.000Z',
         },
     ],
+    calendars: [
+        {
+            id: 'cal-1', name: 'Tango Regensburg', url: 'https://example.org/kalender.ics',
+            color: '#be185d', enabled: true, lastSync: '2026-01-08T10:00:00.000Z',
+        },
+        {
+            id: 'cal-2', name: 'Abgeschaltet', url: 'https://example.org/aus.ics',
+            color: '#00674F', enabled: false, lastSync: null,
+        },
+    ],
+    events: [
+        {
+            id: 'evt-1', providerId: 'cal-1', title: 'Milonga del Sol',
+            description: 'Mit Live-Musik.', location: 'Alte Mälzerei',
+            startDate: '2026-01-09T18:30:00.000Z', endDate: '2026-01-09T22:30:00.000Z', allDay: false,
+        },
+        {
+            id: 'evt-2', providerId: 'cal-1', title: 'Ganztägiger Workshop',
+            startDate: '2026-01-10T00:00:00.000Z', endDate: '2026-01-11T00:00:00.000Z', allDay: true,
+        },
+    ],
+    conversations: [
+        {
+            id: 'conv-1', title: 'Aufgaben-Frage',
+            messages: [
+                { id: 'msg-1', role: 'user', content: 'Welche Aufgaben stehen an?', timestamp: '2026-01-11T10:00:00.000Z' },
+                {
+                    id: 'msg-2', role: 'assistant', content: 'Zwei offene Aufgaben.',
+                    timestamp: '2026-01-11T10:00:02.000Z',
+                    uiComponents: [{ type: 'TaskList', ids: ['task-1'] }],
+                },
+            ],
+            createdAt: '2026-01-11T09:59:00.000Z', updatedAt: '2026-01-11T10:00:02.000Z',
+        },
+        {
+            id: 'conv-2', title: 'Leerer Chat', messages: [],
+            createdAt: '2026-01-12T09:00:00.000Z', updatedAt: '2026-01-12T09:00:00.000Z',
+        },
+    ],
+    activeConversationId: 'conv-2',
 });
 
 async function roundTrip(input: WorkspaceSnapshotInput): Promise<WorkspaceSnapshotInput> {

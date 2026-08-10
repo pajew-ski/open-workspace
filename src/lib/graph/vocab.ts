@@ -68,6 +68,9 @@ export const OW = {
     ToolProvider: ow('ToolProvider'),
     Connector: ow('Connector'),
     FederatedEndpoint: ow('FederatedEndpoint'),
+    // AI-Schicht als Graph-Bürger (§18-Spiegel, M15)
+    InferenceProvider: ow('InferenceProvider'),
+    Model: ow('Model'),
     // Selbstmodell und Einführungsstrecke (SPEC §18 / M14)
     Module: ow('Module'),
     OnboardingStep: ow('OnboardingStep'),
@@ -108,8 +111,19 @@ export const OW = {
     targetGraph: ow('targetGraph'),
     sparqlEndpoint: ow('sparqlEndpoint'),
     trustLevel: ow('trustLevel'),
+    // Kalender und Chats als Graph-Bürger (M15)
+    enabled: ow('enabled'),
+    allDay: ow('allDay'),
+    messageRole: ow('messageRole'),
+    // AI-Konfiguration (M15)
+    providerKind: ow('providerKind'),
+    toolCallMode: ow('toolCallMode'),
+    defaultModel: ow('defaultModel'),
     // Präsentationsbezug
     rendersNode: ow('rendersNode'),
+    // Präsentation der Chats (nur graph/presentation, Invariante 2)
+    generativeSurface: ow('generativeSurface'),
+    selected: ow('selected'),
     // Canvas-Layout (nur graph/presentation, SPEC §9 / M5)
     CanvasNode: ow('CanvasNode'),
     CanvasEdge: ow('CanvasEdge'),
@@ -162,6 +176,8 @@ export const SCHEMA = {
     Action: schemaOrg('Action'),
     Person: schemaOrg('Person'),
     Event: schemaOrg('Event'),
+    /** Abonnierte Quelle gleichartiger Elemente — hier: ein ICS-Kalender. */
+    DataFeed: schemaOrg('DataFeed'),
     Conversation: schemaOrg('Conversation'),
     Message: schemaOrg('Message'),
     SoftwareApplication: schemaOrg('SoftwareApplication'),
@@ -179,6 +195,14 @@ export const SCHEMA = {
     actionStatus: schemaOrg('actionStatus'),
     startTime: schemaOrg('startTime'),
     endTime: schemaOrg('endTime'),
+    /** Termin-Zeitraum (schema:Event) — getrennt von startTime/endTime an schema:Action. */
+    startDate: schemaOrg('startDate'),
+    endDate: schemaOrg('endDate'),
+    location: schemaOrg('location'),
+    /** Versandzeitpunkt einer schema:Message. */
+    dateSent: schemaOrg('dateSent'),
+    /** Oberproperty von ow:providedBy — trägt Modell → Inference-Provider. */
+    provider: schemaOrg('provider'),
     hasPart: schemaOrg('hasPart'),
     isPartOf: schemaOrg('isPartOf'),
     keywords: schemaOrg('keywords'),

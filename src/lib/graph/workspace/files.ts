@@ -23,6 +23,8 @@ import type { Doc, DocFrontmatter, DocType } from '@/types/doc';
 import type { Task, TasksData } from '@/lib/storage/tasks';
 import type { Project, ProjectsData } from '@/lib/storage/projects';
 import type { CanvasData, CanvasIndex } from '@/lib/storage/canvas';
+import type { CalendarEvent, CalendarProvider } from '@/lib/storage/calendar';
+import type { Conversation, ConversationsData } from '@/lib/storage/chat';
 import { readJsonSafe, writeFileAtomic, writeJsonAtomic } from '@/lib/storage/atomic';
 import type { WorkspaceSnapshotInput } from '../migrate/from-files';
 import { DEFAULT_USER_ID } from '../iri';
@@ -32,6 +34,9 @@ export interface WorkspaceFilePaths {
     tasksFile: string;
     projectsFile: string;
     canvasDir: string;
+    calendarProvidersFile: string;
+    calendarEventsFile: string;
+    conversationsFile: string;
 }
 
 export function defaultWorkspaceFilePaths(baseDir: string = path.join(process.cwd(), 'data')): WorkspaceFilePaths {
@@ -40,6 +45,9 @@ export function defaultWorkspaceFilePaths(baseDir: string = path.join(process.cw
         tasksFile: path.join(baseDir, 'tasks', 'tasks.json'),
         projectsFile: path.join(baseDir, 'tasks', 'projects.json'),
         canvasDir: path.join(baseDir, 'canvas'),
+        calendarProvidersFile: path.join(baseDir, 'calendar', 'providers.json'),
+        calendarEventsFile: path.join(baseDir, 'calendar', 'events.json'),
+        conversationsFile: path.join(baseDir, 'chat', 'conversations.json'),
     };
 }
 
@@ -179,13 +187,29 @@ async function readCanvasesFromDir(canvasDir: string): Promise<CanvasData[]> {
  * Laufzeit-Lesepfad der App führt mehr hierüber.
  */
 export async function readWorkspaceFiles(paths: WorkspaceFilePaths = defaultWorkspaceFilePaths()): Promise<WorkspaceSnapshotInput> {
-    const [docs, tasksData, projectsData, canvases] = await Promise.all([
+    const [docs, tasksData, projectsData, canvases, providersData, eventsData, chatData] = await Promise.all([
         readDocsFromDir(paths.docsDir),
         readJsonSafe<TasksData>(paths.tasksFile, { tasks: [], version: 1 }),
         readJsonSafe<ProjectsData>(paths.projectsFile, { projects: [], version: 1 }),
         readCanvasesFromDir(paths.canvasDir),
+        readJsonSafe<CalendarProvidersData>(paths.calendarProvidersFile, { providers: [] }),
+        readJsonSafe<CalendarEventsData>(paths.calendarEventsFile, { events: [] }),
+        readJsonSafe<ConversationsData>(paths.conversationsFile, { conversations: [], activeId: null }),
     ]);
-    return { docs, tasks: tasksData.tasks, projects: projectsData.projects, canvases };
+    const calendars = providersData.providers ?? [];
+    // Termine ohne ihren Kalender bekämen eine Kante ins Leere — sie
+    // stammen aus einer Datei, die den Provider nicht mehr kennt.
+    const known = new Set(calendars.map(calendar => calendar.id));
+    return {
+        docs,
+        tasks: tasksData.tasks,
+        projects: projectsData.projects,
+        canvases,
+        calendars,
+        events: (eventsData.events ?? []).filter(event => known.has(event.providerId)),
+        conversations: chatData.conversations ?? [],
+        activeConversationId: chatData.activeId ?? null,
+    };
 }
 
 // --- Projektions-Schreiber -----------------------------------------------
@@ -195,6 +219,17 @@ export interface ProjectionReport {
     removedDocFiles: string[];
     writtenCanvases: number;
     removedCanvasFiles: string[];
+}
+
+/** Dateiform von `data/calendar/providers.json` (Projektion). */
+export interface CalendarProvidersData {
+    providers: CalendarProvider[];
+}
+
+/** Dateiform von `data/calendar/events.json` (Projektion). */
+export interface CalendarEventsData {
+    events: CalendarEvent[];
+    updatedAt?: string;
 }
 
 function sanitizeCanvasFileId(id: string): boolean {
@@ -236,6 +271,16 @@ export async function projectWorkspaceFiles(
     await writeJsonAtomic(paths.tasksFile, { tasks: input.tasks, version: 1 } satisfies TasksData);
     await writeJsonAtomic(paths.projectsFile, { projects: input.projects, version: 1 } satisfies ProjectsData);
 
+    // Kalender und Chats (M15). Bewusst ohne den früheren `updatedAt`-
+    // Stempel in events.json: Die Projektion ist deterministisch, damit
+    // eine Mutation ohne Inhaltsänderung keinen Git-Diff erzeugt.
+    await writeJsonAtomic(paths.calendarProvidersFile, { providers: input.calendars } satisfies CalendarProvidersData);
+    await writeJsonAtomic(paths.calendarEventsFile, { events: input.events } satisfies CalendarEventsData);
+    await writeJsonAtomic(paths.conversationsFile, {
+        conversations: input.conversations,
+        activeId: input.activeConversationId ?? null,
+    } satisfies ConversationsData);
+
     // Canvases: Datei pro ID plus Index; gelöschte IDs verlieren die Datei.
     const currentCanvasIds = new Set(input.canvases.map(canvas => canvas.id));
     for (const canvas of input.canvases) {
@@ -265,4 +310,7 @@ export async function projectWorkspaceFiles(
 }
 
 /** Re-Export der Domänentypen für Aufrufer der Datei-Ebene. */
-export type { Doc, DocType, Task, Project, CanvasData, WorkspaceSnapshotInput };
+export type {
+    Doc, DocType, Task, Project, CanvasData, CalendarProvider, CalendarEvent, Conversation,
+    WorkspaceSnapshotInput,
+};

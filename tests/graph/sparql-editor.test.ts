@@ -54,6 +54,7 @@ describe('Editor-Vorschau: Query-Text als Graph (SPEC §7.1)', () => {
                 },
             ],
             tasks: [], projects: [], canvases: [],
+            calendars: [], events: [], conversations: [],
         }, iri);
         await store.load(quads, namedNode(iri.graph('workspace')));
         return { store, iri };
