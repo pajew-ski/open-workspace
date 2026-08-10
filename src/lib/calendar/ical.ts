@@ -28,7 +28,6 @@ export async function parseICS(icsData: string): Promise<ParsedEvent[]> {
 
     let currentEvent: Partial<ParsedEvent> & { dtstart?: string; dtend?: string; dtstartParams?: string } = {};
     let inEvent = false;
-    let eventCount = 0;
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
@@ -41,7 +40,6 @@ export async function parseICS(icsData: string): Promise<ParsedEvent[]> {
 
         if (line.startsWith('END:VEVENT')) {
             inEvent = false;
-            eventCount++;
             // Parse dates only if we have DTSTART
             if (currentEvent.dtstart) {
                 try {

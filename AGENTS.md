@@ -587,9 +587,10 @@ dieser Reihenfolge:
    Entitätstypen ihrer Module im Selbstmodell auf, das seit M14 darauf
    wartet.
 
-Parallel weiter sinnvoll: i18n mit `next-intl` (P0); Abbau der
-`no-explicit-any`-Warnings außerhalb des Graph-Codes;
-CopilotKit-Entscheidung.
+Parallel weiter sinnvoll: i18n mit `next-intl` (P0); CopilotKit-Entscheidung.
+Der `no-explicit-any`-Abbau ist erledigt — `bun run lint` steht auf 0
+Warnings, und das ist ab jetzt der Sollzustand: Wer eine neue Warnung
+einführt, hat sie zu begründen oder zu beheben.
 
 **Arbeitsprinzip dieses Repos**: Keine Attrappen. Lieber ein Feature ehrlich als
 „geplant" kennzeichnen, als tote Buttons stehen lassen.

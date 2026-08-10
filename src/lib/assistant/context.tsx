@@ -2,9 +2,15 @@
 
 import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 
+/**
+ * Was ein Modul über seinen Zustand meldet: beliebig geformt, aber
+ * JSON-serialisierbar (der Vergleich unten läuft über JSON.stringify).
+ */
+export type ModuleState = unknown;
+
 interface AssistantContextType {
-    viewState: Record<string, any>;
-    setModuleState: (key: string, data: any) => void;
+    viewState: Record<string, ModuleState>;
+    setModuleState: (key: string, data: ModuleState) => void;
 }
 
 const AssistantContext = createContext<AssistantContextType>({
@@ -13,9 +19,9 @@ const AssistantContext = createContext<AssistantContextType>({
 });
 
 export function AssistantProvider({ children }: { children: ReactNode }) {
-    const [viewState, setViewState] = useState<Record<string, any>>({});
+    const [viewState, setViewState] = useState<Record<string, ModuleState>>({});
 
-    const setModuleState = useCallback((key: string, data: any) => {
+    const setModuleState = useCallback((key: string, data: ModuleState) => {
         setViewState(prev => {
             // Deep compare not needed here if we rely on React's state merging or if calls are sparse.
             // But to be safe and avoid unnecessary re-renders of consumers:

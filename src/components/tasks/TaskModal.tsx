@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button, Input, Card, CardHeader, CardContent } from '@/components/ui';
+import { Button, Input } from '@/components/ui';
 import { TaskSelector } from './TaskSelector';
 import styles from './TaskModal.module.css';
 
-interface Task {
+/** Formularwerte des Modals — vor dem Speichern hat eine neue Aufgabe noch keine id. */
+export interface Task {
     id?: string;
     title: string;
     description?: string;
@@ -28,7 +29,7 @@ interface Project {
 interface TaskModalProps {
     task?: Task;
     onClose: () => void;
-    onSave: (task: any) => Promise<void>;
+    onSave: (task: Task) => Promise<void>;
     onDelete?: (id: string) => Promise<void>;
 }
 
@@ -152,7 +153,9 @@ export function TaskModal({ task, onClose, onSave, onDelete }: TaskModalProps) {
                             <div className={styles.field}>
                                 <label>Abhängigkeit hinzufügen</label>
                                 <TaskSelector
-                                    tasks={allTasks as any[]}
+                                    // TaskSelector braucht eine id; ungespeicherte
+                                    // Entwürfe haben noch keine.
+                                    tasks={allTasks.filter((t): t is Task & { id: string } => Boolean(t.id))}
                                     excludeIds={[...(formData.dependencies?.map(d => d.id) || []), formData.id || '']}
                                     onSelect={(id) => {
                                         const newDeps = [...(formData.dependencies || []), { id, type: 'FS' as const }];

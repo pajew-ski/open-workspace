@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Bold, Italic, Code, List, ListOrdered, Link, Image, Quote, Heading } from 'lucide-react';
+import { Bold, Italic, Code, List, ListOrdered, Link, Quote, Heading } from 'lucide-react';
 import styles from './MarkdownEditor.module.css';
 
 export type EditorMode = 'read' | 'raw' | 'wysiwyg';
@@ -87,8 +87,6 @@ export function MarkdownEditor({
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    const checkMobile = () => typeof window !== 'undefined' && window.innerWidth < 768;
-
     const renderedHtml = useMemo(() => parseMarkdown(localContent), [localContent]);
 
     const insertFormatting = (prefix: string, suffix: string = '') => {
@@ -102,7 +100,6 @@ export function MarkdownEditor({
         const after = text.substring(end);
 
         const newText = before + prefix + selection + suffix + after;
-        const newCursor = start + prefix.length + selection.length + suffix.length; // Cursor after insertion
 
         setLocalContent(newText);
         onChange?.(newText);
@@ -114,10 +111,9 @@ export function MarkdownEditor({
     };
 
     const handleWysiwygInput = useCallback((e: React.FormEvent<HTMLDivElement>) => {
-        // For WYSIWYG, we'd need to convert HTML back to Markdown
-        // This is a simplified version - a real implementation would use a library
-        const html = e.currentTarget.innerHTML;
-        // For now, just update with raw text content
+        // For WYSIWYG, we'd need to convert HTML back to Markdown.
+        // This is a simplified version - a real implementation would use a library.
+        // For now, just update with raw text content.
         const text = e.currentTarget.innerText;
         handleContentChange(text);
     }, [handleContentChange]);

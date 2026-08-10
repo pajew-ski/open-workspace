@@ -20,7 +20,7 @@ export default function DashboardPage() {
       const res = await fetch('/api/dashboard');
       const data = await res.json();
       if (data.layout) {
-        setWidgets(data.layout.sort((a: any, b: any) => a.order - b.order));
+        setWidgets((data.layout as Widget[]).sort((a, b) => a.order - b.order));
       }
     } catch (e) {
       console.error(e);

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ActionHandler } from '../types';
+import { ActionHandler, type A2UIComponent, type A2UIValue } from '../types';
 import {
     WorkspaceTasks,
     WorkspaceCalendar,
@@ -16,7 +16,8 @@ import './Status.css';
 import './Input.css';
 
 interface ComponentProps {
-    props: any;
+    /** Rohe Protokoll-Props des Agenten (siehe A2UIValue). */
+    props: A2UIComponent;
     onAction: ActionHandler;
     children?: React.ReactNode;
 }
@@ -110,7 +111,7 @@ export const Markdown = ({ props }: ComponentProps) => {
 
     // Use dynamic import to load ReactMarkdown and remarkGfm
     const [ReactMarkdownLib, setReactMarkdownLib] = useState<{ default: typeof import('react-markdown').default } | null>(null);
-    const [remarkGfm, setRemarkGfm] = useState<any>(null);
+    const [remarkGfm, setRemarkGfm] = useState<typeof import('remark-gfm').default | null>(null);
 
     useEffect(() => {
         Promise.all([
@@ -169,7 +170,7 @@ export const Image = ({ props }: ComponentProps) => {
     console.log('A2UI Image Props:', props);
 
     // Safer extraction helper
-    const getText = (val: any) => {
+    const getText = (val: A2UIValue) => {
         if (!val) return '';
         if (typeof val === 'string') return val;
         if (typeof val === 'object' && val.literalString) return val.literalString;
@@ -204,6 +205,10 @@ export const Image = ({ props }: ComponentProps) => {
     return (
         <figure className="a2ui-image">
             {loading && <div className="a2ui-image-loading">Lade Bild...</div>}
+            {/* Quelle kommt vom entfernten Agenten; `next/image` bräuchte
+                dafür konfigurierte `remotePatterns` und würde jeden nicht
+                gelisteten Host ablehnen. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
                 src={src}
                 alt={alt}
@@ -325,7 +330,7 @@ export const Table = ({ props }: ComponentProps) => {
                     </tr>
                 </thead>
                 <tbody>
-                    {rows.map((row: any, rowIdx: number) => (
+                    {rows.map((row: A2UIValue, rowIdx: number) => (
                         <tr key={rowIdx}>
                             {columns.map((col: string | { label: string; key: string }, colIdx: number) => {
                                 const key = typeof col === 'string' ? col : col.key;

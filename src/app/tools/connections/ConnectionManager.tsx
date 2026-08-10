@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, Button, Input } from '@/components/ui';
 import styles from './ConnectionManager.module.css';
+import type { Connection } from '@/lib/connections/types';
 
 export function ConnectionManager() {
     const [isAdding, setIsAdding] = useState(false);
@@ -16,7 +17,7 @@ export function ConnectionManager() {
     const [token, setToken] = useState('');
     const [isEnv, setIsEnv] = useState(false); // Toggle between regular value and ENV ref
 
-    const { data: connections = [] } = useQuery<any[]>({
+    const { data: connections = [] } = useQuery<Connection[]>({
         queryKey: ['connections'],
         queryFn: async () => {
             const res = await fetch('/api/connections');

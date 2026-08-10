@@ -208,9 +208,13 @@ Aufwände sind Richtwerte für eine Person.
 1. ⏳ **offen** — **i18n wirklich einführen** (`next-intl`): Dictionary-Extraktion aller
    UI-Strings (de als Quelle), en-Übersetzung, Umschalter in den Settings,
    `<html lang>` dynamisch. Das README-Versprechen ist sonst unerfüllbar.
-2. ⏳ **teilweise** (unter `src/lib/graph/` ist `any` ESLint-Error, außerhalb
-   bleiben Warnings) — **`no-explicit-any`-Abbau**: Die 135 sichtbaren Warnings modulweise
-   auf präzise Typen heben (`Agent`, `Tool`, `Connection` existieren bereits als Typen).
+2. ✅ **erledigt** — **`no-explicit-any`-Abbau**: `bun run lint` meldet 0 Warnings.
+   Die vorhandenen Typen (`Tool`, `CreateToolRequest`, `Connection`, `Widget`,
+   `LegacyGraphView`) tragen jetzt die Stellen, die vorher `any` waren; die
+   Force-Graph-Callbacks nutzen die Generics des Pakets. Einzige verbleibende
+   Ausnahme ist die A2UI-Protokollgrenze — dort kommen die Bausteine von einem
+   entfernten Agenten und sind zur Bauzeit nicht typisierbar; das steht als
+   `A2UIValue` benannt und begründet im Code.
 3. ⏳ **offen** — **CopilotKit-Entscheidung**: Entweder die CopilotKit-UI (Sidebar/Popup)
    rendern und die 5 Actions erlebbar machen — oder den Stack entfernen und
    die Actions in den eigenen Tool-Loop überführen. Aktuell doppelte

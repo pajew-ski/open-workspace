@@ -27,10 +27,15 @@ const openai = new OpenAI({
     apiKey: "ollama", // Ollama doesn't require a real key
 });
 
-// Use OpenAI adapter with the configured client
-// Type assertion needed due to OpenAI SDK version differences
+// Use OpenAI adapter with the configured client.
+// CopilotKit bündelt eine eigene, ältere Fassung des OpenAI-SDK; die
+// beiden Client-Typen sind strukturell verschieden, obwohl es zur
+// Laufzeit derselbe Client ist. Die Umleitung über den vom Adapter
+// erwarteten Typ hält die Behauptung so klein wie möglich — `any` würde
+// zusätzlich das Feld selbst ungeprüft lassen.
+type AdapterOpenAI = ConstructorParameters<typeof OpenAIAdapter>[0] extends { openai?: infer T } ? T : never;
 const serviceAdapter = new OpenAIAdapter({
-    openai: openai as any,
+    openai: openai as unknown as AdapterOpenAI,
     model: OLLAMA_MODEL,
 });
 

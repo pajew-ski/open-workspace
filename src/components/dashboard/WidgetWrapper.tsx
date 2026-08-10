@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { Card, CardHeader, CardContent, Button } from '@/components/ui';
+import { Card, CardHeader, CardContent } from '@/components/ui';
 import { Trash2, GripVertical, Edit2 } from 'lucide-react';
 import styles from './WidgetWrapper.module.css';
 
