@@ -214,14 +214,3 @@ export const APP_MODULES: readonly AppModule[] = [
 export function navigationModules(area: AppModule['navigation']): AppModule[] {
     return APP_MODULES.filter(module => module.navigation === area);
 }
-
-/**
- * Modul zu einem Pfad: längster passender Präfix gewinnt, damit
- * `/graph/sparql` nicht als `/graph` durchgeht. `/` trifft nur exakt.
- */
-export function moduleForRoute<T extends { route: string }>(modules: readonly T[], pathname: string): T | null {
-    const candidates = modules
-        .filter(module => pathname === module.route || (module.route !== '/' && pathname.startsWith(`${module.route}/`)))
-        .sort((a, b) => b.route.length - a.route.length);
-    return candidates[0] ?? null;
-}

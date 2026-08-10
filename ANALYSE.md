@@ -3,6 +3,16 @@
 > Vollständige Bestandsaufnahme von Open Workspace (Stand 2026-08-08), durchgeführte
 > Modernisierung und priorisierte Roadmap für die verbleibenden Schritte.
 >
+> **Lesehinweis (2026-08-10)**: Dieses Dokument ist die **historische
+> Bestandsaufnahme** des Prototyps und der ersten Modernisierung. Die
+> Abschnitte 1–4 und 7 beschreiben den Stand vom 2026-08-08 und werden
+> bewusst nicht fortgeschrieben — sie sind der Vorher-Zustand, gegen den
+> gemessen wurde. Aktuell und verbindlich sind:
+> [AGENTS.md](./AGENTS.md) („Hier weitermachen"),
+> [GRAPH_CORE_SPEC.md](./GRAPH_CORE_SPEC.md) (Graph-Ausbau M0–M14) und
+> [TODO.md](./TODO.md). Der Status der Roadmap in §5 ist unten
+> eingearbeitet.
+>
 > **Nachtrag (2. Ausbaustufe, 2026-08-08)**: Die AI-Plattform wurde voll
 > ausgebaut — Multi-Provider-Inference (Cloud + lokal + WebLLM im Browser),
 > Backend-Unabhängigkeit mit automatischem Browser/Server-Routing, natives
@@ -187,51 +197,72 @@ angefangen worden, statt weitere halbe Attrappen zu hinterlassen.
 Priorisierung: **P0** = nächster sinnvoller Schritt, **P1** = danach, **P2** = Vision.
 Aufwände sind Richtwerte für eine Person.
 
+> **Stand 2026-08-10**: Der Graph-Ausbau nach
+> [GRAPH_CORE_SPEC.md](./GRAPH_CORE_SPEC.md) (M0–M14) hat große Teile
+> dieser Liste eingeholt — teils anders gelöst als hier gedacht. Der
+> Status steht bei jedem Punkt; die abhakbare Fassung ist
+> [TODO.md](./TODO.md). Bei Widerspruch gilt die Spec.
+
 ### P0 — Fundament abrunden (je 0,5–2 Tage)
 
-1. **i18n wirklich einführen** (`next-intl`): Dictionary-Extraktion aller
+1. ⏳ **offen** — **i18n wirklich einführen** (`next-intl`): Dictionary-Extraktion aller
    UI-Strings (de als Quelle), en-Übersetzung, Umschalter in den Settings,
    `<html lang>` dynamisch. Das README-Versprechen ist sonst unerfüllbar.
-2. **`no-explicit-any`-Abbau**: Die 135 sichtbaren Warnings modulweise
+2. ⏳ **teilweise** (unter `src/lib/graph/` ist `any` ESLint-Error, außerhalb
+   bleiben Warnings) — **`no-explicit-any`-Abbau**: Die 135 sichtbaren Warnings modulweise
    auf präzise Typen heben (`Agent`, `Tool`, `Connection` existieren bereits als Typen).
-3. **CopilotKit-Entscheidung**: Entweder die CopilotKit-UI (Sidebar/Popup)
+3. ⏳ **offen** — **CopilotKit-Entscheidung**: Entweder die CopilotKit-UI (Sidebar/Popup)
    rendern und die 5 Actions erlebbar machen — oder den Stack entfernen und
    die Actions in den eigenen Tool-Loop überführen. Aktuell doppelte
    Infrastruktur (~Bundle-Kosten ohne Nutzererlebnis).
-4. **Frontmatter-Parser ersetzen** durch `yaml`/`gray-matter` (Robustheit).
+4. ⏳ **offen** — **Frontmatter-Parser ersetzen** durch `yaml`/`gray-matter` (Robustheit).
 
 ### P1 — Versprochene Großfeatures (je 3–10 Tage)
 
-5. **Echtes A2A-Protokoll**: `/.well-known/agent.json` (Agent Card),
+5. ✅ **erledigt** (2. Ausbaustufe) — **Echtes A2A-Protokoll**: `/.well-known/agent.json` (Agent Card),
    JSON-RPC-Endpunkt, Task-Lifecycle (submitted → working → completed),
    Remote-Agent-Aufruf im Chat-Tool-Loop (`[[AGENT:id:prompt]]` analog zum
    Tool-Muster), Capability Discovery.
-6. **Echtes MCP**: `@modelcontextprotocol/sdk` als Client — konfigurierte
+6. ✅ **erledigt** — Client in der 2. Ausbaustufe, **Server** mit M10
+   (`/api/mcp`, SPEC §7.6) — **Echtes MCP**: `@modelcontextprotocol/sdk` als Client — konfigurierte
    MCP-Server (stdio/HTTP) verbinden, deren Tools in den Tool-Loop einspeisen;
    den "Geplant"-Button in den Werkzeugen aktivieren.
-7. **Natives Tool-Calling**: Bei Modellen mit Function-Calling-Support
+7. ✅ **erledigt** (2. Ausbaustufe) — **Natives Tool-Calling**: Bei Modellen mit Function-Calling-Support
    (Ollama `tools`-Parameter) die Text-Syntax durch echtes Tool-Calling
    ersetzen; Text-Syntax als Fallback behalten.
-8. **GitHub-Sync**: OAuth Device Flow, Repo-Auswahl, Commit/Pull von
-   `data/docs/` mit Konfliktstrategie (isomorphic-git oder REST).
-9. **IndexedDB-Spiegel + Background Sync**: Lese-Spiegel der JSON-Stores
-   im Client (Dexie), Mutations-Queue im Service Worker für echtes
-   Offline-Schreiben (aktuell: offline lesen ja, schreiben nein).
-10. **Matrix-Chat**: matrix-js-sdk, Login/SSO, Raum-Liste, E2EE via
+8. ✅ **anders gelöst** (M6) — Git-Sync läuft über den EINEN
+   Connector-Vertrag (`git-backup`: Backup-Einbahnstraße oder
+   bidirektional mit Konfliktregel §6.2, `process-git` und
+   `isomorphic-git` als zwei Bindungen), lesende GitHub-Quellen über
+   `github-rdf` (commit-gepinnt). Offen bleibt nur der **OAuth Device
+   Flow** als bequemerer Zugang statt Token aus der Umgebung.
+9. ⏳ **teilweise** — für die AI-Schicht erledigt (Chats in IndexedDB,
+   Konfiguration im localStorage); für die Workspace-Inhalte offen. Die
+   Bausteine der Runtime `local` stehen seit M12 (Store im Web Worker,
+   OPFS, isomorphic-git) — was fehlt, ist die Umstellung der Oberflächen
+   auf sie. **IndexedDB-Spiegel + Background Sync**
+10. ⏳ **offen** (die Seite kennzeichnet ihren Planungsstand) — **Matrix-Chat**: matrix-js-sdk, Login/SSO, Raum-Liste, E2EE via
     Rust-Crypto-WASM. Bewusst groß — alternativ Element-Web-Embed prüfen.
 
 ### P2 — Reife & Vision
 
-11. **Auth-Schicht optional** (Passkey/WebAuthn lokal), sobald die App
-    außerhalb von localhost deployt wird; Rate Limiting an den Chat-Routen.
-12. **Accessibility-Durchgang**: Fokus-Management in Dialogen/Overlays,
+11. ⏳ **teilweise** — Identität und Rechte sind gebaut (M12/M13:
+    `OW_AUTH_MODE`, Web Access Control in `graph/acl`, Rate-Limits an
+    MCP-, Föderations- und anonymen Routen). Offen: Passkey/WebAuthn als
+    eigener Anmeldefluss und Rate Limiting an den **Chat**-Routen.
+12. ✅ **erledigt** und im blockierenden E2E-Gate abgesichert
+    (`e2e/a11y`, `e2e/mobile-*`) — **Accessibility-Durchgang**: Fokus-Management in Dialogen/Overlays,
     ARIA-Rollen im Chat (log/status), Reduced-Motion, Tastatur-Navigation
     auf der Pinnwand.
-13. **Kollaboration**: CRDT-Layer (Yjs) über Docs/Canvas, wenn Multi-Device
+13. ⏳ **bewusst ausgeschlossen für v1** (SPEC §15: Store bleibt
+    single-writer pro Graph) — **Kollaboration**: CRDT-Layer (Yjs) über Docs/Canvas, wenn Multi-Device
     oder Multi-User real wird.
-14. **Versionshistorie für Dokumente** (einfach: Snapshot-Ordner; besser: git-basiert
+14. ⏳ **offen** (git-basiert ist über `git-backup` möglich, aber ohne UI) —
+    **Versionshistorie für Dokumente** (einfach: Snapshot-Ordner; besser: git-basiert
     mit dem GitHub-Sync aus P1).
-15. **Plugin-System**: MCP ist das natürliche Plugin-Interface — P1.6 zuerst.
+15. ✅ **Grundlage steht** — MCP in beide Richtungen (Client + Server),
+    dazu der Connector-Vertrag als zweiter Erweiterungspunkt.
+    **Plugin-System**
 
 ## 6. Technologie-Entscheidungen (Warum so?)
 
@@ -244,10 +275,15 @@ Aufwände sind Richtwerte für eine Person.
 | Text-Syntax-Tool-Loop statt sofort natives Function Calling | Funktioniert mit jedem Modell (auch ohne Tool-Support), war als Konvention schon dokumentiert. Natives Calling ist als P1.7 geplant. |
 | Tote UI entfernt statt schnell "irgendwas" angebunden | Attrappen kosten Vertrauen und verdecken den echten Zustand. Roadmap-Ehrlichkeit schlägt Feature-Illusion. |
 
-## 7. Verifikation
+## 7. Verifikation (Stand dieser Analyse, 2026-08-08)
 
 - `bun run build`: ok (Next 16.3, Turbopack, 27 Seiten)
 - `bun run typecheck`
 - `bun run test:run`: ok (35 Unit-Tests: A2UI-Renderer, Ontologie, Tool-Call-Parser)
 - `bun run lint`: 0 Errors (Warnings bewusst sichtbar)
 - E2E: Widget-Test läuft headless; Konversations-Test skippt ohne LLM sauber
+
+**Heutiger Stand (2026-08-10)**: dieselben Kommandos plus
+`bun run check:ontology`; 495 Unit-Tests und ein blockierendes E2E-Gate
+(`e2e/a11y`, `e2e/mobile-navigation`, `e2e/mobile-ux`, `e2e/ingress`).
+Die laufend gepflegte Fassung steht in [AGENTS.md](./AGENTS.md).

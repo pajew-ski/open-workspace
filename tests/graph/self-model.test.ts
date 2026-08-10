@@ -27,7 +27,7 @@ import { createIriFactory } from '@/lib/graph/iri';
 import { namedNode } from '@/lib/graph/rdf';
 import { OW, SCHEMA, SPARQL_PREFIXES } from '@/lib/graph/vocab';
 import { canonicalNQuads } from '@/lib/graph/serialize/canonical';
-import { APP_MODULES, moduleForRoute, navigationModules } from '@/lib/app/modules';
+import { APP_MODULES, navigationModules } from '@/lib/app/modules';
 import {
     activeCapabilities,
     availableModules,
@@ -254,11 +254,13 @@ describe('M14 — Selbstmodell und Code können nicht auseinanderlaufen (§18)',
     });
 
     it('löst den längsten Präfix auf — /graph/sparql ist nicht /graph', () => {
-        expect(moduleForRoute(APP_MODULES, '/graph/sparql')?.id).toBe('graph-sparql');
-        expect(moduleForRoute(APP_MODULES, '/graph')?.id).toBe('graph');
-        expect(moduleForRoute(APP_MODULES, '/canvas/abc')?.id).toBe('canvas');
-        expect(moduleForRoute(APP_MODULES, '/')?.id).toBe('dashboard');
-        expect(moduleForRoute(APP_MODULES, '/gibtesnicht')).toBeNull();
+        // Dieselbe Auflösung für Registry und abgefragtes Selbstmodell —
+        // es gibt nur eine Implementierung.
+        expect(moduleForPath(APP_MODULES, '/graph/sparql')?.id).toBe('graph-sparql');
+        expect(moduleForPath(APP_MODULES, '/graph')?.id).toBe('graph');
+        expect(moduleForPath(APP_MODULES, '/canvas/abc')?.id).toBe('canvas');
+        expect(moduleForPath(APP_MODULES, '/')?.id).toBe('dashboard');
+        expect(moduleForPath(APP_MODULES, '/gibtesnicht')).toBeNull();
     });
 
     /**

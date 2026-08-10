@@ -44,11 +44,18 @@ function shortType(iri: string): string {
     return local;
 }
 
-/** Modul zu einem Pfad: längster passender Präfix, `/` nur exakt. */
-export function moduleForPath(
-    modules: readonly SelfModelModule[],
+/**
+ * Modul zu einem Pfad: längster passender Präfix gewinnt, damit
+ * `/graph/sparql` nicht als `/graph` durchgeht; `/` trifft nur exakt.
+ *
+ * Generisch über alles mit einer Route — dieselbe Auflösung gilt für das
+ * abgefragte Selbstmodell wie für die Registry im Code, und zwei
+ * Formulierungen desselben Verfahrens könnten auseinanderlaufen.
+ */
+export function moduleForPath<T extends { route: string }>(
+    modules: readonly T[],
     pathname: string,
-): SelfModelModule | null {
+): T | null {
     const candidates = modules
         .filter(module => pathname === module.route || (module.route !== '/' && pathname.startsWith(`${module.route}/`)))
         .sort((a, b) => b.route.length - a.route.length);
