@@ -13,25 +13,39 @@
  * activate entfernt. {type: "SKIP_WAITING"} aktiviert eine wartende Version.
  */
 
-const VERSION = "v2";
+const VERSION = "v3";
 const PREFIX = "ow";
 const SHELL_CACHE = `${PREFIX}-${VERSION}-shell`;
 const API_CACHE = `${PREFIX}-${VERSION}-api`;
 const STATIC_CACHE = `${PREFIX}-${VERSION}-static`;
-const OFFLINE_URL = "/offline.html";
 const NAVIGATION_TIMEOUT_MS = 4000;
 
+/*
+ * Base-Path (M12): Unter Home-Assistant-Ingress läuft die App hinter einem
+ * Präfix, das erst zur Installationszeit feststeht. Der Worker liest es aus
+ * seinem eigenen Scope — dieselbe Datei funktioniert damit mit und ohne
+ * Präfix, ohne Build-Schritt.
+ */
+const BASE_PATH = new URL(self.registration.scope).pathname.replace(/\/$/, "");
+
+/** App-Pfad -> tatsächlicher Pfad unter dieser Installation. */
+function appPath(path) {
+  return `${BASE_PATH}${path}`;
+}
+
+const OFFLINE_URL = appPath("/offline.html");
+
 const PRECACHE_URLS = [
-  "/",
-  "/assistant",
-  "/ai",
-  "/skills",
+  appPath("/"),
+  appPath("/assistant"),
+  appPath("/ai"),
+  appPath("/skills"),
   OFFLINE_URL,
-  "/manifest.json",
-  "/icons/icon-192.png",
-  "/icons/icon-512.png",
-  "/icons/icon-maskable-192.png",
-  "/icons/icon-maskable-512.png",
+  appPath("/manifest.webmanifest"),
+  appPath("/icons/icon-192.png"),
+  appPath("/icons/icon-512.png"),
+  appPath("/icons/icon-maskable-192.png"),
+  appPath("/icons/icon-maskable-512.png"),
 ];
 
 self.addEventListener("install", (event) => {
@@ -149,7 +163,7 @@ function isStaticAsset(pathname) {
     pathname.startsWith("/_next/static/") ||
     pathname.startsWith("/_next/image") ||
     pathname.startsWith("/icons/") ||
-    pathname === "/manifest.json" ||
+    pathname === "/manifest.webmanifest" ||
     pathname === "/favicon.ico" ||
     /\.(?:woff2?|ttf|otf|eot)$/.test(pathname)
   );
@@ -166,9 +180,18 @@ self.addEventListener("fetch", (event) => {
   // Fremde Origins nicht anfassen (vermeidet opake Antworten im Cache).
   if (url.origin !== self.location.origin) return;
 
+  // Alles Weitere wird gegen App-Pfade geprüft — ohne Installations-Präfix.
+  const path =
+    BASE_PATH && url.pathname.startsWith(BASE_PATH)
+      ? url.pathname.slice(BASE_PATH.length) || "/"
+      : url.pathname;
+
+  // Unter Ingress gehört alles außerhalb des Präfix nicht uns.
+  if (BASE_PATH && path === url.pathname) return;
+
   // (a) Chat-Streaming und Backup-Downloads niemals abfangen.
-  if (url.pathname.startsWith("/api/chat")) return;
-  if (url.pathname.startsWith("/api/export")) return;
+  if (path.startsWith("/api/chat")) return;
+  if (path.startsWith("/api/export")) return;
 
   // (b) Navigationen.
   if (request.mode === "navigate") {
@@ -177,13 +200,13 @@ self.addEventListener("fetch", (event) => {
   }
 
   // (c) API-GETs.
-  if (url.pathname.startsWith("/api/")) {
+  if (path.startsWith("/api/")) {
     event.respondWith(handleApi(request));
     return;
   }
 
   // (d) Statische Assets.
-  if (isStaticAsset(url.pathname)) {
+  if (isStaticAsset(path)) {
     event.respondWith(handleStatic(event, request));
   }
 });

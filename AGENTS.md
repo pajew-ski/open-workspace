@@ -4,7 +4,7 @@
 
 ## Hier weitermachen (Einstieg für neue Sessions)
 
-**Stand 2026-08-09 (9. Ausbaustufe, Graph Core M0–M11 inkl. §12.4)**: Der
+**Stand 2026-08-09 (10. Ausbaustufe, Graph Core M0–M12 inkl. §12.4)**: Der
 **RDF-Graph ist das kanonische Datenmodell — und seit der 6. Stufe die
 einzige Wahrheit auch für die Schreibpfade**. Die verbindliche Spezifikation
 inklusive aller Meilensteine M0–M13 liegt in
@@ -342,6 +342,61 @@ Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
   `tests/graph/federation.test.ts` (Negativtest mit manipuliertem `FROM`;
   Live-Query gegen Wikidata unter `OW_FEDERATION_LIVE=1`, sonst sichtbar
   übersprungen statt vorgetäuscht).
+- **Runtime-Vollausbau (M12)** (`scripts/start.mjs`, `deploy/`,
+  `src/lib/platform/`): **EIN Image** für `server` und `ha-addon` — der
+  Unterschied ist ausschließlich das Packaging, und die Invariante ist ein
+  Test (`tests/platform/packaging.test.ts`: genau ein Dockerfile im Repo,
+  Add-on-Config und Compose zeigen auf dasselbe Image). Einstieg ist immer
+  `scripts/start.mjs`: Base-Path ermitteln (Supervisor-API
+  `/addons/self/info` bzw. `OW_BASE_PATH`), ihn in den fertigen Build
+  einsetzen, `/data` verknüpfen und säen, Add-on-Optionen in
+  Umgebungsvariablen übersetzen, root-Rechte abgeben (uid 1001), starten.
+  **Warum ein Rewrite**: Next backt `basePath`/`assetPrefix` in den Build,
+  der Ingress-Pfad steht erst zur Installationszeit fest — das Image baut
+  einmal mit Platzhalter, `scripts/base-path.mjs` ersetzt ihn beim Start
+  (Erlaubnisliste für Textdateien, Markierungsdatei, idempotent, folgt
+  einem gewechselten Token, verweigert das nachträgliche Setzen nach einem
+  Wurzel-Build ehrlich). **Fallstrick, als Test verankert**: Der
+  Platzhalter darf im App-Code nicht als „ungültig" verworfen werden —
+  vorgerenderte Seiten entstehen mit ihm als Base-Path, und genau diese
+  Fundstellen sind es, die beim Start zum echten Pfad werden.
+  **Ingress**: Der Supervisor ENTFERNT `/api/hassio_ingress/<token>` vor
+  dem Weiterreichen und meldet es in `X-Ingress-Path`, Next erwartet es —
+  `scripts/ingress-proxy.mjs` setzt es wieder vor den Pfad (Packaging,
+  nicht Anwendung; die Wurzel bewusst ohne Schrägstrich, sonst 308-Schleife;
+  gewechselter Token = 503 + Neustart statt falscher Links).
+  **In der App** kennt keine Feature-Datei den Ingress:
+  `src/lib/platform/base-path.ts` präfixt `fetch` an genau EINER Stelle
+  (`installBasePathFetch`, im `BasePathProvider` installiert), `<Link>`,
+  `next/image` und `_next/*` erledigt Next selbst, das Manifest ist eine
+  Route (`/manifest.webmanifest`, ersetzt die statische Datei), der Service
+  Worker liest seinen Base-Path aus `self.registration.scope`.
+  **server-Compose** (`deploy/server/`): Caddy (TLS/ACME) → oauth2-proxy
+  (OIDC-Anmeldefluss, Profil `oidc`) → App als uid 1001. Den Anmeldefluss
+  führt bewusst der Proxy; die App liest die Identität.
+  **Identität** (`src/lib/platform/auth/`, `OW_AUTH_MODE`): `single-user`
+  (Default), `ha-ingress` (HA-Header), `proxy-header` (oauth2-proxy),
+  `oidc-bearer` (Token der Anfrage, JWKS-Prüfung über WebCrypto — Signatur
+  vor Ablauf/Issuer/Audience, Schlüsselrotation, `alg: none` abgelehnt;
+  keine neue Abhängigkeit). Sie wird gelesen und angezeigt
+  (`GET /api/runtime` + Karte „System" in `/settings`), NICHT als
+  Rechteprüfung ausgegeben, die es noch nicht gibt — `multiUser` bleibt
+  false bis M13. **Runtime `local`**: Store im Web Worker
+  (`runtime/worker/`: eigenes Term-Kodieren ohne Oxigraph im Haupt-Thread,
+  Transaktionen bleiben offen, damit Lesen darin möglich ist), OPFS als
+  `FileSystemLike` (`runtime/opfs.ts`, inklusive Frische-Signalen — trägt
+  isomorphic-git nachweislich), Secrets im localStorage, ehrliche
+  Capabilities (kein SPARQL-Endpoint, kein MCP-Server, keine eingehende
+  Föderation). Speicher-Zustand nach §8.3 in den Einstellungen: dauerhaft
+  oder löschbar, Belegung, Warnung ab 80 %, Knopf für die
+  Persistenz-Anfrage. **Ehrliche Grenze**: Die Graph-Oberflächen laufen
+  weiterhin gegen das Backend; die Umstellung der Anwendung auf einen
+  Browser-Store ist NICHT Teil von M12 und wird nirgends angezeigt.
+  Betriebsdoku: [docs/deployment.md](./docs/deployment.md). Abnahme:
+  `tests/platform/{base-path,ingress,packaging,auth,opfs,worker-store}.test.ts`
+  und `e2e/ingress.spec.ts` gegen die volle Kette
+  (`scripts/e2e-ingress-server.mjs`: Supervisor-Simulation →
+  Ingress-Proxy → Standalone-Build mit eingesetztem Pfad).
 - **Invarianten** (Review-Blocker, SPEC §2): RDF ist die eine Wahrheit;
   Wissen ≠ Präsentation; asserted ≠ inferred; ein Connector-Vertrag für
   alles Externe; kein `any` unter `src/lib/graph/` (ESLint-Error);
@@ -371,12 +426,16 @@ und backend-unabhängig** — Details in [docs/ai-platform.md](./docs/ai-platfor
 - **UI**: AI-Hub (`/ai`), Skills (`/skills`), MCP-Verwaltung in `/tools`,
   A2A-Discovery in `/agents`, ModelPicker in beiden Chat-Oberflächen.
 
-Build, Typecheck, Lint (0 Errors), 380 Unit-Tests (plus der Live-Test
+Build, Typecheck, Lint (0 Errors), 429 Unit-Tests (plus der Live-Test
 gegen Wikidata, der ohne `OW_FEDERATION_LIVE=1` sichtbar übersprungen
 wird) und das **blockierende E2E-Gate** (`e2e/mobile-navigation`,
 `e2e/mobile-ux`, `e2e/a11y` inkl. der Seiten `/ai`, `/skills`, `/tools`,
-`/graph/connectors`, `/graph/sparql` und `/graph/federation`)
-laufen grün. In Sandboxes ohne Playwright-Download zeigt
+`/graph/connectors`, `/graph/sparql` und `/graph/federation`, dazu seit
+M12 `e2e/ingress.spec.ts` im eigenen Playwright-Projekt `ingress`)
+laufen grün. Der Ingress-Lauf baut sich beim ersten Mal einen zweiten
+Build (`.next-ingress`, Base-Path-Platzhalter) und startet die
+Supervisor→Proxy→App-Kette selbst; für einen frischen Build das
+Verzeichnis löschen. In Sandboxes ohne Playwright-Download zeigt
 `CHROMIUM_PATH=/opt/pw-browsers/chromium bun run test:e2e` auf einen
 vorinstallierten Browser (die Konfiguration wertet die Variable aus).
 
@@ -388,16 +447,19 @@ vorinstallierten Browser (die Konfiguration wertet die Variable aus).
 4. [TODO.md](./TODO.md) — Roadmap als abhakbare Liste (inkl. Graph Core)
 5. Diesen Abschnitt hier für die Architektur-Prinzipien
 
-**Nächste sinnvolle Schritte**: Graph Core M12 (**Runtime-Vollausbau**
-nach SPEC §5.2/§13: HA-Add-on-Packaging inklusive Ingress-Base-Path,
-`server`-Compose mit OIDC/TLS — aus EINEM Image; dazu der `local`-Adapter
-mit OPFS-Backing und Store im Worker über die bestehenden Interfaces aus
-`src/lib/platform/runtime/`. Abnahme: dasselbe Image läuft in beiden
-Kontexten, ein E2E-Test deckt den Ingress-Base-Path ab). Danach M13
-(Multi-User/ACL — dort wird die Token→Scope-Konfiguration aus
-`OW_MCP_TOKENS` durch `graph/acl` ersetzt, ohne dass sich die
-Grant-Schnittstelle ändert; sie trägt seit M11 auch die eingehende
-Föderation, ein zweiter Authz-Pfad entsteht damit nicht).
+**Nächste sinnvolle Schritte**: Graph Core M13 (**Multi-User und
+feingranularer Zugriff** nach SPEC §17, nur Runtime `server`:
+Nutzergraphen, ACL-Modell in `graph/acl`, Public/Private-Split, geteilte
+Räume, Admin-UI für Freigaben; die Token→Scope-Konfiguration aus
+`OW_MCP_TOKENS` wird durch `graph/acl` ersetzt, ohne dass sich die
+Grant-Schnittstelle ändert — sie trägt seit M11 auch die eingehende
+Föderation, ein zweiter Authz-Pfad entsteht damit nicht. Die
+Identitäts-Schicht aus M12 (`src/lib/platform/auth/`, `OW_AUTH_MODE`)
+liefert dafür `userId` und Gruppen; `capabilities.multiUser` steht bis
+dahin ehrlich auf false. Abnahme: Test-Matrix §17.6, jede Zeile als
+eigener Negativtest). Danach offen: die Anwendung selbst auf die Runtime
+`local` stellen (die Bausteine — Store im Worker, OPFS — stehen seit
+M12).
 Parallel weiter sinnvoll: i18n mit `next-intl` (P0); Abbau der
 `no-explicit-any`-Warnings außerhalb des Graph-Codes;
 CopilotKit-Entscheidung.

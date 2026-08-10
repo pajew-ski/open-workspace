@@ -1,0 +1,30 @@
+# TLS-Abschluss der Runtime `server` (SPEC §5.2, M12).
+#
+# Caddy holt und erneuert das Zertifikat selbst (Let's Encrypt/ACME) und
+# reicht alles an OW_UPSTREAM weiter — das ist der oauth2-proxy (Profil
+# `oidc`) oder direkt die App (Einzelnutzer-Betrieb).
+#
+# Für einen internen Host ohne öffentliches DNS: OW_PUBLIC_HOST auf
+# `localhost` setzen (Caddy stellt dann ein lokales Zertifikat aus) oder
+# `tls internal` ergänzen.
+
+{
+	email {$OW_TLS_EMAIL}
+}
+
+{$OW_PUBLIC_HOST} {
+	encode zstd gzip
+
+	# Server-Sent Events (Assistent, Chat) dürfen nicht gepuffert werden.
+	reverse_proxy {$OW_UPSTREAM} {
+		flush_interval -1
+		header_up X-Forwarded-Proto https
+		header_up X-Real-IP {remote_host}
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy same-origin
+	}
+}

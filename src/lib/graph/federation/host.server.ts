@@ -11,7 +11,7 @@
  */
 
 import { getServerGraph } from '@/lib/graph/server/instance';
-import { createServerRuntimeAdapter } from '@/lib/platform/runtime/server';
+import { createNodeRuntimeAdapter } from '@/lib/platform/runtime/server';
 import { mcpTokensFromEnv } from '@/lib/graph/mcp/tokens';
 import type { ResolvedDataset } from '@/lib/graph/sparql/protocol';
 import { FederationEndpointHost } from './inbound';
@@ -25,7 +25,7 @@ export function getFederationHost(): FederationEndpointHost {
         globalHost.__owFederationHost = new FederationEndpointHost({
             graph: () => getServerGraph(),
             tokens: () => mcpTokensFromEnv(),
-            capable: createServerRuntimeAdapter().capabilities.federationInbound,
+            capable: createNodeRuntimeAdapter().capabilities.federationInbound,
         });
     }
     return globalHost.__owFederationHost;
@@ -44,7 +44,7 @@ export interface ServerFederationResolver {
  */
 export function createFederationResolver(): ServerFederationResolver {
     let report: FederationReport = { calls: [] };
-    const capabilities = createServerRuntimeAdapter().capabilities;
+    const capabilities = createNodeRuntimeAdapter().capabilities;
     return {
         report: () => report,
         resolve: async (query, dataset) => {

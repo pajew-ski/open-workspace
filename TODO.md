@@ -233,8 +233,34 @@
       Abnahme: `tests/graph/federation.test.ts` (Negativtest mit
       manipuliertem `FROM`; Live-Query gegen Wikidata unter
       `OW_FEDERATION_LIVE=1`, sonst ehrlich übersprungen)
-- [ ] **M12 Runtime-Vollausbau** (HA-Add-on inkl. Ingress-Base-Path,
-      `server`-Compose, ein Image)
+- [x] **M12 Runtime-Vollausbau**: EIN Image für `server` und `ha-addon`
+      (per Test erzwungen: genau ein Dockerfile im Repo, Add-on-Config und
+      Compose zeigen darauf). Einstieg ist immer `scripts/start.mjs` —
+      Base-Path ermitteln (Supervisor-API bzw. `OW_BASE_PATH`), den beim
+      Bauen eingesetzten Platzhalter im fertigen Build ersetzen
+      (`scripts/base-path.mjs`: Textdatei-Erlaubnisliste, Markierung,
+      idempotent, folgt gewechseltem Ingress-Token), Daten nach `/data`
+      verknüpfen, Add-on-Optionen übernehmen, root-Rechte abgeben, starten.
+      **Ingress**: der Supervisor ENTFERNT das Präfix, Next erwartet es —
+      `scripts/ingress-proxy.mjs` setzt es wieder vor den Pfad (Packaging,
+      nicht Anwendung); gewechselter Token = 503 + Neustart statt falscher
+      Links. **App**: `src/lib/platform/base-path.ts` präfixt `fetch` an
+      genau EINER Stelle (Feature-Code kennt den Ingress nirgends),
+      Manifest als Route `/manifest.webmanifest`, Service Worker liest
+      seinen Base-Path aus `registration.scope`. **server-Compose**:
+      Caddy (TLS/ACME) → oauth2-proxy (OIDC-Anmeldefluss, Profil `oidc`) →
+      App unprivilegiert. **Identität** (`OW_AUTH_MODE`): `single-user`,
+      `ha-ingress`, `proxy-header`, `oidc-bearer` (JWKS-Prüfung über
+      WebCrypto, ohne neue Abhängigkeit) — gelesen und angezeigt
+      (`GET /api/runtime`, Karte „System"), Durchsetzung pro Graph bleibt
+      M13, `multiUser` = false. **Runtime `local`**: Store im Web Worker
+      (`runtime/worker/`, GraphStore inkl. offener Transaktionen mit Lesen
+      darin), OPFS als `FileSystemLike` (trägt isomorphic-git),
+      Persistenz-Anfrage + Quota-Warnung ab 80 % (§8.3) in den
+      Einstellungen. Doku: docs/deployment.md — Abnahme:
+      `tests/platform/{base-path,ingress,packaging,auth,opfs,worker-store}.test.ts`
+      und `e2e/ingress.spec.ts` (volle Supervisor→Proxy→Build-Kette über
+      `scripts/e2e-ingress-server.mjs`)
 - [ ] **M13 Multi-User/ACL** (WAC/ACP in `graph/acl`, Dataset-Resolver,
       Test-Matrix §17.6)
 

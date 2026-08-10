@@ -11,7 +11,7 @@
 import { getServerGraph, persistServerGraphSnapshot } from '@/lib/graph/server/instance';
 import { getFulltextIndex, getVectorIndex } from '@/lib/graph/search/cache';
 import { resolveEmbeddingProvider } from '@/lib/ai/embeddings.server';
-import { createServerRuntimeAdapter } from '@/lib/platform/runtime/server';
+import { createNodeRuntimeAdapter } from '@/lib/platform/runtime/server';
 import type { GraphHandle, RetrievalDeps } from '@/lib/graph/search/retrieval';
 import { McpHost } from './http';
 import { mcpTokensFromEnv } from './tokens';
@@ -23,7 +23,7 @@ export function getMcpHost(): McpHost {
         globalHost.__owMcpHost = new McpHost({
             graph: () => getServerGraph(),
             tokens: () => mcpTokensFromEnv(),
-            capable: createServerRuntimeAdapter().capabilities.mcpServer,
+            capable: createNodeRuntimeAdapter().capabilities.mcpServer,
             retrievalDeps: async (handle: GraphHandle, dataset: readonly string[]) => {
                 const deps: RetrievalDeps = { fulltext: await getFulltextIndex(handle, dataset) };
                 const embedding = await resolveEmbeddingProvider();

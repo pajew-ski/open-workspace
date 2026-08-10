@@ -6,13 +6,15 @@
  * `local`, `ha-addon`, `server` — „Standalone" wird nicht mehr als
  * Runtime-Bezeichnung verwendet.
  *
- * Stand des Ausbaus (M6): implementiert ist der `server`-Adapter
- * (server.ts — node:fs + Prozess-git); `ha-addon` teilt exakt diese
- * Bindungen und unterscheidet sich nur im Packaging (M12, dasselbe
- * Container-Image). Für `local` existiert die Git-Schicht
- * (isomorphic-git über FileSystemLike, isomorphic-git.ts) — der
- * vollständige Adapter (OPFS-Backing, Store im Worker) kommt mit M12.
- * Es gibt bewusst keine Platzhalter-Implementierungen (keine Attrappen).
+ * Stand des Ausbaus (M12): Alle drei Runtimes haben ihre Bindungen.
+ * `server` und `ha-addon` teilen eine Implementierung (server.ts —
+ * node:fs, Prozess-git, Identität aus der Anfrage), weil sie dasselbe
+ * Container-Image sind; welche gerade läuft, sagt `OW_RUNTIME`. `local`
+ * (local.ts) bindet den Store im Web Worker (worker/), Dateien im OPFS
+ * (opfs.ts) und Git über genau dieses Dateisystem (isomorphic-git.ts).
+ * Es gibt bewusst keine Platzhalter-Implementierungen (keine Attrappen);
+ * die Anwendung selbst läuft weiterhin gegen das Backend — die Umstellung
+ * der Graph-Oberflächen auf den Browser-Store ist kein Teil von M12.
  */
 
 import type { GraphStore } from '@/lib/graph/store/types';
@@ -39,7 +41,7 @@ export interface FileSystemLike {
 /**
  * Binär-Erweiterung von FileSystemLike (M6): Git-Objekte sind komprimierte
  * Binärdaten — die String-API reicht dafür nicht. node:fs, das
- * Memory-Double und der spätere OPFS-Wrapper implementieren beide Ebenen.
+ * Memory-Double und der OPFS-Wrapper (M12) implementieren beide Ebenen.
  */
 export interface BinaryFileSystemLike extends FileSystemLike {
     readBytes(path: string): Promise<Uint8Array>;
@@ -99,7 +101,12 @@ export interface Identity {
 }
 
 export interface AuthProvider {
-    identity(): Promise<Identity>;
+    /**
+     * Identität der laufenden Anfrage. Der Kontext ist optional, weil
+     * Hintergrundpfade (Start, Migration, Cron) keine Anfrage haben — sie
+     * bekommen den Einzelnutzer der Installation (M12, SPEC §5.2).
+     */
+    identity(context?: { headers?: Headers }): Promise<Identity>;
 }
 
 export interface SecretStore {

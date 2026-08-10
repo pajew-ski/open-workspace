@@ -2,8 +2,19 @@
 
 # Open Workspace — production image (Next.js standalone output).
 #
+# EIN Image für die Runtimes `server` und `ha-addon` (SPEC §5.2, M12) —
+# ein zweites Dockerfile wäre ein Review-Blocker. Der Unterschied liegt
+# ausschließlich im Packaging:
+#
+#   server:    deploy/server/docker-compose.yml (TLS + OIDC davor)
+#   ha-addon:  deploy/ha-addon/config.yaml + run.sh (Supervisor/Ingress)
+#
 #   Build:  docker build -t open-workspace .
 #   Run:    docker run -p 3000:3000 -v ow-data:/app/data open-workspace
+#
+# Der Einstieg ist immer `scripts/start.mjs`: er setzt den Base-Path in den
+# Build ein (Wurzel, festes Präfix oder Home-Assistant-Ingress-Pfad) und
+# startet Next — im Ingress-Fall hinter dem Ingress-Proxy.
 #
 # The image ships the repository's data/ directory as seed content
 # (data/secure is excluded via .dockerignore). /app/data is declared as a
@@ -23,6 +34,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+# Platzhalter-Base-Path: Next backt basePath/assetPrefix in den Build, der
+# Ingress-Pfad steht aber erst beim Start fest. scripts/start.mjs ersetzt
+# den Platzhalter dann durch den echten Pfad — oder durch nichts.
+ENV OW_BASE_PATH=/__ow_base__
 RUN bun run build
 
 # ---- Stage 3: runtime (plain Node, no bun required) ---------------------
@@ -43,12 +58,18 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
+# Start- und Packaging-Skripte (reines Node-ESM, kein bun im Runtime-Image).
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/start.mjs /app/scripts/base-path.mjs /app/scripts/ingress-proxy.mjs ./scripts/
+
 # Seed data. Declared as a volume so runtime writes persist outside the
 # container (mount: -v ow-data:/app/data).
 COPY --from=builder --chown=nextjs:nodejs /app/data ./data
 VOLUME /app/data
 
+# Der Start-Schritt schreibt die Base-Path-Markierung nach /app.
+RUN chown nextjs:nodejs /app
+
 USER nextjs
 EXPOSE 3000
 
-CMD ["node", "server.js"]
+CMD ["node", "scripts/start.mjs"]
