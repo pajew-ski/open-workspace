@@ -162,6 +162,19 @@ describe('Stelle 1: Validierung vor jedem UI-Schreibvorgang (Store-first-CRUD)',
         await expect(crud.updateCanvasMeta(ctx, canvas.id, { name: '' })).rejects.toThrow(ShaclViolationError);
     });
 
+    it('M15: die Shapes der neuen Graph-Bürger greifen (Kalender, Unterhaltung)', async () => {
+        const ctx = await createTestContext();
+        const calendar = await crud.createCalendar(ctx, {
+            name: 'Tango', url: 'https://example.org/t.ics', color: '#be185d',
+        });
+        await expect(crud.updateCalendar(ctx, calendar.id, { name: '' })).rejects.toThrow(ShaclViolationError);
+        expect((await crud.listCalendars(ctx))[0].name).toBe('Tango');
+
+        const conversation = await crud.createConversation(ctx, 'Dialog');
+        await expect(crud.renameConversation(ctx, conversation.id, '')).rejects.toThrow(ShaclViolationError);
+        expect((await crud.getConversation(ctx, conversation.id))?.title).toBe('Dialog');
+    });
+
     it('Altbestand mit Verstößen blockiert unabhängige Mutationen nicht — nur eine Verschlechterung', async () => {
         const ctx = await createTestContext();
         // Altbestand MIT Verstoß über den Bootstrap-Pfad einspielen
@@ -176,6 +189,7 @@ describe('Stelle 1: Validierung vor jedem UI-Schreibvorgang (Store-first-CRUD)',
             }],
             projects: [],
             canvases: [],
+            calendars: [], events: [], conversations: [],
         });
         // Unabhängige Mutation: erlaubt, obwohl der Altbestand verletzt.
         const created = await crud.createTask(ctx, { title: 'Neue saubere Aufgabe' });

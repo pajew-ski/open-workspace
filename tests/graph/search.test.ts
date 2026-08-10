@@ -173,6 +173,7 @@ describe('workspace_finder-Kern auf dem Graphen (§7.7: umgestellt, nicht ersetz
         ],
         projects: [project('proj-1', 'Graph Core')],
         canvases: [],
+        calendars: [], events: [], conversations: [],
     };
     const { quads } = buildWorkspaceQuads(workspace, iri);
     const index = FulltextIndex.fromQuads(quads);
@@ -207,6 +208,48 @@ describe('workspace_finder-Kern auf dem Graphen (§7.7: umgestellt, nicht ersetz
         const hits = searchWorkspaceGraph(index, iri, workspace, 'Freie Aufgabe', 'project');
         expect(hits.map(h => h.id)).toContain('task-2');
         expect(hits.find(h => h.id === 'task-2')?.subtitle).toBe('Aufgabe (Kein Projekt)');
+    });
+
+    it('M15: Termine und Chats kommen aus demselben Index — Nachrichtentreffer führen zur Unterhaltung', () => {
+        const withCitizens: WorkspaceSnapshotInput = {
+            ...workspace,
+            calendars: [
+                { id: 'cal-1', name: 'Tango', url: 'https://example.org/t.ics', color: '#be185d', enabled: true, lastSync: null },
+                { id: 'cal-aus', name: 'Aus', url: 'https://example.org/a.ics', color: '#000000', enabled: false, lastSync: null },
+            ],
+            events: [
+                {
+                    id: 'evt-1', providerId: 'cal-1', title: 'Migrations-Retro',
+                    startDate: '2026-09-01T10:00:00.000Z', endDate: '2026-09-01T11:00:00.000Z', allDay: false,
+                },
+                {
+                    id: 'evt-versteckt', providerId: 'cal-aus', title: 'Migration im Abo-Aus',
+                    startDate: '2026-09-02T10:00:00.000Z', endDate: '2026-09-02T11:00:00.000Z', allDay: false,
+                },
+            ],
+            conversations: [{
+                id: 'conv-1', title: 'Unauffälliger Chat-Titel',
+                messages: [
+                    { id: 'msg-1', role: 'user', content: 'Wie lief die Migration?', timestamp: now },
+                    { id: 'msg-2', role: 'assistant', content: 'Die Migration lief durch.', timestamp: now },
+                ],
+                createdAt: now, updatedAt: now,
+            }],
+        };
+        const citizenIndex = FulltextIndex.fromQuads(buildWorkspaceQuads(withCitizens, iri).quads);
+        const hits = searchWorkspaceGraph(citizenIndex, iri, withCitizens, 'Migration');
+
+        const events = hits.filter(h => h.type === 'calendar');
+        expect(events.map(h => h.id)).toEqual(['evt-1']);   // abgeschaltetes Abo bleibt draußen
+        expect(events[0].url).toBe('/calendar?date=2026-09-01');
+
+        const chats = hits.filter(h => h.type === 'chat');
+        expect(chats).toHaveLength(1);                       // zwei Nachrichten, ein Ergebnis
+        expect(chats[0].title).toBe('Unauffälliger Chat-Titel');
+        expect(chats[0].url).toBe('/assistant?id=conv-1');
+
+        expect(searchWorkspaceGraph(citizenIndex, iri, withCitizens, 'Migration', 'doc')
+            .every(h => h.type === 'doc')).toBe(true);
     });
 
     it('Tag-Konzepte sind im Volltext-Index sichtbar (skos:prefLabel ist ein Literal)', () => {

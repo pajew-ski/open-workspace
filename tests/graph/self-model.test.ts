@@ -182,7 +182,7 @@ describe('M14 — Selbstmodell in graph/meta (SPEC §18)', () => {
 
     it('ersetzt nur den eigenen Abschnitt von graph/meta', async () => {
         const store = new OxigraphStore();
-        await replaceAiMirror({ store, iri }, { skills: [], agents: [], apiTools: [], mcpServers: [] });
+        await replaceAiMirror({ store, iri }, { skills: [], agents: [], apiTools: [], mcpServers: [], providers: [], defaults: {} });
         const beforeMirror = await dump(store);
         await loadSelfModel(store);
         const afterMirror = await dump(store);
@@ -193,7 +193,7 @@ describe('M14 — Selbstmodell in graph/meta (SPEC §18)', () => {
             .toBe(beforeMirror.filter(q => q.subject.value === provider).length);
 
         // … und der AI-Spiegel räumt umgekehrt das Selbstmodell nicht weg.
-        await replaceAiMirror({ store, iri }, { skills: [], agents: [], apiTools: [], mcpServers: [] });
+        await replaceAiMirror({ store, iri }, { skills: [], agents: [], apiTools: [], mcpServers: [], providers: [], defaults: {} });
         const app = await select(store, `
             SELECT ?app WHERE { GRAPH <${iri.sharedGraph('meta')}> { ?app a ow:Module } } LIMIT 1`);
         expect(app.length).toBe(1);

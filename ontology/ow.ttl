@@ -90,6 +90,18 @@ ow:FederatedEndpoint a owl:Class ;
     rdfs:comment "Registrierter externer SPARQL-Endpoint für SERVICE-Queries, mit Vertrauensstufe. void:Dataset beschreibt Datensätze, nicht die Föderationsbeziehung samt Trust-Level; ein void:Dataset-Zusatztyp ist optional."@de ;
     rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
 
+ow:InferenceProvider a owl:Class ;
+    rdfs:subClassOf schema:Service ;
+    rdfs:label "Inference-Provider"@de, "Inference Provider"@en ;
+    rdfs:comment "Konfigurierte Inferenz-Quelle dieser Installation (lokale Engine, Cloud-API oder die In-Browser-Laufzeit WebLLM). schema:Service trägt die Dienst-Semantik, kennt aber weder Katalog-Art noch Tool-Aufruf-Verfahren; ow:ToolProvider meint MCP-Server, also Werkzeuge statt Modelle."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:Model a owl:Class ;
+    rdfs:subClassOf schema:SoftwareApplication ;
+    rdfs:label "Modell"@de, "Model"@en ;
+    rdfs:comment "Konfiguriertes Sprachmodell hinter einem Inference-Provider, adressiert über seinen Modellnamen. Kein Standard-Vokabular kennt eine Klasse für Sprachmodelle; schema:SoftwareApplication ist die nächstliegende Oberklasse, weil ein Modell ausführbare Software ist."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
 #################################################################
 # Dokument- und Wissensvernetzung
 #################################################################
@@ -335,6 +347,63 @@ ow:trustLevel a owl:DatatypeProperty ;
     rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
 
 #################################################################
+# Kalender und Chats (M15)
+#
+# Termine sind schema:Event, ihre Quelle ein schema:DataFeed, Chats
+# sind schema:Conversation mit schema:Message — die Standardklassen
+# tragen alles außer den drei Tatsachen hier, für die es keine gibt.
+#################################################################
+
+ow:enabled a owl:DatatypeProperty ;
+    rdfs:range xsd:boolean ;
+    rdfs:label "aktiv"@de, "enabled"@en ;
+    rdfs:comment "Ist eine konfigurierte Quelle eingeschaltet (abonnierter Kalender)? Abgegrenzt von ow:syncState, der den Betriebszustand eines Connector-Laufs beschreibt: hier geht es um die Absicht des Nutzers, nicht um das Ergebnis eines Laufs. schema:isAccessibleForFree und Verwandte betreffen Zugänglichkeit von Inhalten, nicht das Ein-/Ausschalten einer Quelle."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:allDay a owl:DatatypeProperty ;
+    rdfs:domain schema:Event ;
+    rdfs:range xsd:boolean ;
+    rdfs:label "ganztägig"@de, "all day"@en ;
+    rdfs:comment "Ganztägiger Termin (iCalendar DTSTART;VALUE=DATE). schema:Event kennt die Unterscheidung nicht; sie über den Datentyp der Zeitangabe (xsd:date statt xsd:dateTime) auszudrücken, verlöre die aus der Quelle übernommene Uhrzeit des Zeitraums und damit die Quelltreue."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:messageRole a owl:DatatypeProperty ;
+    rdfs:domain schema:Message ;
+    rdfs:range xsd:string ;
+    rdfs:label "Nachrichten-Rolle"@de, "message role"@en ;
+    rdfs:comment "Rolle der Nachricht im Dialog ('user' oder 'assistant'), die Rollen-Achse der Chat-Protokolle. schema:sender/schema:recipient verlangen einen benannten Agenten als Objekt — den gibt es hier nicht, ohne eine Person oder Anwendung zu erfinden, die der Nutzer nie angelegt hat (Invariante 10)."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+#################################################################
+# AI-Konfiguration (M15)
+#
+# Der Spiegel in graph/meta wird generiert (§18-Muster wie M9):
+# Geheimnisse werden nie abgebildet, und gespiegelt wird nur, was
+# konfiguriert IST — nie ein erfundenes Live-Modellinventar.
+#################################################################
+
+ow:providerKind a owl:DatatypeProperty ;
+    rdfs:domain ow:InferenceProvider ;
+    rdfs:range xsd:string ;
+    rdfs:label "Provider-Art"@de, "provider kind"@en ;
+    rdfs:comment "Katalog-Kennung der Inferenz-Quelle ('ollama', 'openai', 'webllm', …), die Protokoll und Voreinstellungen bestimmt. Bewusst nicht ow:connectorKind: dessen rdfs:domain ist ow:Connector, und ein bestehender Term wird nach SPEC §4.4 nie umdefiniert — über OWL RL wäre sonst jeder Provider ein Connector."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:toolCallMode a owl:DatatypeProperty ;
+    rdfs:domain ow:InferenceProvider ;
+    rdfs:range xsd:string ;
+    rdfs:label "Tool-Aufruf-Verfahren"@de, "tool call mode"@en ;
+    rdfs:comment "Wie Werkzeugaufrufe gegen diesen Provider laufen: 'native' (Protokoll-Feld), 'text' (universelle Text-Syntax) oder 'auto'. Die Antwort auf 'welche meiner Quellen kann Werkzeuge aufrufen' — kein Standard-Vokabular beschreibt Aufruf-Verfahren von Sprachmodell-Endpunkten."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:defaultModel a owl:ObjectProperty ;
+    rdfs:domain ow:InferenceProvider ;
+    rdfs:range ow:Model ;
+    rdfs:label "Standard-Modell"@de, "default model"@en ;
+    rdfs:comment "Modell, das dieser Provider ohne ausdrückliche Wahl benutzt. schema:model verbindet ein Produkt mit seiner Modellreihe (ProductModel) und trägt keine Voreinstellungs-Semantik; ohne eigenen Term wäre die Voreinstellung von den übrigen konfigurierten Modellen nicht unterscheidbar."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+#################################################################
 # Präsentationsbezug
 #################################################################
 
@@ -473,6 +542,27 @@ ow:toEnd a owl:DatatypeProperty ;
     rdfs:range xsd:string ;
     rdfs:label "Ziel-Ende"@de, "to end"@en ;
     rdfs:comment "Linienende am Ziel der Kante nach JSON Canvas 1.0: 'none' oder 'arrow' (Default 'arrow'). Nur gespeichert, wenn die Quelle es explizit setzt. Kein Standard-Äquivalent."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+#################################################################
+# Chat-Darstellung (graph/presentation, M15)
+#
+# Wie die Canvas-Layout-Terme stehen diese ausschließlich in
+# graph/<u>/presentation: die generative Oberfläche einer Antwort
+# und die zuletzt geöffnete Unterhaltung sind Darstellung, nicht
+# Wissen (Invariante 2).
+#################################################################
+
+ow:generativeSurface a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "generative Oberfläche"@de, "generative surface"@en ;
+    rdfs:comment "Die zu einer Antwort erzeugte A2UI-Oberfläche als JSON-Literal (Muster wie ow:inputSchema/ow:retrievalConfig). Sie gehört zur Nachricht, ist aber Darstellung: Der Wissensinhalt der Nachricht steht in schema:text. Eine tripelweise Abbildung der Komponentenbäume würde Präsentationsstruktur in den Graphen ziehen, die kein Client außer dieser Oberfläche interpretieren kann."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:selected a owl:DatatypeProperty ;
+    rdfs:range xsd:boolean ;
+    rdfs:label "ausgewählt"@de, "selected"@en ;
+    rdfs:comment "Markiert die zuletzt geöffnete Unterhaltung, damit die Oberfläche sie nach einem Neustart wieder anzeigt. Reine Auswahl der Ansicht ohne Aussage über den Inhalt — deshalb im Präsentationsgraphen und kein Standard-Term (schema.org modelliert keine UI-Auswahl)."@de ;
     rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
 
 #################################################################

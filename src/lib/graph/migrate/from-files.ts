@@ -23,6 +23,8 @@ import type { Doc } from '@/types/doc';
 import type { Task } from '@/lib/storage/tasks';
 import type { Project } from '@/lib/storage/projects';
 import type { CanvasData } from '@/lib/storage/canvas';
+import type { CalendarEvent, CalendarProvider } from '@/lib/storage/calendar';
+import type { Conversation } from '@/lib/storage/chat';
 import { factory, namedNode, typedLiteral, literal } from '../rdf';
 import { DCTERMS, OW, PROV, RDF, SCHEMA, SKOS } from '../vocab';
 import type { IriFactory } from '../iri';
@@ -32,6 +34,14 @@ export interface WorkspaceSnapshotInput {
     tasks: Task[];
     projects: Project[];
     canvases: CanvasData[];
+    /** Abonnierte Kalender (M15) — schema:DataFeed. */
+    calendars: CalendarProvider[];
+    /** Termine dieser Kalender (M15) — schema:Event. */
+    events: CalendarEvent[];
+    /** Chat-Verlauf des Assistenten (M15) — schema:Conversation. */
+    conversations: Conversation[];
+    /** Zuletzt geöffnete Unterhaltung — Auswahl der Ansicht, graph/presentation. */
+    activeConversationId?: string | null;
 }
 
 export interface MigrationCounts {
@@ -43,6 +53,10 @@ export interface MigrationCounts {
     cards: number;
     tags: number;
     links: number;
+    calendars: number;
+    events: number;
+    conversations: number;
+    messages: number;
     quads: number;
 }
 
@@ -103,7 +117,8 @@ export function buildWorkspaceQuads(
 ): { quads: Quad[]; counts: MigrationCounts } {
     const quads: Quad[] = [];
     const counts: MigrationCounts = {
-        docs: 0, tasks: 0, projects: 0, canvases: 0, cards: 0, tags: 0, links: 0, quads: 0,
+        docs: 0, tasks: 0, projects: 0, canvases: 0, cards: 0, tags: 0, links: 0,
+        calendars: 0, events: 0, conversations: 0, messages: 0, quads: 0,
     };
 
     const add = (subject: string, predicate: string, object: Quad['object']) => {
@@ -296,6 +311,64 @@ export function buildWorkspaceQuads(
             if (groupIds.has(connection.fromId) || groupIds.has(connection.toId)) continue;
             addIri(cardIri(connection.fromId), OW.linksTo, cardIri(connection.toId));
             counts.links += 1;
+        }
+    }
+
+    // --- Kalender (M15) ------------------------------------------------
+    // Ein abonnierter Kalender ist ein schema:DataFeed, seine Termine sind
+    // schema:Event mit schema:isPartOf auf den Feed — Standardklassen vor
+    // eigenen (Invariante 8). Die Farbe des Kalenders ist Darstellung und
+    // steht in graph/<u>/presentation, nie hier.
+    for (const calendar of input.calendars) {
+        const calendarIri = iri.entity('calendar', calendar.id);
+        counts.calendars += 1;
+        addIri(calendarIri, RDF.type, SCHEMA.DataFeed);
+        add(calendarIri, SCHEMA.name, literal(calendar.name));
+        add(calendarIri, DCTERMS.identifier, literal(calendar.id));
+        add(calendarIri, SCHEMA.url, typedLiteral.anyUri(calendar.url));
+        add(calendarIri, OW.enabled, typedLiteral.boolean(calendar.enabled));
+        // Zeitpunkt des letzten erfolgreichen Abrufs — die Termine sind aus
+        // ihm abgeleitet, deshalb prov:generatedAtTime statt dcterms:modified.
+        if (calendar.lastSync) {
+            add(calendarIri, PROV.generatedAtTime, typedLiteral.dateTime(calendar.lastSync));
+        }
+    }
+
+    for (const event of input.events) {
+        const eventIri = iri.entity('event', event.id);
+        counts.events += 1;
+        addIri(eventIri, RDF.type, SCHEMA.Event);
+        add(eventIri, SCHEMA.name, literal(event.title));
+        add(eventIri, DCTERMS.identifier, literal(event.id));
+        add(eventIri, SCHEMA.startDate, typedLiteral.dateTime(event.startDate));
+        add(eventIri, SCHEMA.endDate, typedLiteral.dateTime(event.endDate));
+        if (event.allDay) add(eventIri, OW.allDay, typedLiteral.boolean(true));
+        if (event.description) add(eventIri, SCHEMA.description, literal(event.description));
+        if (event.location) add(eventIri, SCHEMA.location, literal(event.location));
+        addIri(eventIri, SCHEMA.isPartOf, iri.entity('calendar', event.providerId));
+    }
+
+    // --- Chats (M15) ---------------------------------------------------
+    // schema:Conversation mit schema:hasPart → schema:Message, wie Canvas
+    // und Karten. Die generative Oberfläche einer Antwort (uiComponents)
+    // ist Darstellung und steht in graph/<u>/presentation.
+    for (const conversation of input.conversations) {
+        const conversationIri = iri.entity('conversation', conversation.id);
+        counts.conversations += 1;
+        addIri(conversationIri, RDF.type, SCHEMA.Conversation);
+        add(conversationIri, SCHEMA.name, literal(conversation.title));
+        add(conversationIri, DCTERMS.identifier, literal(conversation.id));
+        add(conversationIri, DCTERMS.created, typedLiteral.dateTime(conversation.createdAt));
+        add(conversationIri, DCTERMS.modified, typedLiteral.dateTime(conversation.updatedAt));
+        for (const message of conversation.messages) {
+            const messageIri = iri.entity('message', `${conversation.id}/${message.id}`);
+            counts.messages += 1;
+            addIri(messageIri, RDF.type, SCHEMA.Message);
+            add(messageIri, DCTERMS.identifier, literal(message.id));
+            add(messageIri, SCHEMA.text, literal(message.content));
+            add(messageIri, OW.messageRole, literal(message.role));
+            add(messageIri, SCHEMA.dateSent, typedLiteral.dateTime(message.timestamp));
+            addIri(conversationIri, SCHEMA.hasPart, messageIri);
         }
     }
 

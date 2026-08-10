@@ -17,6 +17,8 @@ import type { Doc, DocType } from '@/types/doc';
 import type { Task, TaskDependency, TaskPriority, TaskStatus, TaskType } from '@/lib/storage/tasks';
 import type { Project, ProjectStatus } from '@/lib/storage/projects';
 import type { CanvasCard, CanvasConnection, CanvasData, CanvasIndex, ImportCanvasInput } from '@/lib/storage/canvas';
+import type { CalendarEvent, CalendarProvider } from '@/lib/storage/calendar';
+import type { ChatMessage, Conversation } from '@/lib/storage/chat';
 import type { Quad } from '@rdfjs/types';
 import type { GraphStore } from '../store/types';
 import type { IriFactory } from '../iri';
@@ -27,7 +29,7 @@ import {
     buildNativeCanvasLayout,
     pruneOrphanCanvasLayouts,
     replaceCanvasLayouts,
-    replaceProjectPresentation,
+    replaceEntityPresentation,
 } from '../presentation/layout';
 import { workspaceFromStore } from './read';
 import { projectWorkspaceFiles, type WorkspaceFilePaths } from './files';
@@ -58,7 +60,7 @@ export async function writeWorkspaceToStore(
     await store.transaction(async tx => {
         await tx.load(quads, namedNode(iri.graph('workspace')), { replace: true });
         await replaceCanvasLayouts(tx, iri, input.canvases.map(canvas => buildNativeCanvasLayout(canvas, iri)));
-        await replaceProjectPresentation(tx, iri, input.projects);
+        await replaceEntityPresentation(tx, iri, input);
         await pruneOrphanCanvasLayouts(tx, iri);
     });
     return counts;
@@ -576,5 +578,215 @@ export async function updateViewport(ctx: WorkspaceContext, canvasId: string, vi
     await mutateCanvas(ctx, canvasId, canvas => {
         canvas.viewport = viewport;
         return true;
+    });
+}
+
+// --- Kalender (M15) ------------------------------------------------------
+
+export async function listCalendars(ctx: WorkspaceContext): Promise<CalendarProvider[]> {
+    const { calendars } = await readWorkspace(ctx);
+    return calendars;
+}
+
+export async function createCalendar(
+    ctx: WorkspaceContext,
+    input: { name: string; url: string; color: string },
+): Promise<CalendarProvider> {
+    const calendar: CalendarProvider = {
+        id: `cal-${Date.now()}`,
+        name: input.name,
+        url: input.url,
+        color: input.color,
+        enabled: true,
+        lastSync: null,
+    };
+    await mutate(ctx, draft => {
+        draft.calendars.push(calendar);
+        return calendar;
+    });
+    return calendar;
+}
+
+export async function updateCalendar(
+    ctx: WorkspaceContext,
+    id: string,
+    updates: Partial<Omit<CalendarProvider, 'id'>>,
+): Promise<CalendarProvider | null> {
+    return mutate(ctx, draft => {
+        const index = draft.calendars.findIndex(calendar => calendar.id === id);
+        if (index === -1) return null;
+        draft.calendars[index] = { ...draft.calendars[index], ...updates };
+        return draft.calendars[index];
+    });
+}
+
+/** Löscht den Kalender UND seine Termine — ein Termin ohne Quelle wäre eine Waise. */
+export async function deleteCalendar(ctx: WorkspaceContext, id: string): Promise<boolean> {
+    const result = await mutate(ctx, draft => {
+        const index = draft.calendars.findIndex(calendar => calendar.id === id);
+        if (index === -1) return null;
+        draft.calendars.splice(index, 1);
+        draft.events = draft.events.filter(event => event.providerId !== id);
+        return true;
+    });
+    return result === true;
+}
+
+/**
+ * Ergebnis eines Abrufs: die Termine EINES Kalenders werden vollständig
+ * ersetzt (dieselbe replace-Semantik wie ein Connector-Import, SPEC §6.2)
+ * und der Abrufzeitpunkt festgeschrieben — in EINER Mutation, damit nie
+ * ein Zustand entsteht, in dem der Kalender als abgerufen gilt, seine
+ * Termine aber noch die alten sind.
+ */
+export async function replaceCalendarEvents(
+    ctx: WorkspaceContext,
+    calendarId: string,
+    events: CalendarEvent[],
+    fetchedAt: string,
+): Promise<number | null> {
+    return mutate(ctx, draft => {
+        const calendar = draft.calendars.find(entry => entry.id === calendarId);
+        if (!calendar) return null;
+        calendar.lastSync = fetchedAt;
+        draft.events = [
+            ...draft.events.filter(event => event.providerId !== calendarId),
+            ...events.filter(event => event.providerId === calendarId),
+        ];
+        return events.length;
+    });
+}
+
+/** Termine aktiver Kalender, optional auf ein Zeitfenster begrenzt. */
+export async function listEvents(
+    ctx: WorkspaceContext,
+    range?: { start?: string; end?: string },
+): Promise<CalendarEvent[]> {
+    const { calendars, events } = await readWorkspace(ctx);
+    const enabled = new Set(calendars.filter(calendar => calendar.enabled).map(calendar => calendar.id));
+    let visible = events.filter(event => enabled.has(event.providerId));
+    if (range?.start && range?.end) {
+        const from = new Date(range.start).getTime();
+        const to = new Date(range.end).getTime();
+        visible = visible.filter(event =>
+            new Date(event.startDate).getTime() < to && new Date(event.endDate).getTime() > from);
+    }
+    return visible.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+}
+
+// --- Chats (M15) ---------------------------------------------------------
+
+export async function listConversations(ctx: WorkspaceContext): Promise<Conversation[]> {
+    const { conversations } = await readWorkspace(ctx);
+    return conversations.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+}
+
+export async function getConversation(ctx: WorkspaceContext, id: string): Promise<Conversation | null> {
+    return (await readWorkspace(ctx)).conversations.find(conversation => conversation.id === id) ?? null;
+}
+
+export async function getActiveConversationId(ctx: WorkspaceContext): Promise<string | null> {
+    return (await readWorkspace(ctx)).activeConversationId ?? null;
+}
+
+export async function createConversation(ctx: WorkspaceContext, title?: string): Promise<Conversation> {
+    const now = nowIso();
+    const conversation: Conversation = {
+        id: `conv-${Date.now()}-${randomSuffix()}`,
+        title: title || `Chat ${new Date().toLocaleDateString('de-DE')}`,
+        messages: [],
+        createdAt: now,
+        updatedAt: now,
+    };
+    await mutate(ctx, draft => {
+        draft.conversations.push(conversation);
+        draft.activeConversationId = conversation.id;
+        return conversation;
+    });
+    return conversation;
+}
+
+export async function renameConversation(ctx: WorkspaceContext, id: string, title: string): Promise<Conversation | null> {
+    return mutate(ctx, draft => {
+        const conversation = draft.conversations.find(entry => entry.id === id);
+        if (!conversation) return null;
+        conversation.title = title;
+        conversation.updatedAt = nowIso();
+        return conversation;
+    });
+}
+
+export async function deleteConversation(ctx: WorkspaceContext, id: string): Promise<boolean> {
+    const result = await mutate(ctx, draft => {
+        const index = draft.conversations.findIndex(conversation => conversation.id === id);
+        if (index === -1) return null;
+        draft.conversations.splice(index, 1);
+        if (draft.activeConversationId === id) {
+            draft.activeConversationId = draft.conversations[0]?.id ?? null;
+        }
+        return true;
+    });
+    return result === true;
+}
+
+export async function setActiveConversation(ctx: WorkspaceContext, id: string): Promise<void> {
+    await mutate(ctx, draft => {
+        if (!draft.conversations.some(conversation => conversation.id === id)) return null;
+        draft.activeConversationId = id;
+        return true;
+    });
+}
+
+export async function clearConversations(ctx: WorkspaceContext): Promise<void> {
+    await mutate(ctx, draft => {
+        draft.conversations = [];
+        draft.activeConversationId = null;
+        return true;
+    });
+}
+
+export async function addMessage(
+    ctx: WorkspaceContext,
+    conversationId: string,
+    role: ChatMessage['role'],
+    content: string,
+    uiComponents?: unknown[],
+): Promise<ChatMessage | null> {
+    const now = nowIso();
+    const message: ChatMessage = {
+        id: `msg-${Date.now()}-${randomSuffix()}`,
+        role,
+        content,
+        timestamp: now,
+        ...(uiComponents && uiComponents.length > 0 ? { uiComponents } : {}),
+    };
+    return mutate(ctx, draft => {
+        const conversation = draft.conversations.find(entry => entry.id === conversationId);
+        if (!conversation) return null;
+        conversation.messages.push(message);
+        conversation.updatedAt = now;
+        // Titel aus der ersten Nutzer-Nachricht — Verhalten unverändert
+        // zur Datei-Fassung.
+        if (role === 'user' && conversation.messages.filter(m => m.role === 'user').length === 1) {
+            conversation.title = content.slice(0, 50) + (content.length > 50 ? '...' : '');
+        }
+        return message;
+    });
+}
+
+export async function updateMessage(
+    ctx: WorkspaceContext,
+    conversationId: string,
+    messageId: string,
+    content: string,
+): Promise<ChatMessage | null> {
+    return mutate(ctx, draft => {
+        const conversation = draft.conversations.find(entry => entry.id === conversationId);
+        if (!conversation) return null;
+        const message = conversation.messages.find(entry => entry.id === messageId);
+        if (!message) return null;
+        message.content = content;
+        conversation.updatedAt = nowIso();
+        return message;
     });
 }

@@ -393,7 +393,7 @@ describe('Präsentationsschicht: native Pinnwände und Koexistenz', () => {
 
     it('buildWorkspaceQuads: Gruppen und Gruppen-Kanten erzeugen KEINE semantischen Aussagen', () => {
         const { quads, counts } = buildWorkspaceQuads(
-            { docs: [], tasks: [], projects: [], canvases: [nativeCanvas()] },
+            { docs: [], tasks: [], projects: [], canvases: [nativeCanvas()], calendars: [], events: [], conversations: [] },
             iri,
         );
         expect(counts.cards).toBe(1);

@@ -250,6 +250,36 @@ const MIRROR_INPUT: AiMirrorInput = {
             updatedAt: '2026-08-02T10:00:00.000Z',
         } as McpServerConfig,
     ],
+    providers: [
+        {
+            id: 'prov-ollama',
+            label: 'Ollama zuhause',
+            kind: 'ollama',
+            baseUrl: 'http://localhost:11434',
+            connectionMode: 'browser',
+            keyLocation: 'none',
+            defaultModel: 'llama3.2',
+            pinnedModels: ['qwen2.5'],
+            toolCalls: 'native',
+            enabled: true,
+            createdAt: '2026-08-01T10:00:00.000Z',
+            updatedAt: '2026-08-02T10:00:00.000Z',
+        },
+        {
+            id: 'prov-aus',
+            label: 'Abgeschaltet',
+            kind: 'openai',
+            baseUrl: 'https://api.openai.com/v1',
+            connectionMode: 'server',
+            keyLocation: 'server',
+            apiKeyEnc: 'ENV:OPENAI_API_KEY',
+            toolCalls: 'auto',
+            enabled: false,
+            createdAt: '2026-08-01T10:00:00.000Z',
+            updatedAt: '2026-08-02T10:00:00.000Z',
+        },
+    ],
+    defaults: { providerId: 'prov-ollama', model: 'llama3.2' },
 };
 
 // ---------------------------------------------------------------------------
@@ -504,6 +534,46 @@ describe('AI-Spiegel in graph/meta (M9)', () => {
         expect(subjects.has(handle.iri.entity('tool', 'workspace_finder'))).toBe(true);
         expect(subjects.has(handle.iri.entity('tool', 'use_skill'))).toBe(true);
         expect(subjects.has(handle.iri.entity('tool-provider', 'mcp-srv1'))).toBe(true);
+    });
+
+    it('M15: Inference-Provider und ihre konfigurierten Modelle sind Graph-Bürger — ohne Geheimnisse', async () => {
+        await replaceAiMirror(handle, MIRROR_INPUT);
+        const meta = await dumpGraph(handle, handle.iri.sharedGraph('meta'));
+
+        const provider = handle.iri.entity('ai-provider', 'prov-ollama');
+        expect(objectValues(meta, provider, OW.providerKind)).toEqual(['ollama']);
+        expect(objectValues(meta, provider, OW.toolCallMode)).toEqual(['native']);
+        expect(objectValues(meta, provider, OW.endpoint)).toEqual(['http://localhost:11434']);
+
+        // Abgeschaltete Provider erscheinen nicht (§18: aktive Capabilities),
+        // und kein Geheimnis verlässt die operative Konfiguration.
+        expect(meta.some(q => q.subject.value === handle.iri.entity('ai-provider', 'prov-aus'))).toBe(false);
+        expect(meta.some(q => q.object.value.includes('OPENAI_API_KEY'))).toBe(false);
+
+        // Frage: welche Modelle stehen hinter welcher Quelle, und welche
+        // davon ruft Werkzeuge nativ auf?
+        const models = await selectAll(handle, `
+            SELECT ?modelName ?providerName ?mode WHERE {
+                GRAPH <${handle.iri.sharedGraph('meta')}> {
+                    ?model a ow:Model ; schema:name ?modelName ; schema:provider ?provider .
+                    ?provider schema:name ?providerName ; ow:toolCallMode ?mode .
+                }
+            } ORDER BY ?modelName
+        `);
+        expect(models).toEqual([
+            { modelName: 'llama3.2', providerName: 'Ollama zuhause', mode: 'native' },
+            { modelName: 'qwen2.5', providerName: 'Ollama zuhause', mode: 'native' },
+        ]);
+
+        const defaults = await selectAll(handle, `
+            SELECT ?modelName WHERE {
+                GRAPH <${handle.iri.sharedGraph('meta')}> {
+                    ?provider a ow:InferenceProvider ; ow:defaultModel ?model .
+                    ?model schema:name ?modelName .
+                }
+            }
+        `);
+        expect(defaults).toEqual([{ modelName: 'llama3.2' }]);
     });
 
     it('ersetzt nur den eigenen Abschnitt und lässt die Connector-Registry stehen', async () => {
