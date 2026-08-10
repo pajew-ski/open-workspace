@@ -205,6 +205,9 @@ Die Rechte eines Zugangs sind die Rechte seines Nutzers aus `graph/acl`.
 * Kein eigenes Anmeldeverfahren: Den OIDC-Fluss führt weiterhin der
   vorgelagerte Proxy (`deploy/server/docker-compose.yml`), Home Assistant
   seinen Ingress. Diese Schicht liest die Identität, sie erzeugt sie nicht.
-* Chats, Termine und Einstellungen sind noch keine Graph-Bürger und
-  deshalb nicht nutzerskaliert; sie gehören der Installation und sind im
-  Export nur für Verwalter enthalten.
+* Chats und Termine waren zum Zeitpunkt von M13 noch keine
+  Graph-Bürger. Seit M15 sind sie es: Sie liegen in
+  `graph/<u>/workspace` und erben damit Nutzerskalierung, ACL und Export
+  ohne neuen Mechanismus. Die Einstellungen (Theme, Runtime, Speicherort)
+  bleiben instanzweit — sie beschreiben die Installation, nicht das
+  Wissen eines Nutzers.

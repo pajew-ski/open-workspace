@@ -130,9 +130,13 @@ Graphen, entsteht bei jedem Start neu und erscheint im Bild nur über die
 
 ## Grenzen
 
-* Kalender, Chats und die AI-Konfiguration sind noch keine Graph-Bürger;
-  sie erscheinen deshalb nicht als Entitätstypen eines Moduls. Werden sie
-  es, genügt der Eintrag `entityTypes` in der Registry.
+* Erledigt seit M15: Kalender (`schema:Event`, `schema:DataFeed`), Chats
+  (`schema:Conversation`, `schema:Message`) und die AI-Konfiguration
+  (`ow:InferenceProvider`, `ow:Model`) sind Graph-Bürger und stehen als
+  `entityTypes` an ihren Modulen. Offen bleibt die Kommunikations-Seite:
+  Matrix ist geplant, also hat sie ehrlich keine Entitätstypen.
+* Einstellungen (Theme, Runtime, Speicherort) sind weiterhin keine
+  Graph-Bürger — sie beschreiben die Installation, nicht ihr Wissen.
 * Das Selbstmodell ändert sich nur mit dem Build, deshalb wird es beim
   Start erzeugt und nicht bei jeder Mutation — anders als der AI-Spiegel,
   der der laufenden Konfiguration folgt.
