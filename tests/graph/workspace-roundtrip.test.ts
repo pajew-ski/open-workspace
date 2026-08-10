@@ -21,7 +21,7 @@ import { buildWorkspaceQuads, type WorkspaceSnapshotInput } from '../../src/lib/
 import { isoFromStoreValue, workspaceFromStore } from '../../src/lib/graph/workspace/read';
 import * as crud from '../../src/lib/graph/workspace/crud';
 import { writeWorkspaceToStore } from '../../src/lib/graph/workspace/crud';
-import { defaultWorkspaceFilePaths, parseFrontmatter, readWorkspaceFiles } from '../../src/lib/graph/workspace/files';
+import { defaultWorkspaceFilePaths, docFromMarkdown, parseFrontmatter, readWorkspaceFiles } from '../../src/lib/graph/workspace/files';
 import { createIriFactory, urnInstanceBase } from '../../src/lib/graph/iri';
 import { OxigraphStore } from '../../src/lib/graph/store/oxigraph';
 import { OW, SCHEMA } from '../../src/lib/graph/vocab';
@@ -272,6 +272,27 @@ describe('Store-first-CRUD (Dateien sind Projektion)', () => {
         await crud.updateDoc(ctx, doc.id, { title: 'Neuer Titel', slug: 'neuer-titel' });
         expect(await fs.readFile(path.join(ctx.paths.docsDir, 'neuer-titel.md'), 'utf-8')).toContain('Neuer Titel');
         await expect(fs.access(filePath)).rejects.toThrow();
+    });
+
+    it('Markdown ohne vollständiges Frontmatter wird begründet übergangen, nicht still verschluckt', () => {
+        // Vorher fiel so eine Datei lautlos aus dem Bestand: Sie lag
+        // sichtbar in data/docs, tauchte aber in keinem Graphen auf.
+        const ohne = docFromMarkdown('# Nur eine Überschrift\n\nText.');
+        expect(ohne).toEqual({ skipped: expect.stringContaining('kein Frontmatter') });
+
+        const unvollstaendig = docFromMarkdown(
+            '---\nslug: "ohne-id"\ntitle: "Ohne id"\ntags: []\n---\n\nText.',
+        );
+        expect('skipped' in unvollstaendig && unvollstaendig.skipped).toContain('id');
+        expect('skipped' in unvollstaendig && unvollstaendig.skipped).toContain('createdAt');
+
+        const vollstaendig = docFromMarkdown(
+            '---\nid: "doc-1"\nslug: "gut"\ntitle: "Gut"\ntags: ["a"]\n'
+            + 'createdAt: "2026-01-01T00:00:00.000Z"\nupdatedAt: "2026-01-01T00:00:00.000Z"\n---\n\nText.',
+        );
+        expect('doc' in vollstaendig && vollstaendig.doc).toMatchObject({
+            id: 'doc-1', slug: 'gut', title: 'Gut', tags: ['a'], content: 'Text.',
+        });
     });
 
     it('ein externer Datei-Edit ändert die Wahrheit nicht (SPEC §16: Rückfluss nur über Connectors)', async () => {

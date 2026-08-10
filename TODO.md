@@ -332,6 +332,15 @@
       Ansicht. Im Bestand betraf das alle vier Dokument-Wikilinks. Der
       Auflösungsindex kennt jetzt Slug *und* Titel (Slug sticht bei
       Gleichstand) — Abnahme: `tests/graph/migrate.test.ts`
+- [x] **Nachtrag: Dokumente ohne Frontmatter fielen still heraus.**
+      `data/docs/architecture_agents.md` hatte keines und war damit in
+      keinem Graphen und keiner Ansicht — sichtbar nur als Datei. Es hat
+      jetzt Frontmatter (`sys-doc-004`) und heißt nach seinem Slug
+      `architecture-agents.md`, weil die Projektion Dateien so benennt.
+      Damit das nicht wiederkommt, prüft `docFromMarkdown` die Pflichtfelder
+      (id, slug, title, createdAt, updatedAt) und meldet begründet, was
+      übergangen wird, statt es zu verschlucken — Abnahme:
+      `tests/graph/workspace-roundtrip.test.ts`
 - [x] **Nachtrag: „Bestand" im Graph-Explorer.** Die Herkunfts-Zahlen sind
       Aussagen (Tripel), nicht Knoten — 208 Aussagen sind 23 Knoten. Das
       war als Knotenzahl lesbar und damit irreführend. Jetzt sind sie als
