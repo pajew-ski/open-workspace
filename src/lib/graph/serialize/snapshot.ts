@@ -12,6 +12,15 @@
  *    Wahrheit.
  *  - `graph/<u>/inferred/*` — reproduzierbarer Reasoner-Output (SPEC §8.1).
  *  - `graph/acl` — verlässt den Store nie über generische Pfade (SPEC §3.3).
+ *    Er wird trotzdem gesichert, aber bewusst NEBEN dem Manifest
+ *    (`acl.nq`, `writeAclSnapshot`): Rechte müssen einen Neustart
+ *    überleben, dürfen aber nie über einen manifest-getriebenen Pfad
+ *    ausgeliefert oder zurückgelesen werden — weder als `bidirectional`-
+ *    Restore eines kanonischen Graphen noch im Export eines Nutzers
+ *    (M13, §17.4). Ein Git-Backup, dessen Zielverzeichnis `data/graph`
+ *    selbst ist, committet die Datei als Teil des Arbeitsverzeichnisses
+ *    mit — das ist in Ordnung: Ein Backup darf nach §17.4 ohnehin nur
+ *    anlegen, wer `control` auf JEDEM enthaltenen Graphen hat.
  */
 
 import type { NamedNode, Quad } from '@rdfjs/types';
@@ -141,8 +150,46 @@ export async function writeSnapshot(
     };
     await fs.writeFile(joinPath(dir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
 
-    const removedStale = await removeStaleFiles(fs, dir, new Set(entries.map(e => e.file)));
+    const removedStale = await removeStaleFiles(fs, dir, new Set([...entries.map(e => e.file), ACL_FILE]));
     return { written, removedStale };
+}
+
+/**
+ * Sicherung der Zugriffsregeln (M13). Bewusst eine eigene Funktion mit
+ * eigener Datei und OHNE Manifest-Eintrag: Jeder manifest-getriebene Pfad
+ * — der `bidirectional`-Restore kanonischer Graphen, der Nutzer-Export,
+ * die Snapshot-Auslieferung eines Connectors — geht damit an den Rechten
+ * vorbei. Nur der `push` eines Git-Backups, dessen Zielverzeichnis
+ * `data/graph` selbst ist, nimmt sie als Datei des Arbeitsverzeichnisses
+ * mit; das darf er, weil ein Backup `control` auf jedem enthaltenen
+ * Graphen voraussetzt (§17.4).
+ */
+export const ACL_FILE = 'acl.nq';
+
+export async function writeAclSnapshot(
+    store: GraphStore,
+    fs: FileSystemLike,
+    dir: string,
+    aclGraph: NamedNode,
+): Promise<{ quads: number }> {
+    const quads = await collect(store.dump(aclGraph));
+    await fs.mkdir(dir);
+    await fs.writeFile(joinPath(dir, ACL_FILE), await canonicalNQuads(quads));
+    return { quads: quads.length };
+}
+
+/** Lädt `acl.nq` zurück in den Store. `null`, wenn es die Datei nicht gibt. */
+export async function restoreAclSnapshot(
+    store: GraphStore,
+    fs: FileSystemLike,
+    dir: string,
+    aclGraph: NamedNode,
+): Promise<{ quads: number } | null> {
+    const path = joinPath(dir, ACL_FILE);
+    if (!(await fs.exists(path))) return null;
+    const quads = parseRdf(await fs.readFile(path), { format: 'application/n-quads' });
+    const result = await store.load(quads, aclGraph, { replace: true });
+    return { quads: result.added };
 }
 
 async function listNqFiles(fs: FileSystemLike, dir: string, prefix = ''): Promise<string[]> {

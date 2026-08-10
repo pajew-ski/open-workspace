@@ -10,7 +10,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerGraph, persistServerGraphSnapshot, reprojectWorkspaceFiles } from '@/lib/graph/server/instance';
+import {persistServerGraphSnapshot, reprojectWorkspaceFiles } from '@/lib/graph/server/instance';
+import { getRequestGraph, getUserGraph } from '@/lib/graph/server/context';
+import { snapshotExportRefusal } from '@/lib/graph/authz/resolve';
 import { getConnector } from '@/lib/graph/connectors/registry';
 import { syncConnector } from '@/lib/graph/connectors/sync';
 import { createNodeFileSystem } from '@/lib/platform/runtime/node-fs';
@@ -28,10 +30,13 @@ export async function POST(_request: NextRequest, context: RouteContext) {
         return NextResponse.json({ error: 'Ungültige Connector-ID' }, { status: 400 });
     }
     try {
-        const handle = await getServerGraph();
-        if (!(await getConnector(handle, id))) {
+        const handle = await getUserGraph();
+        const existing = await getConnector(handle, id);
+        if (!existing) {
             return NextResponse.json({ error: 'Connector nicht gefunden' }, { status: 404 });
         }
+        const refused = await refuseSnapshotExport(existing.kind);
+        if (refused) return refused;
         const result = await syncConnector(handle, id, {
             files: createNodeFileSystem(),
             runtime: createNodeRuntimeAdapter(),
@@ -50,4 +55,16 @@ export async function POST(_request: NextRequest, context: RouteContext) {
             { status: 500 },
         );
     }
+}
+
+/**
+ * §17.4: Ein Git-Backup nimmt den ganzen Snapshot mit. Wer ihn ausliefert,
+ * muss jeden enthaltenen Graphen verwalten dürfen.
+ */
+async function refuseSnapshotExport(kind: string): Promise<Response | null> {
+    if (kind !== 'git-backup') return null;
+    const { store, iri, grant } = await getRequestGraph();
+    const existing = (await store.graphs()).map(g => g.value);
+    const refusal = snapshotExportRefusal(grant, iri.instanceBase, existing);
+    return refusal ? NextResponse.json({ error: 'Backup nicht erlaubt', details: refusal }, { status: 403 }) : null;
 }

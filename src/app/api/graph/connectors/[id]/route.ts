@@ -5,7 +5,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerGraph, persistServerGraphSnapshot } from '@/lib/graph/server/instance';
+import {persistServerGraphSnapshot } from '@/lib/graph/server/instance';
+import { getUserGraph } from '@/lib/graph/server/context';
 import { deleteConnector, getConnector } from '@/lib/graph/connectors/registry';
 
 interface RouteContext {
@@ -20,7 +21,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
         return NextResponse.json({ error: 'Ungültige Connector-ID' }, { status: 400 });
     }
     try {
-        const handle = await getServerGraph();
+        const handle = await getUserGraph();
         const connector = await getConnector(handle, id);
         if (!connector) {
             return NextResponse.json({ error: 'Connector nicht gefunden' }, { status: 404 });
@@ -40,7 +41,7 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
         return NextResponse.json({ error: 'Ungültige Connector-ID' }, { status: 400 });
     }
     try {
-        const handle = await getServerGraph();
+        const handle = await getUserGraph();
         const deleted = await deleteConnector(handle, id);
         if (!deleted) {
             return NextResponse.json({ error: 'Connector nicht gefunden' }, { status: 404 });

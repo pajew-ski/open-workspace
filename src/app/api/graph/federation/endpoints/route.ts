@@ -10,7 +10,8 @@
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getServerGraph, persistServerGraphSnapshot } from '@/lib/graph/server/instance';
+import {persistServerGraphSnapshot } from '@/lib/graph/server/instance';
+import { getUserGraph } from '@/lib/graph/server/context';
 import {
     createFederatedEndpoint,
     listFederatedEndpoints,
@@ -30,7 +31,7 @@ const createSchema = z.object({
 
 export async function GET(): Promise<Response> {
     try {
-        const handle = await getServerGraph();
+        const handle = await getUserGraph();
         const capabilities = createNodeRuntimeAdapter().capabilities;
         return NextResponse.json({
             endpoints: await listFederatedEndpoints(handle),
@@ -63,7 +64,7 @@ export async function POST(request: Request): Promise<Response> {
         return NextResponse.json({ error: message }, { status: 400 });
     }
     try {
-        const handle = await getServerGraph();
+        const handle = await getUserGraph();
         const endpoint = await createFederatedEndpoint(handle, parsed);
         await persistServerGraphSnapshot();
         return NextResponse.json({ endpoint }, { status: 201 });

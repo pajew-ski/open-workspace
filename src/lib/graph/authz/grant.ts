@@ -18,10 +18,14 @@
  * Dieses Modul ist pur: es kennt weder Store noch Umgebung — es bildet
  * Scope-Muster auf die real vorhandenen Named Graphs ab (§3.3).
  *
- * MIGRATION: Mit M13 werden die Scope-Muster durch die ACL-Regeln aus
- * `graph/acl` (WAC/ACP) ersetzt. Die Schnittstelle dieses Moduls — eine
- * Identität, eine Liste erlaubter Graph-IRIs, ein optionaler Schreibgraph —
- * bleibt dieselbe; nur die Herkunft der Liste wechselt.
+ * Mit M13 ist der Wechsel vollzogen: Die Herkunft der Liste sind die
+ * ACL-Regeln aus `graph/acl` (`resolve.ts`), nicht mehr die Scope-Muster
+ * der Token-Konfiguration. Die Schnittstelle blieb dabei dieselbe — eine
+ * Identität, eine Liste erlaubter Graph-IRIs, ein Schreibziel —, weshalb
+ * MCP-Server (M10) und eingehende Föderation (M11) unverändert
+ * weiterlaufen. Die Scope-Muster leben weiter als **zusätzliche
+ * Verengung** eines Tokens (ein Zugang darf weniger dürfen als sein
+ * Nutzer, nie mehr).
  */
 
 import type { IriFactory } from '../iri';
@@ -35,6 +39,14 @@ export interface AccessGrant {
     readonly writableGraph: string | null;
     /** Rohe SPARQL-Queries (read-only) erlaubt? */
     readonly sparql: boolean;
+    /** M13: alle Graphen mit `acl:Write` (SPARQL UPDATE, CRUD). */
+    readonly writableGraphs?: readonly string[];
+    /** M13: alle Graphen mit `acl:Append` (beitragen, nicht löschen). */
+    readonly appendableGraphs?: readonly string[];
+    /** M13: alle Graphen mit `acl:Control` (Freigaben verwalten). */
+    readonly controlGraphs?: readonly string[];
+    /** M13: Nutzer-ID hinter der Identität (Token → Nutzer). */
+    readonly userId?: string;
 }
 
 /**

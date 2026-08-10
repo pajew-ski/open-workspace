@@ -9,7 +9,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getServerGraph } from '@/lib/graph/server/instance';
+import { getUserGraph } from '@/lib/graph/server/context';
 import { getFederatedEndpoint } from '@/lib/graph/federation/registry';
 import { probeEndpoint } from '@/lib/graph/federation/remote';
 
@@ -20,7 +20,7 @@ interface RouteContext {
 export async function POST(_request: Request, context: RouteContext): Promise<Response> {
     const { id } = await context.params;
     try {
-        const endpoint = await getFederatedEndpoint(await getServerGraph(), id);
+        const endpoint = await getFederatedEndpoint(await getUserGraph(), id);
         if (!endpoint) {
             return NextResponse.json({ error: `Endpoint "${id}" existiert nicht.` }, { status: 404 });
         }

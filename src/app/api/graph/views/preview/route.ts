@@ -11,7 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { parseBody } from '@/lib/api/validation';
-import { getServerGraph } from '@/lib/graph/server/instance';
+import { getRequestGraph } from '@/lib/graph/server/context';
 import { resolveQueryTextAsGraph } from '@/lib/graph/views/registry';
 import { createFederationResolver } from '@/lib/graph/federation/host.server';
 import { summarizeFederation } from '@/lib/graph/federation/service';
@@ -25,10 +25,11 @@ export async function POST(request: NextRequest) {
     if (!parsed.ok) return parsed.response;
 
     try {
-        const handle = await getServerGraph();
+        const { store, iri, grant } = await getRequestGraph();
         const federation = createFederationResolver();
-        const resolved = await resolveQueryTextAsGraph(handle, parsed.data.queryText, {
+        const resolved = await resolveQueryTextAsGraph({ store, iri }, parsed.data.queryText, {
             federation: federation.resolve,
+            allowedGraphs: grant.readableGraphs,
         });
         const report = federation.report();
         return NextResponse.json(

@@ -13,7 +13,8 @@
  *    konfigurierte Tokens ist der Endpoint aus (503), nicht offen.
  *  - Sitzungen sind an die Token-Identität gebunden: eine Session-ID aus
  *    einem anderen Token ist unbekannt (404), nicht übernehmbar.
- *  - Das erlaubte Dataset wird PRO ANFRAGE neu aus dem Grant abgeleitet —
+ *  - Das erlaubte Dataset wird PRO ANFRAGE neu aus `graph/acl` abgeleitet
+ *    (M13: das Token nennt den Nutzer, die Rechte stehen im Graphen) —
  *    ein Graph, den das Token nicht lesen darf, ist auch über Hops nicht
  *    erreichbar (die Klammer sitzt in retrievalDataset/resolveDataset).
  *  - Rate-Limit pro Token (gleitendes Minutenfenster) und Zeitbudget pro
@@ -174,7 +175,7 @@ export class McpHost {
 
     private async grantFor(token: McpTokenConfig, handle: GraphHandle) {
         const existing = (await handle.store.graphs()).map(g => g.value);
-        return grantForToken(token, handle.iri, existing).grant;
+        return (await grantForToken(token, handle, existing)).grant;
     }
 
     private async createSession(token: McpTokenConfig): Promise<Session> {

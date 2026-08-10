@@ -20,3 +20,8 @@
 <urn:ow:14b46c31-2026-4d79-9fe6-4516cf791ea6:u/default/tool/workspace_finder> <https://pajew-ski.github.io/open-workspace/ns/v1#providedBy> <urn:ow:14b46c31-2026-4d79-9fe6-4516cf791ea6:u/default/tool-provider/workspace> <urn:ow:14b46c31-2026-4d79-9fe6-4516cf791ea6:graph/meta> .
 <urn:ow:14b46c31-2026-4d79-9fe6-4516cf791ea6:u/default/tool/workspace_finder> <https://schema.org/description> "Durchsucht den Workspace: Aufgaben, Dokumente, Projekte, Chats und Termine." <urn:ow:14b46c31-2026-4d79-9fe6-4516cf791ea6:graph/meta> .
 <urn:ow:14b46c31-2026-4d79-9fe6-4516cf791ea6:u/default/tool/workspace_finder> <https://schema.org/name> "workspace_finder" <urn:ow:14b46c31-2026-4d79-9fe6-4516cf791ea6:graph/meta> .
+<urn:ow:14b46c31-2026-4d79-9fe6-4516cf791ea6:user/default> <http://purl.org/dc/terms/created> "2026-08-10T06:46:05.92Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> <urn:ow:14b46c31-2026-4d79-9fe6-4516cf791ea6:graph/meta> .
+<urn:ow:14b46c31-2026-4d79-9fe6-4516cf791ea6:user/default> <http://purl.org/dc/terms/identifier> "default" <urn:ow:14b46c31-2026-4d79-9fe6-4516cf791ea6:graph/meta> .
+<urn:ow:14b46c31-2026-4d79-9fe6-4516cf791ea6:user/default> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://xmlns.com/foaf/0.1/Agent> <urn:ow:14b46c31-2026-4d79-9fe6-4516cf791ea6:graph/meta> .
+<urn:ow:14b46c31-2026-4d79-9fe6-4516cf791ea6:user/default> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://schema.org/Person> <urn:ow:14b46c31-2026-4d79-9fe6-4516cf791ea6:graph/meta> .
+<urn:ow:14b46c31-2026-4d79-9fe6-4516cf791ea6:user/default> <https://schema.org/name> "default" <urn:ow:14b46c31-2026-4d79-9fe6-4516cf791ea6:graph/meta> .

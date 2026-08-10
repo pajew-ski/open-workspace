@@ -8,13 +8,13 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getServerGraph } from '@/lib/graph/server/instance';
+import { getRequestGraph } from '@/lib/graph/server/context';
 import { buildLegacyGraphView } from '@/lib/graph/projection/schema-org';
 
 export async function GET() {
     try {
-        const { store, iri } = await getServerGraph();
-        const view = await buildLegacyGraphView(store, iri);
+        const { store, iri, grant } = await getRequestGraph();
+        const view = await buildLegacyGraphView(store, iri, { allowedGraphs: grant.readableGraphs });
         return NextResponse.json(view);
     } catch (error) {
         console.error('Graph API Error:', error);

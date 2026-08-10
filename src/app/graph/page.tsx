@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { AppShell } from '@/components/layout';
 import { Card, CardContent, Button, ConfirmDialog, FloatingActionButton } from '@/components/ui';
-import { Settings2, X, RotateCcw, CloudDownload, Globe, TerminalSquare } from 'lucide-react';
+import { Settings2, X, RotateCcw, CloudDownload, Globe, ShieldCheck, TerminalSquare } from 'lucide-react';
 import { isGraphQuery } from '@/lib/graph/sparql/classify';
 import styles from './page.module.css';
 import { Graph } from 'schema-dts';
@@ -922,6 +922,9 @@ export default function GraphExplorerPage() {
                                     </Link>
                                     <Link href="/graph/federation" className={styles.sourcesLink}>
                                         <Globe size={14} aria-hidden="true" /> Föderierte Endpoints
+                                    </Link>
+                                    <Link href="/graph/access" className={styles.sourcesLink}>
+                                        <ShieldCheck size={14} aria-hidden="true" /> Zugriff &amp; Freigaben
                                     </Link>
                                 </div>
                             </CardContent>

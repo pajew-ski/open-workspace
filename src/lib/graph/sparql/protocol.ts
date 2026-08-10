@@ -5,10 +5,13 @@
  * Runtime `local` rufen dieselbe Funktion mit identischer Signatur —
  * `capabilities.sparqlEndpoint` entscheidet nur, ob es die HTTP-Route gibt.
  *
- * Sicherheitsmodell dieser Ausbaustufe (Single-User; Vorstufe des
- * Dataset-Resolvers aus SPEC §17.3):
+ * Sicherheitsmodell (Dataset-Resolver, SPEC §17.3; seit M13 mit
+ * ACL-Verengung über `allowedGraphs`/`writableGraphs`):
  *  - Das Dataset wird IMMER als default_graph/named_graphs in die Query
  *    injiziert und überschreibt `FROM`/`FROM NAMED` im Query-Text.
+ *  - `allowedGraphs` und `writableGraphs` können ausschließlich wegnehmen.
+ *    Sie kommen aus `authz/resolve.ts#grantForIdentity` — es gibt keinen
+ *    zweiten Weg, ein Dataset zu bestimmen.
  *  - `graph/acl` ist über keinen Pfad erreichbar; `presentation` und
  *    `inferred/*` sind aus dem Default-Dataset ausgeschlossen und nur über
  *    explizite Protocol-Parameter erreichbar (SPEC §3.3).
@@ -99,13 +102,23 @@ function isRestrictedByDefault(iriValue: string, base: string): boolean {
     return false;
 }
 
-/** Systemverwaltete Graphen — für SPARQL-Updates unantastbar. */
-function isProtectedForUpdate(iriValue: string, base: string): boolean {
+/**
+ * Systemverwaltete Graphen — für SPARQL-Updates unantastbar.
+ *
+ * `writableGraphs` (M13, SPEC §17.3) verengt zusätzlich: Ist die Liste
+ * gesetzt, ist ALLES geschützt, was nicht darin steht — auch ein Graph,
+ * den es noch gar nicht gibt. Ein Update kann damit weder fremde
+ * Nutzergraphen ändern noch neue Graphen außerhalb des eigenen Rechts
+ * anlegen. Die Liste kann nie erweitern: die systemverwalteten Graphen
+ * bleiben geschützt, selbst wenn jemand sie hineinschreibt.
+ */
+function isProtectedForUpdate(iriValue: string, base: string, writableGraphs?: readonly string[]): boolean {
     const scope = graphScope(iriValue, base);
     if (!scope) return true;
     if (scope === 'vocab' || scope === 'meta' || scope === 'shapes' || scope === 'acl') return true;
     if (scope.includes('/import/')) return true; // Connector-eigen (SPEC §6.2)
     if (scope.includes('/inferred/')) return true; // Reasoner-eigen (SPEC §7.3)
+    if (writableGraphs && !writableGraphs.includes(iriValue)) return true;
     return false;
 }
 
@@ -123,6 +136,13 @@ export interface ResolvedDataset {
  */
 export interface DatasetAuthz {
     allowedGraphs?: readonly string[];
+    /**
+     * Graphen mit Schreibrecht (M13, SPEC §17.3). Gesetzt heißt: ein
+     * UPDATE darf ausschließlich diese Graphen verändern. Nicht gesetzt
+     * heißt Einzelnutzer-Betrieb — dort schützt die Liste der
+     * systemverwalteten Graphen wie bisher.
+     */
+    writableGraphs?: readonly string[];
 }
 
 /**
@@ -261,6 +281,14 @@ async function collectQuads(result: Extract<QueryResult, { type: 'quads' }>): Pr
 
 // --- Update-Schutz -------------------------------------------------------
 
+/**
+ * Ein Marker statt einer Textprobe: der HTTP-Status hängt nicht daran,
+ * wie eine Fehlermeldung formuliert ist. Die Meldung unterscheidet
+ * bewusst NICHT zwischen „systemverwaltet", „fremd" und „existiert
+ * nicht" — sonst wäre die Ablehnung ein Existenz-Orakel (§17.3).
+ */
+const UPDATE_DENIED = 'Update abgelehnt:';
+
 async function graphFingerprint(store: GraphStore, graph: NamedNode): Promise<string> {
     const lines: string[] = [];
     for await (const q of store.dump(graph)) {
@@ -270,10 +298,15 @@ async function graphFingerprint(store: GraphStore, graph: NamedNode): Promise<st
     return lines.join('\n');
 }
 
-async function executeGuardedUpdate(store: GraphStore, iri: IriFactory, update: string): Promise<void> {
+async function executeGuardedUpdate(
+    store: GraphStore,
+    iri: IriFactory,
+    update: string,
+    writableGraphs?: readonly string[],
+): Promise<void> {
     const base = iri.instanceBase;
     await store.transaction(async tx => {
-        const protectedGraphs = (await tx.graphs()).filter(g => isProtectedForUpdate(g.value, base));
+        const protectedGraphs = (await tx.graphs()).filter(g => isProtectedForUpdate(g.value, base, writableGraphs));
         const before = new Map<string, string>();
         for (const graph of protectedGraphs) {
             before.set(graph.value, await graphFingerprint(tx, graph));
@@ -281,11 +314,11 @@ async function executeGuardedUpdate(store: GraphStore, iri: IriFactory, update: 
         await tx.update(update);
         const after = await tx.graphs();
         for (const graph of after) {
-            if (!isProtectedForUpdate(graph.value, base)) continue;
+            if (!isProtectedForUpdate(graph.value, base, writableGraphs)) continue;
             const previous = before.get(graph.value) ?? '';
             if ((await graphFingerprint(tx, graph)) !== previous) {
                 throw new GraphStoreError(
-                    `Update verändert den systemverwalteten Graphen <${graph.value}> — abgelehnt und zurückgerollt.`,
+                    `${UPDATE_DENIED} Der Graph <${graph.value}> wird verändert, ist aber nicht freigegeben — zurückgerollt.`,
                     'UPDATE_FAILED',
                 );
             }
@@ -295,7 +328,7 @@ async function executeGuardedUpdate(store: GraphStore, iri: IriFactory, update: 
         for (const graph of protectedGraphs) {
             if (!afterValues.has(graph.value)) {
                 throw new GraphStoreError(
-                    `Update löscht den systemverwalteten Graphen <${graph.value}> — abgelehnt und zurückgerollt.`,
+                    `${UPDATE_DENIED} Der Graph <${graph.value}> wird gelöscht, ist aber nicht freigegeben — zurückgerollt.`,
                     'UPDATE_FAILED',
                 );
             }
@@ -369,11 +402,11 @@ export async function executeSparqlProtocol(
 
     if (update) {
         try {
-            await executeGuardedUpdate(store, iri, update);
+            await executeGuardedUpdate(store, iri, update, options.writableGraphs);
             return { status: 204, contentType: 'text/plain; charset=utf-8', body: '' };
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
-            const status = message.includes('systemverwalteten Graphen') ? 403 : 400;
+            const status = message.startsWith(UPDATE_DENIED) ? 403 : 400;
             return textResponse(status, message);
         }
     }

@@ -13,7 +13,7 @@
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getServerGraph } from '@/lib/graph/server/instance';
+import { getRequestGraph } from '@/lib/graph/server/context';
 import { retrievalDataset, retrieve, type RetrievalRequestInput } from '@/lib/graph/search/retrieval';
 import { getFulltextIndex, getVectorIndex } from '@/lib/graph/search/cache';
 import { getRetrievalProfile } from '@/lib/graph/search/profiles';
@@ -58,7 +58,8 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     try {
-        const handle = await getServerGraph();
+        const { store, iri, grant } = await getRequestGraph();
+        const handle = { store, iri };
 
         const { profile: profileId, ...overrides } = parsed;
         let input: RetrievalRequestInput = overrides;
@@ -73,6 +74,7 @@ export async function POST(request: Request): Promise<Response> {
         const dataset = await retrievalDataset(handle, {
             graphs: input.graphs,
             includeInferred: input.includeInferred ?? false,
+            allowedGraphs: grant.readableGraphs,
         });
         const deps: RetrievalDeps = {
             fulltext: await getFulltextIndex(handle, dataset),
@@ -93,7 +95,7 @@ export async function POST(request: Request): Promise<Response> {
             }
         }
 
-        const result = await retrieve(handle, input, deps);
+        const result = await retrieve(handle, input, deps, { allowedGraphs: grant.readableGraphs });
         return NextResponse.json(result);
     } catch (error) {
         console.error('Graph Retrieve Error:', error);

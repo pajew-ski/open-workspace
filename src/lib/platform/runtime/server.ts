@@ -12,7 +12,10 @@
  *
  * Capabilities sind ehrlich: nur was existiert, steht auf true — der
  * MCP-Server existiert seit M10 (`/api/mcp`), die Föderation in beide
- * Richtungen seit M11. `multiUser` bleibt false, bis §17 gebaut ist (M13).
+ * Richtungen seit M11, der Mehrbenutzerbetrieb mit ACL-Durchsetzung pro
+ * Named Graph seit M13 (§17). `multiUser` heißt dabei: getrennte
+ * Nutzergraphen und Rechte aus `graph/acl` — das Anmeldeverfahren führt
+ * weiterhin die Identitäts-Schicht (`OW_AUTH_MODE`).
  */
 
 import type { GraphStore } from '@/lib/graph/store/types';
@@ -66,8 +69,9 @@ export function createNodeRuntimeAdapter(options: NodeRuntimeOptions = {}): Runt
             // hier die Token-Konfiguration — die Fähigkeit existiert.
             federationOutbound: true,
             federationInbound: true,
-            // Mehrbenutzerbetrieb ist M13 (§17) — nicht vorgetäuscht.
-            multiUser: false,
+            // Mehrbenutzerbetrieb (M13, §17): Nutzergraphen, ACL in
+            // graph/acl, geteilte Räume, Durchsetzung im Dataset-Resolver.
+            multiUser: true,
             reasoningTier: 'rl',
         },
     };
