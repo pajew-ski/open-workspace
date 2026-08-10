@@ -25,6 +25,15 @@ const nextConfig: NextConfig = {
     // Next-eigene basePath — es gibt genau EINEN Platzhalter.
     NEXT_PUBLIC_OW_BASE_PATH: basePath,
   },
+  /**
+   * `/.well-known/void` (SPEC §17.5): Verzeichnisse mit führendem Punkt
+   * sind im App-Router keine Routen-Segmente — die Route liegt deshalb
+   * unter `/api/well-known/void` und bekommt hier ihre spezifizierte
+   * Adresse. Rewrites erben den Base-Path automatisch (Ingress, M12).
+   */
+  async rewrites() {
+    return [{ source: "/.well-known/void", destination: "/api/well-known/void" }];
+  },
   // Oxigraph lädt sein WASM-Artefakt zur Laufzeit über fs — nicht bundeln.
   serverExternalPackages: ["oxigraph"],
   // Die mitgelieferte Ontologie wird beim Start nach graph/vocab geladen

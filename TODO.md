@@ -261,8 +261,47 @@
       `tests/platform/{base-path,ingress,packaging,auth,opfs,worker-store}.test.ts`
       und `e2e/ingress.spec.ts` (volle Supervisor→Proxy→Build-Kette über
       `scripts/e2e-ingress-server.mjs`)
-- [ ] **M13 Multi-User/ACL** (WAC/ACP in `graph/acl`, Dataset-Resolver,
-      Test-Matrix §17.6)
+- [x] **M13 Multi-User/ACL**: Rechte sind RDF im selben Store —
+      `graph/acl` trägt Web-Access-Control-Regeln (`acl:Authorization`,
+      `acl:accessTo` auf die Graph-IRI, `acl:agent`/`agentGroup`/
+      `agentClass`, `acl:mode`), Granularität pro Named Graph (§17.2).
+      Modus-Implikation festgelegt: `control` ⊃ `write` ⊃ `append`/`read`;
+      `append` allein ist die Briefkasten-Semantik. Rollen sind benannte
+      Modus-Bündel, die Mitgliederliste eines Raums IST die Regelmenge auf
+      seinem Graphen. **Nichts per Default sichtbar** — auch das Recht des
+      Eigentümers steht als Tripel im Graphen (`ensureDefaultAuthorizations`
+      füllt beim Start nur auf, überschreibt nie); `graph/acl` selbst
+      trifft kein Muster und keine Regel. **Durchsetzung** (§17.3) in zwei
+      Stufen: `grantForIdentity` (Identität + ACL ⇒ `AccessGrant`), dann
+      `resolveDataset`/`retrievalDataset`, die den Grant als Verengung
+      injizieren — die Grant-Schnittstelle aus M10 blieb unverändert,
+      `OW_MCP_TOKENS` nennt nur noch den Nutzer (Scopes = optionale
+      zusätzliche Verengung). Architekturtest erzwingt: kein
+      `store.query(`-Aufruf ohne Dataset vom Resolver. SPARQL UPDATE
+      bekommt `writableGraphs` (auch neue Graphen außerhalb des Rechts
+      entstehen nicht); Ablehnung unterscheidet nicht zwischen
+      systemverwaltet, fremd und nicht existent. **Anfrage-Kontext**
+      (`server/context.ts`): Identität aus `next/headers`, nutzerskalierte
+      IRI-Fabrik, Grant — und die Kernregel, dass eine Anfrage OHNE
+      geprüfte Identität anonym ist, nicht der Einzelnutzer. **§17.5**:
+      `public` anonym lesbar über die reguläre Regel, `/.well-known/void`
+      beschreibt den Umfang des Anfragenden, Entitäts-IRIs dereferenzieren
+      unter `/u/<userId>/<type>/<id>` (Turtle/JSON-LD/HTML; ehrliche
+      Grenze: nur mit HTTP-Instanz-Base), Rate-Limit für anonyme Zugriffe.
+      **§17.4** je ein Test: Index pro Dataset statt global gefiltert,
+      Retrieval-Klammer vor der Expansion, Reasoning je Nutzer,
+      Bound-Join-Leak über den ausgehenden Query-Text, gesperrt vs. nicht
+      existent byte-gleich. Export nur eigene Verzeichnisse
+      (`data/u/<id>/…`), `git-backup` verlangt `control` auf JEDEM Graphen
+      des Snapshots; `graph/acl` wird als `acl.nq` NEBEN dem Manifest
+      gesichert (überlebt Neustart; kein Restore und kein Nutzer-Export
+      fasst ihn an — ein Git-Backup direkt auf `data/graph` nimmt die
+      Datei mit, was zulässig ist, weil es `control` auf allem verlangt). Neue Terme
+      `ow:Space`/`ow:spaceGraph`, sonst Standard-Vokabular (WAC, FOAF,
+      VoID). UI `/graph/access`, `capabilities.multiUser` = true.
+      Doku: docs/multi-user.md — Abnahme: `tests/graph/multi-user.test.ts`
+      (Matrix §17.6, jede Zeile ein Negativtest) und
+      `tests/graph/acl.test.ts`
 
 ## Fundament (fertig)
 

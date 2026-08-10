@@ -12,7 +12,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getServerGraph } from '@/lib/graph/server/instance';
+import { getRequestGraph } from '@/lib/graph/server/context';
 import { retrievalDataset } from '@/lib/graph/search/retrieval';
 import { getFulltextIndex, getVectorIndex } from '@/lib/graph/search/cache';
 import { resolveEmbeddingProvider } from '@/lib/ai/embeddings.server';
@@ -29,8 +29,15 @@ export async function GET(request: Request): Promise<Response> {
     }
 
     try {
-        const handle = await getServerGraph();
-        const dataset = await retrievalDataset(handle, { includeInferred: false });
+        const { store, iri, grant } = await getRequestGraph();
+        const handle = { store, iri };
+        // §17.4: Der Index wird über GENAU das erlaubte Dataset gebaut —
+        // ein globaler Index mit gefilterter Trefferliste verriete über
+        // Scores und Nachbarschaft trotzdem Inhalte.
+        const dataset = await retrievalDataset(handle, {
+            includeInferred: false,
+            allowedGraphs: grant.readableGraphs,
+        });
         const index = await getFulltextIndex(handle, dataset);
         const hits = index.search(query, { limit, graphs: dataset });
 

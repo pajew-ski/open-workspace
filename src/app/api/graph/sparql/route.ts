@@ -11,7 +11,7 @@
  */
 
 import type { NextRequest } from 'next/server';
-import { getServerGraph } from '@/lib/graph/server/instance';
+import { getRequestGraph } from '@/lib/graph/server/context';
 import { executeSparqlProtocol } from '@/lib/graph/sparql/protocol';
 import { sparqlHttpResponse, sparqlRequestFromHttp, SparqlBodyTooLargeError } from '@/lib/graph/sparql/http';
 import { invalidateSearchIndexes } from '@/lib/graph/search/cache';
@@ -20,7 +20,7 @@ import { summarizeFederation } from '@/lib/graph/federation/service';
 
 async function handle(request: NextRequest, method: 'GET' | 'POST'): Promise<Response> {
     try {
-        const { store, iri } = await getServerGraph();
+        const { store, iri, grant } = await getRequestGraph();
 
         let protocolRequest;
         try {
@@ -37,6 +37,10 @@ async function handle(request: NextRequest, method: 'GET' | 'POST'): Promise<Res
         const federation = createFederationResolver();
         const result = await executeSparqlProtocol(store, iri, protocolRequest, {
             federation: federation.resolve,
+            // Dataset-Resolver (§17.3): lesen nur das Erlaubte, schreiben
+            // nur ins Freigegebene — injiziert, nicht nachgefiltert.
+            allowedGraphs: grant.readableGraphs,
+            writableGraphs: grant.writableGraphs ?? [],
         });
         // Ein erfolgreiches UPDATE (204) läuft am Mutations-Pfad von
         // server/instance.ts vorbei — Suchindizes hier invalidieren (M8).

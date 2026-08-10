@@ -44,6 +44,8 @@ export const PREFIXES = {
     skos: 'http://www.w3.org/2004/02/skos/core#',
     sh: 'http://www.w3.org/ns/shacl#',
     void: 'http://rdfs.org/ns/void#',
+    /** Web Access Control (SPEC §17.2): die Rechte leben im selben RDF wie die Daten. */
+    acl: 'http://www.w3.org/ns/auth/acl#',
     xsd: 'http://www.w3.org/2001/XMLSchema#',
 } as const;
 
@@ -132,6 +134,9 @@ export const OW = {
     RetrievalProfile: ow('RetrievalProfile'),
     retrievalConfig: ow('retrievalConfig'),
     weight: ow('weight'),
+    // Multi-User (SPEC §17.1 / M13)
+    Space: ow('Space'),
+    spaceGraph: ow('spaceGraph'),
 } as const;
 
 export type OwTerm = (typeof OW)[keyof typeof OW];
@@ -233,6 +238,44 @@ export const FOAF = {
     Agent: `${PREFIXES.foaf}Agent`,
     Person: `${PREFIXES.foaf}Person`,
     Group: `${PREFIXES.foaf}Group`,
+    /** Mitgliedschaft einer Gruppe (foaf:Group → foaf:Agent), SPEC §17.1. */
+    member: `${PREFIXES.foaf}member`,
+} as const;
+
+/**
+ * Web Access Control (SPEC §17.2). Bewusst das Standard-Vokabular und kein
+ * eigenes: „die Rechte gehören in dieselbe Welt wie die Daten". Ein
+ * fremder RDF-Client liest `graph/acl` damit ohne unser Produktvokabular.
+ */
+export const ACL = {
+    Authorization: `${PREFIXES.acl}Authorization`,
+    /** Prinzipal-Klasse „jeder angemeldete Nutzer". */
+    AuthenticatedAgent: `${PREFIXES.acl}AuthenticatedAgent`,
+    accessTo: `${PREFIXES.acl}accessTo`,
+    agent: `${PREFIXES.acl}agent`,
+    agentGroup: `${PREFIXES.acl}agentGroup`,
+    agentClass: `${PREFIXES.acl}agentClass`,
+    mode: `${PREFIXES.acl}mode`,
+    owner: `${PREFIXES.acl}owner`,
+    Read: `${PREFIXES.acl}Read`,
+    Append: `${PREFIXES.acl}Append`,
+    Write: `${PREFIXES.acl}Write`,
+    Control: `${PREFIXES.acl}Control`,
+} as const;
+
+/** VoID (SPEC §17.5): Selbstbeschreibung des öffentlichen Teilgraphen. */
+export const VOID = {
+    Dataset: `${PREFIXES.void}Dataset`,
+    sparqlEndpoint: `${PREFIXES.void}sparqlEndpoint`,
+    triples: `${PREFIXES.void}triples`,
+    entities: `${PREFIXES.void}entities`,
+    classes: `${PREFIXES.void}classes`,
+    properties: `${PREFIXES.void}properties`,
+    vocabulary: `${PREFIXES.void}vocabulary`,
+    uriSpace: `${PREFIXES.void}uriSpace`,
+    class: `${PREFIXES.void}class`,
+    classPartition: `${PREFIXES.void}classPartition`,
+    rootResource: `${PREFIXES.void}rootResource`,
 } as const;
 
 export const XSD = {

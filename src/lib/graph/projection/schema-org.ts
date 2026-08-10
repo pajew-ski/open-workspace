@@ -8,10 +8,11 @@
  * Graph-UI berechnet sie clientseitig aus dem Typ (Invariante 2).
  */
 
-import type { Term } from '@rdfjs/types';
+import type { NamedNode, Term } from '@rdfjs/types';
 import type { GraphStore } from '../store/types';
 import type { IriFactory } from '../iri';
 import { SPARQL_PREFIXES } from '../vocab';
+import { resolveDataset, type DatasetAuthz } from '../sparql/protocol';
 
 export type LegacyNodeType =
     | 'Project'
@@ -42,8 +43,16 @@ export interface LegacyGraphView {
     '@graph': LegacyGraphNode[];
 }
 
-async function rows(store: GraphStore, sparql: string): Promise<Array<Record<string, Term>>> {
-    const result = await store.query(`${SPARQL_PREFIXES}\n${sparql}`);
+interface Dataset {
+    defaultGraphs: NamedNode[];
+    namedGraphs: NamedNode[];
+}
+
+async function rows(store: GraphStore, dataset: Dataset, sparql: string): Promise<Array<Record<string, Term>>> {
+    const result = await store.query(`${SPARQL_PREFIXES}\n${sparql}`, {
+        defaultGraphs: dataset.defaultGraphs,
+        namedGraphs: dataset.namedGraphs,
+    });
     if (result.type !== 'bindings') return [];
     const out: Array<Record<string, Term>> = [];
     for await (const row of result.bindings) {
@@ -59,12 +68,20 @@ function stableId(iri: string, type: string): string {
     return index === -1 ? iri : decodeURIComponent(iri.slice(index + marker.length));
 }
 
-export async function buildLegacyGraphView(store: GraphStore, iri: IriFactory): Promise<LegacyGraphView> {
+export async function buildLegacyGraphView(
+    store: GraphStore,
+    iri: IriFactory,
+    authz: DatasetAuthz = {},
+): Promise<LegacyGraphView> {
+    // Auch diese Projektion holt ihr Dataset beim Resolver (SPEC §17.3) —
+    // es gibt keinen Lesepfad daran vorbei. Ohne Leserecht auf den eigenen
+    // Workspace-Graphen bleibt die Ansicht leer statt zu umgehen.
+    const dataset = await resolveDataset(store, iri, undefined, authz);
     const ws = `<${iri.graph('workspace')}>`;
     const nodes = new Map<string, LegacyGraphNode>();
 
     // Projekte
-    for (const row of await rows(store, `
+    for (const row of await rows(store, dataset, `
         SELECT ?s ?name WHERE { GRAPH ${ws} { ?s a ow:Project ; schema:name ?name } }`)) {
         nodes.set(row.s.value, {
             '@type': 'Project',
@@ -75,7 +92,7 @@ export async function buildLegacyGraphView(store: GraphStore, iri: IriFactory): 
     }
 
     // Aufgaben (inkl. Projektzuordnung als legacy `agent`)
-    for (const row of await rows(store, `
+    for (const row of await rows(store, dataset, `
         SELECT ?s ?name ?status ?project WHERE { GRAPH ${ws} {
             ?s a ow:Task ; schema:name ?name ; schema:actionStatus ?status .
             OPTIONAL { ?s ow:inProject ?project }
@@ -94,7 +111,7 @@ export async function buildLegacyGraphView(store: GraphStore, iri: IriFactory): 
     }
 
     // Task-Abhängigkeiten (ow:blockedBy → legacy `dependencies`)
-    for (const row of await rows(store, `
+    for (const row of await rows(store, dataset, `
         SELECT ?s ?dep WHERE { GRAPH ${ws} { ?s a ow:Task ; ow:blockedBy ?dep } }`)) {
         const node = nodes.get(row.s.value);
         if (!node) continue;
@@ -104,7 +121,7 @@ export async function buildLegacyGraphView(store: GraphStore, iri: IriFactory): 
 
     // Dokumente — polymorpher Typ; DefinedTerm-Dokumente erscheinen in der
     // Ansicht als TechArticle, damit `DefinedTerm` den Tags vorbehalten bleibt.
-    for (const row of await rows(store, `
+    for (const row of await rows(store, dataset, `
         SELECT ?s ?name ?slug
                (EXISTS { GRAPH ${ws} { ?s a schema:BlogPosting } } AS ?isBlog)
                (EXISTS { GRAPH ${ws} { ?s a schema:HowTo } } AS ?isHowTo)
@@ -123,7 +140,7 @@ export async function buildLegacyGraphView(store: GraphStore, iri: IriFactory): 
     // Wikilinks zwischen Dokumenten → legacy `mentions`. Nur aufgelöste
     // Ziele (beide Enden sind ow:Document) — nicht auflösbare Behauptungen
     // bleiben im Graphen, aber nicht in dieser Ansicht.
-    for (const row of await rows(store, `
+    for (const row of await rows(store, dataset, `
         SELECT ?s ?t WHERE { GRAPH ${ws} { ?s a ow:Document ; ow:linksTo ?t . ?t a ow:Document } }`)) {
         const node = nodes.get(row.s.value);
         if (!node) continue;
@@ -132,7 +149,7 @@ export async function buildLegacyGraphView(store: GraphStore, iri: IriFactory): 
     }
 
     // Tags (skos:Concept → legacy DefinedTerm) und Dokument-Verschlagwortung
-    for (const row of await rows(store, `
+    for (const row of await rows(store, dataset, `
         SELECT ?tag ?label WHERE { GRAPH ${ws} { ?tag a skos:Concept ; skos:prefLabel ?label } }`)) {
         nodes.set(row.tag.value, {
             '@type': 'DefinedTerm',
@@ -141,7 +158,7 @@ export async function buildLegacyGraphView(store: GraphStore, iri: IriFactory): 
             identifier: `tag-${row.label.value}`,
         });
     }
-    for (const row of await rows(store, `
+    for (const row of await rows(store, dataset, `
         SELECT ?s ?tag ?label WHERE { GRAPH ${ws} {
             ?s a ow:Document ; schema:about ?tag . ?tag skos:prefLabel ?label
         } }`)) {
@@ -154,7 +171,7 @@ export async function buildLegacyGraphView(store: GraphStore, iri: IriFactory): 
     }
 
     // Canvases
-    for (const row of await rows(store, `
+    for (const row of await rows(store, dataset, `
         SELECT ?s ?name ?description WHERE { GRAPH ${ws} {
             ?s a ow:Canvas ; schema:name ?name . OPTIONAL { ?s schema:description ?description }
         } }`)) {

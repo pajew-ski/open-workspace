@@ -24,14 +24,15 @@ export async function GET(): Promise<Response> {
     try {
         const handle = available && config.tokens.length > 0 ? await getServerGraph() : null;
         const existing = handle ? (await handle.store.graphs()).map(g => g.value) : [];
-        const tokens = config.tokens.map(token => {
+        const tokens = await Promise.all(config.tokens.map(async token => {
             const resolved = handle
-                ? grantForToken(token, handle.iri, existing)
+                ? await grantForToken(token, handle, existing)
                 : null;
             return {
                 id: token.id,
                 label: token.label ?? null,
-                scopes: token.scopes,
+                user: token.user,
+                scopes: token.scopes ?? null,
                 sparql: token.sparql,
                 write: Boolean(resolved?.grant.writableGraph),
                 writeScope: token.writeScope ?? null,
@@ -40,7 +41,7 @@ export async function GET(): Promise<Response> {
                 tools: resolved ? toolsForGrant(resolved.grant) : [],
                 ...(resolved?.writeScopeError ? { warning: resolved.writeScopeError } : {}),
             };
-        });
+        }));
         return NextResponse.json({
             available,
             configured: config.tokens.length > 0,

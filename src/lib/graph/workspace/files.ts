@@ -25,6 +25,7 @@ import type { Project, ProjectsData } from '@/lib/storage/projects';
 import type { CanvasData, CanvasIndex } from '@/lib/storage/canvas';
 import { readJsonSafe, writeFileAtomic, writeJsonAtomic } from '@/lib/storage/atomic';
 import type { WorkspaceSnapshotInput } from '../migrate/from-files';
+import { DEFAULT_USER_ID } from '../iri';
 
 export interface WorkspaceFilePaths {
     docsDir: string;
@@ -40,6 +41,23 @@ export function defaultWorkspaceFilePaths(baseDir: string = path.join(process.cw
         projectsFile: path.join(baseDir, 'tasks', 'projects.json'),
         canvasDir: path.join(baseDir, 'canvas'),
     };
+}
+
+/**
+ * Projektions-Pfade eines Nutzers (SPEC §17, M13). Der Einzelnutzer der
+ * Installation behält das flache Layout aus §8.1 — sonst wäre der Umstieg
+ * auf Mehrbenutzerbetrieb eine Datei-Migration, und genau das soll er
+ * nicht sein (§16.5). Jeder weitere Nutzer bekommt seinen eigenen Baum
+ * unter `data/u/<userId>/`, damit eine Datei-Projektion nie die eines
+ * anderen überschreibt (§17.4 „Export und Git-Sync").
+ */
+export function workspaceFilePathsFor(
+    userId: string,
+    baseDir: string = path.join(process.cwd(), 'data'),
+): WorkspaceFilePaths {
+    if (userId === DEFAULT_USER_ID) return defaultWorkspaceFilePaths(baseDir);
+    const userDir = path.join(baseDir, 'u', userId.replace(/[^A-Za-z0-9._@-]+/g, '-'));
+    return defaultWorkspaceFilePaths(userDir);
 }
 
 // --- Frontmatter (Format unverändert zur Altfassung) ---------------------

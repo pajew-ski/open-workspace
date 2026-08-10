@@ -1,26 +1,31 @@
 /**
- * MCP-Token-Konfiguration (SPEC §7.6, M10).
+ * MCP-Token-Konfiguration (SPEC §7.6, M10 — seit M13 nur noch
+ * Token→Nutzer-Abbildung).
  *
  * „Ein MCP-Token ist an eine Identität und deren erlaubtes Dataset
- * gebunden." Bis `graph/acl` mit M13 existiert, ist die Bindung explizite
- * Konfiguration: eine JSON-Liste in `OW_MCP_TOKENS`. Damit gilt
+ * gebunden." Seit M13 kommt das erlaubte Dataset aus `graph/acl`: Ein
+ * Token nennt mit `user` den Nutzer, in dessen Namen es handelt, und die
+ * Rechte sind exakt dessen Rechte (`authz/resolve.ts#grantForIdentity`).
+ * Damit gibt es keine zweite Rechte-Welt mehr — die Konfiguration sagt
+ * WER, der Graph sagt WAS.
  *
  *  - **Secure by default**: Ohne konfigurierte Tokens gibt es keinen
  *    eingehenden MCP-Zugriff. Der Endpoint antwortet ehrlich mit 503 und
  *    dem Konfigurationshinweis, statt den Graphen anonym zu öffnen.
- *  - **Keine Rechte-Erfindung**: Ein Token nennt seine Scopes; daraus wird
- *    über `resolveGrantGraphs` das erlaubte Dataset. `graph/acl` ist über
- *    kein Muster erreichbar.
+ *  - **Delegation verengt, sie erweitert nie**: `scopes` ist optional und
+ *    schneidet die Rechte des Nutzers weiter zu (ein Zugang für „nur
+ *    öffentlich" ist damit möglich, ein Zugang über die Rechte des
+ *    Nutzers hinaus nicht). Ohne `scopes` gilt genau die ACL.
  *  - **graph_write bleibt aus**, bis ein Token es ausdrücklich mitbringt
- *    (`write: true` + gültiges `writeScope`).
- *
- * MIGRATION: Mit M13 wandert die Rechtevergabe nach `graph/acl`; diese
- * Datei bleibt dann nur noch die Token→Identität-Abbildung.
+ *    (`write: true` + `writeScope`) UND die ACL dem Nutzer dort
+ *    `acl:Write` gibt.
  */
 
 import { z } from 'zod';
-import type { IriFactory } from '../iri';
-import { resolveGrantGraphs, resolveWriteGraph, scopeMatches, WRITE_SCOPE_HINT, type AccessGrant } from '../authz/grant';
+import { DEFAULT_USER_ID } from '../iri';
+import { resolveWriteGraph, WRITE_SCOPE_HINT, type AccessGrant } from '../authz/grant';
+import { grantForIdentity, type AuthzHandle } from '../authz/resolve';
+import type { AclAuthorization } from '../authz/acl';
 
 export const MCP_TOKENS_ENV = 'OW_MCP_TOKENS';
 
@@ -32,8 +37,17 @@ const tokenSchema = z.object({
     label: z.string().max(200).optional(),
     /** Gemeinsames Geheimnis (Bearer). Mindestens 16 Zeichen. */
     token: z.string().min(16, 'Token: mindestens 16 Zeichen'),
-    /** Lesbare Graphen als Scope-Muster (§3.3), z. B. ["workspace","public"]. */
-    scopes: z.array(scopePattern).min(1),
+    /**
+     * Nutzer, in dessen Namen der Zugang handelt (SPEC §17.1). Seine
+     * ACL-Rechte sind die Rechte des Tokens. Default: der Einzelnutzer
+     * der Installation — so bleibt eine M10-Konfiguration gültig.
+     */
+    user: z.string().regex(/^[a-z0-9][a-z0-9._@-]*$/i, 'Nutzer-ID: Buchstaben, Ziffern, . _ - @').default(DEFAULT_USER_ID),
+    /**
+     * Optionale zusätzliche Verengung als Scope-Muster (§3.3), z. B.
+     * ["public"]. Fehlt sie, gilt genau das Recht des Nutzers.
+     */
+    scopes: z.array(scopePattern).min(1).optional(),
     /** Rohe SPARQL-Queries (read-only) erlaubt. Default: aus. */
     sparql: z.boolean().default(false),
     /** graph_write erlauben. Default: aus (SPEC §7.6). */
@@ -138,36 +152,39 @@ export interface McpGrantResult {
     writeScopeError?: string;
 }
 
-/** Bildet ein Token auf den Grant über den aktuellen Graph-Bestand ab. */
-export function grantForToken(
+/**
+ * Bildet ein Token auf den Grant ab — über `graph/acl` (M13), nicht über
+ * die Konfiguration. Das Token liefert nur noch: WER (`user`), WOMIT
+ * (`sparql`, `write`, `writeScope`) und WIE WENIG (`scopes` als
+ * zusätzliche Verengung).
+ *
+ * `writeScopeError` meldet ausschließlich einen **syntaktisch**
+ * unbrauchbaren Scope. Ein syntaktisch gültiger Scope ohne ACL-Recht ist
+ * kein Konfigurationsfehler, sondern schlicht kein Recht: `graph_write`
+ * wird dann nicht registriert, und der Zugang erfährt über die
+ * Statusanzeige seines eigenen Tokens, dass ihm das Recht fehlt.
+ */
+export async function grantForToken(
     token: McpTokenConfig,
-    iri: IriFactory,
+    handle: AuthzHandle,
     existingGraphs: readonly string[],
-): McpGrantResult {
-    const readableGraphs = resolveGrantGraphs(iri, token.scopes, existingGraphs);
-    let writableGraph: string | null = null;
+    authorizations?: readonly AclAuthorization[],
+): Promise<McpGrantResult> {
     let writeScopeError: string | undefined;
-    if (token.write && token.writeScope) {
-        const target = resolveWriteGraph(iri, token.writeScope);
-        if (!target) {
-            writeScopeError = `Ungültiges writeScope "${token.writeScope}". ${WRITE_SCOPE_HINT}`;
-        } else if (!token.scopes.some(pattern => scopeMatches(pattern, token.writeScope!))) {
-            // Schreiben ohne Leserecht auf denselben Graphen wäre eine
-            // zweite Rechte-Welt — der Grant bleibt eine Verengung. Geprüft
-            // wird das Muster, nicht die Existenz: ein noch leerer Raum ist
-            // ein gültiges Ziel für den ersten Schreibvorgang.
-            writeScopeError = `writeScope "${token.writeScope}" liegt außerhalb der Lese-Scopes dieses Tokens.`;
-        } else {
-            writableGraph = target;
-        }
+    if (token.write && token.writeScope && !resolveWriteGraph(handle.iri, token.writeScope)) {
+        writeScopeError = `Ungültiges writeScope "${token.writeScope}". ${WRITE_SCOPE_HINT}`;
     }
-    return {
-        grant: {
-            identity: token.id,
-            readableGraphs,
-            writableGraph,
+    const grant = await grantForIdentity(
+        handle,
+        { userId: token.user, groups: [], authenticated: true },
+        {
+            label: token.id,
             sparql: token.sparql,
+            ...(token.write && token.writeScope && !writeScopeError ? { writeScope: token.writeScope } : {}),
+            ...(token.scopes ? { narrowTo: token.scopes } : {}),
+            ...(authorizations ? { authorizations } : {}),
+            existingGraphs,
         },
-        ...(writeScopeError ? { writeScopeError } : {}),
-    };
+    );
+    return { grant, ...(writeScopeError ? { writeScopeError } : {}) };
 }
