@@ -46,6 +46,14 @@ export type EntityType =
     | 'profile';
 
 /**
+ * Instanzweite Entitäten (SPEC §17.1 / M13). Nutzer, Gruppen, geteilte
+ * Räume und ACL-Regeln gehören keinem Nutzer-Namensraum an — sie sind die
+ * Sprache, in der über Nutzer-Namensräume geredet wird. Deshalb liegen
+ * ihre IRIs neben `u/<userId>/…`, nicht darin.
+ */
+export type PrincipalType = 'user' | 'group' | 'space' | 'authorization';
+
+/**
  * Prüft eine Instanz-Base: absolute HTTP(S)-IRI mit abschließendem `/`
  * oder `urn:ow:<uuid>:`. Alles andere ist ein Konfigurationsfehler.
  */
@@ -79,6 +87,15 @@ function encodeSegment(value: string): string {
         .join('/');
 }
 
+/**
+ * Umkehrung von `encodeSegment` für ein einzelnes Segment. Kein
+ * `decodeURIComponent` auf dem ganzen Pfad: ein kodierter Schrägstrich
+ * darf beim Zurücklesen keine Segmentgrenze erfinden.
+ */
+function decodeSegment(value: string): string {
+    return decodeURIComponent(value);
+}
+
 export interface IriFactory {
     readonly instanceBase: string;
     readonly userId: string;
@@ -94,6 +111,50 @@ export interface IriFactory {
     sharedGraph(name: 'meta' | 'acl' | 'shapes' | 'vocab'): string;
     /** Geteilter Raum (SPEC §17.1). */
     spaceGraph(spaceId: string): string;
+    /**
+     * Graph EINES ANDEREN Nutzers (SPEC §17.1 / M13). Dieselbe Bildung wie
+     * `graph`/`importGraph`/`inferredGraph`, nur mit expliziter Nutzer-ID —
+     * nötig, sobald ACL-Regeln über Nutzergrenzen hinweg formuliert werden.
+     */
+    userGraph(userId: string, scope: string): string;
+    /** Instanzweite Entität: Nutzer, Gruppe, Raum, ACL-Regel (SPEC §17.1). */
+    principal(type: PrincipalType, id: string): string;
+    /** Umkehrung von `principal` — `null`, wenn die IRI nicht passt. */
+    principalId(type: PrincipalType, iri: string): string | null;
+}
+
+/** Aufschlüsselung eines Named-Graph-IRI (SPEC §3.3) — Basis jeder ACL-Regel. */
+export type GraphDescriptor =
+    /** `graph/u/<userId>/<scope>` — Nutzergraph (workspace, public, presentation, import/x, inferred/x). */
+    | { kind: 'user'; userId: string; scope: string }
+    /** `graph/shared/<spaceId>` — geteilter Raum. */
+    | { kind: 'space'; spaceId: string }
+    /** `graph/meta` | `graph/acl` | `graph/shapes` | `graph/vocab`. */
+    | { kind: 'instance'; name: string };
+
+/**
+ * Zerlegt einen Graph-IRI dieser Installation. `null` für alles, was nicht
+ * unter `<base>graph/` liegt — ein fremder Graph hat in keiner
+ * Rechteentscheidung etwas verloren.
+ */
+export function describeGraph(instanceBase: string, graphIri: string): GraphDescriptor | null {
+    const prefix = `${instanceBase}graph/`;
+    if (!graphIri.startsWith(prefix)) return null;
+    const rest = graphIri.slice(prefix.length);
+    if (rest === '') return null;
+    const segments = rest.split('/');
+    if (segments[0] === 'u') {
+        if (segments.length < 3) return null;
+        const scope = segments.slice(2).map(decodeSegment).join('/');
+        if (scope === '') return null;
+        return { kind: 'user', userId: decodeSegment(segments[1]), scope };
+    }
+    if (segments[0] === 'shared') {
+        if (segments.length !== 2 || segments[1] === '') return null;
+        return { kind: 'space', spaceId: decodeSegment(segments[1]) };
+    }
+    if (segments.length !== 1) return null;
+    return { kind: 'instance', name: segments[0] };
 }
 
 /**
@@ -118,6 +179,15 @@ export function createIriFactory(instanceBase: string, userId: string = DEFAULT_
         inferredGraph: scope => `${instanceBase}graph/${u}/inferred/${encodeSegment(scope)}`,
         sharedGraph: name => `${instanceBase}graph/${name}`,
         spaceGraph: spaceId => `${instanceBase}graph/shared/${encodeSegment(spaceId)}`,
+        userGraph: (otherUserId, scope) =>
+            `${instanceBase}graph/u/${encodeSegment(otherUserId)}/${encodeSegment(scope)}`,
+        principal: (type, id) => `${instanceBase}${type}/${encodeSegment(id)}`,
+        principalId: (type, value) => {
+            const prefix = `${instanceBase}${type}/`;
+            if (!value.startsWith(prefix)) return null;
+            const rest = value.slice(prefix.length);
+            return rest === '' || rest.includes('/') ? null : decodeSegment(rest);
+        },
     };
 }
 

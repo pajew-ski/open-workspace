@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerGraph } from '@/lib/graph/server/instance';
+import { getRequestGraph } from '@/lib/graph/server/context';
 import { resolveQueryView } from '@/lib/graph/views/registry';
 
 interface RouteContext {
@@ -20,8 +20,8 @@ export async function GET(_request: NextRequest, context: RouteContext) {
         return NextResponse.json({ error: 'Ungültige View-ID' }, { status: 400 });
     }
     try {
-        const handle = await getServerGraph();
-        const resolved = await resolveQueryView(handle, id);
+        const { store, iri, grant } = await getRequestGraph();
+        const resolved = await resolveQueryView({ store, iri }, id, { allowedGraphs: grant.readableGraphs });
         return NextResponse.json(resolved);
     } catch (error) {
         const message = error instanceof Error ? error.message : 'unknown';

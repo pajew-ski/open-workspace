@@ -12,13 +12,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ZodError, z } from 'zod';
 import { parseBody, createGraphConnectorSchema } from '@/lib/api/validation';
-import { getServerGraph, persistServerGraphSnapshot } from '@/lib/graph/server/instance';
+import {persistServerGraphSnapshot } from '@/lib/graph/server/instance';
+import { getRequestGraph, getUserGraph } from '@/lib/graph/server/context';
+import { snapshotExportRefusal } from '@/lib/graph/authz/resolve';
 import { listConnectors, createConnector } from '@/lib/graph/connectors/registry';
 import { getConnectorKind, listConnectorKinds } from '@/lib/graph/connectors/catalog';
 
 export async function GET() {
     try {
-        const handle = await getServerGraph();
+        const handle = await getUserGraph();
         const connectors = await listConnectors(handle);
         const kinds = listConnectorKinds().map(kind => ({
             kind: kind.kind,
@@ -63,7 +65,9 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        const handle = await getServerGraph();
+        const refused = await refuseSnapshotExport(impl.kind);
+        if (refused) return refused;
+        const handle = await getUserGraph();
         const connector = await createConnector(handle, {
             name: parsed.data.name,
             kind: impl.kind,
@@ -77,4 +81,16 @@ export async function POST(request: NextRequest) {
             { status: 500 },
         );
     }
+}
+
+/**
+ * §17.4: Ein Git-Backup nimmt den ganzen Snapshot mit. Wer ihn ausliefert,
+ * muss jeden enthaltenen Graphen verwalten dürfen.
+ */
+async function refuseSnapshotExport(kind: string): Promise<Response | null> {
+    if (kind !== 'git-backup') return null;
+    const { store, iri, grant } = await getRequestGraph();
+    const existing = (await store.graphs()).map(g => g.value);
+    const refusal = snapshotExportRefusal(grant, iri.instanceBase, existing);
+    return refusal ? NextResponse.json({ error: 'Backup nicht erlaubt', details: refusal }, { status: 403 }) : null;
 }

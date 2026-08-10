@@ -30,6 +30,7 @@ const PAGES = [
     '/graph/connectors',
     '/graph/sparql',
     '/graph/federation',
+    '/graph/access',
     '/settings',
     '/assistant',
 ];

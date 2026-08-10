@@ -44,6 +44,7 @@ import type { IriFactory } from '../iri';
 import { namedNode } from '../rdf';
 import { DCTERMS, OW, PREFIXES, PROV, RDF, SCHEMA, SKOS } from '../vocab';
 import { workspaceScopeGraphs } from '../reasoning/run';
+import { knowledgeGraphs } from '../authz/resolve';
 import { FulltextIndex } from './fulltext';
 import type { VectorIndex } from './vector';
 
@@ -214,19 +215,27 @@ function round6(value: number): number {
 // --- Dataset (§7.5: immer das erlaubte; Klammer VOR der Expansion) -------
 
 /**
- * Traversal-Raum des Retrievals: die Wissens-Graphen des Nutzers
- * (workspace + public + import/* + meta — dieselbe Scope-Linie wie das
+ * Traversal-Raum des Retrievals: die Wissens-Graphen (workspace + public
+ * + import/* + meta + geteilte Räume — dieselbe Scope-Linie wie das
  * M7-Reasoning). presentation (Layout), vocab/shapes (Schema) und acl
  * sind KEIN Traversal-Raum; inferred/<scope> kommt ausschließlich über
  * `includeInferred: true` dazu. Explizit angeforderte Graphen werden
  * gegen diese Menge gefiltert — still, ohne Existenzbestätigung (§17.3).
+ *
+ * Mit einem Grant (M13) spannt der Raum ALLE Nutzer und Räume auf, bevor
+ * die Rechte ihn wieder zusammenziehen: nur so erreicht ein Retrieval
+ * einen geteilten Raum oder einen fremden öffentlichen Graphen. Ohne
+ * Grant bleibt es beim eigenen Nutzer — das ist der Einzelnutzer-Pfad
+ * (Runtime `local`, Hintergrundaufgaben), der nie fremde Daten sieht.
  */
 export async function retrievalDataset(
     handle: GraphHandle,
     options: { graphs?: string[]; includeInferred: boolean } & RetrievalAuthz,
 ): Promise<string[]> {
     const existing = (await handle.store.graphs()).map(g => g.value);
-    const knowledge = workspaceScopeGraphs(handle.iri, existing);
+    const knowledge = options.allowedGraphs
+        ? knowledgeGraphs(handle.iri.instanceBase, existing)
+        : workspaceScopeGraphs(handle.iri, existing);
     const inferred = handle.iri.inferredGraph('workspace');
     const withInferred = options.includeInferred && existing.includes(inferred)
         ? [...knowledge, inferred]

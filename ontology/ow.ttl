@@ -521,3 +521,19 @@ ow:weight a owl:DatatypeProperty ;
     rdfs:label "Kantengewicht"@de, "edge weight"@en ;
     rdfs:comment "Relevanz-Gewicht einer einzelnen Kante als RDF-1.2-Annotation am benannten Reifier (rdf:reifies + Triple Term), ausgewertet vom Retrieval-Scoring (SPEC §7.5: 'Kantengewicht aus RDF-star-Annotation, falls vorhanden'). Werte in (0,10], Default ohne Annotation ist 1. Kein Standard-Term modelliert Statement-Gewichte; schema:weight existiert nicht, Fuzzy-/Ranking-Vokabulare sind nicht etabliert."@de ;
     rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+#################################################################
+# Multi-User: geteilte Räume (SPEC §17.1 / M13)
+#################################################################
+
+ow:Space a owl:Class ;
+    rdfs:subClassOf schema:CreativeWork ;
+    rdfs:label "Geteilter Raum"@de, "shared space"@en ;
+    rdfs:comment "Gemeinsam genutzter Named Graph mit eigener Mitgliederliste (SPEC §17.1): eine Entität mit Eigentümer (acl:owner), Beschreibung und einem Graphen (ow:targetGraph), in dem die Mitglieder gemeinsam arbeiten. Abgegrenzt von foaf:Group — eine Gruppe ist eine Menge von Agenten, ein Raum ein Ort mit Inhalt; die Rollen der Mitglieder sind ACL-Regeln auf dem Graphen des Raums und werden nicht zweitverwaltet. schema:Organization beschreibt eine Institution, nicht einen Arbeitsbereich; kein Standard-Vokabular modelliert einen geteilten Named Graph."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:spaceGraph a owl:ObjectProperty ;
+    rdfs:domain ow:Space ;
+    rdfs:label "Raum-Graph"@de, "space graph"@en ;
+    rdfs:comment "Named Graph, in dem der Inhalt eines geteilten Raums liegt (graph/shared/<id>). Bewusst nicht ow:targetGraph: dessen rdfs:domain ist ow:Connector, und ein bestehender Term wird nach SPEC §4.4 nie umdefiniert — eine Domain-Erweiterung würde über OWL RL jeden Raum zum Connector machen. Kein Standard-Term benennt den Graphen einer Entität; sd:name aus der SPARQL-Service-Description beschreibt Graphen eines Dienstes, nicht die Zugehörigkeit zu einer Anwendungsentität."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .

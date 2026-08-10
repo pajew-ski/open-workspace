@@ -4,7 +4,8 @@
 
 ## Hier weitermachen (Einstieg für neue Sessions)
 
-**Stand 2026-08-09 (10. Ausbaustufe, Graph Core M0–M12 inkl. §12.4)**: Der
+**Stand 2026-08-10 (11. Ausbaustufe, Graph Core M0–M13 inkl. §12.4 —
+der Vollausbau der Spec ist damit abgeschlossen)**: Der
 **RDF-Graph ist das kanonische Datenmodell — und seit der 6. Stufe die
 einzige Wahrheit auch für die Schreibpfade**. Die verbindliche Spezifikation
 inklusive aller Meilensteine M0–M13 liegt in
@@ -289,9 +290,11 @@ Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
   greift VOR der Expansion, und die Expansion nimmt nur noch Knoten auf,
   über die im erlaubten Dataset etwas ausgesagt ist — eine Kante ins
   Gesperrte endet im Nichts statt eine nackte IRI auszuliefern. Zugänge
-  stehen bis M13 in `OW_MCP_TOKENS` (zod-validiert, Vergleich über
-  SHA-256-Digest ohne frühen Abbruch, Scope-Muster wie `workspace`,
-  `import/*`, `shared/<id>`, `*` — `graph/acl` trifft keins davon); ohne
+  stehen in `OW_MCP_TOKENS` (zod-validiert, Vergleich über
+  SHA-256-Digest ohne frühen Abbruch); seit M13 nennt ein Token nur noch
+  den **Nutzer**, dessen ACL-Rechte gelten, und die Scope-Muster
+  (`workspace`, `import/*`, `shared/<id>`, `*` — `graph/acl` trifft keins
+  davon) sind eine optionale zusätzliche Verengung; ohne
   Konfiguration ist der Endpunkt ehrlich **aus** (503 mit Hinweis), nie
   anonym offen. Sitzungen sind an die Token-Identität gebunden (fremde
   Session-ID = 404), Rate-Limit pro Token als gleitendes Minutenfenster
@@ -379,9 +382,9 @@ Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
   `oidc-bearer` (Token der Anfrage, JWKS-Prüfung über WebCrypto — Signatur
   vor Ablauf/Issuer/Audience, Schlüsselrotation, `alg: none` abgelehnt;
   keine neue Abhängigkeit). Sie wird gelesen und angezeigt
-  (`GET /api/runtime` + Karte „System" in `/settings`), NICHT als
-  Rechteprüfung ausgegeben, die es noch nicht gibt — `multiUser` bleibt
-  false bis M13. **Runtime `local`**: Store im Web Worker
+  (`GET /api/runtime` + Karte „System" in `/settings`); die Durchsetzung
+  pro Graph kam mit M13 (§17) und steht seither auf `multiUser: true`.
+  **Runtime `local`**: Store im Web Worker
   (`runtime/worker/`: eigenes Term-Kodieren ohne Oxigraph im Haupt-Thread,
   Transaktionen bleiben offen, damit Lesen darin möglich ist), OPFS als
   `FileSystemLike` (`runtime/opfs.ts`, inklusive Frische-Signalen — trägt
@@ -397,10 +400,81 @@ Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
   und `e2e/ingress.spec.ts` gegen die volle Kette
   (`scripts/e2e-ingress-server.mjs`: Supervisor-Simulation →
   Ingress-Proxy → Standalone-Build mit eingesetztem Pfad).
-- **Invarianten** (Review-Blocker, SPEC §2): RDF ist die eine Wahrheit;
-  Wissen ≠ Präsentation; asserted ≠ inferred; ein Connector-Vertrag für
-  alles Externe; kein `any` unter `src/lib/graph/` (ESLint-Error);
-  Vokabular-Base niemals deployment-spezifisch.
+- **Multi-User und feingranularer Zugriff (M13)** (`src/lib/graph/authz/`
+  + `src/lib/graph/server/context.ts` + `/graph/access`): Rechte sind
+  **RDF im selben Store**, nicht Konfiguration — `graph/acl` trägt
+  Web-Access-Control-Regeln (`acl:Authorization`, `acl:accessTo` auf die
+  Graph-IRI, `acl:agent`/`agentGroup`/`agentClass`, `acl:mode`),
+  Granularität pro Named Graph (§17.2). Die Modus-Implikation, die WAC
+  offenlässt, ist festgelegt und begründet: `control` ⊃ `write` ⊃
+  `append`/`read`; `append` allein ist die Briefkasten-Semantik
+  (beitragen, ohne den Bestand zu sehen). Rollen (`reader`/`contributor`/
+  `editor`/`owner`) sind benannte Modus-Bündel für die UI — die
+  **Mitgliederliste eines Raums IST die Regelmenge auf seinem Graphen**,
+  eine zweite Liste gäbe es nur, damit sie falsch sein kann.
+  **Nichts ist per Default sichtbar, auch nicht für den Eigentümer**:
+  Sein `control` steht als Tripel im Graphen (`ensureDefaultAuthorizations`
+  füllt beim Start nur auf und überschreibt nie), damit Eigentum per
+  SPARQL prüfbar ist statt in einer if-Bedingung zu leben; `graph/acl`
+  selbst trifft kein Muster und keine Regel. **Durchsetzung** (§17.3) in
+  zwei Stufen, beide nur verengend: `grantForIdentity` (Identität +
+  `graph/acl` ⇒ `AccessGrant`), dann `resolveDataset` (SPARQL) bzw.
+  `retrievalDataset` (Retrieval), die den Grant injizieren statt
+  nachzufiltern. Deshalb hat sich die Grant-Schnittstelle aus M10 NICHT
+  geändert — MCP-Server und eingehende Föderation liefen unverändert
+  weiter; `OW_MCP_TOKENS` nennt jetzt nur noch den **Nutzer**, `scopes`
+  ist eine optionale zusätzliche Verengung (ein Zugang darf weniger
+  dürfen als sein Nutzer, nie mehr). Ein **Architekturtest** erzwingt
+  §17.3 wörtlich: jede Datei unter `src/lib/graph`/`src/app/api`, die
+  `store.query(` aufruft, muss ihr Dataset vom Resolver beziehen (dafür
+  wurde auch `/api/graph` umgestellt). SPARQL UPDATE bekam
+  `writableGraphs`: alles außerhalb ist geschützt — auch ein Graph, den es
+  noch nicht gibt; die Ablehnung unterscheidet nicht zwischen
+  systemverwaltet, fremd und nicht existent. **Anfrage-Kontext**
+  (`server/context.ts`) bindet Identität (über `next/headers`, damit es
+  keine zweite Quelle gibt), nutzerskalierte IRI-Fabrik und Grant
+  zusammen; sicherheitskritisch und als Test verankert: Läuft ein
+  Anmeldeverfahren und fehlt die geprüfte Identität, ist die Anfrage
+  **anonym** — nicht der Einzelnutzer, sonst wäre jeder fehlende Header
+  ein Generalschlüssel. **§17.5**: `graph/u/<id>/public` ist über die
+  reguläre Standardregel (`foaf:Agent` Read) anonym lesbar und
+  föderierbar, `GET /.well-known/void` beschreibt den Umfang DES
+  ANFRAGENDEN als `void:Dataset`, Entitäts-IRIs dereferenzieren unter
+  `/u/<userId>/<type>/<id>` (Turtle/JSON-LD/HTML mit eingebettetem
+  JSON-LD) — ehrliche Grenze: nur mit HTTP-Instanz-Base, die
+  Default-URN-Base kann es nicht und sagt das (404 statt Attrappe);
+  Rate-Limit für anonyme Zugriffe über denselben `RateLimiter` wie
+  M10/M11. **§17.4** hat je einen Test: Volltext-/Vektorindex pro Dataset
+  gebaut (nicht global mit gefilterter Trefferliste), Retrieval-Klammer
+  vor der Expansion, Reasoning je Nutzer, Bound-Join-Leak über den
+  ausgehenden Query-Text, gesperrt und nicht existent byte-gleich.
+  **Export und Git-Sync**: Export liefert nur die Verzeichnisse des
+  Nutzers (`data/u/<id>/…`; instanzweite Bestände nur für Verwalter), ein
+  `git-backup` verlangt `control` auf JEDEM Graphen des Snapshots (sonst
+  403 mit Begründung). `graph/acl` wird als `data/graph/acl.nq` NEBEN dem
+  Manifest gesichert: überlebt den Neustart, wird aber von keinem
+  manifest-getriebenen Pfad angefasst (kein Restore, kein Nutzer-Export);
+  ein Git-Backup direkt auf `data/graph` nimmt die Datei als Teil des
+  Arbeitsverzeichnisses mit — zulässig, weil ein Backup `control` auf
+  jedem enthaltenen Graphen voraussetzt. Neue Terme: `ow:Space` + `ow:spaceGraph` (bewusst nicht
+  `ow:targetGraph` — dessen `rdfs:domain ow:Connector` machte über OWL RL
+  jeden Raum zum Connector, und §4.4 verbietet Umdefinition); alles
+  Übrige ist Standard-Vokabular (WAC, FOAF, VoID). `OW_ADMIN_USERS` ist
+  nur der Seed der Verwalter beim Anlegen fehlender Regeln — danach ist
+  `graph/acl` die Wahrheit. UI: `/graph/access` (Identität, sichtbare
+  Graphen mit Modi, Räume, Freigaben — sichtbar ist nur, was man wirklich
+  verwaltet). `capabilities.multiUser` = true für `server`/`ha-addon`.
+  Betriebsdoku: [docs/multi-user.md](./docs/multi-user.md). Abnahme:
+  `tests/graph/multi-user.test.ts` (Matrix §17.6, jede Zeile ein eigener
+  Negativtest über einen ECHTEN Leak-Pfad — die Kante liegt im erlaubten
+  Graphen, nur ihr Ziel nicht) und `tests/graph/acl.test.ts`.
+- **Invarianten** (Review-Blocker, SPEC §2/§17.3): RDF ist die eine
+  Wahrheit; Wissen ≠ Präsentation; asserted ≠ inferred; ein
+  Connector-Vertrag für alles Externe; kein `any` unter `src/lib/graph/`
+  (ESLint-Error); Vokabular-Base niemals deployment-spezifisch; **jeder
+  Lesepfad holt sein Dataset beim Resolver** — ein `store.query()` ohne
+  Dataset aus `resolveDataset`/`retrievalDataset` bricht den
+  Architekturtest in `tests/graph/acl.test.ts`.
 
 **Stand 2026-08-08 (2. Ausbaustufe)**: Die **AI-Plattform ist voll ausgebaut
 und backend-unabhängig** — Details in [docs/ai-platform.md](./docs/ai-platform.md):
@@ -426,12 +500,13 @@ und backend-unabhängig** — Details in [docs/ai-platform.md](./docs/ai-platfor
 - **UI**: AI-Hub (`/ai`), Skills (`/skills`), MCP-Verwaltung in `/tools`,
   A2A-Discovery in `/agents`, ModelPicker in beiden Chat-Oberflächen.
 
-Build, Typecheck, Lint (0 Errors), 429 Unit-Tests (plus der Live-Test
+Build, Typecheck, Lint (0 Errors), 470 Unit-Tests (plus der Live-Test
 gegen Wikidata, der ohne `OW_FEDERATION_LIVE=1` sichtbar übersprungen
 wird) und das **blockierende E2E-Gate** (`e2e/mobile-navigation`,
 `e2e/mobile-ux`, `e2e/a11y` inkl. der Seiten `/ai`, `/skills`, `/tools`,
-`/graph/connectors`, `/graph/sparql` und `/graph/federation`, dazu seit
-M12 `e2e/ingress.spec.ts` im eigenen Playwright-Projekt `ingress`)
+`/graph/connectors`, `/graph/sparql`, `/graph/federation` und
+`/graph/access`, dazu seit M12 `e2e/ingress.spec.ts` im eigenen
+Playwright-Projekt `ingress`)
 laufen grün. Der Ingress-Lauf baut sich beim ersten Mal einen zweiten
 Build (`.next-ingress`, Base-Path-Platzhalter) und startet die
 Supervisor→Proxy→App-Kette selbst; für einen frischen Build das
@@ -442,24 +517,31 @@ vorinstallierten Browser (die Konfiguration wertet die Variable aus).
 **Bevor du etwas Neues baust, lies in dieser Reihenfolge:**
 1. [GRAPH_CORE_SPEC.md](./GRAPH_CORE_SPEC.md) — verbindliche Spec des
    Graph-Ausbaus (M0–M13, Invarianten, Abnahmen) — Pflicht für Graph-Arbeit
-2. [docs/ai-platform.md](./docs/ai-platform.md) — Architektur der AI-Schicht
-3. [ANALYSE.md](./ANALYSE.md) — Bestandsaufnahme + **§5 Roadmap** (P0/P1/P2)
-4. [TODO.md](./TODO.md) — Roadmap als abhakbare Liste (inkl. Graph Core)
-5. Diesen Abschnitt hier für die Architektur-Prinzipien
+2. [docs/multi-user.md](./docs/multi-user.md) — Identität, ACL und
+   Durchsetzung (§17) — Pflicht, sobald ein Lesepfad berührt wird
+3. [docs/ai-platform.md](./docs/ai-platform.md) — Architektur der AI-Schicht
+4. [ANALYSE.md](./ANALYSE.md) — Bestandsaufnahme + **§5 Roadmap** (P0/P1/P2)
+5. [TODO.md](./TODO.md) — Roadmap als abhakbare Liste (inkl. Graph Core)
+6. Diesen Abschnitt hier für die Architektur-Prinzipien
 
-**Nächste sinnvolle Schritte**: Graph Core M13 (**Multi-User und
-feingranularer Zugriff** nach SPEC §17, nur Runtime `server`:
-Nutzergraphen, ACL-Modell in `graph/acl`, Public/Private-Split, geteilte
-Räume, Admin-UI für Freigaben; die Token→Scope-Konfiguration aus
-`OW_MCP_TOKENS` wird durch `graph/acl` ersetzt, ohne dass sich die
-Grant-Schnittstelle ändert — sie trägt seit M11 auch die eingehende
-Föderation, ein zweiter Authz-Pfad entsteht damit nicht. Die
-Identitäts-Schicht aus M12 (`src/lib/platform/auth/`, `OW_AUTH_MODE`)
-liefert dafür `userId` und Gruppen; `capabilities.multiUser` steht bis
-dahin ehrlich auf false. Abnahme: Test-Matrix §17.6, jede Zeile als
-eigener Negativtest). Danach offen: die Anwendung selbst auf die Runtime
-`local` stellen (die Bausteine — Store im Worker, OPFS — stehen seit
-M12).
+**Nächste sinnvolle Schritte**: Der Graph-Ausbau nach GRAPH_CORE_SPEC ist
+mit M13 **vollständig** — was jetzt kommt, steht nicht mehr in der Spec und
+will zuerst entschieden werden. Naheliegend, in dieser Reihenfolge:
+
+1. **Die Anwendung selbst auf die Runtime `local` stellen**. Die Bausteine
+   stehen seit M12 (Store im Web Worker, OPFS als `FileSystemLike`,
+   isomorphic-git), die Graph-Oberflächen laufen aber weiterhin gegen das
+   Backend — das ist die größte ehrlich benannte Lücke im Repo.
+2. **Nachziehen auf Multi-User, was noch keine Graph-Bürger sind**: Chats,
+   Termine und Einstellungen liegen instanzweit in `data/` und sind
+   deshalb weder nutzerskaliert noch im Export eines Nutzers enthalten
+   (dokumentiert in docs/multi-user.md). Werden sie Graph-Bürger, erben
+   sie Nutzergraphen und ACL ohne neuen Mechanismus.
+3. **Onboarding-Strecke nach §18**: eine geführte Einführung, die den
+   Graphen an sich selbst erklärt (Selbstmodell ansehen → eigenen Knoten
+   anlegen → prima-materia importieren → nativ/importiert/inferiert im
+   Explorer unterscheiden). Der einzige Punkt aus §18, der noch fehlt.
+
 Parallel weiter sinnvoll: i18n mit `next-intl` (P0); Abbau der
 `no-explicit-any`-Warnings außerhalb des Graph-Codes;
 CopilotKit-Entscheidung.

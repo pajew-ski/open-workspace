@@ -8,7 +8,8 @@
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getServerGraph, persistServerGraphSnapshot } from '@/lib/graph/server/instance';
+import {persistServerGraphSnapshot } from '@/lib/graph/server/instance';
+import { getUserGraph } from '@/lib/graph/server/context';
 import { createRetrievalProfile, listRetrievalProfiles } from '@/lib/graph/search/profiles';
 
 const createSchema = z.object({
@@ -19,7 +20,7 @@ const createSchema = z.object({
 
 export async function GET(): Promise<Response> {
     try {
-        const handle = await getServerGraph();
+        const handle = await getUserGraph();
         return NextResponse.json({ profiles: await listRetrievalProfiles(handle) });
     } catch (error) {
         console.error('Retrieval Profiles Error:', error);
@@ -38,7 +39,7 @@ export async function POST(request: Request): Promise<Response> {
         return NextResponse.json({ error: message }, { status: 400 });
     }
     try {
-        const handle = await getServerGraph();
+        const handle = await getUserGraph();
         const profile = await createRetrievalProfile(handle, {
             name: parsed.name,
             description: parsed.description,

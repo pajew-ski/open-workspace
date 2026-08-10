@@ -11,12 +11,12 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getServerGraph } from '@/lib/graph/server/instance';
+import { getUserGraph } from '@/lib/graph/server/context';
 import { inferredTriples, reasoningStatus, runReasoning } from '@/lib/graph/reasoning/run';
 
 export async function GET() {
     try {
-        const handle = await getServerGraph();
+        const handle = await getUserGraph();
         const status = await reasoningStatus(handle);
         const triples = await inferredTriples(handle, 'workspace');
         return NextResponse.json({ status, triples });
@@ -30,7 +30,7 @@ export async function GET() {
 
 export async function POST() {
     try {
-        const handle = await getServerGraph();
+        const handle = await getUserGraph();
         const runs = await runReasoning(handle);
         const triples = await inferredTriples(handle, 'workspace');
         return NextResponse.json({ runs, triples });

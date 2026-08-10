@@ -38,6 +38,7 @@ import { createRetrievalProfile } from '@/lib/graph/search/profiles';
 import { parseRdf } from '@/lib/graph/serialize/io';
 import { McpHost } from '@/lib/graph/mcp/http';
 import { parseMcpTokens, grantForToken, MCP_TOKENS_ENV } from '@/lib/graph/mcp/tokens';
+import { ensureDefaultAuthorizations, setAuthorization } from '@/lib/graph/authz/acl-graph';
 import { toolsForGrant } from '@/lib/graph/mcp/server';
 import { graphResourceUri } from '@/lib/graph/mcp/tools';
 import { RateLimiter } from '@/lib/graph/mcp/limits';
@@ -127,6 +128,18 @@ async function createHarness(options: { tokens?: string; capable?: boolean } = {
         nn(iri.sharedGraph('shapes')),
         { replace: true },
     );
+    // Rechte sind seit M13 Daten (SPEC §17.2): ohne Regeln in graph/acl
+    // sieht auch der Eigentümer nichts. Der Serverstart legt genau diese
+    // Standardregeln an — der Test tut dasselbe.
+    await ensureDefaultAuthorizations(handle, {
+        admins: ['default'],
+        additionalGraphs: [iri.graph('public'), iri.spaceGraph('agenten')],
+    });
+    await setAuthorization(handle, {
+        graph: iri.spaceGraph('agenten'),
+        principal: { kind: 'user', id: 'default' },
+        modes: ['control'],
+    });
     await createRetrievalProfile(handle, {
         id: 'nachbarschaft',
         name: 'Nachbarschaft',
@@ -509,7 +522,8 @@ describe('M10 — Token-Konfiguration und Grant (SPEC §7.6)', () => {
         expect(doubled.tokens).toHaveLength(1);
     });
 
-    it('bildet Scope-Muster auf Graphen ab und lässt graph/acl nie zu', () => {
+    it('bildet Scope-Muster auf Graphen ab und lässt graph/acl nie zu', async () => {
+        const harness = await createHarness();
         const existing = [
             iri.graph('workspace'),
             iri.graph('public'),
@@ -519,8 +533,9 @@ describe('M10 — Token-Konfiguration und Grant (SPEC §7.6)', () => {
             iri.sharedGraph('acl'),
             iri.inferredGraph('workspace'),
         ];
+        await ensureDefaultAuthorizations(harness.handle, { admins: ['default'], additionalGraphs: existing });
         const { tokens } = parseMcpTokens(TOKEN_CONFIG);
-        const voll = grantForToken(tokens[0], iri, existing).grant;
+        const voll = (await grantForToken(tokens[0], harness.handle, existing)).grant;
         expect(voll.readableGraphs).toEqual([
             iri.sharedGraph('meta'),
             iri.importGraph('geheim'),
@@ -530,33 +545,45 @@ describe('M10 — Token-Konfiguration und Grant (SPEC §7.6)', () => {
         expect(voll.readableGraphs).not.toContain(iri.sharedGraph('acl'));
         expect(toolsForGrant(voll)).toContain('graph_sparql');
 
-        const eng = grantForToken(tokens[1], iri, existing).grant;
+        const eng = (await grantForToken(tokens[1], harness.handle, existing)).grant;
         expect(eng.readableGraphs).not.toContain(iri.importGraph('geheim'));
         expect(eng.writableGraph).toBeNull();
 
         // Wildcard darf acl auch mit "*" nicht einsammeln.
-        const wildcard = grantForToken(
+        const wildcard = (await grantForToken(
             { ...tokens[0], scopes: ['*'] },
-            iri,
+            harness.handle,
             existing,
-        ).grant;
+        )).grant;
         expect(wildcard.readableGraphs).not.toContain(iri.sharedGraph('acl'));
         expect(wildcard.readableGraphs).toContain(iri.graph('presentation'));
     });
 
-    it('verweigert Schreibziele außerhalb der Lese-Scopes und systemverwaltete Graphen', () => {
+    it('verweigert Schreibziele außerhalb der Verengung und systemverwaltete Graphen', async () => {
+        const harness = await createHarness();
         const existing = [iri.graph('workspace'), iri.sharedGraph('meta')];
-        const outside = grantForToken(
-            { id: 'x', token: OPEN_TOKEN, scopes: ['workspace'], sparql: false, write: true, writeScope: 'shared/fremd', rateLimitPerMinute: 60 },
-            iri, existing);
-        expect(outside.grant.writableGraph).toBeNull();
-        expect(outside.writeScopeError).toContain('außerhalb der Lese-Scopes');
+        await ensureDefaultAuthorizations(harness.handle, { admins: ['default'], additionalGraphs: existing });
 
-        const system = grantForToken(
-            { id: 'y', token: OPEN_TOKEN, scopes: ['*'], sparql: false, write: true, writeScope: 'meta', rateLimitPerMinute: 60 },
-            iri, existing);
+        // Syntaktisch gültiges Ziel, aber außerhalb der Token-Verengung:
+        // kein Konfigurationsfehler, schlicht kein Schreibrecht (M13).
+        const outside = await grantForToken(
+            { id: 'x', token: OPEN_TOKEN, user: 'default', scopes: ['workspace'], sparql: false, write: true, writeScope: 'shared/fremd', rateLimitPerMinute: 60 },
+            harness.handle, existing);
+        expect(outside.grant.writableGraph).toBeNull();
+
+        // Systemverwaltete Graphen sind gar kein gültiges Schreibziel.
+        const system = await grantForToken(
+            { id: 'y', token: OPEN_TOKEN, user: 'default', scopes: ['*'], sparql: false, write: true, writeScope: 'meta', rateLimitPerMinute: 60 },
+            harness.handle, existing);
         expect(system.grant.writableGraph).toBeNull();
         expect(system.writeScopeError).toContain('Ungültiges writeScope');
+
+        // Ohne ACL-Recht bleibt auch ein erlaubtes Muster wirkungslos.
+        const noRule = await grantForToken(
+            { id: 'z', token: OPEN_TOKEN, user: 'fremd', scopes: ['workspace'], sparql: false, write: true, writeScope: 'workspace', rateLimitPerMinute: 60 },
+            harness.handle, existing);
+        expect(noRule.grant.writableGraph).toBeNull();
+        expect(noRule.grant.readableGraphs).toEqual([]);
     });
 });
 
