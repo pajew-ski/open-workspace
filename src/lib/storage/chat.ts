@@ -1,12 +1,18 @@
 /**
- * Chat Storage - Conversation persistence
+ * Chat-Verlauf — Fassade über den Store-first-Schreibpfad (M15).
+ *
+ * Unterhaltungen und Nachrichten sind seit M15 Graph-Bürger: Wahrheit ist
+ * der RDF-Store (`schema:Conversation` + `schema:Message`),
+ * `data/chat/conversations.json` ist Projektion. Damit erben sie
+ * Nutzergraphen, ACL, Volltextsuche und Export ohne eigenen Mechanismus.
+ *
+ * Zwei Dinge liegen bewusst im Präsentationsgraphen, nicht im Wissen
+ * (Invariante 2): die zu einer Antwort erzeugte A2UI-Oberfläche
+ * (`uiComponents`) und die zuletzt geöffnete Unterhaltung (`activeId`).
  */
 
-import path from 'path';
-import { readJsonSafe, withFileLock, writeJsonAtomic } from './atomic';
-
-const DATA_DIR = path.join(process.cwd(), 'data', 'chat');
-const CONVERSATIONS_FILE = path.join(DATA_DIR, 'conversations.json');
+import { getWorkspaceContext } from '@/lib/graph/server/instance';
+import * as crud from '@/lib/graph/workspace/crud';
 
 export interface ChatMessage {
     id: string;
@@ -29,170 +35,61 @@ export interface Conversation {
     updatedAt: string;
 }
 
+/** Dateiform von `data/chat/conversations.json` (Projektion). */
 export interface ConversationsData {
     conversations: Conversation[];
     activeId: string | null;
 }
 
-const EMPTY_DATA: ConversationsData = {
-    conversations: [],
-    activeId: null,
-};
-
-async function readData(): Promise<ConversationsData> {
-    return readJsonSafe<ConversationsData>(CONVERSATIONS_FILE, { ...EMPTY_DATA, conversations: [] });
-}
-
-async function writeData(data: ConversationsData): Promise<void> {
-    await writeJsonAtomic(CONVERSATIONS_FILE, data);
-}
-
-function generateId(): string {
-    return `conv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function generateMessageId(): string {
-    return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
 // CRUD Operations
 export async function listConversations(): Promise<Conversation[]> {
-    const data = await readData();
-    return data.conversations.sort((a, b) =>
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-    );
+    return crud.listConversations(await getWorkspaceContext());
 }
 
 export async function getConversation(id: string): Promise<Conversation | null> {
-    const data = await readData();
-    return data.conversations.find(c => c.id === id) || null;
+    return crud.getConversation(await getWorkspaceContext(), id);
 }
 
 export async function createConversation(title?: string): Promise<Conversation> {
-    return withFileLock(CONVERSATIONS_FILE, async () => {
-        const data = await readData();
-        const now = new Date().toISOString();
-
-        const conversation: Conversation = {
-            id: generateId(),
-            title: title || `Chat ${new Date().toLocaleDateString('de-DE')}`,
-            messages: [],
-            createdAt: now,
-            updatedAt: now,
-        };
-
-        data.conversations.unshift(conversation);
-        data.activeId = conversation.id;
-        await writeData(data);
-
-        return conversation;
-    });
+    return crud.createConversation(await getWorkspaceContext(), title);
 }
 
 export async function addMessage(
     conversationId: string,
     role: 'user' | 'assistant',
     content: string,
-    uiComponents?: unknown[]
+    uiComponents?: unknown[],
 ): Promise<ChatMessage | null> {
-    return withFileLock(CONVERSATIONS_FILE, async () => {
-        const data = await readData();
-        const conv = data.conversations.find(c => c.id === conversationId);
-        if (!conv) return null;
-
-        const message: ChatMessage = {
-            id: generateMessageId(),
-            role,
-            content,
-            timestamp: new Date().toISOString(),
-            ...(uiComponents && uiComponents.length > 0 ? { uiComponents } : {}),
-        };
-
-        conv.messages.push(message);
-        conv.updatedAt = new Date().toISOString();
-
-        // Auto-title from first user message
-        if (conv.messages.filter(m => m.role === 'user').length === 1 && role === 'user') {
-            conv.title = content.slice(0, 50) + (content.length > 50 ? '...' : '');
-        }
-
-        await writeData(data);
-        return message;
-    });
+    return crud.addMessage(await getWorkspaceContext(), conversationId, role, content, uiComponents);
 }
 
 export async function updateMessage(conversationId: string, messageId: string, content: string): Promise<ChatMessage | null> {
-    return withFileLock(CONVERSATIONS_FILE, async () => {
-        const data = await readData();
-        const conv = data.conversations.find(c => c.id === conversationId);
-        if (!conv) return null;
-
-        const msg = conv.messages.find(m => m.id === messageId);
-        if (!msg) return null;
-
-        msg.content = content;
-        conv.updatedAt = new Date().toISOString();
-
-        await writeData(data);
-        return msg;
-    });
+    return crud.updateMessage(await getWorkspaceContext(), conversationId, messageId, content);
 }
 
 export async function renameConversation(id: string, title: string): Promise<Conversation | null> {
-    return withFileLock(CONVERSATIONS_FILE, async () => {
-        const data = await readData();
-        const conv = data.conversations.find(c => c.id === id);
-        if (!conv) return null;
-
-        conv.title = title;
-        conv.updatedAt = new Date().toISOString();
-
-        await writeData(data);
-        return conv;
-    });
+    return crud.renameConversation(await getWorkspaceContext(), id, title);
 }
 
 export async function deleteConversation(id: string): Promise<boolean> {
-    return withFileLock(CONVERSATIONS_FILE, async () => {
-        const data = await readData();
-        const index = data.conversations.findIndex(c => c.id === id);
-        if (index === -1) return false;
-
-        data.conversations.splice(index, 1);
-        if (data.activeId === id) {
-            data.activeId = data.conversations[0]?.id || null;
-        }
-
-        await writeData(data);
-        return true;
-    });
+    return crud.deleteConversation(await getWorkspaceContext(), id);
 }
 
 export async function setActiveConversation(id: string): Promise<void> {
-    return withFileLock(CONVERSATIONS_FILE, async () => {
-        const data = await readData();
-        data.activeId = id;
-        await writeData(data);
-    });
+    return crud.setActiveConversation(await getWorkspaceContext(), id);
 }
 
 export async function getActiveConversation(): Promise<Conversation | null> {
-    const data = await readData();
-    if (!data.activeId) return null;
-    return data.conversations.find(c => c.id === data.activeId) || null;
+    const ctx = await getWorkspaceContext();
+    const activeId = await crud.getActiveConversationId(ctx);
+    if (!activeId) return null;
+    return crud.getConversation(ctx, activeId);
 }
 
 export async function getActiveId(): Promise<string | null> {
-    const data = await readData();
-    return data.activeId;
+    return crud.getActiveConversationId(await getWorkspaceContext());
 }
 
 export async function clearAllConversations(): Promise<void> {
-    return withFileLock(CONVERSATIONS_FILE, async () => {
-        const data: ConversationsData = {
-            conversations: [],
-            activeId: null,
-        };
-        await writeData(data);
-    });
+    return crud.clearConversations(await getWorkspaceContext());
 }

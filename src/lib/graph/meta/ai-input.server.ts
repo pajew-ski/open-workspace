@@ -18,5 +18,12 @@ export async function loadAiMirrorInput(): Promise<AiMirrorInput> {
         loadTools(),
         loadAIConfig(),
     ]);
-    return { skills, agents, apiTools, mcpServers: aiConfig.mcpServers };
+    return {
+        skills,
+        agents,
+        apiTools,
+        mcpServers: aiConfig.mcpServers,
+        providers: aiConfig.providers,
+        defaults: aiConfig.defaults,
+    };
 }

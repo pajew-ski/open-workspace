@@ -35,10 +35,17 @@ import { factory } from '../rdf';
  * vom Store-first-Schreibpfad erzeugt (inkl. Quelltreue-Termen). Ein
  * v1-Manifest markiert einen Stand, in dem die Dateien unter data/ noch
  * operative Quelle waren — der Bootstrap re-migriert dann einmalig aus dem
- * Dateibestand. Das Datei-LAYOUT ist zwischen v1 und v2 unverändert.
+ * Dateibestand.
+ *
+ * Version 3 seit M15: Kalender und Chats sind Graph-Bürger. Ein
+ * v2-Manifest kennt ihre Knoten noch nicht, obwohl die Dateien
+ * (`data/calendar/*.json`, `data/chat/conversations.json`) den Bestand
+ * tragen — der Bootstrap re-migriert deshalb einmalig aus dem
+ * Dateibestand, genau wie beim Übergang v1 → v2. Das Datei-LAYOUT ist
+ * über alle drei Versionen unverändert.
  */
-export const SNAPSHOT_SCHEMA_VERSION = 2;
-const COMPATIBLE_SCHEMA_VERSIONS: ReadonlySet<number> = new Set([1, 2]);
+export const SNAPSHOT_SCHEMA_VERSION = 3;
+const COMPATIBLE_SCHEMA_VERSIONS: ReadonlySet<number> = new Set([1, 2, 3]);
 
 export interface SnapshotManifest {
     schemaVersion: number;

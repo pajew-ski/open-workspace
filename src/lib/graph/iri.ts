@@ -30,9 +30,14 @@ export type EntityType =
     | 'connector'
     | 'endpoint'
     | 'person'
+    /** Kalender: abonnierte Quelle (schema:DataFeed) und ihre Termine. */
+    | 'calendar'
     | 'event'
     | 'conversation'
     | 'message'
+    /** AI-Konfiguration im Spiegel `graph/meta` (M15). */
+    | 'ai-provider'
+    | 'model'
     | 'query'
     | 'activity'
     /** Reifier-Knoten einer annotierten Kante (RDF 1.2, rdf:reifies). */

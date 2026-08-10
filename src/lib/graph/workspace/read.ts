@@ -23,6 +23,8 @@ import type { Doc } from '@/types/doc';
 import type { Task, TaskDependency, TaskPriority, TaskStatus, TaskType } from '@/lib/storage/tasks';
 import type { Project, ProjectStatus } from '@/lib/storage/projects';
 import type { CanvasCard, CanvasConnection, CanvasData } from '@/lib/storage/canvas';
+import type { CalendarEvent, CalendarProvider } from '@/lib/storage/calendar';
+import type { ChatMessage, Conversation } from '@/lib/storage/chat';
 import type { GraphStore } from '../store/types';
 import type { IriFactory } from '../iri';
 import { namedNode } from '../rdf';
@@ -37,6 +39,9 @@ const DEPENDENCY_KINDS: ReadonlySet<string> = new Set(['FS', 'SS', 'FF', 'SF']);
 
 /** Default-Farbe neuer Projekte (storage/projects.ts) — Fallback ohne Presentation-Wert. */
 const DEFAULT_PROJECT_COLOR = '#00674F';
+
+/** Default-Farbe abonnierter Kalender (storage/calendar.ts) — Fallback ohne Presentation-Wert. */
+const DEFAULT_CALENDAR_COLOR = '#00674F';
 
 /**
  * Stellt die JS-ISO-Form eines Zeitstempels wieder her, wenn Oxigraph
@@ -97,6 +102,12 @@ function allIris(entry: SubjectIndex | undefined, predicate: string): string[] {
 function timeValue(entry: SubjectIndex | undefined, predicate: string): string | undefined {
     const raw = firstValue(entry, predicate);
     return raw === undefined ? undefined : isoFromStoreValue(raw);
+}
+
+function booleanValue(entry: SubjectIndex | undefined, predicate: string): boolean | undefined {
+    const raw = firstValue(entry, predicate);
+    if (raw === undefined) return undefined;
+    return raw === 'true' || raw === '1';
 }
 
 function numberValue(entry: SubjectIndex | undefined, predicate: string): number | undefined {
@@ -178,6 +189,9 @@ export async function workspaceFromStore(store: GraphStore, iri: IriFactory): Pr
     const tasks: Task[] = [];
     const projects: Project[] = [];
     const canvases: CanvasData[] = [];
+    const calendars: CalendarProvider[] = [];
+    const events: CalendarEvent[] = [];
+    const conversations: Conversation[] = [];
 
     for (const [subject, entry] of index) {
         if (entry.types.has(OW.Document)) {
@@ -255,6 +269,42 @@ export async function workspaceFromStore(store: GraphStore, iri: IriFactory): Pr
             const id = idFromEntityIri(iri, 'canvas', subject);
             if (!id) continue;
             canvases.push(reconstructCanvas(iri, subject, id, entry, index, layoutIndex));
+            continue;
+        }
+        if (entry.types.has(SCHEMA.DataFeed)) {
+            const id = idFromEntityIri(iri, 'calendar', subject);
+            if (!id) continue;
+            calendars.push({
+                id,
+                name: firstValue(entry, SCHEMA.name) ?? id,
+                url: firstValue(entry, SCHEMA.url) ?? '',
+                color: firstValue(layoutIndex.get(subject), SCHEMA.color) ?? DEFAULT_CALENDAR_COLOR,
+                enabled: booleanValue(entry, OW.enabled) ?? true,
+                lastSync: timeValue(entry, PROV.generatedAtTime) ?? null,
+            });
+            continue;
+        }
+        if (entry.types.has(SCHEMA.Event)) {
+            const id = idFromEntityIri(iri, 'event', subject);
+            const feedIri = firstIri(entry, SCHEMA.isPartOf);
+            const providerId = feedIri ? idFromEntityIri(iri, 'calendar', feedIri) : null;
+            if (!id || !providerId) continue;
+            events.push({
+                id,
+                providerId,
+                title: firstValue(entry, SCHEMA.name) ?? id,
+                description: nonEmpty(firstValue(entry, SCHEMA.description)),
+                startDate: timeValue(entry, SCHEMA.startDate) ?? '',
+                endDate: timeValue(entry, SCHEMA.endDate) ?? '',
+                allDay: booleanValue(entry, OW.allDay) ?? false,
+                location: nonEmpty(firstValue(entry, SCHEMA.location)),
+            });
+            continue;
+        }
+        if (entry.types.has(SCHEMA.Conversation)) {
+            const id = idFromEntityIri(iri, 'conversation', subject);
+            if (!id) continue;
+            conversations.push(reconstructConversation(iri, id, entry, index, layoutIndex));
         }
     }
 
@@ -262,7 +312,80 @@ export async function workspaceFromStore(store: GraphStore, iri: IriFactory): Pr
     tasks.sort(byCreatedThenId);
     projects.sort(byCreatedThenId);
     canvases.sort(byCreatedThenId);
-    return { docs, tasks, projects, canvases };
+    calendars.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    // Termine in Kalender-Reihenfolge: erst die Startzeit, dann die ID —
+    // die Ansichten sortieren ohnehin, die stabile Ordnung hält den
+    // Round-Trip und die Datei-Projektion diff-arm.
+    events.sort((a, b) => (a.startDate !== b.startDate
+        ? (a.startDate < b.startDate ? -1 : 1)
+        : (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)));
+    conversations.sort(byCreatedThenId);
+
+    // Aktive Unterhaltung: Auswahl der Ansicht, deshalb aus dem
+    // Präsentationsgraphen (ow:selected) und nicht aus dem Wissen.
+    let activeConversationId: string | null = null;
+    for (const [subject, layoutEntry] of layoutIndex) {
+        if (booleanValue(layoutEntry, OW.selected) !== true) continue;
+        const id = idFromEntityIri(iri, 'conversation', subject);
+        if (id && conversations.some(conversation => conversation.id === id)) {
+            activeConversationId = id;
+            break;
+        }
+    }
+
+    return { docs, tasks, projects, canvases, calendars, events, conversations, activeConversationId };
+}
+
+/**
+ * Unterhaltung samt Nachrichten. Die Nachrichten hängen als
+ * schema:hasPart am Dialog; ihre generative Oberfläche (A2UI) kommt aus
+ * dem Präsentationsgraphen (Invariante 2). Reihenfolge ist der
+ * Versandzeitpunkt — RDF kennt keine, der Dialog aber sehr wohl.
+ */
+function reconstructConversation(
+    iri: IriFactory,
+    conversationId: string,
+    entry: SubjectIndex,
+    index: Map<string, SubjectIndex>,
+    layoutIndex: Map<string, SubjectIndex>,
+): Conversation {
+    const messages: ChatMessage[] = [];
+    for (const messageIri of allIris(entry, SCHEMA.hasPart)) {
+        const messageEntry = index.get(messageIri);
+        if (!messageEntry?.types.has(SCHEMA.Message)) continue;
+        const id = firstValue(messageEntry, DCTERMS.identifier);
+        if (id === undefined) continue;
+        const role = firstValue(messageEntry, OW.messageRole);
+        const surface = firstValue(layoutIndex.get(messageIri), OW.generativeSurface);
+        messages.push({
+            id,
+            role: role === 'assistant' ? 'assistant' : 'user',
+            content: firstValue(messageEntry, SCHEMA.text) ?? '',
+            timestamp: timeValue(messageEntry, SCHEMA.dateSent) ?? '',
+            ...(surface !== undefined ? { uiComponents: parseSurface(surface) } : {}),
+        });
+    }
+    messages.sort((a, b) => (a.timestamp !== b.timestamp
+        ? (a.timestamp < b.timestamp ? -1 : 1)
+        : (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)));
+
+    return {
+        id: conversationId,
+        title: firstValue(entry, SCHEMA.name) ?? conversationId,
+        messages,
+        createdAt: timeValue(entry, DCTERMS.created) ?? '',
+        updatedAt: timeValue(entry, DCTERMS.modified) ?? '',
+    };
+}
+
+/** Unlesbare Oberflächen fallen weg statt den ganzen Chat zu verlieren. */
+function parseSurface(value: string): unknown[] {
+    try {
+        const parsed: unknown = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch {
+        return [];
+    }
 }
 
 function cardTypeFromLayout(nodeKind: string | undefined, cardKind: string | undefined): CanvasCard['type'] {
