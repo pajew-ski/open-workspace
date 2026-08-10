@@ -3,9 +3,10 @@
 import { WidgetWrapper } from './WidgetWrapper';
 import Link from 'next/link';
 import { FileText, CheckSquare, Calendar, MessageSquare, Layout } from 'lucide-react';
+import type { BaseWidgetProps } from './types';
 import styles from './Widgets.module.css';
 
-export function QuickAccessWidget({ id, isEditing, onDelete }: any) {
+export function QuickAccessWidget({ id, isEditing, onDelete }: BaseWidgetProps) {
     const links = [
         { href: '/docs', label: 'Dokumente', icon: <FileText size={20} /> },
         { href: '/tasks', label: 'Aufgaben', icon: <CheckSquare size={20} /> },

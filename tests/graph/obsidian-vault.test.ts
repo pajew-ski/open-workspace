@@ -25,7 +25,7 @@ import type { Quad } from '@rdfjs/types';
 import { parse as parseYaml } from 'yaml';
 import { OxigraphStore } from '@/lib/graph/store/oxigraph';
 import { createIriFactory } from '@/lib/graph/iri';
-import { factory, namedNode, literal } from '@/lib/graph/rdf';
+import { factory, namedNode } from '@/lib/graph/rdf';
 import { canonicalNQuads, isIsomorphic } from '@/lib/graph/serialize/canonical';
 import { parseRdf } from '@/lib/graph/serialize/io';
 import { DCTERMS, OW, OW_FRONTMATTER_BASE, PREFIXES, RDF, SCHEMA, SKOS } from '@/lib/graph/vocab';

@@ -8,10 +8,16 @@ import { Card, CardContent, Button, ConfirmDialog, FloatingActionButton } from '
 import { Settings2, X, RotateCcw, CloudDownload, Globe, ShieldCheck, TerminalSquare } from 'lucide-react';
 import { isGraphQuery } from '@/lib/graph/sparql/classify';
 import styles from './page.module.css';
-import { Graph } from 'schema-dts';
+import type { LegacyGraphNode, LegacyGraphView } from '@/lib/graph/projection/schema-org';
+import type { ForceGraphMethods, ForceGraphProps, LinkObject, NodeObject } from 'react-force-graph-2d';
 
-// Dynamically import ForceGraph to avoid SSR issues with Canvas
-const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), { ssr: false });
+// Dynamically import ForceGraph to avoid SSR issues with Canvas.
+// `dynamic()` verliert die Generics des Pakets — deshalb die Instanz
+// hier einmal auf die eigenen Knoten-/Kantentypen festnageln, statt in
+// jedem Callback auf `any` auszuweichen.
+const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), { ssr: false }) as React.ComponentType<
+    ForceGraphProps<SimNode, SimLink> & { ref?: React.MutableRefObject<ForceGraphHandle | undefined> }
+>;
 
 interface GraphNode {
     id: string;
@@ -100,6 +106,30 @@ const LAYOUT_LABELS: Record<QueryViewRecord['layoutMethod'], string> = {
 
 const DEFAULT_VIEW_QUERY = `CONSTRUCT { ?s ?p ?o }
 WHERE { ?s ?p ?o . ?s a <https://pajew-ski.github.io/open-workspace/ns/v1#Document> }`;
+
+/**
+ * react-force-graph mutiert die übergebenen Objekte: Es ersetzt die
+ * Kanten-Enden durch Knotenobjekte und hängt Simulationskoordinaten an.
+ * Die Zeichen-Callbacks sehen also nicht GraphNode/GraphLink, sondern
+ * diese Fassung — das Paket bringt die Typen dafür mit.
+ */
+type SimNode = NodeObject<GraphNode>;
+type SimLink = LinkObject<GraphNode, GraphLink>;
+type ForceGraphHandle = ForceGraphMethods<SimNode, SimLink>;
+
+/**
+ * Ein Kantenende ist vor dem ersten Simulationsschritt noch die id und
+ * danach das Knotenobjekt. Nur im zweiten Fall gibt es Koordinaten.
+ */
+function endpoint(end: SimLink['source']): SimNode | undefined {
+    return typeof end === 'object' && end !== null ? end : undefined;
+}
+
+/** Eigene d3-Kraft — `ForceFn` exportiert das Paket nicht. */
+interface CustomForce {
+    (alpha: number): void;
+    initialize?: (nodes: SimNode[], ...args: unknown[]) => void;
+}
 
 /** Deterministische Farbe für unbekannte Typen einer Query-View. */
 function typeColor(type: string): string {
@@ -334,7 +364,7 @@ export default function GraphExplorerPage() {
     const [forceCharge, setForceCharge] = usePersistentState('forceCharge', DEFAULTS.forceCharge);
     const [linkDistance, setLinkDistance] = usePersistentState('linkDistance', DEFAULTS.linkDistance);
 
-    const graphRef = useRef<any>(null);
+    const graphRef = useRef<ForceGraphHandle | undefined>(undefined);
     const dragRef = useRef<{ startX: number, startY: number, startPosX: number, startPosY: number } | null>(null);
 
     // --- Query-Views (GRAPH_CORE_SPEC §9 / M5) ---
@@ -460,17 +490,21 @@ export default function GraphExplorerPage() {
         const fg = graphRef.current;
         if (!fg) return;
         if (activeView?.record.layoutMethod === 'radial') {
-            let simNodes: Array<GraphNode & { x: number; y: number; vx: number; vy: number }> = [];
-            const force = (alpha: number) => {
+            // Koordinaten sind erst nach dem ersten Simulationsschritt
+            // gesetzt — vorher steht der Knoten im Ursprung.
+            let simNodes: SimNode[] = [];
+            const force: CustomForce = (alpha: number) => {
                 for (const node of simNodes) {
+                    const x = node.x ?? 0;
+                    const y = node.y ?? 0;
                     const radius = 80 + (node.depth ?? 0) * 130;
-                    const distance = Math.hypot(node.x, node.y) || 1e-6;
+                    const distance = Math.hypot(x, y) || 1e-6;
                     const strength = ((radius - distance) / distance) * alpha * 0.25;
-                    node.vx += node.x * strength;
-                    node.vy += node.y * strength;
+                    node.vx = (node.vx ?? 0) + x * strength;
+                    node.vy = (node.vy ?? 0) + y * strength;
                 }
             };
-            force.initialize = (nodes: typeof simNodes) => {
+            force.initialize = (nodes: SimNode[]) => {
                 simNodes = nodes;
             };
             fg.d3Force('radial', force);
@@ -509,12 +543,12 @@ export default function GraphExplorerPage() {
     useEffect(() => {
         fetch('/api/graph')
             .then(res => res.json())
-            .then((jsonLd: Graph) => {
+            .then((jsonLd: LegacyGraphView) => {
                 const nodes: GraphNode[] = [];
                 const links: GraphLink[] = [];
 
                 if (jsonLd['@graph']) {
-                    jsonLd['@graph'].forEach((entity: any) => {
+                    jsonLd['@graph'].forEach((entity: LegacyGraphNode) => {
                         // Präsentation (Farbe/Größe) aus dem Typ berechnen —
                         // die API liefert nur noch Wissen, kein Layout.
                         const style = NODE_STYLE[entity['@type']] ?? FALLBACK_STYLE;
@@ -524,13 +558,12 @@ export default function GraphExplorerPage() {
                             type: entity['@type'],
                             val: style.val,
                             color: style.color,
-                            group: entity.group
                         };
                         nodes.push(node);
 
                         // Extract Links
                         if (entity.mentions) {
-                            (Array.isArray(entity.mentions) ? entity.mentions : [entity.mentions]).forEach((m: any) => {
+                            (Array.isArray(entity.mentions) ? entity.mentions : [entity.mentions]).forEach(m => {
                                 links.push({ source: entity['@id'], target: m['@id'], type: 'mentions' });
                             });
                         }
@@ -538,12 +571,12 @@ export default function GraphExplorerPage() {
                             links.push({ source: entity['@id'], target: entity.agent['@id'], type: 'belongs_to' });
                         }
                         if (entity.dependencies) {
-                            entity.dependencies.forEach((d: any) => {
+                            entity.dependencies.forEach(d => {
                                 links.push({ source: entity['@id'], target: d['@id'], type: d.relationshipType || 'depends_on' });
                             });
                         }
                         if (entity.about) {
-                            (Array.isArray(entity.about) ? entity.about : [entity.about]).forEach((t: any) => {
+                            (Array.isArray(entity.about) ? entity.about : [entity.about]).forEach(t => {
                                 links.push({ source: entity['@id'], target: t['@id'], type: 'tagged' });
                             });
                         }
@@ -609,11 +642,35 @@ export default function GraphExplorerPage() {
         [activeView, filteredData],
     );
 
+    /**
+     * Bestand vs. Bild. Die Zahlen unter „Herkunft" zählen *Aussagen*
+     * (Tripel) — ein Dokument mit Titel, Text, Datum und drei Tags sind
+     * allein schon ein Dutzend. Wer sie für Knoten hält, vermisst
+     * hinterher neunzehn Zwanzigstel seines Graphen. Also beides zeigen:
+     * was der Graph hergibt und was davon gerade gezeichnet wird.
+     */
+    const inventory = useMemo(() => {
+        const byType = new Map<string, number>();
+        for (const node of graphData.nodes) byType.set(node.type, (byType.get(node.type) ?? 0) + 1);
+        const group = (...types: string[]) => types.reduce((sum, type) => sum + (byType.get(type) ?? 0), 0);
+        return {
+            totalNodes: graphData.nodes.length,
+            totalLinks: graphData.links.length,
+            shownNodes: displayData.nodes.length,
+            shownLinks: displayData.links.length,
+            projects: group('Project'),
+            tasks: group('Action'),
+            docs: group('TechArticle', 'BlogPosting', 'HowTo'),
+            canvas: group('CreativeWork'),
+            tags: group('DefinedTerm'),
+        };
+    }, [graphData, displayData]);
+
     // --- Physics Update ---
     useEffect(() => {
         if (graphRef.current) {
-            graphRef.current.d3Force('charge').strength(forceCharge);
-            graphRef.current.d3Force('link').distance(linkDistance);
+            graphRef.current.d3Force('charge')?.strength(forceCharge);
+            graphRef.current.d3Force('link')?.distance(linkDistance);
             graphRef.current.d3ReheatSimulation();
         }
     }, [forceCharge, linkDistance, isLoading]);
@@ -684,16 +741,16 @@ export default function GraphExplorerPage() {
                             linkCurvature={0.25}
 
                             // Link Color
-                            linkColor={(link: any) => {
+                            linkColor={(link: SimLink) => {
                                 // Inferierte Kanten (M7): violett + gestrichelt.
                                 if (link.inferred) return 'rgba(126, 87, 194, 0.75)';
                                 if (link.type === 'depends_on' || link.type === 'blocks') return showDependencies ? '#ff4444' : 'rgba(150,150,150,0.2)';
                                 return 'rgba(150,150,150,0.2)';
                             }}
-                            linkLineDash={(link: any) => (link.inferred ? [4, 3] : null)}
+                            linkLineDash={(link: SimLink) => (link.inferred ? [4, 3] : null)}
 
                             // Link Labels (Predicates)
-                            linkCanvasObject={showPredicates ? (link: any, ctx, globalScale) => {
+                            linkCanvasObject={showPredicates ? (link: SimLink, ctx, globalScale) => {
                                 const label = link.type;
                                 if (!label) return;
 
@@ -703,10 +760,10 @@ export default function GraphExplorerPage() {
                                 const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.2);
 
                                 // Safe coordinate access
-                                const x1 = link.source?.x ?? 0;
-                                const y1 = link.source?.y ?? 0;
-                                const x2 = link.target?.x ?? 0;
-                                const y2 = link.target?.y ?? 0;
+                                const x1 = endpoint(link.source)?.x ?? 0;
+                                const y1 = endpoint(link.source)?.y ?? 0;
+                                const x2 = endpoint(link.target)?.x ?? 0;
+                                const y2 = endpoint(link.target)?.y ?? 0;
 
                                 const midX = x1 + (x2 - x1) / 2;
                                 const midY = y1 + (y2 - y1) / 2;
@@ -724,7 +781,7 @@ export default function GraphExplorerPage() {
 
 
                             // Node Labels (Always visible)
-                            nodeCanvasObject={showNames ? (node: any, ctx, globalScale) => {
+                            nodeCanvasObject={showNames ? (node: SimNode, ctx, globalScale) => {
                                 const label = node.name;
                                 const fontSize = 12 / globalScale;
                                 ctx.font = `${fontSize}px Sans-Serif`;
@@ -735,18 +792,20 @@ export default function GraphExplorerPage() {
                                 const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
                                 const bgColor = isDark ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.8)';
                                 const textColor = node.color;
+                                const x = node.x ?? 0;
+                                const y = node.y ?? 0;
 
                                 ctx.fillStyle = bgColor;
-                                ctx.fillRect(node.x - bckgDimensions[0] / 2, node.y - bckgDimensions[1] / 2, bckgDimensions[0], bckgDimensions[1]);
+                                ctx.fillRect(x - bckgDimensions[0] / 2, y - bckgDimensions[1] / 2, bckgDimensions[0], bckgDimensions[1]);
 
                                 ctx.textAlign = 'center';
                                 ctx.textBaseline = 'middle';
                                 ctx.fillStyle = textColor;
-                                ctx.fillText(label, node.x, node.y);
+                                ctx.fillText(label, x, y);
 
                                 // Draw node circle as well otherwise it's just text
                                 ctx.beginPath();
-                                ctx.arc(node.x, node.y, node.val, 0, 2 * Math.PI, false);
+                                ctx.arc(x, y, node.val, 0, 2 * Math.PI, false);
                                 ctx.fill();
                             } : undefined}
 
@@ -782,6 +841,24 @@ export default function GraphExplorerPage() {
                             </div>
                             <CardContent className={styles.settingsContent}>
                                 <div className={styles.section}>
+                                    <h4>Bestand</h4>
+                                    {activeView ? (
+                                        <p className={styles.hint}>
+                                            Query-View aktiv: {inventory.shownNodes} Knoten, {inventory.shownLinks} Kanten.
+                                            Sie ersetzt den Standard-Graphen — die Filter unten greifen nicht.
+                                        </p>
+                                    ) : (
+                                        <p className={styles.hint}>
+                                            {inventory.shownNodes} von {inventory.totalNodes} Knoten sichtbar,
+                                            {' '}{inventory.shownLinks} von {inventory.totalLinks} Kanten.
+                                            {inventory.shownNodes < inventory.totalNodes
+                                                ? ' Der Rest ist ausgefiltert, nicht verloren — siehe Filter.'
+                                                : ''}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className={styles.section}>
                                     <h4>Ansicht</h4>
                                     <label><input type="checkbox" checked={showNames} onChange={e => setShowNames(e.target.checked)} /> Namen anzeigen</label>
                                     <label><input type="checkbox" checked={showPredicates} onChange={e => setShowPredicates(e.target.checked)} /> Beziehungen anzeigen</label>
@@ -803,11 +880,13 @@ export default function GraphExplorerPage() {
 
                                 <div className={styles.section}>
                                     <h4>Filter</h4>
-                                    <label><input type="checkbox" checked={showProjects} onChange={e => setShowProjects(e.target.checked)} /> <span style={{ color: '#00674F' }}>●</span> Projekte</label>
-                                    <label><input type="checkbox" checked={showTasks} onChange={e => setShowTasks(e.target.checked)} /> <span style={{ color: '#2E7D4A' }}>●</span> Aufgaben</label>
-                                    <label><input type="checkbox" checked={showDocs} onChange={e => setShowDocs(e.target.checked)} /> <span style={{ color: '#2563A0' }}>●</span> Dokumente</label>
-                                    <label><input type="checkbox" checked={showCanvas} onChange={e => setShowCanvas(e.target.checked)} /> <span style={{ color: '#B8860B' }}>●</span> Canvas</label>
-                                    <label><input type="checkbox" checked={showTags} onChange={e => setShowTags(e.target.checked)} /> <span style={{ color: '#8A8A8A' }}>●</span> Tags</label>
+                                    {/* Zahl je Gruppe: macht sichtbar, was ein ausgeschalteter
+                                        Filter kostet — Tags sind per Default aus (DEFAULTS). */}
+                                    <label><input type="checkbox" checked={showProjects} onChange={e => setShowProjects(e.target.checked)} /> <span style={{ color: '#00674F' }}>●</span> Projekte <span className={styles.filterCount}>{inventory.projects}</span></label>
+                                    <label><input type="checkbox" checked={showTasks} onChange={e => setShowTasks(e.target.checked)} /> <span style={{ color: '#2E7D4A' }}>●</span> Aufgaben <span className={styles.filterCount}>{inventory.tasks}</span></label>
+                                    <label><input type="checkbox" checked={showDocs} onChange={e => setShowDocs(e.target.checked)} /> <span style={{ color: '#2563A0' }}>●</span> Dokumente <span className={styles.filterCount}>{inventory.docs}</span></label>
+                                    <label><input type="checkbox" checked={showCanvas} onChange={e => setShowCanvas(e.target.checked)} /> <span style={{ color: '#B8860B' }}>●</span> Canvas <span className={styles.filterCount}>{inventory.canvas}</span></label>
+                                    <label><input type="checkbox" checked={showTags} onChange={e => setShowTags(e.target.checked)} /> <span style={{ color: '#8A8A8A' }}>●</span> Tags <span className={styles.filterCount}>{inventory.tags}</span></label>
                                 </div>
 
                                 <div className={styles.section}>
@@ -965,7 +1044,9 @@ export default function GraphExplorerPage() {
                                                 <div key={group.key} className={styles.provenanceGroup}>
                                                     <span className={styles.provenanceLabel}>
                                                         {group.label}
-                                                        <strong>{group.buckets.reduce((sum, bucket) => sum + bucket.statements, 0)}</strong>
+                                                        <strong>
+                                                            {group.buckets.reduce((sum, bucket) => sum + bucket.statements, 0)} Aussagen
+                                                        </strong>
                                                     </span>
                                                     {group.buckets.length === 0
                                                         ? <span className={styles.hint}>keine</span>
@@ -976,6 +1057,11 @@ export default function GraphExplorerPage() {
                                                         ))}
                                                 </div>
                                             ))}
+                                            <p className={styles.hint}>
+                                                Eine Aussage ist ein Tripel, kein Knoten: Titel, Datum und jeder Tag
+                                                eines Dokuments zählen einzeln. Wie viele Knoten daraus werden, steht
+                                                oben unter „Bestand&ldquo;.
+                                            </p>
                                             <p className={styles.hint}>
                                                 Inferiertes steht in eigenen Graphen und wird nie behauptet — im Bild
                                                 erscheint es nur über die Überlagerung „Inferierte Kanten anzeigen&ldquo;.

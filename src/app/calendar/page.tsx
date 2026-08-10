@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, isToday, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays, subDays } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { AppShell } from '@/components/layout';
@@ -47,15 +47,7 @@ export default function CalendarPage() {
     const [providers, setProviders] = useState<CalendarProvider[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        fetchProviders();
-    }, []);
-
-    useEffect(() => {
-        fetchEvents();
-    }, [currentDate, viewMode, providers]); // Re-fetch when context changes
-
-    const fetchProviders = async () => {
+    const fetchProviders = useCallback(async () => {
         try {
             const res = await fetch('/api/calendar');
             const data = await res.json();
@@ -63,9 +55,11 @@ export default function CalendarPage() {
         } catch (e) {
             console.error(e);
         }
-    };
+    }, []);
 
-    const fetchEvents = async () => {
+    // Die Abhängigkeiten sind dieselben wie zuvor im Effekt von Hand
+    // gepflegt — jetzt aber an der Stelle, wo sie gelesen werden.
+    const fetchEvents = useCallback(async () => {
         setIsLoading(true);
         try {
             let start, end;
@@ -100,7 +94,15 @@ export default function CalendarPage() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [currentDate, viewMode, providers]);
+
+    useEffect(() => {
+        fetchProviders();
+    }, [fetchProviders]);
+
+    useEffect(() => {
+        fetchEvents();
+    }, [fetchEvents]); // Re-fetch when context changes
 
     const handlePrev = () => {
         if (viewMode === 'month') setCurrentDate(subMonths(currentDate, 1));

@@ -32,7 +32,6 @@ import {
     aiMirrorQuads,
     referencedToolNames,
     replaceAiMirror,
-    WORKSPACE_TOOL_PROVIDER_ID,
     type AiMirrorInput,
 } from '@/lib/graph/meta/ai';
 import type { Skill } from '@/lib/skills/types';

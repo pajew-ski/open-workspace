@@ -4,7 +4,8 @@ import { isPrivateHostname } from '@/lib/net/private';
 
 interface ToolExecutionResult {
     success: boolean;
-    data?: any;
+    /** Antwort des Ziel-Endpunkts — Form unbekannt, Aufrufer prüft. */
+    data?: unknown;
     error?: string;
 }
 
@@ -82,7 +83,7 @@ function substituteBodyTemplate(template: string, args: Record<string, unknown>)
  * Execute a tool with given arguments.
  * Arguments can be injected into URL placeholders (e.g. {lat}) or Body.
  */
-export async function executeTool(tool: Tool, args: Record<string, any> = {}): Promise<ToolExecutionResult> {
+export async function executeTool(tool: Tool, args: Record<string, unknown> = {}): Promise<ToolExecutionResult> {
     if (tool.type !== 'api') {
         return { success: false, error: 'Only API tools are currently supported' };
     }

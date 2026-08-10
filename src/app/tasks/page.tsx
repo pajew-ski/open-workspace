@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { AppShell } from '@/components/layout';
-import { Button, Card, CardHeader, CardContent, ConfirmDialog, FloatingActionButton } from '@/components/ui';
+import { ConfirmDialog, FloatingActionButton } from '@/components/ui';
 import { TaskCard, Task } from '@/components/tasks/TaskCard';
-import { TaskModal } from '@/components/tasks/TaskModal';
+import { TaskModal, type Task as TaskDraft } from '@/components/tasks/TaskModal';
 import { ProjectForm } from '@/components/tasks/ProjectForm';
 import { useToast } from '@/components/ui/Toast';
 import { JsonLdScript } from '@/components/seo/JsonLdScript';
@@ -62,7 +62,7 @@ export default function TasksPage() {
         }
     };
 
-    const handleSaveTask = async (taskData: any) => {
+    const handleSaveTask = async (taskData: TaskDraft) => {
         const isUpdate = !!taskData.id;
         const url = isUpdate ? `/api/tasks/${taskData.id}` : '/api/tasks';
         const method = isUpdate ? 'PUT' : 'POST';
@@ -224,7 +224,7 @@ export default function TasksPage() {
                     task={editingTask || undefined}
                     onClose={() => { setEditingTask(null); setIsAddingTask(false); }}
                     onSave={handleSaveTask}
-                    onDelete={async (id) => setTaskToDelete(editingTask)}
+                    onDelete={async () => setTaskToDelete(editingTask)}
                 />
             )}
 

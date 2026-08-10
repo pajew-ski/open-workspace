@@ -94,10 +94,6 @@ export default function CanvasEditorPage() {
     const canvasRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (canvasId) fetchCanvas();
-    }, [canvasId]);
-
-    useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Delete' || e.key === 'Backspace') {
                 if (editingCardId || editingConnectionId) return;
@@ -126,7 +122,7 @@ export default function CanvasEditorPage() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [selectedCards, cards, editingCardId, editingConnectionId, snapToGrid]);
 
-    const fetchCanvas = async () => {
+    const fetchCanvas = useCallback(async () => {
         try {
             const response = await fetch(`/api/canvas?id=${canvasId}`);
             if (!response.ok) {
@@ -144,9 +140,16 @@ export default function CanvasEditorPage() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [canvasId, router]);
 
-    const snapValue = (value: number) => snapToGrid ? Math.round(value / GRID_SIZE) * GRID_SIZE : value;
+    useEffect(() => {
+        if (canvasId) fetchCanvas();
+    }, [canvasId, fetchCanvas]);
+
+    const snapValue = useCallback(
+        (value: number) => snapToGrid ? Math.round(value / GRID_SIZE) * GRID_SIZE : value,
+        [snapToGrid],
+    );
 
     const createCard = async (x: number, y: number) => {
         const snappedX = snapValue((x - viewport.x) / viewport.zoom);
@@ -162,7 +165,7 @@ export default function CanvasEditorPage() {
             setSelectedCards(new Set([data.card.id]));
             setEditingCardId(data.card.id);
             toast.success('Karte erstellt');
-        } catch (error) {
+        } catch {
             toast.error('Fehler beim Erstellen');
         }
     };
@@ -188,7 +191,7 @@ export default function CanvasEditorPage() {
                     });
                 });
             }
-        } catch (error) {
+        } catch {
             toast.error('Fehler beim Speichern');
         }
     }, [canvasId, cards, toast]);
@@ -218,12 +221,12 @@ export default function CanvasEditorPage() {
                     // Note: Server-side undo would need proper implementation
                 }
             });
-        } catch (error) {
+        } catch {
             toast.error('Fehler beim Löschen');
         }
     };
 
-    const createConnection = async (fromId: string, toId: string) => {
+    const createConnection = useCallback(async (fromId: string, toId: string) => {
         if (fromId === toId) return;
         if (connections.some(c => (c.fromId === fromId && c.toId === toId) || (c.fromId === toId && c.toId === fromId))) return;
 
@@ -236,10 +239,10 @@ export default function CanvasEditorPage() {
             const data = await response.json();
             setConnections([...connections, data.connection]);
             toast.success('Verbindung erstellt');
-        } catch (error) {
+        } catch {
             toast.error('Fehler beim Verbinden');
         }
-    };
+    }, [canvasId, connections, connectionType, toast]);
 
     const updateConnection = async (connectionId: string, updates: Partial<CanvasConnection>) => {
         setConnections(prev => prev.map(c => c.id === connectionId ? { ...c, ...updates } : c));
@@ -249,7 +252,7 @@ export default function CanvasEditorPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'updateConnection', canvasId, connectionId, updates }),
             });
-        } catch (error) {
+        } catch {
             toast.error('Fehler beim Aktualisieren');
         }
     };
@@ -272,7 +275,7 @@ export default function CanvasEditorPage() {
             toast.success('Verbindung gelöscht', () => {
                 if (oldConnection) setConnections(prev => [...prev, oldConnection]);
             });
-        } catch (error) {
+        } catch {
             toast.error('Fehler beim Löschen');
         }
     };
@@ -301,7 +304,7 @@ export default function CanvasEditorPage() {
             setSelectedCards(new Set([cardId]));
         }
         setDragState({ cardId, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top });
-    }, [cards, connectionMode, connectionStart, selectedCards]);
+    }, [cards, connectionMode, connectionStart, createConnection, selectedCards]);
 
     const handleResizeMouseDown = useCallback((e: React.MouseEvent, cardId: string, direction: ResizeDirection) => {
         e.stopPropagation();
