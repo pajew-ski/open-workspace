@@ -6,7 +6,8 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getServerGraph, persistServerGraphSnapshot } from '@/lib/graph/server/instance';
+import {persistServerGraphSnapshot } from '@/lib/graph/server/instance';
+import { getUserGraph } from '@/lib/graph/server/context';
 import { deleteRetrievalProfile, getRetrievalProfile } from '@/lib/graph/search/profiles';
 
 interface RouteContext {
@@ -16,7 +17,7 @@ interface RouteContext {
 export async function GET(_request: Request, context: RouteContext): Promise<Response> {
     const { id } = await context.params;
     try {
-        const handle = await getServerGraph();
+        const handle = await getUserGraph();
         const profile = await getRetrievalProfile(handle, id);
         if (!profile) {
             return NextResponse.json({ error: `Retrieval-Profil "${id}" existiert nicht.` }, { status: 404 });
@@ -31,7 +32,7 @@ export async function GET(_request: Request, context: RouteContext): Promise<Res
 export async function DELETE(_request: Request, context: RouteContext): Promise<Response> {
     const { id } = await context.params;
     try {
-        const handle = await getServerGraph();
+        const handle = await getUserGraph();
         const removed = await deleteRetrievalProfile(handle, id);
         if (!removed) {
             return NextResponse.json({ error: `Retrieval-Profil "${id}" existiert nicht.` }, { status: 404 });

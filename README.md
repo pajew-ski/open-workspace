@@ -39,12 +39,19 @@ konfigurierte Tools selbstständig aus.
   Agenten retrieven auf dem Wissensgraphen (`graph_search`, `graph_retrieve`,
   `graph_neighbors`, `graph_describe`, `graph_sparql`, optional `graph_write`),
   Knoten als Resources `graph://<iri>`, Retrieval-Profile als Prompts. Zugang
-  nur per Token mit ausdrücklich freigegebenen Graphen (`OW_MCP_TOKENS`)
+  nur per Token; ein Token nennt den Nutzer, dessen Rechte aus `graph/acl`
+  gelten (`OW_MCP_TOKENS`)
 - **Föderation** (`/graph/federation`): `SERVICE`-Abfragen gegen registrierte
   SPARQL-Endpoints (Vertrauensstufe entscheidet, ob lokale Join-Schlüssel
   mitgeschickt werden), SSRF-Schutz, Zeit- und Ergebnis-Limits — und der eigene
   Endpoint als föderierbare Quelle (`/api/graph/federation/sparql`, read-only;
   ohne Token ist das Dataset leer)
+- **Zugriff & Freigaben** (`/graph/access`): Mehrbenutzerbetrieb mit eigenen
+  Nutzergraphen, geteilten Räumen und Web-Access-Control-Regeln in
+  `graph/acl` — Rechte pro Named Graph (Lesen, Beitragen, Bearbeiten,
+  Verwalten), per Default gehört jeder Graph nur seinem Eigentümer. Der
+  öffentliche Teilgraph ist anonym lesbar und föderierbar
+  (`/.well-known/void`, dereferenzierbare Entitäts-IRIs)
 - **Agenten (A2A)**: Remote-Agenten per Agent-Card-Discovery verbinden
   (JSON-RPC `message/send`, Task-Polling) und lokale Personas definieren —
   der Assistent delegiert im Chat via `[[AGENT:id:…]]`
@@ -210,6 +217,11 @@ e2e/                # Playwright-Tests
 | `GET /api/mcp/status` | Status des MCP-Servers (Zugänge, Rechte, Sitzungen — ohne Geheimnisse) |
 | `GET/POST /api/graph/federation/endpoints` | Registrierte SPARQL-Endpoints (`ow:FederatedEndpoint`) |
 | `GET/POST /api/graph/federation/sparql` | Eingehende Föderation (read-only, Dataset aus dem Token) |
+| `GET /api/graph/access` | Identität, sichtbare Graphen, Freigaben, Räume |
+| `POST/DELETE /api/graph/access/authorizations`, `/spaces`, `/groups` | Freigaben, geteilte Räume, Gruppen verwalten |
+| `POST /api/graph/access/publish` | Knoten freigeben (kopieren/verschieben, als `prov:Activity` protokolliert) |
+| `GET /.well-known/void` | VoID-Beschreibung des sichtbaren Datasets |
+| `GET /u/<userId>/<type>/<id>` | Dereferenzierung einer Entität (Turtle/JSON-LD/HTML) |
 | `GET/POST/PUT/DELETE /api/agents` | Agenten-Verwaltung |
 | `GET/POST/DELETE /api/tools` | Tool-Konfiguration |
 | `GET/POST/PUT/DELETE /api/connections` | Sichere Verbindungen |
@@ -217,6 +229,8 @@ e2e/                # Playwright-Tests
 ## Dokumentation
 
 - [docs/ai-platform.md](./docs/ai-platform.md) — AI-Plattform: Multi-Provider, Routing, MCP, A2A, Skills, Serverless
+- [docs/multi-user.md](./docs/multi-user.md) — Identität, ACL-Modell, Durchsetzung, öffentlicher Teilgraph
+- [GRAPH_CORE_SPEC.md](./GRAPH_CORE_SPEC.md) — verbindliche Spec des Graph-Kerns (M0–M13)
 - [ANALYSE.md](./ANALYSE.md) — Vollständige Analyse, Modernisierung und Roadmap
 - [AGENTS.md](./AGENTS.md) — AI-Agent-Protokoll und Architektur
 - [CHAT_WIDGET_SPEC.md](./CHAT_WIDGET_SPEC.md) — Verhaltens-Spezifikation des Chat-Widgets

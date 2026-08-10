@@ -12,7 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { parseBody } from '@/lib/api/validation';
-import { getServerGraph } from '@/lib/graph/server/instance';
+import { getUserGraph } from '@/lib/graph/server/context';
 import { validateStoreGraphs } from '@/lib/graph/reasoning/run';
 
 const validateSchema = z.object({
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
         graphs = parsed.data?.graphs;
     }
     try {
-        const handle = await getServerGraph();
+        const handle = await getUserGraph();
         const report = await validateStoreGraphs(handle, graphs);
         return NextResponse.json({ report });
     } catch (error) {

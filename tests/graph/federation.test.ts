@@ -42,6 +42,7 @@ import { hasServiceClause, planFederatedQuery, summarizeFederation } from '@/lib
 import { probeEndpoint, remoteSelect, FederationError } from '@/lib/graph/federation/remote';
 import { FederationEndpointHost } from '@/lib/graph/federation/inbound';
 import { parseMcpTokens } from '@/lib/graph/mcp/tokens';
+import { ensureDefaultAuthorizations } from '@/lib/graph/authz/acl-graph';
 
 const INSTANCE_BASE = 'urn:ow:aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee:';
 const iri = createIriFactory(INSTANCE_BASE);
@@ -83,7 +84,13 @@ async function freshStore(): Promise<GraphHandle> {
     const quads = buildQuads();
     await store.load(quads.filter(q => q.graph.value === WORKSPACE.value), WORKSPACE);
     await store.load(quads.filter(q => q.graph.value === SECRET_GRAPH.value), SECRET_GRAPH);
-    return { store, iri };
+    const handle = { store, iri };
+    // Seit M13 kommen die Rechte aus graph/acl (SPEC §17.2) — der
+    // Serverstart legt die Standardregeln an, der Test genauso. Ohne sie
+    // sieht auch der Eigentümer nichts, und das wäre kein aussagekräftiger
+    // Negativtest.
+    await ensureDefaultAuthorizations(handle, { admins: ['default'] });
+    return handle;
 }
 
 /** Stub-Endpoint, der echtes SPARQL-Results-JSON spricht. */

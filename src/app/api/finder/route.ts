@@ -10,7 +10,7 @@
 import { NextResponse } from 'next/server';
 import { listConversations } from '@/lib/storage/chat';
 import { getEvents } from '@/lib/storage/calendar';
-import { getServerGraph } from '@/lib/graph/server/instance';
+import { getRequestGraph } from '@/lib/graph/server/context';
 import { workspaceFromStore } from '@/lib/graph/workspace/read';
 import { retrievalDataset } from '@/lib/graph/search/retrieval';
 import { getFulltextIndex } from '@/lib/graph/search/cache';
@@ -41,12 +41,16 @@ export async function GET(request: Request) {
     }
 
     try {
-        const handle = await getServerGraph();
+        const { store, iri, grant } = await getRequestGraph();
+        const handle = { store, iri };
         const results: FinderResult[] = [];
 
         // Graph-Bürger über den Volltext-Index (Dataset = Wissens-Graphen).
         if (!typeFilter || ['doc', 'note', 'task', 'project'].includes(typeFilter)) {
-            const dataset = await retrievalDataset(handle, { includeInferred: false });
+            const dataset = await retrievalDataset(handle, {
+                includeInferred: false,
+                allowedGraphs: grant.readableGraphs,
+            });
             const index = await getFulltextIndex(handle, dataset);
             const workspace = await workspaceFromStore(handle.store, handle.iri);
             for (const hit of searchWorkspaceGraph(index, handle.iri, workspace, rawQuery, typeFilter)) {

@@ -20,12 +20,11 @@
  *    ihm selbst verschlossen sind (Confused Deputy).
  *  - Zeitbudget, Ergebnis-Limit und Rate-Limit pro Identität sind Pflicht.
  *
- * Tokens kommen bis M13 aus derselben Konfiguration wie beim MCP-Server
- * (`OW_MCP_TOKENS`, Recht `sparql`) — eine Rechte-Welt, nicht zwei.
- *
- * MIGRATION: Mit M13 kommt das erlaubte Dataset aus `graph/acl` statt aus
- * der Token-Liste. Diese Datei ändert sich dadurch nicht — sie kennt nur
- * `AccessGrant`; getauscht wird ausschließlich die Herkunft des Grants.
+ * Tokens kommen aus derselben Konfiguration wie beim MCP-Server
+ * (`OW_MCP_TOKENS`, Recht `sparql`) — eine Rechte-Welt, nicht zwei. Seit
+ * M13 nennt ein Token nur noch den Nutzer; das erlaubte Dataset kommt aus
+ * `graph/acl`. Diese Datei hat sich dadurch kaum geändert — sie kennt nur
+ * `AccessGrant`; getauscht wurde ausschließlich die Herkunft des Grants.
  */
 
 import type { GraphStore } from '../store/types';
@@ -34,6 +33,7 @@ import { executeSparqlProtocol, type SparqlProtocolRequest } from '../sparql/pro
 import { sparqlHttpResponse, sparqlRequestFromHttp, SparqlBodyTooLargeError } from '../sparql/http';
 import { bearerFromHeaders, findMcpToken, grantForToken, MCP_TOKENS_ENV, type McpTokenParseResult } from '../mcp/tokens';
 import { RateLimiter } from '../mcp/limits';
+import { ANONYMOUS_IDENTITY, grantForIdentity } from '../authz/resolve';
 import { hasServiceClause } from './service';
 
 export interface InboundGraphHandle {
@@ -109,19 +109,28 @@ export class FederationEndpointHost {
      */
     async identify(
         request: Request,
+        store: GraphStore,
         iri: IriFactory,
         existingGraphs: readonly string[],
     ): Promise<InboundIdentity | { refused: Response }> {
         const config = this.deps.tokens();
         const presented = bearerFromHeaders(request.headers);
-        if (!presented) {
-            return { identity: null, allowedGraphs: [], rateLimitPerMinute: this.deps.anonymousRateLimit ?? DEFAULTS.anonymousRateLimit };
-        }
+        const anonymous = async (): Promise<InboundIdentity> => ({
+            identity: null,
+            // §17.5: Der öffentliche Teilgraph ist ohne Anmeldung lesbar und
+            // föderierbar — und zwar über dieselbe ACL wie alles andere,
+            // nicht über eine Sonderregel. Ohne öffentliche Freigabe bleibt
+            // die Liste leer.
+            allowedGraphs: (await grantForIdentity({ store, iri }, ANONYMOUS_IDENTITY, { existingGraphs })).readableGraphs,
+            rateLimitPerMinute: this.deps.anonymousRateLimit ?? DEFAULTS.anonymousRateLimit,
+        });
+        if (!presented) return anonymous();
         const token = await findMcpToken(config.tokens, presented);
         if (!token) {
             // Kein 401: ein fremder Client soll nicht unterscheiden können,
-            // ob ein Token existiert. Er sieht schlicht nichts.
-            return { identity: null, allowedGraphs: [], rateLimitPerMinute: this.deps.anonymousRateLimit ?? DEFAULTS.anonymousRateLimit };
+            // ob ein Token existiert. Er sieht genau so viel wie jeder
+            // Anonyme — nicht mehr, nicht weniger.
+            return anonymous();
         }
         if (!token.sparql) {
             return {
@@ -130,7 +139,7 @@ export class FederationEndpointHost {
                     'wenn dieser Zugang föderieren soll.'),
             };
         }
-        const { grant } = grantForToken(token, iri, existingGraphs);
+        const { grant } = await grantForToken(token, { store, iri }, existingGraphs);
         return {
             identity: grant.identity,
             allowedGraphs: grant.readableGraphs,
@@ -168,7 +177,7 @@ export class FederationEndpointHost {
 
         const handle = await this.deps.graph();
         const existing = (await handle.store.graphs()).map(g => g.value);
-        const identified = await this.identify(request, handle.iri, existing);
+        const identified = await this.identify(request, handle.store, handle.iri, existing);
         if ('refused' in identified) return identified.refused;
 
         const decision = this.limiter.check(identified.identity ?? 'anonym', identified.rateLimitPerMinute);

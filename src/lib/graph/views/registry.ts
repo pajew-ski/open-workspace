@@ -230,9 +230,12 @@ export interface ResolvedQueryGraph {
 export async function resolveQueryTextAsGraph(
     handle: GraphHandle,
     queryText: string,
-    options: { federation?: SparqlFederationResolver } = {},
+    options: { federation?: SparqlFederationResolver; allowedGraphs?: readonly string[] } = {},
 ): Promise<ResolvedQueryGraph> {
-    const dataset = await resolveDataset(handle.store, handle.iri);
+    // Die Rechte-Klammer ist dieselbe wie im SPARQL-Endpoint (§17.3) —
+    // eine View sieht nie mehr als der, der sie öffnet.
+    const dataset = await resolveDataset(handle.store, handle.iri, undefined,
+        options.allowedGraphs ? { allowedGraphs: options.allowedGraphs } : undefined);
     // Föderation (SPEC §7.4, M11): `SERVICE` wird aufgelöst, bevor der
     // Store die Query sieht — sonst endete ein föderierter CONSTRUCT im
     // Editor mit „the service is not supported".
@@ -302,11 +305,15 @@ export async function resolveQueryTextAsGraph(
 }
 
 /** Löst eine gespeicherte View über ihren Query-Text auf. */
-export async function resolveQueryView(handle: GraphHandle, id: string): Promise<ResolvedQueryView> {
+export async function resolveQueryView(
+    handle: GraphHandle,
+    id: string,
+    options: { allowedGraphs?: readonly string[] } = {},
+): Promise<ResolvedQueryView> {
     const view = await getQueryView(handle, id);
     if (!view) {
         throw new Error(`View "${id}" ist nicht registriert.`);
     }
-    const resolved = await resolveQueryTextAsGraph(handle, view.queryText);
+    const resolved = await resolveQueryTextAsGraph(handle, view.queryText, options);
     return { view, ...resolved };
 }

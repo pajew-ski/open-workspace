@@ -12,14 +12,15 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { parseBody, createGraphViewSchema } from '@/lib/api/validation';
-import { getServerGraph, persistServerGraphSnapshot } from '@/lib/graph/server/instance';
+import {persistServerGraphSnapshot } from '@/lib/graph/server/instance';
+import { getRequestGraph, getUserGraph } from '@/lib/graph/server/context';
 import { createQueryView, deleteQueryView, listQueryViews, resolveQueryView } from '@/lib/graph/views/registry';
 import { isGraphQuery, isReadQuery } from '@/lib/graph/sparql/classify';
 import { resolveDataset } from '@/lib/graph/sparql/protocol';
 
 export async function GET() {
     try {
-        const handle = await getServerGraph();
+        const handle = await getUserGraph();
         const views = await listQueryViews(handle);
         return NextResponse.json({ views });
     } catch (error) {
@@ -42,7 +43,8 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        const handle = await getServerGraph();
+        const { store, iri, grant } = await getRequestGraph();
+        const handle = { store, iri };
         const view = await createQueryView(handle, {
             name: parsed.data.name,
             queryText: parsed.data.queryText,
@@ -50,10 +52,12 @@ export async function POST(request: NextRequest) {
         });
         try {
             if (isGraphQuery(parsed.data.queryText)) {
-                await resolveQueryView(handle, view.id);
+                await resolveQueryView(handle, view.id, { allowedGraphs: grant.readableGraphs });
             } else {
                 // SELECT/ASK: probeweise ausführen (Syntax + Dataset), Ergebnis verwerfen.
-                const dataset = await resolveDataset(handle.store, handle.iri);
+                const dataset = await resolveDataset(handle.store, handle.iri, undefined, {
+                    allowedGraphs: grant.readableGraphs,
+                });
                 await handle.store.query(parsed.data.queryText, {
                     defaultGraphs: dataset.defaultGraphs,
                     namedGraphs: dataset.namedGraphs,

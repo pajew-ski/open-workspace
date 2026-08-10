@@ -8,7 +8,8 @@
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getServerGraph, persistServerGraphSnapshot } from '@/lib/graph/server/instance';
+import {persistServerGraphSnapshot } from '@/lib/graph/server/instance';
+import { getUserGraph } from '@/lib/graph/server/context';
 import {
     deleteFederatedEndpoint,
     getFederatedEndpoint,
@@ -30,7 +31,7 @@ const patchSchema = z.object({
 export async function GET(_request: Request, context: RouteContext): Promise<Response> {
     const { id } = await context.params;
     try {
-        const endpoint = await getFederatedEndpoint(await getServerGraph(), id);
+        const endpoint = await getFederatedEndpoint(await getUserGraph(), id);
         if (!endpoint) {
             return NextResponse.json({ error: `Endpoint "${id}" existiert nicht.` }, { status: 404 });
         }
@@ -53,7 +54,7 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Re
         return NextResponse.json({ error: message }, { status: 400 });
     }
     try {
-        const endpoint = await updateFederatedEndpoint(await getServerGraph(), id, parsed);
+        const endpoint = await updateFederatedEndpoint(await getUserGraph(), id, parsed);
         if (!endpoint) {
             return NextResponse.json({ error: `Endpoint "${id}" existiert nicht.` }, { status: 404 });
         }
@@ -70,7 +71,7 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Re
 export async function DELETE(_request: Request, context: RouteContext): Promise<Response> {
     const { id } = await context.params;
     try {
-        const removed = await deleteFederatedEndpoint(await getServerGraph(), id);
+        const removed = await deleteFederatedEndpoint(await getUserGraph(), id);
         if (!removed) {
             return NextResponse.json({ error: `Endpoint "${id}" existiert nicht.` }, { status: 404 });
         }
