@@ -5,6 +5,7 @@ import type { A2UINode, UIResourceContent } from '@/components/a2ui/types';
 import { runAssistantTurn } from '@/lib/ai/transport';
 import { addMessage as persistMessage } from '@/lib/chat/gateway';
 import type { ClientProviderRecord } from '@/lib/ai/store.client';
+import type { SelfModelView } from '@/lib/graph/meta/self-model-view';
 
 /**
  * Conversation + streaming hook used by the full-page assistant.
@@ -31,6 +32,8 @@ interface ChatContext {
     module: string;
     moduleDescription: string;
     pathname: string;
+    /** Selbstmodell für den Browser-Pfad (SPEC §18) — serverseitig liest die Route es selbst. */
+    selfModel?: SelfModelView;
 }
 
 export interface ConversationOptions {

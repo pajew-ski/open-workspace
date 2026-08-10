@@ -29,6 +29,7 @@ const PAGES = [
     '/graph/access',
     '/settings',
     '/assistant',
+    '/onboarding',
 ];
 
 const DARK_MODE_PAGES = ['/', '/tasks', '/docs'];

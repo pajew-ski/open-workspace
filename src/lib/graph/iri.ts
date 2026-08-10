@@ -43,7 +43,10 @@ export type EntityType =
     /** Generierte Query-View (SPEC §9 / M5). */
     | 'view'
     /** Gespeichertes Retrieval-Profil (SPEC §7.5 / M8). */
-    | 'profile';
+    | 'profile'
+    /** Selbstmodell (SPEC §18 / M14): die Anwendung und ihre Module. */
+    | 'app'
+    | 'module';
 
 /**
  * Instanzweite Entitäten (SPEC §17.1 / M13). Nutzer, Gruppen, geteilte
