@@ -71,6 +71,14 @@ einmalig in den Browser-Cache und rechnet per WebGPU auf der GPU des
 Nutzers. Kein Endpunkt, kein Key, nach dem Download offline — der
 Assistent funktioniert damit vollständig ohne jede Infrastruktur.
 
+Welche Modelle zur Wahl stehen, entscheidet der mitgelieferte Build
+(aktuell ~165 Konfigurationen): `CURATED_WEBLLM_MODELS` ist die
+Empfehlung — Hermes 3/2 Pro für Werkzeugaufrufe, Qwen 3, Phi 4 Mini,
+Llama 3.1/3.2, Gemma 3 —, der Manager blendet auf Wunsch den vollen
+Katalog ein. Größenangaben und die Tool-Calling-Markierung stammen aus
+der Bibliothek selbst und werden gegen sie getestet; die Liste ist
+Auswahl, keine zweite Wahrheit.
+
 ## 3. Provider-Modell
 
 `AIProvider` (`src/lib/ai/types.ts`): `kind` (Katalog), `baseUrl`,
@@ -191,7 +199,9 @@ einen Provider überführt — bestehende Installationen laufen unverändert.
 - **/ai — AI-Hub**: Provider-Karten (Status, Routen-Badge, Modelle,
   Latenz), Preset-Galerie, Key-Speicherort-Wahl, Diagnose-Panel
   („Cloud-App + lokale Inference"), Defaults, WebLLM-Modell-Manager
-  (WebGPU-Check, Download mit Fortschritt, Cache-Status/-Eviction).
+  (WebGPU-Check, Download mit Fortschritt, Cache-Status/-Eviction,
+  kuratierte Empfehlung + durchsuchbarer Voll-Katalog des Builds mit
+  Tool-Calling-Filter).
 - **ModelPicker** (Chat-Widget + /assistant): aktive Auswahl mit
   Status-Punkt, Provider→Modelle-Popover, Routen-Badges, Serverlos-Chip.
 - **/skills**: Karten mit Quelle-Badges, Aktiv/Immer-aktiv-Toggles,
@@ -219,5 +229,13 @@ einen Provider überführt — bestehende Installationen laufen unverändert.
   decken Remote- und lokale HTTP-Server ab.
 - A2A: Streaming (`message/stream`) und Push-Notifications sind nicht
   implementiert; `message/send` + Polling decken den Kern ab.
-- WebLLM-Tool-Calls laufen über die Text-Syntax (modellabhängig fragil
-  nativ) — bewusste Robustheitsentscheidung.
+- WebLLM-Tool-Calls laufen über die Text-Syntax, nicht über den nativen
+  `tools`-Parameter. Begründet, nicht vergessen (geprüft in
+  `tests/ai/webllm-models.test.ts`): der mitgelieferte Build schaltet
+  `tools` nur für eine Handvoll Hermes-Modelle frei
+  (`functionCallingModelIds`), verbietet dabei eine System-Nachricht (die
+  dieser Workspace immer sendet — Modul-Kontext aus dem Selbstmodell) und
+  zwingt die Antwort in ein Tool-Call-Array, womit gewöhnliche
+  Gesprächsrunden unmöglich werden. Die Modell-Liste markiert diese
+  Modelle trotzdem: Sie sind auf Funktionsaufrufe trainiert und folgen
+  der Text-Syntax am zuverlässigsten.
