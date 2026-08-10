@@ -374,3 +374,11 @@
     line-height: 1.4;
     overflow-wrap: anywhere;
 }
+
+/* Anzahl je Filtergruppe — zurückhaltend, sie erklärt nur den Regler. */
+.filterCount {
+    margin-left: auto;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-tertiary);
+}

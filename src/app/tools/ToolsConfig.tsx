@@ -7,13 +7,14 @@ import { AddApiToolDialog } from '@/components/tools/AddApiToolDialog';
 import { ConnectionManager } from '@/app/tools/connections/ConnectionManager';
 import { McpServerManager } from './McpServerManager';
 import styles from './ToolsConfig.module.css';
+import type { Tool, CreateToolRequest } from '@/lib/tools/types';
 
 export function ToolsConfig() {
     const [activeTab, setActiveTab] = useState<'tools' | 'connections'>('tools');
     const [isAdding, setIsAdding] = useState(false);
     const queryClient = useQueryClient();
 
-    const { data: tools = [] } = useQuery<any[]>({
+    const { data: tools = [] } = useQuery<Tool[]>({
         queryKey: ['tools'],
         queryFn: async () => {
             const res = await fetch('/api/tools');
@@ -22,7 +23,7 @@ export function ToolsConfig() {
         },
     });
 
-    const handleAddApi = async (data: any) => {
+    const handleAddApi = async (data: CreateToolRequest) => {
         const res = await fetch('/api/tools', {
             method: 'POST',
             body: JSON.stringify(data),

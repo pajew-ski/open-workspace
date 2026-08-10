@@ -8,7 +8,7 @@ import { moduleForPath } from '@/lib/graph/meta/self-model-view';
 import { ConfirmDialog } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { A2UIRenderer } from '../a2ui/A2UIRenderer';
-import { A2UINode, UIResourceContent } from '../a2ui/types';
+import { A2UINode, UIResourceContent, type A2UIValue } from '../a2ui/types';
 import { MessageContent } from './MessageContent';
 import { ModelPicker } from './ModelPicker';
 import { runAssistantTurn } from '@/lib/ai/transport';
@@ -18,6 +18,14 @@ import { resolveRoute } from '@/lib/ai/store.client';
 import * as chatGateway from '@/lib/chat/gateway';
 import './MessageContent.css';
 import styles from './AssistantChat.module.css';
+
+/**
+ * Ausschnitte fremder API-Antworten, die nur in den Kontext-Text
+ * einfließen. Bewusst schmal: hier wird gelesen, nicht modelliert.
+ */
+interface CalendarEventSummary { startDate: string; title: string; location?: string }
+interface ProjectSummary { id: string; title: string }
+interface TaskSummary { status: string; title: string; projectId?: string }
 
 interface ChatMessage {
     id: string;
@@ -44,7 +52,9 @@ const DEFAULT_INPUT_HEIGHT = 44;
 const MIN_INPUT_HEIGHT = 44;
 
 export function AssistantChat() {
-    const toast = useToast();
+    // Nur die stabile Einzelfunktion holen: useToast() liefert je Render
+    // ein neues Objekt und würde jeden Callback darunter instabil machen.
+    const { info: toastInfo } = useToast();
     // UI State - Initialize with defaults for SSR consistency
     const [isOpen, setIsOpen] = useState(false);
     const [showSidebar, setShowSidebar] = useState(false);
@@ -83,11 +93,15 @@ export function AssistantChat() {
     // Refs
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
-    const inputRef = useRef<HTMLInputElement>(null);
-    const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
+    const inputRef = useRef<HTMLTextAreaElement>(null);
+    // Startgeometrie einer Größenänderung — inklusive Position, weil das
+    // Ziehen an der linken/oberen Kante das Fenster mitverschiebt.
+    const resizeRef = useRef<{
+        startX: number; startY: number; startW: number; startH: number;
+        startPosX: number; startPosY: number;
+    } | null>(null);
     const inputResizeRef = useRef<{ startY: number; startH: number } | null>(null);
     const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
-    const shouldScrollToBottomRef = useRef(false);
     const scrollRestoredRef = useRef(false);
     const lastInputResizeClickRef = useRef(0);
     const lastMessageCountRef = useRef(0);
@@ -201,9 +215,12 @@ export function AssistantChat() {
         return () => { cancelled = true; };
     }, [provider]);
 
-    // Load conversations
+    // Load conversations — bewusst nur beim Mounten. `loadConversations`
+    // legt bei leerem Bestand eine erste Unterhaltung an; als Dependency
+    // würde das bei jedem Rendern erneut anlaufen.
     useEffect(() => {
         loadConversations();
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- Mount-Effekt, siehe oben
     }, []);
 
     // Simplified Scroll Logic
@@ -498,7 +515,7 @@ export function AssistantChat() {
                     const res = await fetch(`/api/calendar?action=events&start=${start.toISOString()}&end=${end.toISOString()}`);
                     const data = await res.json();
                     if (data.events && data.events.length > 0) {
-                        additionalContext += `\nAKTUELLE TERMINE (nachste 7 Tage):\n${data.events.map((e: any) =>
+                        additionalContext += `\nAKTUELLE TERMINE (nachste 7 Tage):\n${data.events.map((e: CalendarEventSummary) =>
                             `- ${new Date(e.startDate).toLocaleString('de-DE')}: ${e.title} ${e.location ? `(${e.location})` : ''}`
                         ).join('\n')}`;
                     }
@@ -510,8 +527,8 @@ export function AssistantChat() {
                     const [tasksData, projsData] = await Promise.all([tasksRes.json(), projsRes.json()]);
                     if (tasksData.tasks) {
                         const projectMap: Record<string, string> = {};
-                        (projsData.projects || []).forEach((p: any) => projectMap[p.id] = p.title);
-                        additionalContext += `\nAKTUELLE AUFGABEN:\n` + tasksData.tasks.slice(0, 20).map((t: any) => {
+                        (projsData.projects || []).forEach((p: ProjectSummary) => projectMap[p.id] = p.title);
+                        additionalContext += `\nAKTUELLE AUFGABEN:\n` + tasksData.tasks.slice(0, 20).map((t: TaskSummary) => {
                             let info = `- [${t.status.toUpperCase()}] ${t.title}`;
                             if (t.projectId) info += ` [${projectMap[t.projectId] || t.projectId}]`;
                             return info;
@@ -647,11 +664,11 @@ export function AssistantChat() {
         e.stopPropagation();
         const currentX = position?.x ?? (window.innerWidth - width - 20);
         const currentY = position?.y ?? (window.innerHeight - height - 90);
-        resizeRef.current = { startX: e.clientX, startY: e.clientY, startW: width, startH: height };
+        resizeRef.current = {
+            startX: e.clientX, startY: e.clientY, startW: width, startH: height,
+            startPosX: currentX, startPosY: currentY,
+        };
         resizeDirectionRef.current = direction;
-        // Store position for adjustment during resize
-        (resizeRef.current as any).startPosX = currentX;
-        (resizeRef.current as any).startPosY = currentY;
         document.addEventListener('mousemove', handleResizeMove);
         document.addEventListener('mouseup', handleResizeEnd);
     };
@@ -661,7 +678,7 @@ export function AssistantChat() {
         const dir = resizeDirectionRef.current;
         const deltaX = e.clientX - resizeRef.current.startX;
         const deltaY = e.clientY - resizeRef.current.startY;
-        const startData = resizeRef.current as any;
+        const startData = resizeRef.current;
 
         let newWidth = startData.startW;
         let newHeight = startData.startH;
@@ -806,7 +823,7 @@ export function AssistantChat() {
         return new Date(timestamp).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
     };
 
-    const handleUserAction = useCallback(async (actionId: string, payload?: any) => {
+    const handleUserAction = useCallback(async (actionId: string, payload?: A2UIValue) => {
         // MCP-UI events from embedded resources (sandboxed iframes)
         if (actionId.startsWith('mcpui:')) {
             const kind = actionId.slice('mcpui:'.length);
@@ -825,7 +842,7 @@ export function AssistantChat() {
                 return;
             }
             if (kind === 'notify') {
-                toast.info(typeof payload?.message === 'string' ? payload.message : 'Hinweis aus eingebetteter UI');
+                toastInfo(typeof payload?.message === 'string' ? payload.message : 'Hinweis aus eingebetteter UI');
                 return;
             }
             // intent and unknown kinds fall through as context message
@@ -835,7 +852,7 @@ export function AssistantChat() {
 
         // A2UI actions return to the model as a user-visible action marker
         await sendMessage(`[User Action: ${actionId}]`);
-    }, [sendMessage]);
+    }, [sendMessage, toastInfo]);
 
     // The full-page assistant (/assistant) is the assistant on that route —
     // don't also float the widget there.
@@ -1005,7 +1022,7 @@ export function AssistantChat() {
                         )}
                         <textarea
                             data-testid="assistant-chat-input"
-                            ref={inputRef as any}
+                            ref={inputRef}
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={(e) => {

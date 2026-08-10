@@ -82,7 +82,7 @@ export function ProjectForm({ project, onClose, onSave }: ProjectFormProps) {
                         </div>
                         <div className={styles.field}>
                             <label>Status</label>
-                            <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value as any })}>
+                            <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value as Project['status'] })}>
                                 <option value="planning">Planung</option>
                                 <option value="active">Aktiv</option>
                                 <option value="completed">Abgeschlossen</option>

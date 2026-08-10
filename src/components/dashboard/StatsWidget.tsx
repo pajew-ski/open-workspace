@@ -2,10 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import { WidgetWrapper } from './WidgetWrapper';
+import type { BaseWidgetProps } from './types';
 import styles from './Widgets.module.css';
 
-export function StatsWidget({ id, isEditing, onDelete }: any) {
-    const [stats, setStats] = useState<any>({ docs: 0, tasks: 0, canvases: 0 });
+interface DashboardStats {
+    docs: number;
+    tasks: number;
+    canvases: number;
+}
+
+export function StatsWidget({ id, isEditing, onDelete }: BaseWidgetProps) {
+    const [stats, setStats] = useState<DashboardStats>({ docs: 0, tasks: 0, canvases: 0 });
 
     useEffect(() => {
         fetch('/api/dashboard?action=stats')

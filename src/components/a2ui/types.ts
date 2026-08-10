@@ -1,7 +1,17 @@
 // A2UI Core Types
 
+/**
+ * A2UI ist ein Draht-Protokoll: Die Bausteine kommen von einem entfernten
+ * Agenten und sind zur Bauzeit nicht typisierbar. Die Komponenten lesen
+ * sie defensiv (`{literalString}`-Umschlag oder Rohwert) — deshalb steht
+ * `any` hier bewusst und nicht als Altlast. Die Alternative wäre eine
+ * Typ-Fassade, die Sicherheit behauptet, wo keine ist.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Protokollgrenze, siehe oben
+export type A2UIValue = any;
+
 export interface A2UIComponent {
-    [key: string]: any;
+    [key: string]: A2UIValue;
 }
 
 export interface A2UINode {
@@ -14,7 +24,7 @@ export interface A2UISurface {
     components: A2UINode[];
 }
 
-export type ActionHandler = (actionId: string, payload?: any) => void;
+export type ActionHandler = (actionId: string, payload?: A2UIValue) => void;
 
 // ============================================================
 // Component Prop Types
@@ -119,7 +129,7 @@ export interface TableColumn {
 
 export interface TableProps {
     columns: (string | TableColumn)[];
-    rows: any[];
+    rows: A2UIValue[];
     striped?: boolean;
     compact?: boolean;
 }

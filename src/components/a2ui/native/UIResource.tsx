@@ -61,8 +61,10 @@ function firstHttpUri(uriList: string): string | null {
     return null;
 }
 
-export function UIResource({ props, onAction }: { props: UIResourceProps; onAction: ActionHandler }) {
-    const resource = props?.resource || {};
+export function UIResource({ props, onAction }: { props: Partial<UIResourceProps>; onAction: ActionHandler }) {
+    // `|| {}` erzeugt bei jedem Render ein neues Objekt und macht damit
+    // jedes useMemo darunter wirkungslos — einmal stabilisieren.
+    const resource = useMemo<UIResourcePayload>(() => props?.resource ?? {}, [props?.resource]);
     const [height, setHeight] = useState(() =>
         Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, props?.height || 240))
     );

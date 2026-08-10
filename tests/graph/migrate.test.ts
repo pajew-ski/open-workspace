@@ -106,6 +106,37 @@ describe('Migrator (SPEC §12.2)', () => {
         expect(blocked[0].object.value).toBe(iri.entity('task', 'task-2'));
     });
 
+    it('löst Wikilinks auch über den Titel auf, wenn der Slug abweicht', () => {
+        // Der Realfall aus data/docs: Der Slug stammt aus dem Anlege-
+        // Zeitpunkt (`module-tasks`), der Wikilink nennt den heutigen
+        // Titel („Modul: Aufgaben & Projekte"). Beides muss auf dasselbe
+        // Dokument zeigen — sonst hängt die Kante ins Leere und die
+        // schema.org-Projektion wirft sie still weg.
+        const input: WorkspaceSnapshotInput = {
+            ...fixture(),
+            docs: [
+                {
+                    id: 'sys-doc-001', slug: 'how-to-open-workspace', title: 'HowTo: Open Workspace nutzen',
+                    content: 'Siehe [[Modul: Aufgaben & Projekte]] und [[Gibt Es Nicht]].',
+                    tags: [], type: 'HowTo',
+                    createdAt: '2026-01-01T10:00:00.000Z', updatedAt: '2026-01-01T10:00:00.000Z',
+                },
+                {
+                    id: 'sys-doc-002', slug: 'module-tasks', title: 'Modul: Aufgaben & Projekte',
+                    content: 'Inhalt.', tags: [], type: 'TechArticle',
+                    createdAt: '2026-01-01T10:00:00.000Z', updatedAt: '2026-01-01T10:00:00.000Z',
+                },
+            ],
+        };
+        const linksTo = buildWorkspaceQuads(input, iri).quads
+            .filter(q => q.predicate.value === OW.linksTo && q.subject.value === iri.entity('doc', 'sys-doc-001'));
+        expect(linksTo.map(q => q.object.value)).toEqual([
+            iri.entity('doc', 'sys-doc-002'),
+            // Unauflösbares bleibt unauflösbar — behauptet, aber ohne Knoten.
+            iri.entity('doc', 'gibt-es-nicht'),
+        ]);
+    });
+
     it('verschachtelte Tags erhalten skos:broader', () => {
         const { quads } = buildWorkspaceQuads(fixture(), iri);
         const broader = quads.filter(q => q.predicate.value === SKOS.broader);

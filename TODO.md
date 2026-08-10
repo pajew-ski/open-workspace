@@ -325,6 +325,27 @@
       nachgezogen (`ensureGraphAuthorizations` im Anfrage-Kontext) — vorher
       waren sie bis zum nächsten Neustart unsichtbar — Abnahme:
       `tests/graph/self-model.test.ts` und `tests/graph/onboarding.test.ts`
+- [x] **Nachtrag: Wikilinks lösten nie auf.** `[[…]]` nennt den Titel des
+      Ziels, aufgelöst wurde aber nur gegen den Slug — sobald beide
+      auseinanderfielen (Dokument nach dem Anlegen umbenannt), entstand die
+      `ow:linksTo`-Kante auf eine IRI ohne Knoten und verschwand in jeder
+      Ansicht. Im Bestand betraf das alle vier Dokument-Wikilinks. Der
+      Auflösungsindex kennt jetzt Slug *und* Titel (Slug sticht bei
+      Gleichstand) — Abnahme: `tests/graph/migrate.test.ts`
+- [x] **Nachtrag: Dokumente ohne Frontmatter fielen still heraus.**
+      `data/docs/architecture_agents.md` hatte keines und war damit in
+      keinem Graphen und keiner Ansicht — sichtbar nur als Datei. Es hat
+      jetzt Frontmatter (`sys-doc-004`) und heißt nach seinem Slug
+      `architecture-agents.md`, weil die Projektion Dateien so benennt.
+      Damit das nicht wiederkommt, prüft `docFromMarkdown` die Pflichtfelder
+      (id, slug, title, createdAt, updatedAt) und meldet begründet, was
+      übergangen wird, statt es zu verschlucken — Abnahme:
+      `tests/graph/workspace-roundtrip.test.ts`
+- [x] **Nachtrag: „Bestand" im Graph-Explorer.** Die Herkunfts-Zahlen sind
+      Aussagen (Tripel), nicht Knoten — 208 Aussagen sind 23 Knoten. Das
+      war als Knotenzahl lesbar und damit irreführend. Jetzt sind sie als
+      „Aussagen" beschriftet, und ein eigener Abschnitt nennt sichtbare vs.
+      vorhandene Knoten und Kanten; jeder Filter zeigt seine Anzahl
 
 ## Fundament (fertig)
 
@@ -433,8 +454,11 @@
 
 ### P0
 - [ ] i18n mit next-intl (de/en, Umschalter, dynamisches html lang)
-- [ ] no-explicit-any-Abbau (aktuell 91 Warnings außerhalb von
-      `src/lib/graph/`; dort ist `any` bereits ESLint-Error)
+- [x] no-explicit-any-Abbau: `bun run lint` ist auf 0 Warnings. Kein
+      `any` mehr außerhalb der A2UI-Protokollgrenze, wo es begründet und
+      als `A2UIValue` benannt steht. Ebenso erledigt: unbenutzte
+      Bindungen und die React-Hook-Dependencies (die verbliebenen
+      Ausnahmen tragen eine Begründung am Code)
 - [ ] Frontmatter-Parser durch yaml/gray-matter ersetzen
 
 ### P1

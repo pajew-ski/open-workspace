@@ -3,14 +3,11 @@
 import { useState } from 'react';
 import { WidgetWrapper } from './WidgetWrapper';
 import { Upload, ImageIcon } from 'lucide-react';
+import type { EditableWidgetProps } from './types';
 import styles from './Widgets.module.css';
 
-interface ImageWidgetProps {
-    id: string;
+interface ImageWidgetProps extends EditableWidgetProps {
     url?: string;
-    isEditing: boolean;
-    onDelete: (id: string) => void;
-    onUpdate: (id: string, updates: any) => void;
 }
 
 export function ImageWidget({ id, url, isEditing, onDelete, onUpdate }: ImageWidgetProps) {
@@ -53,6 +50,11 @@ export function ImageWidget({ id, url, isEditing, onDelete, onUpdate }: ImageWid
         <WidgetWrapper id={id} isEditing={isEditing} onDelete={onDelete} className={styles.imageWidget}>
             {url ? (
                 <div className={styles.imageContainer}>
+                    {/* Beliebige, vom Nutzer eingetragene URL. `next/image`
+                        verlangt dafür konfigurierte `remotePatterns` und
+                        würde jeden nicht gelisteten Host zur Laufzeit
+                        ablehnen — hier gehört das rohe <img> hin. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={url} alt="Dashboard Widget" className={styles.widgetImage} />
                     {isEditing && (
                         <div className={styles.uploadOverlay}>

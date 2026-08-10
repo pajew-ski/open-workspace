@@ -141,9 +141,22 @@ export function buildWorkspaceQuads(
     };
 
     // --- Dokumente -----------------------------------------------------
-    const slugToDocIri = new Map<string, string>();
+    // Auflösungsindex für Wikilinks. Ein `[[…]]` nennt in der Praxis den
+    // TITEL des Ziels, die kanonische Kennung eines Dokuments ist aber
+    // sein Slug — und beide fallen auseinander, sobald ein Dokument nach
+    // dem Anlegen umbenannt wurde (`module-tasks` vs. „Modul: Aufgaben &
+    // Projekte"). Wer nur gegen Slugs auflöst, erklärt jede Titel-
+    // Referenz für unauflösbar; die Kante entsteht dann auf eine IRI, die
+    // es nicht gibt, und verschwindet in jeder Ansicht.
+    const docIriByKey = new Map<string, string>();
     for (const doc of input.docs) {
-        slugToDocIri.set(doc.slug, iri.entity('doc', doc.id));
+        const titleKey = slugifyTitle(doc.title);
+        if (titleKey && !docIriByKey.has(titleKey)) docIriByKey.set(titleKey, iri.entity('doc', doc.id));
+    }
+    // Slugs zuletzt: die kanonische Kennung sticht einen gleichlautenden
+    // Titel eines anderen Dokuments.
+    for (const doc of input.docs) {
+        docIriByKey.set(doc.slug, iri.entity('doc', doc.id));
     }
 
     for (const doc of input.docs) {
@@ -174,9 +187,9 @@ export function buildWorkspaceQuads(
         // Ziele bekommen eine stabile Slug-IRI (die Projektion filtert
         // Kanten auf existierende Knoten — Wissen vs. Ansicht).
         for (const match of doc.content.matchAll(WIKILINK)) {
-            const targetSlug = slugifyTitle(match[1]);
-            if (!targetSlug) continue;
-            const target = slugToDocIri.get(targetSlug) ?? iri.entity('doc', targetSlug);
+            const targetKey = slugifyTitle(match[1]);
+            if (!targetKey) continue;
+            const target = docIriByKey.get(targetKey) ?? iri.entity('doc', targetKey);
             addIri(docIri, OW.linksTo, target);
             counts.links += 1;
         }

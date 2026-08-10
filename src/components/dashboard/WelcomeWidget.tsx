@@ -1,16 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { WidgetWrapper } from './WidgetWrapper';
-import { MarkdownEditor } from '@/components/markdown';
+import type { EditableWidgetProps } from './types';
 import styles from './Widgets.module.css';
 
-interface WelcomeWidgetProps {
-    id: string;
+interface WelcomeWidgetProps extends EditableWidgetProps {
     content: string;
-    isEditing: boolean;
-    onDelete: (id: string) => void;
-    onUpdate: (id: string, updates: any) => void;
 }
 
 export function WelcomeWidget({ id, content, isEditing, onDelete, onUpdate }: WelcomeWidgetProps) {

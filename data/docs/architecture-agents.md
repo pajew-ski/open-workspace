@@ -1,3 +1,15 @@
+---
+id: "sys-doc-004"
+slug: "architecture-agents"
+title: "Architecture: Scalable Agent Ecosystem"
+author: "michael-pajewski"
+type: "TechArticle"
+inLanguage: "en"
+tags: ["a2a", "agents", "architecture", "documentation"]
+createdAt: "2026-01-25T20:42:21.000Z"
+updatedAt: "2026-01-25T20:42:21.000Z"
+---
+
 # Architecture: Scalable Agent Ecosystem
 
 ## Goal
