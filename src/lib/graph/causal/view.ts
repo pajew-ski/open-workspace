@@ -15,16 +15,32 @@
 
 import { createDag, type CausalDag } from './dag';
 import { identifyEffect, type IdentificationResult } from './identify';
-import type { CausalModelView } from './types';
+import { meetsEvidence, type CausalEdgeView, type CausalModelView, type EvidenceLevel } from './types';
 
 export interface ModelDag {
     dag: CausalDag;
     /** Erfasste Variablen (C3) — nur über die lässt sich adjustieren. */
     observable: Set<string>;
     label(node: string): string;
+    /**
+     * Kanten, die `minEvidence` (§9) nicht erreicht haben und deshalb
+     * nicht im DAG stehen. Sie werden ausgewiesen, nicht verschwiegen:
+     * Ein Modell, das unter einer Belegschwelle auseinanderfällt, ist ein
+     * Befund und kein leeres Ergebnis.
+     */
+    droppedByEvidence: CausalEdgeView[];
 }
 
-export function dagFromModel(model: CausalModelView): ModelDag {
+export interface DagFromModelOptions {
+    /**
+     * Mindest-Belegstand je Kante (§9). Ohne Angabe zählt jede Kante —
+     * die Struktur ist eine Annahme, und Annahmen sind der Normalfall
+     * dieses Layers (Invariante C1).
+     */
+    minEvidence?: EvidenceLevel;
+}
+
+export function dagFromModel(model: CausalModelView, options: DagFromModelOptions = {}): ModelDag {
     const labels = new Map(model.variables.map(variable => [variable.iri, variable.name]));
     // Beobachtbar ist, wofür es eine Erfassungsregel gibt (C3) — nicht
     // erst, wofür schon genug Messpunkte da sind. Ob die Reihe lang genug
@@ -33,14 +49,19 @@ export function dagFromModel(model: CausalModelView): ModelDag {
     const observable = new Set(
         model.variables.filter(variable => variable.observation !== undefined).map(variable => variable.iri),
     );
+    const minimum = options.minEvidence;
+    const kept = minimum
+        ? model.edges.filter(edge => meetsEvidence(edge.evidenceLevel, minimum))
+        : model.edges;
     const dag = createDag({
         nodes: model.variables.map(variable => variable.iri),
-        edges: model.edges.map(edge => ({ from: edge.from, to: edge.to })),
+        edges: kept.map(edge => ({ from: edge.from, to: edge.to })),
     });
     return {
         dag,
         observable,
         label: node => labels.get(node) ?? lastSegment(node),
+        droppedByEvidence: minimum ? model.edges.filter(edge => !meetsEvidence(edge.evidenceLevel, minimum)) : [],
     };
 }
 

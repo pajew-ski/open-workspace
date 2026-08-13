@@ -4,9 +4,9 @@
 
 ## Hier weitermachen (Einstieg für neue Sessions)
 
-> **Neu seit 2026-08-13 — Kausal-Layer, C3, C0 und C1 gebaut.** Neben dem
-> Graph-Kern gilt [CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md)
-> (verbindlich für C0–C5). Umgesetzt sind drei Meilensteine:
+> **Neu seit 2026-08-13 — Kausal-Layer, C3, C0, C1 und C2 gebaut.** Neben
+> dem Graph-Kern gilt [CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md)
+> (verbindlich für C0–C5). Umgesetzt sind vier Meilensteine:
 >
 > - **C3, die Erfassung** — zuerst, weil als einzige zeitkritisch: Home
 >   Assistant verwirft vollständige Zustandswechsel nach
@@ -52,17 +52,37 @@
 >   Namensraum dürfen als NEUER Graph entstehen; vorhandene Graphen
 >   bleiben allein Sache von `graph/acl`). Details:
 >   [docs/kausalmodell.md](./docs/kausalmodell.md).
+> - **C2, das kausal geerdete Retrieval** — dasselbe Multi-Hop-Retrieval
+>   (§7.5), aber der Kausalstruktur folgend statt der semantischen
+>   Nachbarschaft. Keine zweite Pipeline: `RetrievalRequest.causal`
+>   (`mode` aus `ancestors|descendants|paths|markov-blanket`,
+>   `treatment`, `outcome`, `model`, `blockedBy`, `minEvidence`). Der
+>   Trace (`src/lib/graph/causal/trace.ts`) ist **pur** wie der übrige
+>   Tier-1-Kern; Seed-Score ist die kausale Nähe `1/(1+Schritte)`; der
+>   Modell-Graph kommt in den Traversal-Raum (Bestand und Grant klammern
+>   ihn), und ein **Tor** in der Expansion hält Modellgrößen draußen, die
+>   nicht zur Frage gehören — auch über den semantischen Umweg.
+>   `explain.causal` trägt Modell samt Revision, Frage, Wege mit Richtung
+>   und Offenheit, Adjustierung und jeden herausgefallenen Knoten mit
+>   Grund; der linearisierte Kontext beginnt mit demselben Vorspann („die
+>   Kette, nicht die Wolke"). Erdung schlägt fehl → **leeres** Ergebnis
+>   mit Begründung statt eines semantischen, das kausal aussieht; das
+>   Modell wird nie geraten. Auch im MCP-Werkzeug `graph_retrieve`, in
+>   Retrieval-Profilen und im Graph-Explorer („Kausaler Pfad", ersetzt
+>   das Bild durch die Kette). Details:
+>   [docs/kausalmodell.md](./docs/kausalmodell.md).
 >
 > **Nicht gebaut** und deshalb nirgends in der UI: Schätzung, Refutation,
-> kausales Retrieval, Hypothesen-Erzeugung. Kein Effekt, keine Zahl, kein
-> Konfidenzintervall — die Identifikation nennt Mengen, Wege und fehlende
-> Größen, mehr nicht.
+> Hypothesen-Erzeugung. Kein Effekt, keine Zahl, kein
+> Konfidenzintervall — Identifikation und Retrieval nennen Mengen, Wege
+> und fehlende Größen, mehr nicht.
 >
-> **Nächster Meilenstein: C2** (Causal Path Tracing im Retrieval, SPEC §9
-> — die Bausteine dafür liegen als pure Funktionen in C1), danach
-> C4 → C5 → C6. Reihenfolge und Begründung in CAUSAL_LAYER_SPEC §18,
-> Arbeitsmodus in §19, offener Stand mit Abnahmen in TODO.md unter
-> „Kausal-Layer". C7 und C8 nur nach ausdrücklicher Freigabe.
+> **Nächster Meilenstein: C4** (Schätzung + Refutation, SPEC §13.1/13.2 —
+> erst hier entstehen Zahlen, und sie brauchen die Identifikation aus C1
+> und die Refutation aus demselben Meilenstein), danach C5 → C6.
+> Reihenfolge und Begründung in CAUSAL_LAYER_SPEC §18, Arbeitsmodus in
+> §19, offener Stand mit Abnahmen in TODO.md unter „Kausal-Layer". C7 und
+> C8 nur nach ausdrücklicher Freigabe.
 
 **Stand 2026-08-10 (12. Ausbaustufe, Graph Core M0–M14 inkl. §12.4 und
 §18 — der Vollausbau der Spec ist damit abgeschlossen)**: Der
@@ -276,8 +296,15 @@ Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
   aufgenommenen Knoten + zitierfähiger [n]-Kontext, Token-Budget entlang
   der Score-Reihenfolge). `explain` + `provenance` sind Pflicht: jeder
   Knoten weist hop/via/scoreParts aus, jede Quelle Graph + Connector.
+  Seit C2 kennt dieselbe Pipeline die **kausale Erdung**
+  (`RetrievalRequest.causal`, CAUSAL_LAYER_SPEC §9): Trace über den DAG
+  statt semantischer Nachbarschaft, kausale Nähe als Seed-Score, ein Tor
+  gegen Modellgrößen außerhalb der Frage, `explain.causal` mit Modell,
+  Wegen, Adjustierung und begründeten Ausschlüssen — Details in
+  [docs/kausalmodell.md](./docs/kausalmodell.md).
   Retrieval-Profile sind `ow:RetrievalProfile`-Entitäten in `graph/meta`
-  (`ow:retrievalConfig` als JSON-Literal). APIs: `GET /api/graph/search`
+  (`ow:retrievalConfig` als JSON-Literal, seit C2 auch mit `causal`).
+  APIs: `GET /api/graph/search`
   (eigene Such-API mit ehrlicher Embedding-Diagnose),
   `POST /api/graph/retrieve` (zod-validiert; `profile` als Basis,
   Body-Felder überschreiben), `GET|POST /api/graph/retrieval-profiles`
@@ -643,11 +670,13 @@ Graph-Bürger).
 
 **Der laufende Arbeitsstrang ist der Kausal-Layer**
 ([CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md), §16 Meilensteine, §19
-Arbeitsmodus). C3 (Erfassung), C0 (Kausalmodell als Graph-Bürger) und C1
+Arbeitsmodus). C3 (Erfassung), C0 (Kausalmodell als Graph-Bürger), C1
 (Identifikation: Azyklizität, D-Separation, Backdoor/Frontdoor, minimale
 Adjustment Sets, Instrumente — reine Graphalgorithmik, läuft in allen drei
-Runtimes) sind gebaut; **als Nächstes C2** (Causal Path Tracing im
-Retrieval), danach C4, C5 in genau dieser Reihenfolge (Begründung in
+Runtimes) und C2 (Causal Path Tracing im Retrieval: dieselbe Pipeline
+folgt dem DAG statt der semantischen Nachbarschaft, `explain` trägt den
+Weg) sind gebaut; **als Nächstes C4** (Schätzung + Refutation), danach
+C5, C6 in genau dieser Reihenfolge (Begründung in
 §18). Der offene Stand steht
 abhakbar in [TODO.md](./TODO.md) unter „Kausal-Layer" — er ist die eine
 Quelle dafür, was noch fehlt.
