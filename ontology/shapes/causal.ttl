@@ -1,0 +1,163 @@
+@prefix sh:      <http://www.w3.org/ns/shacl#> .
+@prefix ow:      <https://pajew-ski.github.io/open-workspace/ns/v1#> .
+@prefix owsh:    <https://pajew-ski.github.io/open-workspace/ns/shapes#> .
+@prefix obo:     <http://purl.obolibrary.org/obo/> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix schema:  <https://schema.org/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+#################################################################
+# SHACL-Shapes für kausale Kanten (CAUSAL_LAYER_SPEC §5, C0)
+#
+# Sie sind der billigste der Filter aus §8 („die Symbolik richtet"):
+# Typverträglichkeit, Klassenzugehörigkeit und Lag-Form lassen sich
+# ohne eine einzige Schätzung prüfen. Was hier durchfällt, muss gar
+# nicht erst identifiziert oder geschätzt werden.
+#
+# Geladen wie die Kern-Shapes nach graph/shapes; ausgewertet auf
+# Anforderung über /api/graph/validate und in der Kausal-Ansicht.
+# Blockierend ist hier nichts: C0 hat keinen Schreibpfad für Kanten
+# (der Mensch schreibt sie per SPARQL), und ein Bericht sagt mehr als
+# ein abgelehnter Schreibvorgang.
+#
+# NICHT hier geprüft: Azyklizität, D-Separation, Identifizierbarkeit.
+# Das ist Graphalgorithmik und gehört nach C1 — SHACL kann es nicht,
+# und es hier anzudeuten wäre eine Attrappe.
+#################################################################
+
+owsh:CausalModelShape a sh:NodeShape ;
+    sh:targetClass ow:CausalModel ;
+    sh:name "Kausalmodell"@de ;
+    sh:property [
+        sh:path schema:name ;
+        sh:minCount 1 ;
+        sh:minLength 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Ein Kausalmodell braucht einen nicht-leeren Namen (schema:name)."@de ;
+    ] ;
+    sh:property [
+        sh:path dcterms:identifier ;
+        sh:minCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Ein Kausalmodell braucht seine stabile Kennung (dcterms:identifier) — sie benennt seinen Named Graph."@de ;
+    ] ;
+    sh:property [
+        sh:path schema:hasPart ;
+        sh:nodeKind sh:IRI ;
+        sh:severity sh:Violation ;
+        sh:message "Die Variablen eines Modells (schema:hasPart) müssen IRIs sein, keine Literale."@de ;
+    ] .
+
+#################################################################
+# Die Kante selbst: obo:RO_0002411 (causally upstream of)
+#################################################################
+
+owsh:CausalEdgeSubjectShape a sh:NodeShape ;
+    sh:targetSubjectsOf obo:RO_0002411 ;
+    sh:name "Ursache einer kausalen Kante"@de ;
+    sh:property [
+        sh:path obo:RO_0002411 ;
+        sh:nodeKind sh:IRI ;
+        sh:severity sh:Violation ;
+        sh:message "Eine kausale Kante muss auf eine IRI zeigen — ein Literal als Wirkung ist keine Variable."@de ;
+    ] ;
+    sh:property [
+        # Kausale Kanten laufen zwischen Modellvariablen. Ein Knoten, der
+        # (noch) keine ow:Variable ist, kann nie geschätzt werden — das
+        # ist ein Modellierungsmangel, aber kein Grund, den Graphen
+        # abzulehnen (Invariante C1: der Mensch verantwortet die Struktur).
+        sh:path rdf:type ;
+        sh:hasValue ow:Variable ;
+        sh:severity sh:Warning ;
+        sh:message "Ursache einer kausalen Kante ist keine ow:Variable — ohne Variablendefinition ist der Effekt später nicht schätzbar."@de ;
+    ] .
+
+owsh:CausalEdgeObjectShape a sh:NodeShape ;
+    sh:targetObjectsOf obo:RO_0002411 ;
+    sh:name "Wirkung einer kausalen Kante"@de ;
+    sh:property [
+        sh:path rdf:type ;
+        sh:hasValue ow:Variable ;
+        sh:severity sh:Warning ;
+        sh:message "Wirkung einer kausalen Kante ist keine ow:Variable — ohne Variablendefinition ist der Effekt später nicht schätzbar."@de ;
+    ] .
+
+#################################################################
+# Die Annotation am Reifier (RDF 1.2, §5.3)
+#
+# Ziel sind die Träger der Annotation, nicht die Kante: Ein Reifier
+# ohne Klasse macht eine Kante herkunftslos, und genau das verbietet
+# Invariante C2.
+#################################################################
+
+owsh:CausalEdgeClassShape a sh:NodeShape ;
+    sh:targetSubjectsOf ow:edgeClass ;
+    sh:name "Kantenklasse"@de ;
+    sh:property [
+        sh:path ow:edgeClass ;
+        sh:in ( "hypothesis" "structural" "learned" "asserted" ) ;
+        sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Kantenklasse muss genau eine von 'hypothesis', 'structural', 'learned' oder 'asserted' sein (Invariante C2: vier disjunkte Klassen)."@de ;
+    ] ;
+    sh:property [
+        sh:path rdf:reifies ;
+        sh:minCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Eine Kantenklasse gehört an den Reifier einer Kante (rdf:reifies), nicht an einen freistehenden Knoten."@de ;
+    ] .
+
+owsh:CausalEvidenceShape a sh:NodeShape ;
+    sh:targetSubjectsOf ow:evidenceLevel ;
+    sh:name "Evidenzstufe"@de ;
+    sh:property [
+        sh:path ow:evidenceLevel ;
+        sh:in ( "hypothesis" "estimated" "refuted-clean" ) ;
+        sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Evidenzstufe muss 'hypothesis', 'estimated' oder 'refuted-clean' sein — ein Effekt ohne bestandene Refutation ist kein Effekt (Invariante C5)."@de ;
+    ] ;
+    sh:property [
+        sh:path ow:edgeClass ;
+        sh:minCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Eine Kante mit Evidenzstufe braucht ihre Herkunftsklasse (ow:edgeClass) — sonst sähe eine Hypothese aus wie ein Befund."@de ;
+    ] .
+
+owsh:CausalTemporalLagShape a sh:NodeShape ;
+    sh:targetSubjectsOf ow:temporalLag ;
+    sh:name "Zeitversatz"@de ;
+    sh:property [
+        sh:path ow:temporalLag ;
+        sh:datatype xsd:duration ;
+        sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Der Zeitversatz einer kausalen Kante muss eine ISO-8601-Dauer als xsd:duration sein (z. B. \"PT15M\")."@de ;
+    ] .
+
+#################################################################
+# Trennung Wissen/Präsentation im Kausal-Graphen (Invariante 2)
+#
+# Die Anordnung eines DAG ist Darstellung und wird clientseitig
+# berechnet. Landete sie im Modell-Graphen, wäre ein Modell nicht mehr
+# föderierbar, ohne fremde Bildschirmkoordinaten mitzuschicken. Die
+# allgemeine Layout-Blacklist steht in core.ttl; hier wird zusätzlich
+# der modelleigene Träger geprüft.
+#################################################################
+
+owsh:NoLayoutOnCausalModel a sh:NodeShape ;
+    sh:targetClass ow:CausalModel ;
+    sh:name "Kausalmodell ohne Layout"@de ;
+    sh:property [
+        sh:path ow:xPosition ;
+        sh:maxCount 0 ;
+        sh:severity sh:Violation ;
+        sh:message "Layout-Wert am Kausalmodell — die Anordnung des DAG wird dargestellt, nicht gespeichert (Invariante 2)."@de ;
+    ] ;
+    sh:property [
+        sh:path schema:color ;
+        sh:maxCount 0 ;
+        sh:severity sh:Violation ;
+        sh:message "Farbwert am Kausalmodell — Präsentation gehört nach graph/<u>/presentation (Invariante 2)."@de ;
+    ] .
