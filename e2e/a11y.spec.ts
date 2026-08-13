@@ -25,6 +25,7 @@ const PAGES = [
     '/graph',
     '/graph/connectors',
     '/graph/observations',
+    '/graph/causal',
     '/graph/sparql',
     '/graph/federation',
     '/graph/access',

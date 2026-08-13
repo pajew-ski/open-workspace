@@ -762,3 +762,45 @@ ow:retentionDays a owl:DatatypeProperty ;
     rdfs:label "Aufbewahrung in Tagen"@de, "retention days"@en ;
     rdfs:comment "Aufbewahrungsdauer der erfassten Reihe in Tagen; 0 bedeutet unbegrenzt (der Default — der Zweck der Erfassung ist gerade, das zu behalten, was die Quelle verwirft). Sie steht an der Variablen und nicht als globale Einstellung, weil sich hochfrequente und seltene Größen im Volumen um Größenordnungen unterscheiden."@de ;
     rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+#################################################################
+# Kausalmodell (CAUSAL_LAYER_SPEC §5, Meilenstein C0)
+#
+# Die kausale Kante selbst ist FREMD und steht deshalb nicht hier:
+# obo:RO_0002411 ("causally upstream of", OBO Relations Ontology)
+# trägt Richtung und zeitliche Vorordnung und ist eine
+# OWL-Objekteigenschaft — genau das, was ein DAG behauptet
+# (Invariante C8). Geprüft und verworfen: wdt:P828/P1542 (nur
+# innerhalb von Wikidata definiert, P828 zeigt rückwärts),
+# prov:wasDerivedFrom (ausdrücklich keine Kausalität),
+# RO_0002410 (symmetrisch, ohne Richtung).
+#
+# Eigen ist hier nur, was ÜBER eine Kante ausgesagt wird. Diese
+# Aussagen hängen als RDF-1.2-Annotation am benannten Reifier
+# (rdf:reifies + Triple Term), damit eine kausale Aussage
+# zitierfähig ist, ohne dass ein Property-Graph nötig wäre (§5.3).
+#################################################################
+
+ow:CausalModel a owl:Class ;
+    rdfs:subClassOf schema:CreativeWork ;
+    rdfs:label "Kausalmodell"@de, "causal model"@en ;
+    rdfs:comment "Ein gerichteter azyklischer Graph aus Variablen und kausalen Kanten, der eine ANNAHME über die Welt festhält (Invariante C1: Struktur ist Annahme, nicht Ergebnis) und einem Kontext zugeordnet ist. Kein Standard-Vokabular modelliert eine solche Annahmenstruktur als eigenständiges, versionierbares Werk: die OBO Relations Ontology liefert die Relation, aber kein Modell, das sie bündelt; schema:Dataset beschreibt Daten statt Annahmen; prov:Plan ist ein Handlungsplan. schema:CreativeWork ist die nächstliegende Oberklasse, weil ein Kausalmodell ein von Menschen verantwortetes Artefakt mit Autor, Titel und Änderungsdatum ist. Die Variablen des Modells hängen per schema:hasPart daran; die Kanten leben im Named Graph des Modells (graph/<u>/causal/<modelId>)."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:edgeClass a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "Kantenklasse"@de, "edge class"@en ;
+    rdfs:comment "Herkunftsklasse einer kausalen Kante als Annotation am benannten Reifier: 'hypothesis' (LLM oder Text), 'structural' (Geräte-Topologie, Physik), 'learned' (Struktur-Lernen aus Daten) oder 'asserted' (der Mensch hat es gesetzt). Invariante C2 verlangt diese vier disjunkten Klassen, weil eine Hypothese in der Oberfläche nie wie ein bestätigter Effekt aussehen darf. Kein Standard-Term trägt das: prov:wasAttributedTo nennt den Urheber, nicht die epistemische Klasse der Aussage, und prov:wasDerivedFrom taugt für Kausalität ausdrücklich nicht."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:temporalLag a owl:DatatypeProperty ;
+    rdfs:range xsd:duration ;
+    rdfs:label "Zeitversatz"@de, "temporal lag"@en ;
+    rdfs:comment "Erwarteter zeitlicher Abstand zwischen Ursache und Wirkung als xsd:duration, als Annotation am Reifier der kausalen Kante (offenes Fenster geheizt → Energieverbrauch, PT15M). Er macht die temporale Zulässigkeit einer Hypothese maschinell prüfbar und bestimmt später die Lag-Spalten der Studien-Tabelle. OWL-Time (time:hasDuration) beschreibt die Dauer temporaler Entitäten; sie an einen Reifier zu hängen, machte die Aussage selbst zu einem Zeitintervall. schema:duration gilt für Ereignisse und Medien, nicht für den Versatz einer Relation."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:evidenceLevel a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "Evidenzstufe"@de, "evidence level"@en ;
+    rdfs:comment "Belegstand einer kausalen Kante am Reifier: 'hypothesis' (nur behauptet), 'estimated' (geschätzt, aber nicht falsifiziert) oder 'refuted-clean' (Schätzung samt bestandener Refutation). Sie ist von ow:edgeClass getrennt, weil Herkunft und Belegstand unabhängig sind — eine vom Menschen gesetzte Kante bleibt unbelegt, bis eine Studie sie prüft — und sie ist die Filtergröße, mit der Invariante C5 durchgesetzt wird ('ein Effekt ohne Refutation existiert nicht'). Kein Standard-Term stuft die Belegkraft einer Aussage ab: sh:severity bewertet Validierungsbefunde, prov nennt Herkunft, nicht Geltung."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .

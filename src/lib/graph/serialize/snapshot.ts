@@ -79,6 +79,14 @@ export function snapshotFileForGraph(graphIri: string, instanceBase: string): st
     if (scope === 'workspace') return `${prefix}workspace.nq`;
     if (scope === 'public') return `${prefix}public.nq`;
     if (scope === 'presentation') return `${prefix}presentation.nq`;
+    // Kausalmodelle (CAUSAL_LAYER_SPEC §5.1): Ein von Hand modellierter
+    // DAG ist Handarbeit des Menschen und hat keine Quelle, aus der er
+    // wiederherstellbar wäre — er MUSS in den Snapshot, sonst wäre er
+    // nach dem nächsten Neustart weg. Ein Graph pro Modell, damit ein
+    // Modell als Ganzes versioniert, verglichen und ersetzt werden kann.
+    if (scope === 'causal-hypotheses') return `${prefix}causal-hypotheses.nq`;
+    const causalMatch = scope.match(/^causal\/(.+)$/);
+    if (causalMatch) return `${prefix}causal/${sanitizeFileSegment(causalMatch[1])}.nq`;
     const importMatch = scope.match(/^import\/(.+)$/);
     if (importMatch) return `${prefix}import/${sanitizeFileSegment(importMatch[1])}.nq`;
     if (scope.startsWith('inferred/')) return null;

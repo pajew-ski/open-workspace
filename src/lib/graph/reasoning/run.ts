@@ -25,6 +25,7 @@ import type { GraphStore } from '../store/types';
 import type { IriFactory } from '../iri';
 import { factory, namedNode, typedLiteral } from '../rdf';
 import { PROV, RDF } from '../vocab';
+import { causalGraphsOf } from '../causal/model';
 import { deriveOwlRlInferences } from './owl-rl';
 import { reportQuads, validateQuads, type ShaclReport } from './shacl';
 
@@ -210,7 +211,16 @@ export interface StoreValidationReport extends ShaclReport {
  */
 export async function validateStoreGraphs(handle: GraphHandle, graphIris?: string[]): Promise<StoreValidationReport> {
     const existing = (await handle.store.graphs()).map(g => g.value);
-    const allowed = workspaceScopeGraphs(handle.iri, existing);
+    // Kausalmodelle sind validierbar, aber kein Reasoning-Eingang
+    // (CAUSAL_LAYER_SPEC §5.1): Die Shapes für kausale Kanten wären
+    // wertlos, wenn der einzige Graph, in dem solche Kanten vorkommen,
+    // von der Validierung ausgenommen bliebe. Aus dem OWL-RL-Lauf bleiben
+    // sie trotzdem draußen — eine Annahme ist kein Axiom.
+    const allowed = [
+        ...workspaceScopeGraphs(handle.iri, existing),
+        ...causalGraphsOf(handle.iri, existing).map(ref => ref.graph),
+        ...existing.filter(g => g === handle.iri.graph('causal-hypotheses')),
+    ].sort();
     const graphs = (graphIris && graphIris.length > 0
         ? graphIris.filter(g => allowed.includes(g))
         : allowed);
