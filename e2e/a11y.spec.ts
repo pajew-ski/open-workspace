@@ -24,6 +24,7 @@ const PAGES = [
     '/tools',
     '/graph',
     '/graph/connectors',
+    '/graph/observations',
     '/graph/sparql',
     '/graph/federation',
     '/graph/access',

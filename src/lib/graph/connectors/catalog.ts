@@ -16,6 +16,7 @@ import { jsonCanvasConnector } from './json-canvas';
 import { gitBackupConnector } from './git-backup';
 import { a2aAgentCardConnector } from './a2a-agent-card';
 import { mcpServerConnector } from './mcp-server';
+import { homeAssistantConnector } from './home-assistant';
 
 const CONNECTORS: ReadonlyArray<Connector<unknown>> = [
     rdfFileConnector as Connector<unknown>,
@@ -25,6 +26,7 @@ const CONNECTORS: ReadonlyArray<Connector<unknown>> = [
     gitBackupConnector as Connector<unknown>,
     a2aAgentCardConnector as Connector<unknown>,
     mcpServerConnector as Connector<unknown>,
+    homeAssistantConnector as Connector<unknown>,
 ];
 
 export function listConnectorKinds(): ReadonlyArray<Connector<unknown>> {

@@ -2,6 +2,11 @@
 
 **Repo**: `pajew-ski/open-workspace`
 **Typ**: Architektur-Entwurf zur Entscheidung — **noch nicht verbindlich**
+**Umsetzungsstand**: Von den Meilensteinen in §16 ist **C3 (Erfassung)
+gebaut** — bewusst zuerst, weil er als einziger zeitkritisch ist (§15.5).
+Alles Übrige ist Entwurf und erscheint nirgends in der UI. Was gebaut ist,
+steht in [docs/beobachtungen.md](./docs/beobachtungen.md); die Reihenfolge
+der weiteren Schritte begründet §18.
 **Verhältnis zu bestehenden Dokumenten**: `GRAPH_CORE_SPEC.md` behält
 uneingeschränkt Vorrang. Dieser Entwurf setzt auf ihm auf und darf keine
 seiner Invarianten aufweichen. Wo er das täte, ist der Entwurf falsch, nicht
@@ -600,9 +605,21 @@ Was jeder wissen muss, der das baut oder benutzt:
 4. **Sensorqualität.** Ausfälle, Drift, „unavailable"-Zustände,
    Batteriewechsel. Fehlende Werte sind selten zufällig fehlend, und das
    verzerrt.
-5. **Recorder-Aufbewahrung.** Volle States meist nur wenige Tage,
-   Long-Term-Statistics nur Aggregate. Der Kausal-Layer muss früh anfangen,
-   selbst zu materialisieren, sonst gibt es keine Historie.
+5. **Recorder-Aufbewahrung — und zwar asymmetrisch.** Volle
+   Zustandswechsel hält Home Assistant nur `purge_keep_days` (Standard 10
+   Tage). Was bleibt, sind Long-Term-Statistics: stündliche Aggregate,
+   unbegrenzt aufbewahrt — aber **nur für Entitäten mit `state_class`**,
+   also für numerische Messgrößen. Schalter, Fenster, Bewegung,
+   Anwesenheit, Automations-Zustände und Textzustände sind danach
+   ersatzlos fort.
+
+   Das ist die schlechtestmögliche Aufteilung für kausale Inferenz:
+   **Outcomes überleben, Treatments nicht.** Man behält die
+   Temperaturkurve und verliert, wann geheizt und gelüftet wurde. Ohne
+   Ursachenseite ist keine Schätzung möglich, egal wie lang die
+   Outcome-Reihe ist. Deshalb ist die Erfassung (C3) der zeitkritische
+   Meilenstein und deshalb wurde er zuerst gebaut — jeder Tag ohne sie ist
+   ein verlorener Tag.
 6. **Der Aufwand ist real.** Das ist kein Wochenendprojekt. Tier 1 allein
    sind mehrere Meilensteine, und der Nutzen kommt erst mit den Daten, also
    Wochen nach dem Bau.
@@ -620,7 +637,7 @@ Im Arbeitsmodus der Spec: ein Meilenstein, eine Session, ein Branch, ein PR.
 | **C0** | Vokabular (nach C8 fremdes zuerst), Named Graphs, SHACL-Shapes für kausale Kanten, `ow:CausalModel`/`Variable` als Graph-Bürger, DAG-Editor read-only | Ontologie-CI grün; ein von Hand modellierter DAG ist per SPARQL abfragbar; Layout-Blacklist hält |
 | **C1** | Tier-1-Kern: Azyklizität, D-Separation, Backdoor/Frontdoor, minimale Adjustment Sets, Identifizierbarkeits-Entscheidung. Reine Graphalgorithmik, keine Daten | Testsuite gegen bekannte Lehrbuch-DAGs; „nicht identifizierbar" wird korrekt und begründet zurückgegeben; läuft im Browser |
 | **C2** | Causal Path Tracing im Retrieval (§9) + Anzeige im Explorer | `explain` trägt den kausalen Pfad; d-separierte Knoten fallen bei gegebener Konditionierung nachweislich raus |
-| **C3** | Observation Store + `home-assistant`-Connector (Registry → Struktur, History/Statistics → Reihen, Traces → Interventionslog) + `homeassistant_api` im Add-on | Ein realer HA-Bestand erzeugt Variablen und Reihen; Reproduzierbarkeit über zwei Läufe; Scope-Leak-Negativtest |
+| **C3** ✅ | Observation Store + `home-assistant`-Connector (Registry → Struktur, History → Reihen) + `homeassistant_api` im Add-on. **Gebaut** — Abnahme in `tests/graph/observations.test.ts` und `tests/graph/home-assistant.test.ts`, Doku in `docs/beobachtungen.md`. Offen geblieben und einzeln notiert: Automations-Traces als Interventionslog, LTS-Backfill über die WebSocket-API | Zwei Läufe erzeugen keine Dublette (Wasserzeichen); kein Messwert landet im Store; Lücken werden erfasst statt fortgeschrieben; ein Fehler bei einer Größe lässt die anderen laufen |
 | **C4** | Schätzung + Refutation Tier 1, `ow:CausalStudy` mit vollständiger Reproduktions-Signatur, Ergebnis-UI mit DAG, CI und Refutations-Badge | Ein bekannter Effekt aus synthetischen Daten wird korrekt geschätzt; ein konfundierter Fall wird als solcher erkannt; ein durchgefallener Effekt erscheint **nicht** als Effekt |
 | **C5** | Open-Data-Connector `rest-timeseries` + Confounder-Katalog (Wetter, Preis, Sonnenstand, Feiertag) | Dieselbe Frage mit und ohne Adjustierung liefert nachweislich unterschiedliche Ergebnisse, und die Differenz wird erklärt |
 | **C6** | Neurosymbolische Schleife: LLM-Hypothesen mit Provenienz, symbolische Filter, Vergleich der drei Strukturquellen, Widerspruchs-UI | Keine Hypothese erreicht ohne Filter den Studien-Pfad; ein temporal unmöglicher Vorschlag wird automatisch verworfen |

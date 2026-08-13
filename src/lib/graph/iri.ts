@@ -51,7 +51,18 @@ export type EntityType =
     | 'profile'
     /** Selbstmodell (SPEC §18 / M14): die Anwendung und ihre Module. */
     | 'app'
-    | 'module';
+    | 'module'
+    /**
+     * Struktur und Erfassung externer Messquellen (Kausal-Layer):
+     * `place` = Bereich/Etage, `device` = sosa:Platform,
+     * `sensor` = sosa:Sensor/Actuator, `observable` = beobachtete Größe,
+     * `variable` = die davon erfasste Reihe (ow:Variable).
+     */
+    | 'place'
+    | 'device'
+    | 'sensor'
+    | 'observable'
+    | 'variable';
 
 /**
  * Instanzweite Entitäten (SPEC §17.1 / M13). Nutzer, Gruppen, geteilte

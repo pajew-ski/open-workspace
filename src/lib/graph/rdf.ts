@@ -163,6 +163,8 @@ export const typedLiteral = {
     decimal: (value: number) => literal(String(value), namedNode(XSD.decimal)),
     boolean: (value: boolean) => literal(value ? 'true' : 'false', namedNode(XSD.boolean)),
     anyUri: (value: string) => literal(value, namedNode(XSD.anyURI)),
+    /** ISO-8601-Dauer, z. B. PT5M. */
+    duration: (value: string) => literal(value, namedNode(XSD.duration)),
 } as const;
 
 export { termEquals };
