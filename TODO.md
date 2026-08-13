@@ -380,16 +380,33 @@
       Fehlerisolation, Backfill-Fenster), `tests/graph/home-assistant.test.ts`
       (Zugangsauflösung, SOSA-Mapping, Topologie, Revision, Quarantäne,
       read-only). Doku: [docs/beobachtungen.md](./docs/beobachtungen.md)
-- [ ] **C0 Kausalmodell als Graph-Bürger** (SPEC §5, §16) — *als Nächstes*:
-      Vokabular nach Invariante C8 (fremdes zuerst prüfen: RO
-      `causally upstream of`, Wikidata P828/P1542), Named Graphs
-      `causal/<modelId>` und `causal-hypotheses`, `ow:CausalModel` und die
-      Kanten-Annotation über RDF-star (§5.3), SHACL-Shapes für kausale
-      Kanten, Kantenklassen nach Invariante C2 (hypothesis | structural |
-      learned | asserted), DAG-Ansicht read-only.
-      Abnahme: Ontologie-CI grün; ein handmodellierter DAG ist per SPARQL
-      abfragbar; die Layout-Blacklist hält (Invariante 2)
-- [ ] **C1 Identifikation** (SPEC §7 Tier 1): Azyklizität, D-Separation,
+- [x] **C0 Kausalmodell als Graph-Bürger** (SPEC §5, §16): Die kausale
+      Kante ist FREMD — `obo:RO_0002411 causally upstream of` aus der OBO
+      Relations Ontology (Richtung + zeitliche Vorordnung); Wikidata
+      P828/P1542 geprüft und verworfen (nur innerhalb von Wikidata
+      definiert, P828 zeigt rückwärts), `prov:wasDerivedFrom` ist
+      ausdrücklich keine Kausalität. Eigen sind nur `ow:CausalModel` und
+      die drei Annotationen am RDF-1.2-Reifier (§5.3): `ow:edgeClass`
+      (vier disjunkte Klassen, Invariante C2), `ow:evidenceLevel`,
+      `ow:temporalLag`. Named Graphs `causal/<modelId>` (ein Modell IST
+      sein Graph) und `causal-hypotheses`, beide im Snapshot-Layout —
+      ein handmodellierter DAG hat keine Quelle, aus der er
+      wiederherstellbar wäre. Modellvariablen sind dieselben
+      `ow:Variable`-Knoten wie in der Erfassung (C3). SHACL-Shapes in
+      `ontology/shapes/causal.ttl`, ausgewertet über den On-demand-Pfad
+      (Kausal-Graphen sind jetzt Validierungsziel, bleiben aber aus dem
+      OWL-RL-Lauf draußen: eine Annahme ist kein Axiom). Seite
+      `/graph/causal` read-only mit DAG-Bild, Herkunfts-Badges und
+      SPARQL-Vorlage; angelegt wird ein leeres Modell, die Struktur
+      schreibt der Mensch im Editor. Nebenbefund behoben: ein
+      erfolgreiches SPARQL-UPDATE schrieb bisher keinen Snapshot — alles
+      per SPARQL Geschriebene war nach dem Neustart weg.
+      Abnahme: `tests/graph/causal.test.ts` (fremdes Vokabular, von Hand
+      modellierter DAG per SPARQL abfragbar, Herkunft je Kante, Hypothesen
+      getrennt, Shapes melden erfundene Klasse/kaputten Versatz/fehlende
+      Herkunft, Layout-Blacklist hält, Modell überlebt den Neustart) +
+      Ontologie-CI. Doku: [docs/kausalmodell.md](./docs/kausalmodell.md)
+- [ ] **C1 Identifikation** (SPEC §7 Tier 1) — *als Nächstes*: Azyklizität, D-Separation,
       Backdoor-/Frontdoor-Kriterium, minimale Adjustment Sets,
       IV-Erkennung, Identifizierbarkeits-Entscheidung. Reine
       Graphalgorithmik in TypeScript, läuft in allen drei Runtimes.

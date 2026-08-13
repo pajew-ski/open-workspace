@@ -62,7 +62,9 @@ export type EntityType =
     | 'device'
     | 'sensor'
     | 'observable'
-    | 'variable';
+    | 'variable'
+    /** Kausalmodell (CAUSAL_LAYER_SPEC §5.2 / C0): der DAG als Artefakt. */
+    | 'causal-model';
 
 /**
  * Instanzweite Entitäten (SPEC §17.1 / M13). Nutzer, Gruppen, geteilte
@@ -120,10 +122,18 @@ export interface IriFactory {
     readonly userId: string;
     /** Entitäts-IRI: `<base>u/<userId>/<type>/<stable-id>` (SPEC §3.2). */
     entity(type: EntityType, stableId: string): string;
-    /** Nutzerskalierte Graphen: workspace | public | presentation. */
-    graph(name: 'workspace' | 'public' | 'presentation'): string;
+    /**
+     * Nutzerskalierte Graphen: workspace | public | presentation |
+     * causal-hypotheses. Der Hypothesen-Graph (CAUSAL_LAYER_SPEC §5.1)
+     * ist bewusst EIN Graph pro Nutzer und keiner pro Modell: Vorschläge
+     * entstehen modellübergreifend und dürfen nie versehentlich in einem
+     * Modell-Graphen landen, wo sie wie gesetzte Struktur aussähen (C2).
+     */
+    graph(name: 'workspace' | 'public' | 'presentation' | 'causal-hypotheses'): string;
     /** Import-Graph eines Connectors: `graph/<u>/import/<connectorId>`. */
     importGraph(connectorId: string): string;
+    /** Kausalmodell-Graph: `graph/<u>/causal/<modelId>` (§5.1). */
+    causalGraph(modelId: string): string;
     /** Scope-partitionierter Inferenz-Graph (SPEC §7.3). */
     inferredGraph(scope: string): string;
     /** Instanzweite Graphen: meta | acl | shapes | vocab. */
@@ -195,6 +205,7 @@ export function createIriFactory(instanceBase: string, userId: string = DEFAULT_
         entity: (type, stableId) => `${instanceBase}${u}/${type}/${encodeSegment(stableId)}`,
         graph: name => `${instanceBase}graph/${u}/${name}`,
         importGraph: connectorId => `${instanceBase}graph/${u}/import/${encodeSegment(connectorId)}`,
+        causalGraph: modelId => `${instanceBase}graph/${u}/causal/${encodeSegment(modelId)}`,
         inferredGraph: scope => `${instanceBase}graph/${u}/inferred/${encodeSegment(scope)}`,
         sharedGraph: name => `${instanceBase}graph/${name}`,
         spaceGraph: spaceId => `${instanceBase}graph/shared/${encodeSegment(spaceId)}`,
