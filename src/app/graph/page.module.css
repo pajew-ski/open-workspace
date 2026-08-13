@@ -382,3 +382,61 @@
     font-variant-numeric: tabular-nums;
     color: var(--color-text-tertiary);
 }
+
+/* --- Kausaler Pfad (CAUSAL_LAYER_SPEC §9 / C2) --- */
+
+.inlineLink {
+    color: var(--color-primary-text);
+    text-decoration: underline;
+}
+
+/* Die Adjustierungsmenge kann lang werden — sie scrollt für sich, statt
+   das ganze Einstellungsfeld auseinanderzuziehen. */
+.causalAdjust {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0 0 8px 0;
+    padding: 8px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    max-height: 160px;
+    overflow-y: auto;
+}
+
+.causalLegend {
+    padding: 0 4px;
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+}
+
+.causalPaths {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.causalPaths li {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 13px;
+    color: var(--color-text-primary);
+    border-left: 3px solid var(--color-border);
+    padding-left: 8px;
+    overflow-wrap: anywhere;
+}
+
+/* Offener Weg vs. geschlossener: Die Farbe sagt nur, was der Text auch
+   sagt — sie ist nie die einzige Auskunft (Kontrast/Accessibility). */
+.causalPaths li[data-open='true'] {
+    border-left-color: #2E7D4A;
+}
+
+.causalPaths li[data-open='false'] {
+    border-left-color: var(--color-text-tertiary);
+    color: var(--color-text-secondary);
+}

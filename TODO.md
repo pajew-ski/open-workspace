@@ -356,7 +356,7 @@
 > nächste. C3 steht zuerst und ist erledigt, weil er als einziger
 > zeitkritisch war: Home Assistant verwirft Zustandswechsel nach
 > `purge_keep_days`, jeder Tag ohne Erfassung war unwiederbringlich.
-> Gebaut sind C3, C0 und C1; offen ist als Nächstes C2.
+> Gebaut sind C3, C0, C1 und C2; offen ist als Nächstes C4.
 
 - [x] **C3 Erfassung („früh materialisieren")**:
       `homeassistant_api: true` im Add-on-Manifest (lesend, begründet in
@@ -448,13 +448,39 @@
       (Schreibweg, Revisionen, Zyklus-Ablehnung, Scope-Muster mit fünf
       Negativtests, Brücke Modell → DAG). Doku:
       [docs/kausalmodell.md](./docs/kausalmodell.md)
-- [ ] **C2 Causal Path Tracing** im Retrieval (SPEC §9, Erweiterung von
-      GRAPH_CORE_SPEC §7.5 um `causal`-Feld) — *als Nächstes*. Der
-      Tier-1-Kern aus C1 liefert die Bausteine (Pfade, D-Separation) und
-      ist pur, also auch im Retrieval-Pfad verwendbar.
-      Abnahme: `explain` trägt den kausalen Pfad; d-separierte Knoten
-      fallen bei gegebener Konditionierung nachweislich raus
-- [ ] **C4 Schätzung + Refutation** (SPEC §13.1/13.2): Stratifikation,
+- [x] **C2 Causal Path Tracing** im Retrieval (SPEC §9, Erweiterung von
+      GRAPH_CORE_SPEC §7.5 um `causal`-Feld): Keine zweite Pipeline —
+      dieselben vier Phasen, drei Änderungen. Der Trace
+      (`src/lib/graph/causal/trace.ts`) ist **pur** wie der übrige
+      Tier-1-Kern (Import-Test erzwingt es) und kennt vier Modi
+      (`ancestors`, `descendants`, `paths`, `markov-blanket`);
+      Seed-Score ist die **kausale Nähe** `1/(1+Schritte)` statt der
+      Wortähnlichkeit; der Modell-Graph kommt in den Traversal-Raum
+      (Bestand und Grant klammern ihn), sodass die kausalen Kanten selbst
+      begehbar sind; ein **Tor** in der Expansion hält Modellgrößen
+      draußen, die nicht zur Frage gehören — auch über den semantischen
+      Umweg. `explain.causal` trägt Modell samt Revision, Frage, Wege mit
+      Richtung und Offenheit, Adjustierung und jeden herausgefallenen
+      Knoten mit Grund (`d-separated`, `blocked-path`, `off-chain`); der
+      linearisierte Kontext beginnt mit demselben Vorspann („die Kette,
+      nicht die Wolke"). Erdung schlägt fehl → **leeres** Ergebnis mit
+      Begründung statt eines semantischen, das kausal aussieht; das
+      Modell wird nie geraten (genau eines → gemeint, mehrere → gefragt).
+      Dazu: `causal` im MCP-Werkzeug `graph_retrieve` und in
+      Retrieval-Profilen, `minEvidence` über die Belegstands-Ordnung
+      (bis C4 hat keine Kante mehr als „behauptet" — das sagt der
+      Hinweis), und im Graph-Explorer der Abschnitt „Kausaler Pfad", der
+      das Bild durch die Kette ersetzt (nur bei passendem
+      `causalTier`, Invariante C9).
+      Abnahme: `tests/graph/causal-retrieval.test.ts` — `explain` trägt
+      den kausalen Pfad (Wirkweg mit Richtung, Rolle und Weg je Knoten,
+      Vorspann im Kontext); d-separierte Knoten fallen bei gegebener
+      Konditionierung nachweislich raus (Zeitschaltuhr verschwindet samt
+      ihrer Notiz, sobald über die Nachtabsenkung adjustiert wird —
+      Gegenprobe ohne Adjustierung), dazu Collider-Öffnung, Tor gegen den
+      semantischen Umweg, Grant-Klammer (C6) und Determinismus.
+      Doku: [docs/kausalmodell.md](./docs/kausalmodell.md)
+- [ ] **C4 Schätzung + Refutation** (SPEC §13.1/13.2) — *als Nächstes*: Stratifikation,
       Regression mit Adjustierung, IPW, DiD, ITS; Placebo, Random Common
       Cause, Subset-Stabilität, Negativkontrolle, E-Value.
       `ow:CausalStudy` mit vollständiger Reproduktions-Signatur
