@@ -8,14 +8,17 @@ später eine Zahl liest, muss die Annahme sehen können, aus der sie folgt
 (CAUSAL_LAYER_SPEC, Invariante C1).
 
 Dieses Dokument beschreibt, was mit den Meilensteinen **C0** (der DAG als
-Graph-Bürger) und **C1** (Identifikation, DAG-Editor, Revisionen) gebaut
-ist. Was noch nicht gebaut ist, steht am Ende — nicht als Ausblick,
-sondern damit niemand nach Knöpfen sucht, die es nicht gibt.
+Graph-Bürger), **C1** (Identifikation, DAG-Editor, Revisionen) und **C2**
+(kausal geerdetes Retrieval) gebaut ist. Was noch nicht gebaut ist, steht
+am Ende — nicht als Ausblick, sondern damit niemand nach Knöpfen sucht,
+die es nicht gibt.
 
 Der Unterschied in einem Satz: C0 hat den DAG **hingelegt**, C1 rechnet
 mit ihm — Azyklizität, D-Separation, Backdoor/Frontdoor, minimale
 Adjustment Sets und die begründete Antwort „nicht identifizierbar, und
-zwar weil X fehlt". Eine Zahl gibt es weiterhin nicht.
+zwar weil X fehlt" —, und C2 lässt das **Retrieval** ihm folgen, damit
+der Kontext einer Frage die Kette enthält statt der Wolke. Eine Zahl gibt
+es weiterhin nicht.
 
 ## Wo ein Modell liegt
 
@@ -177,6 +180,102 @@ ausgegeben — zulässig, aber größer als nötig, und genau so beschriftet.
 Wird überhaupt gedeckelt, sagt das Ergebnis es (`truncated`), statt
 Vollständigkeit vorzutäuschen.
 
+## Kausal geerdetes Retrieval (C2)
+
+Das Multi-Hop-Retrieval aus GRAPH_CORE_SPEC §7.5 folgt normalerweise der
+**semantischen** Nachbarschaft: Von einem Einstiegsknoten aus wird über
+Kanten expandiert, gescort und linearisiert. Mit dem Feld `causal` folgt
+dieselbe Pipeline stattdessen **deinem Kausalmodell**. Es ist keine zweite
+Pipeline und kein zweiter Endpunkt — dieselben vier Phasen, drei
+Änderungen:
+
+```jsonc
+POST /api/graph/retrieve
+{
+  "causal": {
+    "mode": "paths",              // ancestors | descendants | paths | markov-blanket
+    "treatment": "…/variable/nachtabsenkung",
+    "outcome":   "…/variable/heizenergie",
+    "model":     "wohnung",       // Kennung, Modell-IRI oder Graph-IRI
+    "blockedBy": ["…/variable/aussentemperatur"],
+    "minEvidence": "hypothesis"   // hypothesis | estimated | refuted-clean
+  },
+  "maxHops": 2,
+  "format": "both"
+}
+```
+
+1. **Seeding**: Einstieg sind die Größen, die zur Frage gehören — die
+   Ursachenseite (`ancestors`), die Folgenseite (`descendants`), die Wege
+   dazwischen (`paths`) oder der Markov-Kragen. Ihr Seed-Score ist die
+   **kausale Nähe** (`1 / (1 + Schritte im DAG)`), nicht die
+   Wortähnlichkeit — genau das meint §9 mit „kausale Nähe statt
+   Kosinus-Ähnlichkeit".
+2. **Expansion**: Der Modell-Graph kommt in den Traversal-Raum, die
+   kausalen Kanten sind also selbst begehbar. Dazu ein **Tor**: Eine
+   Größe, die im Modell steht, aber nicht zur Frage gehört, kommt auch
+   über einen semantischen Umweg nicht herein. Alles andere — Notizen,
+   Geräte, Aufgaben — passiert unverändert; das ist das Material *zur*
+   Kette.
+3. **`explain`**: trägt Modell samt Revision, die Frage, die Wege mit
+   Richtung und Offenheit, die Adjustierung und alles, was herausgefallen
+   ist, je mit Grund. Der linearisierte Kontext beginnt mit demselben
+   Vorspann, damit ein Modell im LLM-Kontext die Kette vor sich hat und
+   nicht die Wolke.
+
+**Die Konditionierung ist der Kern.** `blockedBy` ist die Menge, über die
+adjustiert wird — und was gegeben dieser Menge d-separiert ist, trägt
+nichts mehr bei und fällt heraus. Am Beispiel:
+
+> Zeitschaltuhr → Nachtabsenkung → Raumtemperatur → Heizenergie
+
+Ohne Adjustierung liefert `ancestors` auf die Heizenergie alle vier
+Größen — und mit ihnen die Notiz, die an der Zeitschaltuhr hängt.
+Adjustiert man über die Nachtabsenkung, verschwindet die Zeitschaltuhr:
+Gegeben die Nachtabsenkung sagt sie über die Heizenergie nichts mehr. Sie
+verschwindet aber nicht stillschweigend, sondern steht in
+`explain.causal.dropped` mit Grund — und im Kontext unter „Nicht
+enthalten". Dasselbe gilt für Wege: Ein Knoten, der nur auf geschlossenen
+Wegen liegt, fällt mit dem Grund `blocked-path` heraus.
+
+Umgekehrt ist auch der unangenehme Fall sichtbar: Konditioniert man auf
+einen **Collider**, öffnet das einen Weg, der vorher zu war. Das Ergebnis
+zeigt es (der Weg ist dann `open`), statt es zu glätten.
+
+**Im Explorer** (`/graph`, Einstellungen → „Kausaler Pfad") wählst du
+Modell, Frage, Ursache, Wirkung und die Adjustierung; „Kette zeigen"
+ersetzt das Bild durch den kausalen Teilgraphen. Ursache und Wirkung sind
+hervorgehoben, adjustierte Größen tragen die Warnfarbe, Material zur Kette
+bleibt grau. Darunter stehen die Wege im Klartext, die Adjustierung und
+was nicht enthalten ist. Der Abschnitt erscheint nur, wenn
+`capabilities.causalTier` es hergibt (Invariante C9).
+
+Dieselbe Anfrage geht über den MCP-Server (`graph_retrieve`, Feld
+`causal`) und lässt sich als Retrieval-Profil speichern — ein Profil kann
+damit eine kausale Frage tragen, nicht nur Traversal-Parameter.
+
+Was **nicht** im Ergebnis landet, obwohl es im Modell-Graphen steht: die
+Revisionen. Sie hängen am Modell-Knoten und wären damit von jeder
+Variablen zwei Hops entfernt — ein kausaler Kontext aus zwanzigmal „Kante
+hinzugefügt" wäre keiner. Sie gehören zur Herkunft des Modells und stehen
+weiterhin unter `/graph/causal` im Verlauf.
+
+Drei Ehrlichkeiten:
+
+- **Kein stiller Rückfall.** Lässt sich nicht erden — kein Modell, mehrere
+  Modelle ohne Angabe, Ursache nicht im Modell —, kommt ein **leeres**
+  Ergebnis mit Begründung zurück, kein semantisches, das kausal aussieht.
+- **Kein geratenes Modell.** §9 sagt „Default: aktives Modell". Ein
+  aktives Modell kennt das Datenmodell nicht, und eines einzuführen wäre
+  eine Spec-Entscheidung. Bis dahin gilt: Gibt es genau ein lesbares
+  Modell, ist es gemeint; gibt es mehrere, wird gefragt. Ein still
+  gewähltes Kausalmodell wäre eine unausgesprochene Annahme.
+- **`minEvidence` ist bis C4 wirkungslos oder leer.** Es gibt keine
+  geschätzten Kanten, solange nichts schätzt. `estimated` liefert deshalb
+  heute einen leeren DAG — mit genau diesem Hinweis in den Notizen.
+
+Abnahme: `tests/graph/causal-retrieval.test.ts`.
+
 ## Revisionen: woran sich eine Studie später beruft
 
 Jede Änderung am Modell schreibt eine `prov:Activity` **in den
@@ -281,7 +380,6 @@ SELECT ?ursacheName ?klasse ?evidenz ?versatz WHERE {
 
 | | Was fehlt | Meilenstein |
 |---|---|---|
-| Retrieval | Kausale Pfade im Multi-Hop-Retrieval, `explain` mit Kette statt Wolke | C2 |
 | Schätzung | Effektstärke, Konfidenzintervall, Refutation, `ow:CausalStudy` | C4 |
 | Confounder | Wetter, Strompreis, Sonnenstand, Feiertage als Open-Data-Reihen | C5 |
 | Hypothesen-Erzeugung | LLM-Vorschläge mit Provenienz und symbolischen Filtern | C6 |
