@@ -35,8 +35,10 @@
 > (D-Separation, Backdoor, Adjustment Sets), Schätzung, Refutation,
 > Hypothesen-Erzeugung. Kein Effekt, keine Zahl, kein Konfidenzintervall.
 >
-> **Nächster Meilenstein: C1** (Identifikation, Tier 1 in TypeScript),
-> danach C2 → C4 → C5 → C6. Reihenfolge und Begründung in
+> **Nächster Meilenstein: C1** (Identifikation, Tier 1 in TypeScript;
+> dort mit nachzuziehen: `capabilities.causalTier`, Schreibziele aus
+> Scope-Mustern, Modell-Revisionen und der DAG-Editor — Begründungen in
+> TODO.md), danach C2 → C4 → C5 → C6. Reihenfolge und Begründung in
 > CAUSAL_LAYER_SPEC §18, Arbeitsmodus in §19, offener Stand mit Abnahmen
 > in TODO.md unter „Kausal-Layer". C7 und C8 nur nach ausdrücklicher
 > Freigabe.
