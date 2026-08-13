@@ -64,7 +64,14 @@ export type EntityType =
     | 'observable'
     | 'variable'
     /** Kausalmodell (CAUSAL_LAYER_SPEC §5.2 / C0): der DAG als Artefakt. */
-    | 'causal-model';
+    | 'causal-model'
+    /**
+     * Schätzung und Refutation (CAUSAL_LAYER_SPEC §5.2 / C4):
+     * `estimand` = die Frage (bleibt, liegt in graph/meta),
+     * `study` = der Lauf (inferiert, wird bei jedem Lauf ersetzt).
+     */
+    | 'estimand'
+    | 'study';
 
 /**
  * Instanzweite Entitäten (SPEC §17.1 / M13). Nutzer, Gruppen, geteilte

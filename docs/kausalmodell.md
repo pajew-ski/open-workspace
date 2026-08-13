@@ -8,17 +8,19 @@ später eine Zahl liest, muss die Annahme sehen können, aus der sie folgt
 (CAUSAL_LAYER_SPEC, Invariante C1).
 
 Dieses Dokument beschreibt, was mit den Meilensteinen **C0** (der DAG als
-Graph-Bürger), **C1** (Identifikation, DAG-Editor, Revisionen) und **C2**
-(kausal geerdetes Retrieval) gebaut ist. Was noch nicht gebaut ist, steht
-am Ende — nicht als Ausblick, sondern damit niemand nach Knöpfen sucht,
-die es nicht gibt.
+Graph-Bürger), **C1** (Identifikation, DAG-Editor, Revisionen), **C2**
+(kausal geerdetes Retrieval) und **C4** (Schätzung und Refutation) gebaut
+ist. Was noch nicht gebaut ist, steht am Ende — nicht als Ausblick,
+sondern damit niemand nach Knöpfen sucht, die es nicht gibt.
 
 Der Unterschied in einem Satz: C0 hat den DAG **hingelegt**, C1 rechnet
 mit ihm — Azyklizität, D-Separation, Backdoor/Frontdoor, minimale
 Adjustment Sets und die begründete Antwort „nicht identifizierbar, und
-zwar weil X fehlt" —, und C2 lässt das **Retrieval** ihm folgen, damit
-der Kontext einer Frage die Kette enthält statt der Wolke. Eine Zahl gibt
-es weiterhin nicht.
+zwar weil X fehlt" —, C2 lässt das **Retrieval** ihm folgen, damit der
+Kontext einer Frage die Kette enthält statt der Wolke, und C4 macht
+daraus zum ersten Mal eine **Zahl** — allerdings nur eine, die ein
+Konfidenzintervall und einen überstandenen Falsifikationsversuch
+mitbringt.
 
 ## Wo ein Modell liegt
 
@@ -276,6 +278,181 @@ Drei Ehrlichkeiten:
 
 Abnahme: `tests/graph/causal-retrieval.test.ts`.
 
+## Schätzung und Refutation (C4)
+
+Hier entsteht die erste Zahl dieses Layers. Sie kommt spät, und das ist
+Absicht: Vor ihr stehen die Struktur (C0), die Identifikation (C1) und die
+Erfassung (C3). Ohne diese drei wäre sie die selbstbewusste
+Scheinpräzision, gegen die die ganze Spec argumentiert.
+
+### Die Frage bleibt, die Antwort wird ersetzt
+
+| | Wo | Wann ersetzt |
+|---|---|---|
+| **Frage** (`ow:Estimand`) | `graph/meta` | nie — sie ist eine Setzung des Menschen |
+| **Antwort** (`ow:CausalStudy`) | `graph/<u>/inferred/causal/workspace` | bei **jedem** Lauf, vollständig |
+
+Das ist Invariante C4 („Effektschätzungen sind inferiert") plus
+Invariante 3 („Inferenz-Graphen werden ersetzt, nie gemerged"). Damit ein
+Replace kein Verlust ist, rechnet ein Lauf immer **alle** Fragen neu.
+Genau deshalb liegt die Frage woanders als die Antwort: Läge beides im
+Inferenz-Graphen, verschwände mit jedem Lauf die Frage; läge beides in
+`graph/meta`, häuften sich die Antworten an, statt ersetzt zu werden.
+
+Eine Frage nennt Behandlung, Wirkung, Verfahren, Startwert des Zufalls und
+optional Fenster, Eingriffszeitpunkt und Kontroll-Wirkung. Sie gehört per
+`schema:isPartOf` zu ihrem Modell — wer das Modell verwirft, verwirft die
+Frage, denn ohne Annahme hat sie keinen Sinn.
+
+### Was gerechnet wird (Tier 1, in allen drei Runtimes)
+
+Fünf Schätzer, alle aus der Standardliteratur, alle ohne
+Numerik-Bibliothek — und deshalb auch im Browser lauffähig (Invariante
+C9):
+
+| Verfahren | Wofür | Braucht |
+|---|---|---|
+| **Stratifikation** | der durchsichtigste Vergleich: innerhalb gleicher Störgrößen-Klassen, dann gemittelt | binäre Behandlung |
+| **Regression mit Adjustierung** | Standardfall, auch für stetige Behandlung | — |
+| **IPW** | modelliert die Behandlungs*zuweisung* statt der Wirkung; falsch spezifiziert ist damit ein anderes Modell als bei der Regression | binäre Behandlung |
+| **Difference-in-Differences** | rechnet einen gemeinsamen Trend heraus | Eingriffszeitpunkt + Kontroll-Wirkung |
+| **Interrupted Time Series** | Niveausprung und Trendbruch an einem Eingriff | Eingriffszeitpunkt |
+
+Ohne Vorgabe wählt der Lauf: mit Eingriffszeitpunkt DiD bzw. ITS, sonst
+IPW bei binärer und Regression bei stetiger Behandlung. Was gerechnet
+wurde, steht danach am Ergebnis.
+
+**Das Konfidenzintervall kommt aus dem Moving Block Bootstrap**, nie aus
+der Lehrbuchformel. Beobachtungsreihen sind autokorreliert (§15.2): Der
+Wert um 8:05 weiß fast alles über den um 8:00, und ein klassischer
+Standardfehler wäre deshalb systematisch zu klein. Ein zu enges Intervall
+ist die gefährlichste aller Zahlen, weil es Sicherheit behauptet, die
+niemand hat. Gezogen werden zusammenhängende Blöcke der Länge `n^(1/3)`,
+200-mal, aus einem **gesetzten** Startwert — sonst wäre keine Studie
+reproduzierbar (Invariante C7).
+
+### Vom Messwert zur Tabelle
+
+Ein Schätzer sieht keine Zeitreihen, sondern Zeilen. Die Umformung
+(`panel.ts`) ist der Ort, an dem die meisten stillen Fehler entstünden,
+wenn man sie nicht benennt:
+
+- **Das Raster ist das gröbste der beteiligten Reihen.** Eine
+  Fünf-Minuten-Reihe auf ein Minutenraster zu heben, hieße vier von fünf
+  Werten erfinden. Verdichten ist zulässig, Verfeinern nicht.
+- **Eine Lücke kippt die ganze Zeile** (listenweiser Ausschluss) — und
+  wird gezählt, je Größe. Fehlende Werte sind selten zufällig fehlend
+  (§15.4); wer sie interpoliert, verzerrt unsichtbar.
+- **Der Zeitversatz der Kante wird angewandt**, nicht bloß angezeigt:
+  Trägt die Kante `ow:temporalLag PT15M`, wird die Ursache 15 Minuten
+  früher gelesen.
+- **Positivität wird geprüft und berichtet** (§15.3): Ein Thermostat, das
+  immer auf 21° steht, hat keinen schätzbaren Effekt — egal wie lang die
+  Reihe ist. Das ist keine Schwäche des Verfahrens, sondern die Lage, und
+  sie wird als solche ausgegeben.
+
+### Refutation: der Versuch, die eigene Zahl zu widerlegen
+
+Invariante C5 ist die härteste dieses Layers: **Ein Effekt ohne
+Refutation existiert nicht.** Sechs Versuche laufen nach jeder Schätzung:
+
+| Versuch | Ebene | Blockiert |
+|---|---|---|
+| **Placebo-Behandlung** — die Behandlung wird zeitlich verschoben, ihre Struktur bleibt | §13.1 | ja |
+| **Zufällige gemeinsame Ursache** — eine erfundene Störgröße in die Adjustierung | §13.1 | ja |
+| **Stabilität über Teilmengen** — zusammenhängende Zeitfenster statt Zufallszeilen | §13.1 | ja |
+| **Negativkontrolle** — eine Wirkung, die die Behandlung laut DAG nicht erreichen kann | §13.2 | ja, wenn es eine gibt |
+| **Implizierte Unabhängigkeiten** — die Behauptungen des DAG gegen die Daten (partielle Korrelation, Bonferroni) | §13.2 | ja |
+| **E-Wert** — wie stark ein unbeobachteter Störfaktor sein müsste | §13.2 | nie (Kennzahl) |
+
+Zwei Feinheiten, die zählen: Die Placebo-Behandlung wird **rotiert** und
+nicht permutiert — eine Permutation zerstörte die Autokorrelation und wäre
+ein zu leichter Gegner. Und `nicht prüfbar` gilt **nicht** als bestanden:
+„Wir konnten es nicht prüfen" und „es hat gehalten" sind verschiedene
+Aussagen, und sie zu vermengen wäre die bequemste Art, C5 zu unterlaufen.
+
+Fällt ein blockierender Versuch durch, ist nicht nur die Zahl fraglich —
+bei der Modell-Refutation ist die **Annahme** widerlegt. Dann gibt es
+keinen Effekt: nicht im Graphen, nicht in der Oberfläche, in keiner Form.
+Der durchgefallene Versuch dagegen steht da, mit Verfahren, Verdikt und
+Begründung.
+
+### Vier Ausgänge, drei davon ohne Zahl
+
+| `ow:studyVerdict` | Heißt |
+|---|---|
+| `not-identifiable` | Der DAG oder die Erfassung geben die Frage nicht her — mit dem Namen der fehlenden Größe |
+| `not-estimable` | Identifizierbar, aber die Datenlage trägt nicht (keine Variation, keine gemeinsamen Zeilen, kollineare Störgrößen — oder eine Strategie, für die Tier 1 keinen Schätzer hat) |
+| `refuted` | Geschätzt und durchgefallen; **kein** Effekt wird ausgegeben |
+| `passed` | Geschätzt und allen blockierenden Versuchen standgehalten |
+
+Frontdoor und Instrumentvariablen werden von C1 **identifiziert**, aber
+von C4 nicht gerechnet. Das ist keine Lücke, die versteckt wird: Die
+Studie sagt es im Klartext, statt ersatzweise eine Zahl aus einem anderen
+Verfahren auszugeben.
+
+### Wo der Effekt hängt
+
+Am selben Reifier wie die Kante — nur im Inferenz-Graphen statt im Modell:
+
+```turtle
+# in graph/<u>/inferred/causal/workspace
+<…/link/causal/wohnung/fenster-offen/heizenergie>
+    rdf:reifies       <<( :fenster_offen obo:RO_0002411 :heizenergie )>> ;
+    ow:effectSize     0.83 ;
+    ow:ciLow          0.61 ; ow:ciHigh 1.04 ;
+    ow:standardError  0.11 ;
+    schema:unitText   "kWh" ;
+    ow:refutationPassed true ;
+    ow:evidenceLevel  "refuted-clean" ;
+    ow:edgeClass      "asserted" ;
+    prov:wasGeneratedBy <…/study/heizen-auf-verbrauch> .
+```
+
+Damit bleibt die Annahme frei von Ergebnissen (C4), und trotzdem reden
+beide über **dieselbe** Kante. Beim Lesen eines Modells wird die
+Annotation darübergelegt: Die Kante zeigt ihren Effekt und ihren
+erwiesenen Belegstand, ohne dass im Modell-Graphen ein Byte davon steht.
+Erst dadurch greift `minEvidence` aus C2 wirklich — vor C4 war jede Kante
+„behauptet".
+
+Fragt jemand nach einer Wirkung über mehrere Schritte, gibt es keine
+Kante, die man annotieren könnte. Eine zu erfinden hieße, Struktur zu
+behaupten, die das Modell nicht enthält; dann trägt ein studieneigener
+Knoten die Zahl.
+
+### Die Signatur (Invariante C7)
+
+Ohne diese Angaben wird **nicht geschrieben** — geprüft doppelt, im Code
+und in den Shapes:
+
+- Modell und **Modell-Revision** (`ow:modelRevision`) — wer den DAG
+  ändert, ändert das Ergebnis, und ohne die Nummer gehörte die Zahl zu
+  keiner Annahme
+- Behandlung, Wirkung, Identifikationsstrategie, Schätzverfahren
+- **Startwert des Zufalls** (`ow:seed`) und Softwareversion
+- Datenfenster (`schema:temporalCoverage`) und Zeilenzahl
+- je Eingabe ein Knoten mit eingefrorener Erfassungsregel: Quelle, Rolle,
+  Verdichtung, Raster, Zeitversatz, Anzahl Beobachtungen
+- jeder Refutationsversuch mit Verfahren, Verdikt und Kennzahl
+
+Fällt eine Studie durch diese Prüfung, wird sie nicht geschrieben — die
+Oberfläche meldet es als abgewiesene Studie, statt eine unvollständige zu
+zeigen.
+
+### Kein Inferenz-Leak (Invariante C6)
+
+Kausale Läufe sind scope-partitioniert wie Reasoning-Läufe: Nur was
+**ausschließlich** aus dem öffentlichen Graphen stammt, käme in den
+öffentlichen Inferenz-Graphen. Beobachtungsreihen liegen im
+Datenverzeichnis des Nutzers und ihre Definitionen in `graph/meta` —
+beides ist nicht öffentlich. Der öffentliche Kausal-Inferenz-Graph ist
+deshalb in dieser Ausbaustufe **stets leer**, und das ist keine Lücke,
+sondern das Ergebnis der Regel. Ein verengter Zugang sieht aus demselben
+Grund an einer Kante keinen Effekt.
+
+Abnahme: `tests/graph/causal-estimation.test.ts`.
+
 ## Revisionen: woran sich eine Studie später beruft
 
 Jede Änderung am Modell schreibt eine `prov:Activity` **in den
@@ -319,11 +496,18 @@ Eng bleibt es trotzdem, je mit Negativtest in
 - Jede Kante trägt sichtbar ihre Herkunftsklasse. Eine Hypothese ist
   gestrichelt und beschriftet; sie sieht nie aus wie eine gesetzte oder
   gar belegte Kante (Invariante C2).
-- Der Belegstand steht daneben, und er ist bis C4 immer `unbelegt`. Das
-  ist die Wahrheit: Bisher hat nichts geschätzt und nichts falsifiziert.
+- Der Belegstand steht daneben. Ohne Studie ist er `unbelegt`; mit einer
+  bestandenen Studie springt er auf `refutiert bestanden`, und der Effekt
+  samt Intervall steht an derselben Kante.
 - Die Identifikation nennt Mengen, Wege und fehlende Größen — nie eine
   Zahl. Im Bild ist die vorgeschlagene Adjustierung gestrichelt
   hervorgehoben, damit die Antwort nicht nur als Satz dasteht.
+- Fragen und Ergebnisse stehen **im** Modell und nicht auf einer eigenen
+  Seite: Ein Effekt wird nie ohne den DAG ausgegeben, aus dem er folgt
+  (Invariante C1).
+- Ein durchgefallener Effekt erscheint als durchgefallener Versuch, nie
+  als kleinerer Effekt (Invariante C5). Neben dem Urteil steht, welcher
+  Versuch gescheitert ist und warum.
 - Die Anordnung des DAG wird beim Zeichnen berechnet und steht nirgends im
   Graphen (Invariante 2). Ein Modell ist ohne fremde Bildschirmkoordinaten
   föderierbar.
@@ -342,6 +526,13 @@ Eng bleibt es trotzdem, je mit Negativtest in
 - Ursache und Wirkung sind `ow:Variable` (Warnung, kein Fehler — die
   Struktur verantwortet der Mensch)
 - kein Layout-Wert im Modellgraphen
+- seit C4: eine Frage mit Kennung, Behandlung, Wirkung und Startwert; eine
+  Studie mit Urteil, Modell-Revision, Startwert, Softwareversion und
+  Zeitpunkt; ein Falsifikationsversuch mit Verfahren und Verdikt
+- seit C4 und am schärfsten: **eine Effektstärke ohne bestandene
+  Refutation ist ein Verstoß**, kein Mangel (`ow:refutationPassed` muss
+  vorhanden und `true` sein) — Invariante C5, in SHACL geschrieben. Ebenso
+  eine Effektstärke ohne Konfidenzintervall.
 
 Nicht geprüft werden Azyklizität, D-Separation und Identifizierbarkeit.
 Das ist Graphalgorithmik, SHACL kann es nicht — sie kommt aus dem
@@ -380,9 +571,48 @@ SELECT ?ursacheName ?klasse ?evidenz ?versatz WHERE {
 
 | | Was fehlt | Meilenstein |
 |---|---|---|
-| Schätzung | Effektstärke, Konfidenzintervall, Refutation, `ow:CausalStudy` | C4 |
 | Confounder | Wetter, Strompreis, Sonnenstand, Feiertage als Open-Data-Reihen | C5 |
 | Hypothesen-Erzeugung | LLM-Vorschläge mit Provenienz und symbolischen Filtern | C6 |
+| Frontdoor- und IV-Schätzer | identifiziert (C1), aber nicht gerechnet — die Studie sagt es | C8 (Sidecar) |
+| Struktur-Lernen, CATE, formale Sensitivität | Python-Sidecar, `causalTier: full` | C8, nur nach Freigabe |
+| Randomisierte Eingriffe | die dritte Falsifikationsebene (§13.3) über Aktoren | C7, nur nach Freigabe |
 
 Der Hypothesen-Graph existiert bereits als Ort, aber bis C6 schreibt
 niemand automatisch hinein: Was dort steht, hat ein Mensch geschrieben.
+
+Der häufigste Grund für `not-identifiable` ist eine fehlende Störgröße —
+und die wichtigsten der Hausdomäne sind offen verfügbar. Genau diese Lücke
+schließt C5.
+
+## Abweichungen von der Spec, zur Entscheidung vorgelegt
+
+§19 verbietet einer Session, die Spec neu zu verhandeln. Drei Stellen in
+§5 ließen sich beim Bauen von C4 nicht wörtlich umsetzen; sie sind hier
+festgehalten, damit darüber entschieden werden kann — geändert wurde an
+der Spec nichts.
+
+1. **`ow:Estimand` und die Identifikationsstrategie (§5.2).** Die Spec
+   nennt als Wertebereich `backdoor | frontdoor | iv | did | its | none`.
+   Das mischt zwei verschiedene Dinge: Die ersten drei und `none` kommen
+   aus dem **DAG** (Adjustment-Kriterium, C1), `did` und `its` sind
+   **Studiendesigns**, die aus der Zeitachse kommen und dieselbe
+   Backdoor-Strategie voraussetzen. Umgesetzt ist die Trennung:
+   `ow:identificationStrategy` trägt die Graph-Antwort,
+   `ow:estimator` das gerechnete Verfahren. Sonst wäre nicht mehr
+   ablesbar, ob eine ITS-Studie überhaupt identifiziert war.
+2. **`ow:effectUnit` (§5.3).** Die Spec zeigt `ow:effectUnit
+   qudt:KiloW-HR`. Umgesetzt ist `schema:unitText` mit der Einheit als
+   Text, weil die Erfassung (C3) Einheiten quelltreu aus Home Assistant
+   übernimmt (`unit_of_measurement`, ebenfalls `schema:unitText`) und dort
+   keine QUDT-IRI vorliegt. Ein eigener Term wäre eine zweite Schreibweise
+   für dasselbe (Invariante 8). Eine QUDT-Abbildung bleibt möglich — sie
+   gehört dann an die Variable, nicht an den Effekt.
+3. **Ergebnisse sind flüchtig (C4 + §8.1).** Studien liegen im
+   Inferenz-Graphen, werden bei jedem Lauf vollständig ersetzt (C4) und
+   nie persistiert (§8.1) — nach einem Neustart sind sie fort, bis
+   jemand rechnet. Das ist mit C7 vereinbar (reproduzierbar heißt
+   herstellbar, nicht aufbewahrt), heißt aber auch: Es gibt **keine
+   Historie** von Effekten über Modell-Revisionen hinweg. Wer „was sagte
+   dieselbe Frage vor drei Monaten?" beantworten will, braucht einen
+   dauerhaften Ort für abgeschlossene Studien — das wäre eine Erweiterung
+   der Spec, keine Auslegung, und ist deshalb nicht gebaut.

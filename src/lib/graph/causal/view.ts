@@ -15,7 +15,13 @@
 
 import { createDag, type CausalDag } from './dag';
 import { identifyEffect, type IdentificationResult } from './identify';
-import { meetsEvidence, type CausalEdgeView, type CausalModelView, type EvidenceLevel } from './types';
+import {
+    effectiveEvidence,
+    meetsEvidence,
+    type CausalEdgeView,
+    type CausalModelView,
+    type EvidenceLevel,
+} from './types';
 
 export interface ModelDag {
     dag: CausalDag;
@@ -50,8 +56,12 @@ export function dagFromModel(model: CausalModelView, options: DagFromModelOption
         model.variables.filter(variable => variable.observation !== undefined).map(variable => variable.iri),
     );
     const minimum = options.minEvidence;
+    // Gemessen wird am WIRKLICHEN Belegstand (C4): Eine Kante, die eine
+    // bestandene Studie trägt, zählt als refutiert, auch wenn im Modell
+    // noch „behauptet" steht. Vor C4 gab es diesen Unterschied nicht —
+    // seither ist er der Grund, warum `minEvidence` überhaupt greift.
     const kept = minimum
-        ? model.edges.filter(edge => meetsEvidence(edge.evidenceLevel, minimum))
+        ? model.edges.filter(edge => meetsEvidence(effectiveEvidence(edge), minimum))
         : model.edges;
     const dag = createDag({
         nodes: model.variables.map(variable => variable.iri),
@@ -61,7 +71,9 @@ export function dagFromModel(model: CausalModelView, options: DagFromModelOption
         dag,
         observable,
         label: node => labels.get(node) ?? lastSegment(node),
-        droppedByEvidence: minimum ? model.edges.filter(edge => !meetsEvidence(edge.evidenceLevel, minimum)) : [],
+        droppedByEvidence: minimum
+            ? model.edges.filter(edge => !meetsEvidence(effectiveEvidence(edge), minimum))
+            : [],
     };
 }
 

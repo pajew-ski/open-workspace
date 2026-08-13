@@ -124,8 +124,15 @@ describe('Vokabular (Invariante C8: fremdes vor eigenem)', () => {
     it('nutzt für die Kante die OBO Relations Ontology, nicht einen eigenen Term', () => {
         expect(RO.causallyUpstreamOf).toBe('http://purl.obolibrary.org/obo/RO_0002411');
         const own = Object.values(OW).filter(term => /causal|cause|effect|upstream/i.test(term));
-        // Erlaubt ist genau die Klasse; die RELATION darf nicht eigen sein.
-        expect(own).toEqual([`${OW_VOCAB_BASE}CausalModel`]);
+        // Erlaubt sind die Klammern um das Kausale — das Modell (C0), der
+        // Lauf und seine Kennzahl (C4). Die RELATION selbst darf nicht
+        // eigen sein: Sobald hier ein Term stünde, der zwei Variablen
+        // verbindet, wäre Invariante C8 gebrochen.
+        expect(own.sort()).toEqual([
+            `${OW_VOCAB_BASE}CausalModel`,
+            `${OW_VOCAB_BASE}CausalStudy`,
+            `${OW_VOCAB_BASE}effectSize`,
+        ]);
     });
 
     it('definiert nur, was über eine Kante ausgesagt wird', () => {
