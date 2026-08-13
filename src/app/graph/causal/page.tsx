@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Copy, GitBranch, Plus, Trash2 } from 'lucide-react';
+import { AlertTriangle, Copy, GitBranch, Plus, Sigma, Trash2 } from 'lucide-react';
 import { AppShell } from '@/components/layout';
 import { Button, ConfirmDialog } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
@@ -15,6 +15,11 @@ import {
     type EvidenceLevel,
 } from '@/lib/graph/causal/types';
 import { identifyInModel } from '@/lib/graph/causal/view';
+import { ESTIMATOR_LABEL, type EstimatorId } from '@/lib/graph/causal/estimate';
+import { REFUTATION_LABEL, type RefutationMethod, type RefutationVerdict } from '@/lib/graph/causal/refute';
+import { ESTIMATOR_CHOICES, STUDY_VERDICT_LABEL, type StudyVerdict } from '@/lib/graph/causal/study';
+import type { EstimandView } from '@/lib/graph/causal/estimand';
+import type { StudyView } from '@/lib/graph/causal/study-graph';
 import type { DagPath } from '@/lib/graph/causal/dsep';
 import styles from './page.module.css';
 
@@ -33,9 +38,16 @@ import styles from './page.module.css';
  * sofort, und deshalb läuft dieselbe Rechnung später auch in der Runtime
  * `local` (Invariante C9, `capabilities.causalTier`).
  *
- * Was hier weiterhin FEHLT, weil es noch nicht gebaut ist: Effektstärken,
- * Konfidenzintervalle, Refutationen. Sie kommen mit C4 — bis dahin
- * behauptet die Oberfläche keine Zahl.
+ * **Seit C4 gibt es Zahlen** — und zwar nur unter Bedingungen. Eine Frage
+ * (`ow:Estimand`) bleibt beim Modell; ihr Ergebnis entsteht im Lauf und
+ * steht nie ohne den DAG, aus dem es folgt (Invariante C1). Ein Effekt
+ * erscheint ausschließlich mit Konfidenzintervall und bestandener
+ * Refutation (Invariante C5); ein durchgefallener Versuch wird als
+ * durchgefallen angezeigt und nicht als kleinerer Effekt.
+ *
+ * Was hier weiterhin FEHLT: Struktur-Lernen aus Daten (C8) und
+ * randomisierte Eingriffe über Aktoren (C7). Beide brauchen eine
+ * ausdrückliche Freigabe und erscheinen deshalb nirgends.
  */
 
 interface ObservedVariable {
@@ -59,8 +71,43 @@ interface CausalResponse {
     hypotheses: CausalEdgeView[];
     hypothesesGraph: string;
     observedVariables: ObservedVariable[];
+    estimands: EstimandView[];
+    studies: StudyView[];
     causalTier: 'none' | 'graph' | 'full';
     validation: { conforms: boolean; graphs: string[]; results: ValidationResult[] };
+}
+
+interface RunResponse {
+    generatedAt: string;
+    durationMs: number;
+    counts: {
+        total: number;
+        passed: number;
+        refuted: number;
+        notEstimable: number;
+        notIdentifiable: number;
+    };
+    skipped: Array<{ estimandId: string; reason: string }>;
+    rejected: Array<{ estimandId: string; messages: string[] }>;
+}
+
+const VERDICT_HINT: Record<StudyVerdict, string> = {
+    passed: 'Geschätzt und allen blockierenden Falsifikationsversuchen standgehalten.',
+    refuted: 'Geschätzt und durchgefallen — der Wert wird nicht ausgegeben (Invariante C5).',
+    'not-estimable': 'Identifizierbar, aber die Datenlage trägt keine Schätzung.',
+    'not-identifiable': 'Der DAG oder die Erfassung geben die Frage nicht her.',
+};
+
+const REFUTATION_VERDICT_LABEL: Record<RefutationVerdict, string> = {
+    passed: 'bestanden',
+    failed: 'durchgefallen',
+    inconclusive: 'nicht prüfbar',
+    informative: 'Kennzahl',
+};
+
+/** Zahlen deutsch und knapp — drei Nachkommastellen reichen für einen Effekt. */
+function num(value: number, digits = 3): string {
+    return value.toLocaleString('de-DE', { maximumFractionDigits: digits });
 }
 
 const EDGE_CLASS_LABEL: Record<EdgeClass, string> = {
@@ -282,12 +329,21 @@ function EdgeBadges({ edge }: { edge: CausalEdgeView }) {
                     {edge.edgeClassRaw ? `unbekannte Klasse: ${edge.edgeClassRaw}` : 'ohne Herkunftsklasse'}
                 </span>
             )}
-            <span className={styles.badge}>
-                {edge.evidenceLevel
-                    ? EVIDENCE_LABEL[edge.evidenceLevel]
-                    : edge.evidenceLevelRaw ?? 'unbelegt'}
+            <span className={`${styles.badge} ${edge.studyEvidence ? styles.badgePassed : ''}`}>
+                {edge.studyEvidence
+                    ? EVIDENCE_LABEL[edge.studyEvidence]
+                    : edge.evidenceLevel
+                        ? EVIDENCE_LABEL[edge.evidenceLevel]
+                        : edge.evidenceLevelRaw ?? 'unbelegt'}
             </span>
             {edge.temporalLag && <span className={styles.badge}>Versatz {formatLag(edge.temporalLag)}</span>}
+            {edge.effect && (
+                <span className={`${styles.badge} ${styles.badgePassed}`}>
+                    Effekt {num(edge.effect.value)}
+                    {edge.effect.unit ? ` ${edge.effect.unit}` : ''}
+                    {' '}[{num(edge.effect.ciLow)}; {num(edge.effect.ciHigh)}]
+                </span>
+            )}
         </div>
     );
 }
@@ -568,11 +624,272 @@ function IdentificationPanel({ model, exposure, outcome, onExposure, onOutcome, 
     );
 }
 
+interface StudiesProps {
+    model: CausalModelView;
+    estimands: readonly EstimandView[];
+    studies: readonly StudyView[];
+    busy: boolean;
+    onAsk(input: Record<string, unknown>): Promise<void>;
+    onRemove(estimandId: string): Promise<void>;
+}
+
+function StudyCard({ model, estimand, study }: {
+    model: CausalModelView;
+    estimand: EstimandView;
+    study?: StudyView;
+}) {
+    const verdict = study?.verdict;
+    return (
+        <div className={styles.study}>
+            <div className={styles.studyHead}>
+                <h6 className={styles.studyTitle}>{estimand.name}</h6>
+                <span className={styles.badges}>
+                    {verdict ? (
+                        <span
+                            className={`${styles.badge} ${verdict === 'passed'
+                                ? styles.badgePassed
+                                : verdict === 'refuted' ? styles.badgeFailed : styles.badgeMissing}`}
+                            title={VERDICT_HINT[verdict]}
+                        >
+                            {STUDY_VERDICT_LABEL[verdict]}
+                        </span>
+                    ) : (
+                        <span className={`${styles.badge} ${styles.badgeMissing}`}>noch nicht gerechnet</span>
+                    )}
+                </span>
+            </div>
+
+            <p className={styles.verdictReason}>
+                Wirkung von <strong>{shortName(model, estimand.treatment)}</strong> auf{' '}
+                <strong>{shortName(model, estimand.outcome)}</strong>
+                {estimand.estimator !== 'auto' && ` — ${ESTIMATOR_LABEL[estimand.estimator as EstimatorId]}`}
+            </p>
+
+            {study?.effect && (
+                <div className={styles.effect}>
+                    <span className={styles.effectValue}>
+                        {num(study.effect.value)}
+                        {study.effect.unit ? ` ${study.effect.unit}` : ''}
+                    </span>
+                    <span className={styles.effectInterval}>
+                        95-%-Intervall {num(study.effect.ciLow)} bis {num(study.effect.ciHigh)}
+                    </span>
+                </div>
+            )}
+
+            {study && <p className={styles.verdictReason}>{study.reason}</p>}
+
+            {study && study.adjustedFor.length > 0 && (
+                <p className={styles.verdictSub}>
+                    Adjustiert über {study.adjustedFor.map(node => shortName(model, node)).join(', ')}.
+                </p>
+            )}
+
+            {study && study.refutations.length > 0 && (
+                <ul className={styles.refutationList}>
+                    {study.refutations.map(refutation => (
+                        <li key={refutation.method} className={styles.refutation}>
+                            <span className={styles.refutationName}>
+                                {REFUTATION_LABEL[refutation.method as RefutationMethod]}
+                            </span>
+                            <span
+                                className={`${styles.badge} ${refutation.verdict === 'passed'
+                                    ? styles.badgePassed
+                                    : refutation.verdict === 'failed' ? styles.badgeFailed : styles.badgeMissing}`}
+                            >
+                                {REFUTATION_VERDICT_LABEL[refutation.verdict]}
+                            </span>
+                            <span>{refutation.description}</span>
+                        </li>
+                    ))}
+                </ul>
+            )}
+
+            {study && (
+                <p className={styles.signature}>
+                    Modell-Revision {study.modelRevision}
+                    {study.estimator ? ` · ${ESTIMATOR_LABEL[study.estimator]}` : ''}
+                    {study.rows !== undefined ? ` · ${study.rows.toLocaleString('de-DE')} Zeilen` : ''}
+                    {` · Startwert ${study.seed}`}
+                    {study.softwareVersion ? ` · Version ${study.softwareVersion}` : ''}
+                    {study.generatedAt ? ` · ${new Date(study.generatedAt).toLocaleString('de-DE')}` : ''}
+                </p>
+            )}
+        </div>
+    );
+}
+
+/**
+ * Fragen und Ergebnisse — bewusst IM Modell und nicht auf einer eigenen
+ * Seite: Ein Effekt wird nie ohne den DAG ausgegeben, aus dem er folgt
+ * (Invariante C1). Wer die Struktur darüber ändert, sieht sofort, dass
+ * das Ergebnis darunter zu einer anderen Revision gehört.
+ */
+function StudiesPanel({ model, estimands, studies, busy, onAsk, onRemove }: StudiesProps) {
+    const [treatment, setTreatment] = useState('');
+    const [outcome, setOutcome] = useState('');
+    const [estimator, setEstimator] = useState<string>('auto');
+    const [name, setName] = useState('');
+    const [interventionAt, setInterventionAt] = useState('');
+    const [controlOutcome, setControlOutcome] = useState('');
+    const byId = new Map(studies.map(study => [study.estimandId, study]));
+
+    const ask = async (event: React.FormEvent) => {
+        event.preventDefault();
+        if (treatment === '' || outcome === '') return;
+        const label = name.trim() !== ''
+            ? name.trim()
+            : `Wirkung von ${shortName(model, treatment)} auf ${shortName(model, outcome)}`;
+        await onAsk({
+            id: `${model.id}-${Date.now().toString(36)}`,
+            name: label,
+            modelId: model.id,
+            treatment,
+            outcome,
+            estimator,
+            ...(controlOutcome !== '' ? { controlOutcome } : {}),
+            ...(interventionAt !== ''
+                ? { interventionAt: new Date(interventionAt).toISOString() }
+                : {}),
+        });
+        setName('');
+        setInterventionAt('');
+        setControlOutcome('');
+    };
+
+    return (
+        <div className={styles.studies}>
+            <h5 className={styles.editorTitle}>Fragen und Ergebnisse</h5>
+
+            {estimands.length === 0 ? (
+                <p className={styles.editorHint}>
+                    Noch keine Frage. Eine Frage bleibt beim Modell; ihr Ergebnis entsteht erst im
+                    Lauf und wird bei jedem weiteren Lauf ersetzt.
+                </p>
+            ) : (
+                <ul className={styles.studyList}>
+                    {estimands.map(estimand => (
+                        <li key={estimand.id}>
+                            <StudyCard model={model} estimand={estimand} study={byId.get(estimand.id)} />
+                            <Button variant="ghost" disabled={busy} onClick={() => onRemove(estimand.id)}>
+                                <Trash2 size={16} aria-hidden="true" />
+                                <span className={styles.visuallyHidden}>Frage {estimand.name} </span>
+                                entfernen
+                            </Button>
+                        </li>
+                    ))}
+                </ul>
+            )}
+
+            <form className={styles.editorForm} onSubmit={ask}>
+                <div className={styles.editorRow}>
+                    <label className={styles.field}>
+                        <span className={styles.fieldLabel}>Wirkung von</span>
+                        <select
+                            className={styles.input}
+                            value={treatment}
+                            onChange={event => setTreatment(event.target.value)}
+                        >
+                            <option value="">— auswählen —</option>
+                            {model.variables.map(variable => (
+                                <option key={variable.iri} value={variable.iri}>{variable.name}</option>
+                            ))}
+                        </select>
+                    </label>
+                    <label className={styles.field}>
+                        <span className={styles.fieldLabel}>auf</span>
+                        <select
+                            className={styles.input}
+                            value={outcome}
+                            onChange={event => setOutcome(event.target.value)}
+                        >
+                            <option value="">— auswählen —</option>
+                            {model.variables.map(variable => (
+                                <option key={variable.iri} value={variable.iri}>{variable.name}</option>
+                            ))}
+                        </select>
+                    </label>
+                    <label className={styles.field}>
+                        <span className={styles.fieldLabel}>Verfahren</span>
+                        <select
+                            className={styles.input}
+                            value={estimator}
+                            onChange={event => setEstimator(event.target.value)}
+                        >
+                            {ESTIMATOR_CHOICES.map(choice => (
+                                <option key={choice} value={choice}>
+                                    {choice === 'auto' ? 'automatisch' : ESTIMATOR_LABEL[choice]}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                    <label className={styles.field}>
+                        <span className={styles.fieldLabel}>Name (optional)</span>
+                        <input
+                            className={styles.input}
+                            value={name}
+                            onChange={event => setName(event.target.value)}
+                            placeholder="Bringt die Nachtabsenkung etwas?"
+                            maxLength={200}
+                        />
+                    </label>
+                </div>
+                {(estimator === 'did' || estimator === 'its') && (
+                    <div className={styles.editorRow}>
+                        <label className={styles.field}>
+                            <span className={styles.fieldLabel}>Zeitpunkt des Eingriffs</span>
+                            <input
+                                className={styles.input}
+                                type="datetime-local"
+                                value={interventionAt}
+                                onChange={event => setInterventionAt(event.target.value)}
+                                required
+                            />
+                        </label>
+                        {estimator === 'did' && (
+                            <label className={styles.field}>
+                                <span className={styles.fieldLabel}>Kontroll-Wirkung</span>
+                                <select
+                                    className={styles.input}
+                                    value={controlOutcome}
+                                    onChange={event => setControlOutcome(event.target.value)}
+                                    required
+                                >
+                                    <option value="">— auswählen —</option>
+                                    {model.variables.map(variable => (
+                                        <option key={variable.iri} value={variable.iri}>{variable.name}</option>
+                                    ))}
+                                </select>
+                            </label>
+                        )}
+                    </div>
+                )}
+                <div className={styles.editorRow}>
+                    <Button type="submit" variant="secondary" disabled={busy}>
+                        <Plus size={16} aria-hidden="true" />
+                        Frage stellen
+                    </Button>
+                </div>
+                <p className={styles.editorHint}>
+                    Das Verfahren darf <strong>automatisch</strong> bleiben — dann entscheidet die
+                    Datenlage: binäre Behandlung über Propensity-Gewichtung, stetige über Regression,
+                    mit gesetztem Eingriffszeitpunkt über die Zeitreihe. Was gerechnet wurde, steht
+                    hinterher am Ergebnis, samt Startwert, Datenfenster und Modell-Revision.
+                </p>
+            </form>
+        </div>
+    );
+}
+
 interface ModelCardProps {
     model: CausalModelView;
     observedVariables: readonly ObservedVariable[];
+    estimands: readonly EstimandView[];
+    studies: readonly StudyView[];
     busy: boolean;
     onOperation(operation: Record<string, unknown>): Promise<void>;
+    onAsk(input: Record<string, unknown>): Promise<void>;
+    onRemoveEstimand(estimandId: string): Promise<void>;
     onCopy(): void;
     onRemove(): void;
 }
@@ -583,7 +900,18 @@ interface ModelCardProps {
  * und nicht im Panel — nur so kann das Bild zeigen, worüber adjustiert
  * würde.
  */
-function ModelCard({ model, observedVariables, busy, onOperation, onCopy, onRemove }: ModelCardProps) {
+function ModelCard({
+    model,
+    observedVariables,
+    estimands,
+    studies,
+    busy,
+    onOperation,
+    onAsk,
+    onRemoveEstimand,
+    onCopy,
+    onRemove,
+}: ModelCardProps) {
     const [exposure, setExposure] = useState('');
     const [outcome, setOutcome] = useState('');
 
@@ -695,6 +1023,15 @@ function ModelCard({ model, observedVariables, busy, onOperation, onCopy, onRemo
                 result={result}
             />
 
+            <StudiesPanel
+                model={model}
+                estimands={estimands}
+                studies={studies}
+                busy={busy}
+                onAsk={onAsk}
+                onRemove={onRemoveEstimand}
+            />
+
             {model.revisions.length > 0 && (
                 <details className={styles.template}>
                     <summary>Verlauf ({model.revisions.length} Revisionen)</summary>
@@ -746,6 +1083,8 @@ export default function GraphCausalPage() {
     const [newId, setNewId] = useState('');
     const [newName, setNewName] = useState('');
     const [removing, setRemoving] = useState<CausalModelView | null>(null);
+    const [running, setRunning] = useState(false);
+    const [lastRun, setLastRun] = useState<RunResponse | null>(null);
 
     const { data, isLoading } = useQuery<CausalResponse>({
         queryKey: ['graph-causal'],
@@ -753,6 +1092,8 @@ export default function GraphCausalPage() {
     });
 
     const models = data?.models ?? [];
+    const estimands = data?.estimands ?? [];
+    const studies = data?.studies ?? [];
     const hypotheses = data?.hypotheses ?? [];
     const findings = (data?.validation.results ?? []).filter(result => !result.severity.endsWith('Info'));
 
@@ -794,6 +1135,65 @@ export default function GraphCausalPage() {
             toast.error(error instanceof Error ? error.message : 'Änderung fehlgeschlagen');
         } finally {
             setBusy(false);
+            invalidate();
+        }
+    };
+
+    const askQuestion = async (input: Record<string, unknown>) => {
+        setBusy(true);
+        try {
+            await fetchJson('/api/graph/causal/estimands', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(input),
+            });
+            toast.success('Frage angelegt. Sie wird beim nächsten Lauf gerechnet.');
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Frage konnte nicht angelegt werden.');
+        } finally {
+            setBusy(false);
+            invalidate();
+        }
+    };
+
+    const removeQuestion = async (estimandId: string) => {
+        setBusy(true);
+        try {
+            const result = await fetchJson<{ message: string }>(
+                `/api/graph/causal/estimands/${encodeURIComponent(estimandId)}`,
+                { method: 'DELETE' },
+            );
+            toast.success(result.message);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Frage konnte nicht entfernt werden.');
+        } finally {
+            setBusy(false);
+            invalidate();
+        }
+    };
+
+    /**
+     * Ein Lauf rechnet ALLE Fragen neu und ersetzt den Inferenz-Graphen
+     * vollständig (Invariante C4). Das steht auch so auf der Seite —
+     * sonst sähe es aus, als ginge dabei etwas verloren.
+     */
+    const runStudies = async () => {
+        setRunning(true);
+        try {
+            const result = await fetchJson<RunResponse>('/api/graph/causal/studies', { method: 'POST' });
+            setLastRun(result);
+            const { counts } = result;
+            toast.success(
+                counts.total === 0
+                    ? 'Keine Frage zu rechnen — stell erst eine.'
+                    : `${counts.total} Frage(n) gerechnet: ${counts.passed} mit Effekt, `
+                        + `${counts.refuted} durchgefallen, `
+                        + `${counts.notEstimable + counts.notIdentifiable} ohne Schätzung.`,
+            );
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Der Lauf ist fehlgeschlagen.');
+        } finally {
+            setRunning(false);
             invalidate();
         }
     };
@@ -840,12 +1240,68 @@ export default function GraphCausalPage() {
                     <p>
                         Du kannst die Struktur hier bearbeiten, und zu jedem Paar aus Ursache und
                         Wirkung sagt die Seite, ob der Effekt aus Beobachtungsdaten überhaupt
-                        <strong> bestimmbar</strong> wäre — und woran es sonst liegt.{' '}
-                        <strong>Geschätzt wird nichts</strong>: Effektstärken,
-                        Konfidenz&shy;intervalle und Refutationen gibt es noch nicht, und ohne sie
-                        wäre jede Zahl eine Behauptung, für die niemand geradesteht.
+                        <strong> bestimmbar</strong> wäre — und woran es sonst liegt. Ist er das,
+                        kannst du ihn <strong>schätzen</strong> lassen. Eine Zahl erscheint
+                        allerdings nur mit Konfidenz&shy;intervall und erst, wenn sie jeden
+                        Falsifikations&shy;versuch überstanden hat; hält sie nicht stand, siehst du
+                        den durchgefallenen Versuch statt eines kleineren Effekts.
                     </p>
                 </div>
+
+                <section className={styles.section}>
+                    <h3>Schätzen</h3>
+                    <p className={styles.sectionHint}>
+                        Ein Lauf rechnet <strong>alle</strong> Fragen neu und ersetzt die
+                        bisherigen Ergebnisse vollständig — Ergebnisse sind abgeleitet und werden
+                        nie fortgeschrieben. Die Fragen selbst bleiben. Gerechnet wird gegen die
+                        Messreihen aus{' '}
+                        <Link className={styles.inlineLink} href="/graph/observations">Beobachtungen</Link>;
+                        ohne erfasste Größen kommt keine Zahl zustande, sondern die Auskunft, welche
+                        fehlt.
+                    </p>
+                    <div className={styles.runRow}>
+                        <Button variant="primary" onClick={runStudies} disabled={running || estimands.length === 0}>
+                            <Sigma size={16} aria-hidden="true" />
+                            {running ? 'Rechne…' : 'Alle Fragen rechnen'}
+                        </Button>
+                        {estimands.length === 0 && (
+                            <span className={styles.sectionHint}>
+                                Noch keine Frage — stell sie unten bei deinem Modell.
+                            </span>
+                        )}
+                        {lastRun && (
+                            <span className={styles.signature} role="status">
+                                {lastRun.counts.total} Frage(n) in {Math.round(lastRun.durationMs / 100) / 10} s:{' '}
+                                {lastRun.counts.passed} mit Effekt, {lastRun.counts.refuted} durchgefallen,{' '}
+                                {lastRun.counts.notEstimable} nicht schätzbar,{' '}
+                                {lastRun.counts.notIdentifiable} nicht identifizierbar.
+                            </span>
+                        )}
+                    </div>
+                    {lastRun && lastRun.rejected.length > 0 && (
+                        <ul className={styles.findingList}>
+                            {lastRun.rejected.map(entry => (
+                                <li key={entry.estimandId} className={styles.finding}>
+                                    <AlertTriangle size={16} aria-hidden="true" />
+                                    <span>
+                                        &bdquo;{entry.estimandId}&ldquo; wurde nicht geschrieben — die
+                                        Studie war unvollständig: {entry.messages.join(' ')}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                    {lastRun && lastRun.skipped.length > 0 && (
+                        <ul className={styles.findingList}>
+                            {lastRun.skipped.map(entry => (
+                                <li key={entry.estimandId} className={styles.finding}>
+                                    <AlertTriangle size={16} aria-hidden="true" />
+                                    <span>&bdquo;{entry.estimandId}&ldquo;: {entry.reason}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </section>
 
                 <section className={styles.section}>
                     <h3>Neues Modell</h3>
@@ -907,8 +1363,12 @@ export default function GraphCausalPage() {
                                     key={model.id}
                                     model={model}
                                     observedVariables={data?.observedVariables ?? []}
+                                    estimands={estimands.filter(estimand => estimand.modelId === model.id)}
+                                    studies={studies}
                                     busy={busy}
                                     onOperation={operation => runOperation(model.id, operation)}
+                                    onAsk={askQuestion}
+                                    onRemoveEstimand={removeQuestion}
                                     onCopy={() => handleCopy(model)}
                                     onRemove={() => setRemoving(model)}
                                 />

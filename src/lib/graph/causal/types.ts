@@ -33,6 +33,39 @@ export function meetsEvidence(level: EvidenceLevel | null, minimum: EvidenceLeve
     return EVIDENCE_ORDER[level ?? 'hypothesis'] >= EVIDENCE_ORDER[minimum];
 }
 
+/**
+ * Ein geschätzter und refutierter Effekt an einer Kante (C4). Er steht
+ * NIE im Modell-Graphen, sondern im Inferenz-Graphen (Invariante C4) und
+ * wird beim Lesen darübergelegt — die Annahme bleibt frei von
+ * Ergebnissen, und trotzdem sieht man an der Kante, was aus ihr wurde.
+ */
+export interface CausalEdgeEffect {
+    value: number;
+    ciLow: number;
+    ciHigh: number;
+    standardError?: number;
+    unit?: string;
+    /** Die Studie, aus der die Zahl stammt (`prov:wasGeneratedBy`). */
+    study: string;
+}
+
+/**
+ * Der Belegstand, der wirklich gilt: die höhere von behaupteter und
+ * erwiesener Stufe. Vor C4 war das immer die behauptete — seither hebt
+ * eine bestandene Studie die Kante auf `refuted-clean`, ohne dass jemand
+ * das Modell anfasst.
+ */
+export function effectiveEvidence(edge: {
+    evidenceLevel: EvidenceLevel | null;
+    studyEvidence?: EvidenceLevel | null;
+}): EvidenceLevel | null {
+    const asserted = edge.evidenceLevel;
+    const estimated = edge.studyEvidence ?? null;
+    if (asserted === null) return estimated;
+    if (estimated === null) return asserted;
+    return EVIDENCE_ORDER[estimated] > EVIDENCE_ORDER[asserted] ? estimated : asserted;
+}
+
 export interface CausalVariableView {
     iri: string;
     name: string;
@@ -62,6 +95,10 @@ export interface CausalEdgeView {
     evidenceLevelRaw?: string;
     /** ISO-8601-Dauer, quelltreu (`PT15M`). */
     temporalLag?: string;
+    /** Belegstand aus einer Studie (C4), getrennt vom behaupteten. */
+    studyEvidence?: EvidenceLevel;
+    /** Effekt aus einer bestandenen Studie (C4) — nur dann gesetzt (C5). */
+    effect?: CausalEdgeEffect;
 }
 
 /** Eine Änderung am Modell (C1: `prov:Activity` pro Revision). */
