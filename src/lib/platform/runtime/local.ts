@@ -93,6 +93,9 @@ export function createLocalRuntimeAdapter(options: LocalRuntimeOptions = {}): Ru
             federationInbound: false,
             multiUser: false,
             reasoningTier: 'rl',
+            // Der Tier-1-Kern ist pur und läuft deshalb auch hier — das
+            // ist der Punkt an ihm (CAUSAL_LAYER_SPEC §18).
+            causalTier: 'graph',
         },
     };
 }

@@ -57,6 +57,7 @@ const CAPABILITIES: RuntimeCapabilities = {
     federationInbound: true,
     multiUser: true,
     reasoningTier: 'rl',
+    causalTier: 'graph',
 };
 
 const API = 'https://api.github.com/repos/pajew-ski/prima-materia';

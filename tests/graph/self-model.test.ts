@@ -51,6 +51,7 @@ const SERVER_CAPABILITIES: RuntimeCapabilities = {
     federationInbound: true,
     multiUser: true,
     reasoningTier: 'rl',
+    causalTier: 'graph',
 };
 
 const LOCAL_CAPABILITIES: RuntimeCapabilities = {
@@ -60,6 +61,7 @@ const LOCAL_CAPABILITIES: RuntimeCapabilities = {
     federationInbound: false,
     multiUser: false,
     reasoningTier: 'rl',
+    causalTier: 'graph',
 };
 
 function input(over: Partial<SelfModelInput> = {}): SelfModelInput {
@@ -163,7 +165,10 @@ describe('M14 — Selbstmodell in graph/meta (SPEC §18)', () => {
         const server = availableModules(APP_MODULES, SERVER_CAPABILITIES).map(m => m.route);
         expect(server).toContain('/graph/sparql');
 
-        expect(activeCapabilities(LOCAL_CAPABILITIES)).toEqual(['reasoning:rl']);
+        // Abgestufte Fähigkeiten tragen ihren Wert; der Tier-1-Kausalkern
+        // läuft auch in `local`, weil er pur ist (C1, Invariante C9).
+        expect(activeCapabilities(LOCAL_CAPABILITIES)).toEqual(['reasoning:rl', 'causal:graph']);
+        expect(activeCapabilities({ ...LOCAL_CAPABILITIES, causalTier: 'none' })).toEqual(['reasoning:rl']);
     });
 
     it('ist deterministisch und meldet einen unveränderten Lauf als unverändert', async () => {

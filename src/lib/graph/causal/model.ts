@@ -9,81 +9,53 @@
  * — Herkunftsklasse, Zeitversatz, Belegstand — hängt als RDF-1.2-
  * Annotation am benannten Reifier (§5.3), nicht in einer Nebentabelle.
  *
- * Drei Dinge, die dieses Modul bewusst NICHT tut:
+ * Zwei Dinge, die dieses Modul bewusst NICHT tut:
  *
  *  - **Es rechnet nicht.** Azyklizität, D-Separation, Backdoor-Kriterium
- *    und Adjustment Sets sind Meilenstein C1. Hier wird gelesen,
- *    geschrieben und dargestellt — was zyklisch modelliert wurde, wird
- *    als solches gezeigt, aber nicht bewertet.
+ *    und Adjustment Sets sind der Tier-1-Kern (`dag.ts`, `dsep.ts`,
+ *    `identify.ts`, Meilenstein C1) — pur und ohne Store, damit er auch
+ *    im Browser läuft. Hier wird gelesen, geschrieben und dargestellt.
  *  - **Es behauptet keine Effekte.** Effektstärken, Konfidenzintervalle
  *    und Refutationen entstehen erst in C4 und leben dann in
  *    `graph/<u>/inferred/causal/<scope>` (Invariante C4), nie hier.
- *  - **Es vermischt nichts.** Hypothesen liegen in einem eigenen Graphen
- *    (`graph/<u>/causal-hypotheses`) und werden getrennt gelesen, damit
- *    ein Vorschlag nie wie gesetzte Struktur aussieht (Invariante C2).
+ *
+ * Und eines, worauf es achtet: **Es vermischt nichts.** Hypothesen liegen
+ * in einem eigenen Graphen (`graph/<u>/causal-hypotheses`) und werden
+ * getrennt gelesen, damit ein Vorschlag nie wie gesetzte Struktur
+ * aussieht (Invariante C2).
  */
 
 import type { Quad, Term } from '@rdfjs/types';
 import type { GraphStore } from '../store/types';
 import { describeGraph, type IriFactory } from '../iri';
 import { factory, literal, namedNode, typedLiteral } from '../rdf';
-import { DCTERMS, OW, RDF, RO, SCHEMA, SPARQL_PREFIXES } from '../vocab';
+import { DCTERMS, OW, PROV, RDF, RO, SCHEMA, SPARQL_PREFIXES } from '../vocab';
+import {
+    EDGE_CLASSES,
+    EVIDENCE_LEVELS,
+    type CausalEdgeView,
+    type CausalModelView,
+    type CausalRevisionView,
+    type CausalVariableView,
+    type EdgeClass,
+    type EvidenceLevel,
+} from './types';
 
 export interface GraphHandle {
     store: GraphStore;
     iri: IriFactory;
 }
 
-/** Vier disjunkte Herkunftsklassen einer kausalen Kante (Invariante C2). */
-export const EDGE_CLASSES = ['hypothesis', 'structural', 'learned', 'asserted'] as const;
-export type EdgeClass = (typeof EDGE_CLASSES)[number];
-
-/** Belegstand einer Kante (§9 `minEvidence`, Invariante C5). */
-export const EVIDENCE_LEVELS = ['hypothesis', 'estimated', 'refuted-clean'] as const;
-export type EvidenceLevel = (typeof EVIDENCE_LEVELS)[number];
-
-export interface CausalVariableView {
-    iri: string;
-    name: string;
-    /** Einheit, quelltreu aus der Beobachtungsgröße (schema:unitText). */
-    unit?: string;
-    /** Ist die Variable dem Modell per schema:hasPart zugeordnet? */
-    inModel: boolean;
-    /**
-     * Erfassung aus `graph/meta` (C3), falls die Variable dort als
-     * Beobachtungsgröße geführt wird. Ohne Erfassung ist sie eine reine
-     * Modellvariable — zulässig, aber später nicht schätzbar.
-     */
-    observation?: { count: number; from?: string; through?: string };
-}
-
-export interface CausalEdgeView {
-    from: string;
-    to: string;
-    /** Reifier der Annotation; fehlt, wenn die Kante unannotiert ist. */
-    reifier?: string;
-    /** `null`, wenn die Kante keine (oder eine unbekannte) Klasse trägt. */
-    edgeClass: EdgeClass | null;
-    /** Roher Wert einer unbekannten Klasse — wird angezeigt, nicht geraten. */
-    edgeClassRaw?: string;
-    evidenceLevel: EvidenceLevel | null;
-    evidenceLevelRaw?: string;
-    /** ISO-8601-Dauer, quelltreu (`PT15M`). */
-    temporalLag?: string;
-}
-
-export interface CausalModelView {
-    id: string;
-    iri: string;
-    /** Named Graph des Modells — zugleich seine Modellgrenze. */
-    graph: string;
-    name: string;
-    description?: string;
-    created?: string;
-    modified?: string;
-    variables: CausalVariableView[];
-    edges: CausalEdgeView[];
-}
+export {
+    EDGE_CLASSES,
+    EVIDENCE_LEVELS,
+    type CausalEdgeView,
+    type CausalModelView,
+    type CausalRevisionView,
+    type CausalVariableView,
+    type EdgeClass,
+    type EvidenceLevel,
+};
 
 export interface CausalModelInput {
     id: string;
@@ -94,6 +66,8 @@ export interface CausalModelInput {
     edges?: readonly CausalEdgeInput[];
     created?: string;
     modified?: string;
+    /** Revision (`schema:version`) — Vorleistung für die Signatur aus C7. */
+    revision?: number;
 }
 
 export interface CausalEdgeInput {
@@ -153,6 +127,15 @@ export function causalModelQuads(iri: IriFactory, input: CausalModelInput): Quad
     if (input.description) {
         quads.push(factory.quad(subject, namedNode(SCHEMA.description), literal(input.description), graph));
     }
+    // Die Revision steht IMMER da, auch bei der ersten: Eine Studie muss
+    // sich später auf eine Zahl berufen können (Invariante C7), und
+    // „keine Angabe" wäre dafür keine.
+    quads.push(factory.quad(
+        subject,
+        namedNode(SCHEMA.version),
+        typedLiteral.integer(input.revision ?? 1),
+        graph,
+    ));
     if (input.created) {
         quads.push(factory.quad(subject, namedNode(DCTERMS.created), typedLiteral.dateTime(input.created), graph));
     }
@@ -342,6 +325,35 @@ async function readVariables(
     return [...byIri.values()].sort((a, b) => a.name.localeCompare(b.name, 'de'));
 }
 
+/**
+ * Änderungsverlauf eines Modells (C1). Jede Änderung ist eine
+ * `prov:Activity` IM Modell-Graphen — sie gehört zum Modell, überlebt mit
+ * ihm den Neustart und wird mit ihm gelöscht. Ohne diese Historie hätte
+ * eine spätere Studie keine Revision, auf die sie sich berufen könnte
+ * (Invariante C7), und nachträglich lässt sie sich nicht herstellen.
+ */
+async function readRevisions(handle: GraphHandle, graph: string): Promise<CausalRevisionView[]> {
+    const rows = await selectRows(handle, `${SPARQL_PREFIXES}
+        SELECT ?activity ?revision ?at ?actor ?description WHERE {
+            GRAPH ${iriRef(graph)} {
+                ?activity a <${PROV.Activity}> .
+                OPTIONAL { ?activity <${SCHEMA.version}> ?revision }
+                OPTIONAL { ?activity <${DCTERMS.created}> ?at }
+                OPTIONAL { ?activity <${PROV.wasAttributedTo}> ?actor }
+                OPTIONAL { ?activity <${SCHEMA.description}> ?description }
+            }
+        }`, [graph]);
+    return rows
+        .map(row => ({
+            iri: row.activity.value,
+            revision: Number.parseInt(row.revision?.value ?? '0', 10) || 0,
+            ...(row.at ? { at: row.at.value } : {}),
+            ...(row.actor ? { actor: row.actor.value } : {}),
+            description: row.description?.value ?? 'Änderung ohne Beschreibung',
+        }))
+        .sort((a, b) => b.revision - a.revision || (b.at ?? '').localeCompare(a.at ?? ''));
+}
+
 export interface ListOptions {
     /** Verengung durch den Grant (§17.3) — kann nur wegnehmen. */
     allowedGraphs?: readonly string[];
@@ -353,13 +365,14 @@ export async function readCausalModel(
     ref: CausalGraphRef,
 ): Promise<CausalModelView | null> {
     const rows = await selectRows(handle, `${SPARQL_PREFIXES}
-        SELECT ?model ?name ?description ?created ?modified WHERE {
+        SELECT ?model ?name ?description ?created ?modified ?revision WHERE {
             GRAPH ${iriRef(ref.graph)} {
                 ?model a <${OW.CausalModel}> .
                 OPTIONAL { ?model <${SCHEMA.name}> ?name }
                 OPTIONAL { ?model <${SCHEMA.description}> ?description }
                 OPTIONAL { ?model <${DCTERMS.created}> ?created }
                 OPTIONAL { ?model <${DCTERMS.modified}> ?modified }
+                OPTIONAL { ?model <${SCHEMA.version}> ?revision }
             }
         } ORDER BY ?model LIMIT 1`, [ref.graph]);
     const row = rows[0];
@@ -374,8 +387,10 @@ export async function readCausalModel(
         ...(row.description ? { description: row.description.value } : {}),
         ...(row.created ? { created: row.created.value } : {}),
         ...(row.modified ? { modified: row.modified.value } : {}),
+        revision: Number.parseInt(row.revision?.value ?? '1', 10) || 1,
         variables: await readVariables(handle, ref.graph, modelIri, edges),
         edges,
+        revisions: await readRevisions(handle, ref.graph),
     };
 }
 
@@ -423,7 +438,7 @@ export async function listCausalHypotheses(
  */
 export async function createCausalModel(
     handle: GraphHandle,
-    input: { id: string; name: string; description?: string; now?: Date },
+    input: { id: string; name: string; description?: string; now?: Date; actor?: string },
 ): Promise<CausalModelView> {
     assertModelId(input.id);
     const graph = handle.iri.causalGraph(input.id);
@@ -438,7 +453,27 @@ export async function createCausalModel(
         ...(input.description ? { description: input.description } : {}),
         created: now,
         modified: now,
+        revision: 1,
     });
+    // Revision 1 ist die Anlage selbst. Eine Historie, die erst bei der
+    // zweiten Änderung beginnt, hätte kein Fundament (Invariante C7).
+    const modelIri = causalModelIri(handle.iri, input.id);
+    const activity = namedNode(`${modelIri}/revision/0001`);
+    quads.push(
+        factory.quad(activity, namedNode(RDF.type), namedNode(PROV.Activity), namedNode(graph)),
+        factory.quad(activity, namedNode(SCHEMA.version), typedLiteral.integer(1), namedNode(graph)),
+        factory.quad(activity, namedNode(DCTERMS.created), typedLiteral.dateTime(now), namedNode(graph)),
+        factory.quad(activity, namedNode(SCHEMA.description), literal('Modell angelegt.'), namedNode(graph)),
+        factory.quad(activity, namedNode(PROV.generated), namedNode(modelIri), namedNode(graph)),
+    );
+    if (input.actor) {
+        quads.push(factory.quad(
+            activity,
+            namedNode(PROV.wasAttributedTo),
+            namedNode(input.actor),
+            namedNode(graph),
+        ));
+    }
     await handle.store.load(quads, namedNode(graph), { replace: true });
     const model = await readCausalModel(handle, { modelId: input.id, graph });
     if (!model) throw new Error('Das Kausalmodell konnte nach dem Anlegen nicht gelesen werden.');

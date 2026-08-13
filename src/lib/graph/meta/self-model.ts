@@ -43,18 +43,24 @@ export interface SelfModelInput {
 }
 
 /**
- * Aktive Fähigkeiten als Schlüsselmenge. Nur `true` wird behauptet; der
- * Reasoning-Tier ist eine abgestufte Fähigkeit und trägt deshalb ihren
- * Wert mit (`reasoning:rl`).
+ * Aktive Fähigkeiten als Schlüsselmenge. Nur `true` wird behauptet;
+ * abgestufte Fähigkeiten tragen ihren Wert mit (`reasoning:rl`,
+ * `causal:graph`). Eine Stufe `none` wird gar nicht erst genannt — sie
+ * wäre eine Fähigkeit, die es nicht gibt.
  */
 export function activeCapabilities(capabilities: RuntimeCapabilities): string[] {
+    const tiers: Record<string, string> = {
+        reasoningTier: `reasoning:${capabilities.reasoningTier}`,
+        causalTier: `causal:${capabilities.causalTier}`,
+    };
     const active: string[] = [];
     for (const [key, value] of Object.entries(capabilities)) {
-        if (key === 'reasoningTier') continue;
+        if (key in tiers) continue;
         if (value === true) active.push(key);
     }
     active.sort();
-    active.push(`reasoning:${capabilities.reasoningTier}`);
+    active.push(tiers.reasoningTier);
+    if (capabilities.causalTier !== 'none') active.push(tiers.causalTier);
     return active;
 }
 
