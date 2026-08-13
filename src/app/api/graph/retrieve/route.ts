@@ -25,8 +25,29 @@ const typeFilterSchema = z.object({
     exclude: z.array(z.string()).optional(),
 }).strict();
 
+/**
+ * Kausale Erdung (CAUSAL_LAYER_SPEC §9, C2). `paths` braucht beide Enden —
+ * das wird hier abgewiesen statt später still zu einem leeren Ergebnis zu
+ * führen; alle anderen Modi brauchen mindestens eines von beiden.
+ */
+const causalSchema = z.object({
+    mode: z.enum(['ancestors', 'descendants', 'paths', 'markov-blanket']),
+    treatment: z.string().max(2000).optional(),
+    outcome: z.string().max(2000).optional(),
+    model: z.string().max(2000).optional(),
+    blockedBy: z.array(z.string().max(2000)).max(50).optional(),
+    minEvidence: z.enum(['hypothesis', 'estimated', 'refuted-clean']).optional(),
+}).strict().refine(
+    value => value.mode !== 'paths' || (Boolean(value.treatment) && Boolean(value.outcome)),
+    { message: 'Modus „paths" braucht treatment UND outcome.' },
+).refine(
+    value => Boolean(value.treatment) || Boolean(value.outcome),
+    { message: 'Ohne treatment oder outcome gibt es keinen Bezugspunkt im Kausalmodell.' },
+);
+
 const requestSchema = z.object({
     profile: z.string().optional(),
+    causal: causalSchema.optional(),
     seeds: z.object({
         iri: z.array(z.string()).max(100).optional(),
         text: z.string().max(2000).optional(),

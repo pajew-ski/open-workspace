@@ -83,6 +83,73 @@ function localName(iri: string): string {
     return cut === -1 ? iri : iri.slice(cut + 1) || iri;
 }
 
+/**
+ * Kausale Erdung des Retrievals (CAUSAL_LAYER_SPEC §9, C2). Die Seite
+ * schickt eine kausale Frage an `POST /api/graph/retrieve` und zeigt, was
+ * zurückkommt: die Kette als Text, den Teilgraphen als Bild — und was
+ * unter der gewählten Adjustierung herausgefallen ist. Gerechnet wird
+ * nichts hier; die Struktur ist eine Annahme (Invariante C1), und eine
+ * Zahl behauptet diese Ansicht nirgends (das bleibt C4).
+ */
+type CausalMode = 'ancestors' | 'descendants' | 'paths' | 'markov-blanket';
+
+const CAUSAL_MODE_LABELS: Record<CausalMode, string> = {
+    ancestors: 'Ursachenseite',
+    descendants: 'Folgenseite',
+    paths: 'Wege zwischen beiden',
+    'markov-blanket': 'Markov-Kragen',
+};
+
+const CAUSAL_DROP_LABELS: Record<string, string> = {
+    'd-separated': 'd-separiert unter dieser Adjustierung',
+    'blocked-path': 'liegt nur auf geschlossenen Wegen',
+    'off-chain': 'gehört nicht zu dieser Frage',
+};
+
+const CAUSAL_ROLE_LABELS: Record<string, string> = {
+    treatment: 'Ursache',
+    outcome: 'Wirkung',
+    conditioned: 'adjustiert',
+    ancestor: 'Vorfahre',
+    descendant: 'Nachfahre',
+    'on-path': 'auf dem Weg',
+    blanket: 'Markov-Kragen',
+};
+
+interface CausalModelPayload {
+    id: string;
+    name: string;
+    variables: Array<{ iri: string; name: string; observation?: { count: number } }>;
+    edges: Array<{ from: string; to: string }>;
+}
+
+interface CausalPagePayload {
+    models: CausalModelPayload[];
+    causalTier: 'none' | 'graph' | 'full';
+}
+
+interface CausalRetrievalPayload {
+    nodes: Array<{
+        iri: string;
+        label?: string;
+        types: string[];
+        score: number;
+        causal?: { distance: number; role: string; path: string[] };
+    }>;
+    edges: Array<{ s: string; p: string; o: string }>;
+    explain: {
+        causal?: {
+            model?: { id: string; name: string; revision: number };
+            treatment?: { iri: string; label: string };
+            outcome?: { iri: string; label: string };
+            conditionedOn: Array<{ iri: string; label: string }>;
+            paths: Array<{ text: string; kind: string; open: boolean; blockedBy: string[] }>;
+            dropped: Array<{ iri: string; label: string; reason: string }>;
+            notes: string[];
+        };
+    };
+}
+
 /** Gespeicherte Query-View (ow:QueryView, GRAPH_CORE_SPEC §9 / M5). */
 interface QueryViewRecord {
     id: string;
@@ -195,6 +262,27 @@ const NODE_STYLE: Record<string, { color: string; val: number }> = {
     DefinedTerm: { color: '#8A8A8A', val: 1 },
 };
 const FALLBACK_STYLE = { color: '#999', val: 1 };
+
+/**
+ * Darstellung der kausalen Rollen (§9). Ursache und Wirkung stechen
+ * heraus, die adjustierten Größen tragen die Warnfarbe der Herkunft, und
+ * alles, was nur Material zur Kette ist, bleibt grau — man soll auf einen
+ * Blick sehen, was Modell ist und was Beleg dazu.
+ */
+const CAUSAL_NODE_STYLE: Record<string, { color: string; val: number }> = {
+    treatment: { color: '#00674F', val: 9 },
+    outcome: { color: '#2563A0', val: 9 },
+    conditioned: { color: '#B8860B', val: 6 },
+    'on-path': { color: '#2E7D4A', val: 6 },
+    ancestor: { color: '#2E7D4A', val: 6 },
+    descendant: { color: '#2E7D4A', val: 6 },
+    blanket: { color: '#2E7D4A', val: 6 },
+    default: { color: '#2E7D4A', val: 5 },
+    context: { color: '#8A8A8A', val: 3 },
+};
+
+/** Die kausale Kante ist fremdes Vokabular (Invariante C8, OBO RO). */
+const RO_CAUSALLY_UPSTREAM = 'http://purl.obolibrary.org/obo/RO_0002411';
 
 // Default Constants
 const DEFAULTS = {
@@ -485,6 +573,139 @@ export default function GraphExplorerPage() {
         }
     }, [activeView, fetchViews]);
 
+    // --- Kausaler Pfad (CAUSAL_LAYER_SPEC §9 / C2) ---
+    const [causalMeta, setCausalMeta] = useState<CausalPagePayload | null>(null);
+    const [causalMetaError, setCausalMetaError] = useState<string | null>(null);
+    const [causalModelId, setCausalModelId] = useState('');
+    const [causalMode, setCausalMode] = useState<CausalMode>('paths');
+    const [causalTreatment, setCausalTreatment] = useState('');
+    const [causalOutcome, setCausalOutcome] = useState('');
+    const [causalBlocked, setCausalBlocked] = useState<string[]>([]);
+    const [causalBusy, setCausalBusy] = useState(false);
+    const [causalError, setCausalError] = useState<string | null>(null);
+    const [activeCausal, setActiveCausal] = useState<{
+        nodes: GraphNode[];
+        links: GraphLink[];
+        explain: NonNullable<CausalRetrievalPayload['explain']['causal']>;
+    } | null>(null);
+
+    // Kausalmodelle werden erst geladen, wenn jemand die Einstellungen
+    // öffnet: Der Graph selbst braucht sie nicht, und eine Anfrage, die
+    // niemand sieht, ist verschwendete Ladezeit.
+    useEffect(() => {
+        if (!settingsOpen || causalMeta || causalMetaError) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const response = await fetch('/api/graph/causal');
+                const data = await response.json();
+                if (cancelled) return;
+                if (!response.ok) {
+                    setCausalMetaError(data.details || data.error || 'Kausalmodelle nicht erreichbar');
+                    return;
+                }
+                setCausalMeta({ models: data.models ?? [], causalTier: data.causalTier ?? 'none' });
+            } catch (error) {
+                if (!cancelled) {
+                    setCausalMetaError(error instanceof Error ? error.message : 'Kausalmodelle nicht erreichbar');
+                }
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [settingsOpen, causalMeta, causalMetaError]);
+
+    const causalModel = useMemo(
+        () => causalMeta?.models.find(model => model.id === causalModelId) ?? causalMeta?.models[0] ?? null,
+        [causalMeta, causalModelId],
+    );
+
+    const toggleBlocked = useCallback((iri: string) => {
+        setCausalBlocked(current =>
+            current.includes(iri) ? current.filter(entry => entry !== iri) : [...current, iri]);
+    }, []);
+
+    const clearCausal = useCallback(() => {
+        setActiveCausal(null);
+        setCausalError(null);
+    }, []);
+
+    const runCausal = useCallback(async () => {
+        if (!causalModel) return;
+        if (causalMode === 'paths' && (causalTreatment === '' || causalOutcome === '')) {
+            setCausalError('Für Wege brauchst du beides: Ursache und Wirkung.');
+            return;
+        }
+        if (causalTreatment === '' && causalOutcome === '') {
+            setCausalError('Wähl mindestens eine Ursache oder eine Wirkung — sonst fehlt der Bezugspunkt.');
+            return;
+        }
+        setCausalBusy(true);
+        setCausalError(null);
+        try {
+            const response = await fetch('/api/graph/retrieve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    causal: {
+                        mode: causalMode,
+                        model: causalModel.id,
+                        ...(causalTreatment !== '' ? { treatment: causalTreatment } : {}),
+                        ...(causalOutcome !== '' ? { outcome: causalOutcome } : {}),
+                        ...(causalBlocked.length > 0 ? { blockedBy: causalBlocked } : {}),
+                    },
+                    maxHops: 2,
+                    maxNodes: 60,
+                    format: 'subgraph',
+                }),
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                setCausalError(data.details || data.error || 'Kausales Retrieval fehlgeschlagen');
+                return;
+            }
+            const payload = data as CausalRetrievalPayload;
+            const explain = payload.explain.causal;
+            if (!explain) {
+                setCausalError('Die Antwort trägt keinen kausalen Pfad — hier stimmt etwas nicht.');
+                return;
+            }
+            if (payload.nodes.length === 0) {
+                // Kein Ergebnis ist ein Ergebnis: Der Grund steht in den
+                // Notizen und wird gezeigt, statt still ein leeres Bild
+                // zu malen (Invariante 10).
+                setActiveCausal(null);
+                setCausalError(explain.notes.join(' ') || 'Zu dieser Frage gibt das Modell nichts her.');
+                return;
+            }
+            const nodes: GraphNode[] = payload.nodes.map(node => {
+                const style = node.causal
+                    ? CAUSAL_NODE_STYLE[node.causal.role] ?? CAUSAL_NODE_STYLE.default
+                    : CAUSAL_NODE_STYLE.context;
+                return {
+                    id: node.iri,
+                    name: node.label ?? localName(node.iri),
+                    type: node.causal ? CAUSAL_ROLE_LABELS[node.causal.role] ?? node.causal.role : 'Kontext',
+                    val: style.val,
+                    color: style.color,
+                };
+            });
+            const known = new Set(nodes.map(node => node.id));
+            const links: GraphLink[] = payload.edges
+                .filter(edge => known.has(edge.s) && known.has(edge.o))
+                .map(edge => ({
+                    source: edge.s,
+                    target: edge.o,
+                    type: edge.p === RO_CAUSALLY_UPSTREAM ? 'wirkt auf' : localName(edge.p),
+                }));
+            setActiveView(null);
+            setActiveCausal({ nodes, links, explain });
+        } catch (error) {
+            setCausalError(error instanceof Error ? error.message : 'Kausales Retrieval fehlgeschlagen');
+        } finally {
+            setCausalBusy(false);
+        }
+    }, [causalBlocked, causalModel, causalMode, causalOutcome, causalTreatment]);
+
     // Radiales Layout: eigene d3-Kraft zieht Knoten auf Ringe je Hop-Tiefe.
     useEffect(() => {
         const fg = graphRef.current;
@@ -636,10 +857,16 @@ export default function GraphExplorerPage() {
         return { nodes: activeNodes, links: activeLinks };
     }, [graphData, showDocs, showTasks, showProjects, showCanvas, showTags, showDependencies, showInferred, reasoning]);
 
-    // Aktive Query-View ersetzt den Standard-Graphen (Live-Subgraph).
+    // Aktive Query-View oder kausale Kette ersetzt den Standard-Graphen
+    // (Live-Subgraph). Beides zugleich gibt es nicht: Die kausale Kette
+    // IST eine Auswahl, und zwei Auswahlen übereinander wären keine mehr.
     const displayData = useMemo(
-        () => (activeView ? { nodes: activeView.nodes, links: activeView.links } : filteredData),
-        [activeView, filteredData],
+        () => (activeCausal
+            ? { nodes: activeCausal.nodes, links: activeCausal.links }
+            : activeView
+                ? { nodes: activeView.nodes, links: activeView.links }
+                : filteredData),
+        [activeCausal, activeView, filteredData],
     );
 
     /**
@@ -842,7 +1069,12 @@ export default function GraphExplorerPage() {
                             <CardContent className={styles.settingsContent}>
                                 <div className={styles.section}>
                                     <h4>Bestand</h4>
-                                    {activeView ? (
+                                    {activeCausal ? (
+                                        <p className={styles.hint}>
+                                            Kausale Kette aktiv: {inventory.shownNodes} Knoten, {inventory.shownLinks} Kanten.
+                                            Gezeigt wird, was zu dieser Frage gehört — nicht der ganze Graph.
+                                        </p>
+                                    ) : activeView ? (
                                         <p className={styles.hint}>
                                             Query-View aktiv: {inventory.shownNodes} Knoten, {inventory.shownLinks} Kanten.
                                             Sie ersetzt den Standard-Graphen — die Filter unten greifen nicht.
@@ -979,6 +1211,147 @@ export default function GraphExplorerPage() {
                                         </Button>
                                     </details>
                                 </div>
+
+                                {causalMeta && causalMeta.causalTier !== 'none' && (
+                                    <div className={styles.section}>
+                                        <h4>Kausaler Pfad</h4>
+                                        {causalMeta.models.length === 0 ? (
+                                            <p className={styles.hint}>
+                                                Noch kein Kausalmodell. Ohne DAG gibt es keine Kette, der ein
+                                                Retrieval folgen könnte —{' '}
+                                                <Link href="/graph/causal" className={styles.inlineLink}>
+                                                    Modell anlegen
+                                                </Link>.
+                                            </p>
+                                        ) : (
+                                            <>
+                                                <p className={styles.hint}>
+                                                    Statt der semantischen Nachbarschaft folgt die Auswahl hier
+                                                    deinem Kausalmodell: Was gegeben deiner Adjustierung nichts
+                                                    mehr beiträgt, fällt heraus — begründet. Effektstärken gibt
+                                                    es keine.
+                                                </p>
+                                                {causalMeta.models.length > 1 && (
+                                                    <label className={styles.viewField}>
+                                                        Modell
+                                                        <select
+                                                            value={causalModel?.id ?? ''}
+                                                            onChange={e => {
+                                                                setCausalModelId(e.target.value);
+                                                                setCausalTreatment('');
+                                                                setCausalOutcome('');
+                                                                setCausalBlocked([]);
+                                                            }}
+                                                        >
+                                                            {causalMeta.models.map(model => (
+                                                                <option key={model.id} value={model.id}>{model.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </label>
+                                                )}
+                                                <label className={styles.viewField}>
+                                                    Frage
+                                                    <select
+                                                        value={causalMode}
+                                                        onChange={e => setCausalMode(e.target.value as CausalMode)}
+                                                    >
+                                                        {(Object.keys(CAUSAL_MODE_LABELS) as CausalMode[]).map(mode => (
+                                                            <option key={mode} value={mode}>{CAUSAL_MODE_LABELS[mode]}</option>
+                                                        ))}
+                                                    </select>
+                                                </label>
+                                                <label className={styles.viewField}>
+                                                    Ursache
+                                                    <select value={causalTreatment} onChange={e => setCausalTreatment(e.target.value)}>
+                                                        <option value="">— keine —</option>
+                                                        {(causalModel?.variables ?? []).map(variable => (
+                                                            <option key={variable.iri} value={variable.iri}>{variable.name}</option>
+                                                        ))}
+                                                    </select>
+                                                </label>
+                                                <label className={styles.viewField}>
+                                                    Wirkung
+                                                    <select value={causalOutcome} onChange={e => setCausalOutcome(e.target.value)}>
+                                                        <option value="">— keine —</option>
+                                                        {(causalModel?.variables ?? []).map(variable => (
+                                                            <option key={variable.iri} value={variable.iri}>{variable.name}</option>
+                                                        ))}
+                                                    </select>
+                                                </label>
+                                                <fieldset className={styles.causalAdjust}>
+                                                    <legend className={styles.causalLegend}>Adjustiert für</legend>
+                                                    {(causalModel?.variables ?? []).map(variable => (
+                                                        <label key={variable.iri}>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={causalBlocked.includes(variable.iri)}
+                                                                onChange={() => toggleBlocked(variable.iri)}
+                                                            />
+                                                            {variable.name}
+                                                        </label>
+                                                    ))}
+                                                </fieldset>
+                                                <div className={styles.reasonActions}>
+                                                    <Button variant="ghost" size="sm" onClick={runCausal} disabled={causalBusy}>
+                                                        {causalBusy ? 'Verfolgt…' : 'Kette zeigen'}
+                                                    </Button>
+                                                    {activeCausal && (
+                                                        <Button variant="ghost" size="sm" onClick={clearCausal}>Standard-Graph</Button>
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
+                                        {causalError && <p className={styles.viewError} role="alert">{causalError}</p>}
+                                        {activeCausal && (
+                                            <div className={styles.activeView} role="status">
+                                                <span>
+                                                    {activeCausal.explain.model?.name}
+                                                    {activeCausal.explain.model
+                                                        ? ` (Revision ${activeCausal.explain.model.revision})`
+                                                        : ''}
+                                                    {activeCausal.explain.treatment && activeCausal.explain.outcome
+                                                        ? `: ${activeCausal.explain.treatment.label} → ${activeCausal.explain.outcome.label}`
+                                                        : ''}
+                                                </span>
+                                                {activeCausal.explain.paths.length > 0 && (
+                                                    <ul className={styles.causalPaths}>
+                                                        {activeCausal.explain.paths.map(entry => (
+                                                            <li key={entry.text} data-open={entry.open ? 'true' : 'false'}>
+                                                                {entry.text}
+                                                                <span className={styles.hint}>
+                                                                    {entry.kind === 'causal' ? 'Wirkweg' : entry.kind === 'backdoor' ? 'Hintertür' : 'gemischt'}
+                                                                    {entry.open
+                                                                        ? ' — offen'
+                                                                        : ` — geschlossen durch ${entry.blockedBy.length} Größe(n)`}
+                                                                </span>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
+                                                {activeCausal.explain.conditionedOn.length > 0 && (
+                                                    <span className={styles.hint}>
+                                                        Adjustiert für:{' '}
+                                                        {activeCausal.explain.conditionedOn.map(entry => entry.label).join(', ')}
+                                                    </span>
+                                                )}
+                                                {activeCausal.explain.dropped.length > 0 && (
+                                                    <span className={styles.hint}>
+                                                        Nicht enthalten:{' '}
+                                                        {activeCausal.explain.dropped
+                                                            .map(entry => `${entry.label} (${CAUSAL_DROP_LABELS[entry.reason] ?? entry.reason})`)
+                                                            .join('; ')}
+                                                    </span>
+                                                )}
+                                                {activeCausal.explain.notes.map(note => (
+                                                    <span key={note} className={styles.hint}>{note}</span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                {causalMetaError && (
+                                    <p className={styles.hint}>Kausalmodelle nicht erreichbar: {causalMetaError}</p>
+                                )}
 
                                 <div className={styles.section}>
                                     <h4>Reasoning &amp; Validierung</h4>

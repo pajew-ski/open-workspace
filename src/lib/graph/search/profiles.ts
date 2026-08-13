@@ -16,7 +16,9 @@ import type { GraphStore } from '../store/types';
 import type { IriFactory } from '../iri';
 import { factory, literal, namedNode, typedLiteral } from '../rdf';
 import { DCTERMS, OW, RDF, SCHEMA } from '../vocab';
-import { withRetrievalDefaults, type RetrievalRequestInput } from './retrieval';
+import { withRetrievalDefaults, type RetrievalCausal, type RetrievalRequestInput } from './retrieval';
+import { CAUSAL_MODES } from '../causal/trace';
+import { EVIDENCE_LEVELS } from '../causal/types';
 
 export interface GraphHandle {
     store: GraphStore;
@@ -86,7 +88,39 @@ function sanitizeConfig(raw: unknown): RetrievalRequestInput {
     if (nodeTypes) out.nodeTypes = nodeTypes;
     const graphs = stringArray(source.graphs);
     if (graphs) out.graphs = graphs;
+    const causal = sanitizeCausal(source.causal);
+    if (causal) out.causal = causal;
     return out;
+}
+
+/**
+ * Kausale Erdung im Profil (§9, C2): ein gespeichertes Profil darf eine
+ * kausale Frage tragen („Wirkung der Nachtabsenkung auf den Verbrauch,
+ * adjustiert für die Außentemperatur"). Übernommen wird nur, was der
+ * Vertrag kennt — ein unbekannter Modus fiele sonst erst beim Ausführen
+ * auf, und ein Profil ohne Modus wäre keine kausale Anfrage.
+ */
+function sanitizeCausal(raw: unknown): RetrievalCausal | undefined {
+    if (typeof raw !== 'object' || raw === null) return undefined;
+    const source = raw as Record<string, unknown>;
+    const mode = CAUSAL_MODES.find(known => known === source.mode);
+    if (!mode) return undefined;
+    const text = (value: unknown): string | undefined => (typeof value === 'string' && value !== '' ? value : undefined);
+    const blockedBy = Array.isArray(source.blockedBy) && source.blockedBy.every(v => typeof v === 'string')
+        ? source.blockedBy as string[]
+        : undefined;
+    const minEvidence = EVIDENCE_LEVELS.find(known => known === source.minEvidence);
+    const treatment = text(source.treatment);
+    const outcome = text(source.outcome);
+    const model = text(source.model);
+    return {
+        mode,
+        ...(treatment ? { treatment } : {}),
+        ...(outcome ? { outcome } : {}),
+        ...(model ? { model } : {}),
+        ...(blockedBy ? { blockedBy } : {}),
+        ...(minEvidence ? { minEvidence } : {}),
+    };
 }
 
 function recordFromQuads(handle: GraphHandle, profileIri: string, quads: Quad[]): RetrievalProfileRecord | null {

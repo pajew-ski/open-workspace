@@ -36,6 +36,24 @@
  * Determinismus: gleiche Daten + gleiche Anfrage ⇒ identische Knotenmenge,
  * identische Score-Reihenfolge (Ties nach Hop, dann IRI). Alle
  * Fließkomma-Scores sind auf 6 Nachkommastellen gerundet.
+ *
+ * **Kausale Erdung** (CAUSAL_LAYER_SPEC §9, Meilenstein C2): Mit dem Feld
+ * `causal` folgt dieselbe Pipeline nicht mehr der semantischen
+ * Nachbarschaft, sondern einem Kausalmodell (C0/C1). Es ist keine zweite
+ * Pipeline, sondern derselbe Weg mit drei Änderungen:
+ *
+ *  - **Seeding**: Einstieg sind die Größen, die zur Frage gehören —
+ *    Vorfahren, Nachfahren, Wege oder Markov-Kragen. Ihr Seed-Score ist
+ *    die kausale Nähe (§9: „kausale Nähe statt Kosinus-Ähnlichkeit").
+ *  - **Expansion**: Der Modell-Graph kommt in den Traversal-Raum, also
+ *    sind die kausalen Kanten selbst begehbar. Eine Modellvariable, die
+ *    der Trace nicht hergibt (weil sie gegeben `blockedBy` d-separiert
+ *    ist), kommt NICHT ins Ergebnis — auch nicht über einen Umweg.
+ *  - **`explain`**: trägt Modell, Konditionierung, den kausalen Pfad und
+ *    das, was herausgefallen ist — mit Namen und Grund.
+ *
+ * Was das nicht ist: eine Aussage über Effektstärken. Der Kontext enthält
+ * die Kette statt der Wolke, mehr behauptet er nicht (C4 kommt später).
  */
 
 import type { Term } from '@rdfjs/types';
@@ -47,6 +65,15 @@ import { workspaceScopeGraphs } from '../reasoning/run';
 import { knowledgeGraphs } from '../authz/resolve';
 import { FulltextIndex } from './fulltext';
 import type { VectorIndex } from './vector';
+import {
+    groundCausal,
+    type CausalDropReason,
+    type CausalGrounding,
+    type RetrievalCausal,
+    type RetrievalCausalExplain,
+} from './causal-grounding';
+
+export type { RetrievalCausal, RetrievalCausalExplain };
 
 export interface GraphHandle {
     store: GraphStore;
@@ -83,6 +110,11 @@ export interface RetrievalRequest {
     tokenBudget?: number;
     /** Obergrenze der Text-/Vektor-Seeds (Ergänzung zu §7.5, Default 10). */
     seedLimit?: number;
+    /**
+     * Kausale Erdung (CAUSAL_LAYER_SPEC §9, C2). Gesetzt heißt: Die
+     * Auswahl folgt einem Kausalmodell statt der semantischen Wolke.
+     */
+    causal?: RetrievalCausal;
 }
 
 export type RetrievalRequestInput = Partial<RetrievalRequest>;
@@ -100,6 +132,15 @@ export interface RetrievalScoreParts {
     recency: number;
 }
 
+/** Stellung eines Knotens im Kausalmodell (§9, nur bei kausaler Erdung). */
+export interface RetrievalCausalNode {
+    /** Schritte vom Bezugsknoten im DAG (0 = er selbst). */
+    distance: number;
+    role: string;
+    /** Weg vom Bezugsknoten hierher — der kausale Pfad dieses Knotens. */
+    path: string[];
+}
+
 export interface RetrievalNode {
     iri: string;
     score: number;
@@ -111,6 +152,12 @@ export interface RetrievalNode {
     /** Entdeckungs-Kante (Erklärbarkeit): von wo, über welches Prädikat. */
     via?: { from: string; predicate: string };
     scoreParts: RetrievalScoreParts;
+    /**
+     * Kausale Stellung, falls der Knoten eine Größe des Modells ist
+     * (§9). Ein Knoten OHNE dieses Feld ist über eine gewöhnliche Kante
+     * dazugekommen — er hängt am Kontext, steht aber nicht in der Kette.
+     */
+    causal?: RetrievalCausalNode;
 }
 
 export interface RetrievalEdge {
@@ -134,6 +181,12 @@ export interface RetrievalExplain {
     prunedAt?: string[];
     /** Ehrliche Hinweise (Kappungen, nicht verfügbare Seed-Quellen). */
     notes?: string[];
+    /**
+     * Der kausale Pfad (§9): Modell, Konditionierung, Wege und alles,
+     * was die Konditionierung herausgenommen hat. Nur bei kausaler
+     * Erdung gesetzt — ohne `causal` in der Anfrage gibt es ihn nicht.
+     */
+    causal?: RetrievalCausalExplain;
 }
 
 export interface RetrievalResult {
@@ -200,6 +253,7 @@ export function withRetrievalDefaults(input: RetrievalRequestInput): RetrievalRe
             ? clamp(Math.trunc(input.tokenBudget), 50, 100_000)
             : RETRIEVAL_DEFAULTS.tokenBudget,
         seedLimit: clamp(Math.trunc(input.seedLimit ?? RETRIEVAL_DEFAULTS.seedLimit), 1, 100),
+        ...(input.causal ? { causal: input.causal } : {}),
     };
 }
 
@@ -230,7 +284,17 @@ function round6(value: number): number {
  */
 export async function retrievalDataset(
     handle: GraphHandle,
-    options: { graphs?: string[]; includeInferred: boolean } & RetrievalAuthz,
+    options: {
+        graphs?: string[];
+        includeInferred: boolean;
+        /**
+         * Zusätzlicher Traversal-Raum, den die Anfrage selbst benennt —
+         * heute genau der Graph des angefragten Kausalmodells (§9, C2).
+         * Er wird wie alles andere von Bestand und Grant geklammert; was
+         * der Aufrufer nicht lesen darf, kommt auch hier nicht dazu.
+         */
+        extraGraphs?: readonly string[];
+    } & RetrievalAuthz,
 ): Promise<string[]> {
     const existing = (await handle.store.graphs()).map(g => g.value);
     const knowledge = options.allowedGraphs
@@ -246,9 +310,17 @@ export async function retrievalDataset(
     const granted = options.allowedGraphs
         ? withInferred.filter(g => options.allowedGraphs!.includes(g))
         : withInferred;
-    if (!options.graphs || options.graphs.length === 0) return [...granted].sort();
-    const requested = new Set(options.graphs);
-    return granted.filter(g => requested.has(g)).sort();
+    const requested = options.graphs && options.graphs.length > 0 ? new Set(options.graphs) : null;
+    const selected = requested ? granted.filter(g => requested.has(g)) : granted;
+    // Der Kausal-Graph steht in KEINER der Wissens-Scopes (ein Modell ist
+    // eine Annahme, kein Wissen — deshalb bleibt er aus Reasoning und
+    // Standard-Retrieval draußen). Wer kausal retrievt, benennt ihn
+    // ausdrücklich; dann gehört er dazu, auch wenn `graphs` ihn nicht
+    // aufzählt. Bestand und Grant klammern ihn trotzdem.
+    const extras = (options.extraGraphs ?? [])
+        .filter(g => existing.includes(g))
+        .filter(g => !options.allowedGraphs || options.allowedGraphs.includes(g));
+    return [...new Set([...selected, ...extras])].sort();
 }
 
 // --- SPARQL-Hilfen -------------------------------------------------------
@@ -399,6 +471,30 @@ export interface ExpansionResult {
     prunedAt: string[];
     truncated: boolean;
     notes: string[];
+    /** Modellvariablen, die das kausale Tor abgewiesen hat (§9, C2). */
+    causalDropped: string[];
+}
+
+/**
+ * Das kausale Tor der Expansion (§9). Es greift ausschließlich auf
+ * Variablen des Kausalmodells: Wer im Modell steht, aber nicht im Trace,
+ * gehört nicht zur Frage — und kommt auch über einen semantischen Umweg
+ * nicht herein. Alles Übrige (Dokumente, Geräte, Aufgaben) passiert das
+ * Tor unverändert; es ist das Material ZUR Kette, nicht die Kette selbst.
+ */
+export interface CausalGate {
+    /** Größen, die der Trace hergibt. */
+    allowed: ReadonlySet<string>;
+    /** Alle Größen des Modells — nur auf sie wirkt das Tor. */
+    variables: ReadonlySet<string>;
+    /**
+     * Buchhaltung des Modells (Revisionen). Sie hängt am Modell-Knoten
+     * und wäre über ihn von jeder Variablen zwei Hops entfernt — ein
+     * kausaler Kontext aus lauter „Kante hinzugefügt" wäre keiner. Sie
+     * bleibt draußen; verloren ist sie nicht, sie steht im Verlauf des
+     * Modells unter `/graph/causal`.
+     */
+    blocked: ReadonlySet<string>;
 }
 
 interface TraversalEdge {
@@ -548,6 +644,7 @@ export async function expandPhase(
     seeds: Map<string, SeedInfo>,
     request: RetrievalRequest,
     deps: RetrievalDeps = {},
+    gate: CausalGate | null = null,
 ): Promise<ExpansionResult> {
     const now = deps.now ?? Date.now;
     const deadline = now() + HARD_MAX_DURATION_MS;
@@ -574,6 +671,7 @@ export async function expandPhase(
         prunedAt: [],
         truncated: nodes.size < seeds.size,
         notes: nodes.size < seeds.size ? ['maxNodes bereits im Seeding erreicht.'] : [],
+        causalDropped: [],
     };
     if (dataset.length === 0 || nodes.size === 0) return result;
 
@@ -652,6 +750,14 @@ export async function expandPhase(
                 }
                 // Nur Knoten, über die im erlaubten Dataset etwas steht.
                 if (!readableCandidates.has(other)) continue;
+                // Kausales Tor (§9): eine Modellgröße, die der Trace nicht
+                // hergibt, ist gegeben der Konditionierung irrelevant —
+                // sie kommt auch als Nachbarin nicht herein.
+                if (gate && gate.variables.has(other) && !gate.allowed.has(other)) {
+                    if (!result.causalDropped.includes(other)) result.causalDropped.push(other);
+                    continue;
+                }
+                if (gate?.blocked.has(other)) continue;
                 if (nodes.size >= request.maxNodes) {
                     result.truncated = true;
                     continue;
@@ -672,6 +778,7 @@ export async function expandPhase(
         frontier = admitted;
     }
     result.prunedAt = [...new Set(result.prunedAt)].sort();
+    result.causalDropped.sort();
     return result;
 }
 
@@ -895,10 +1002,62 @@ interface ContextResult {
     truncated: boolean;
 }
 
+const CAUSAL_ROLE_LABEL: Record<string, string> = {
+    treatment: 'Ursache',
+    outcome: 'Wirkung',
+    conditioned: 'adjustiert',
+    ancestor: 'Vorfahre',
+    descendant: 'Nachfahre',
+    'on-path': 'auf dem Weg',
+    blanket: 'Markov-Kragen',
+};
+
+const CAUSAL_DROP_LABEL: Record<CausalDropReason, string> = {
+    'd-separated': 'd-separiert unter dieser Adjustierung',
+    'blocked-path': 'nur auf geschlossenen Wegen',
+    'off-chain': 'gehört nicht zur Kette',
+};
+
+/**
+ * Der kausale Vorspann des Kontexts (§9): erst die Kette, dann das
+ * Material. Ein LLM, das die Wege und die Adjustierung vor sich hat,
+ * kann keine korrelative Nachbarschaft als Erklärung anbieten — und es
+ * sieht schwarz auf weiß, was NICHT enthalten ist.
+ */
+function causalPreamble(causal: RetrievalCausalExplain, name: (iri: string) => string): string {
+    const lines: string[] = [];
+    const head = causal.model ? `Kausale Erdung: Modell „${causal.model.name}" (Revision ${causal.model.revision})` : 'Kausale Erdung';
+    const frage = causal.treatment && causal.outcome
+        ? `, Frage: Wirkung von ${causal.treatment.label} auf ${causal.outcome.label}`
+        : causal.treatment
+            ? `, Bezug: ${causal.treatment.label}`
+            : causal.outcome ? `, Bezug: ${causal.outcome.label}` : '';
+    lines.push(`${head}${frage}.`);
+    const open = causal.paths.filter(path => path.open);
+    for (const path of open.slice(0, 6)) {
+        lines.push(`    Weg (${path.kind === 'causal' ? 'Wirkweg' : path.kind === 'backdoor' ? 'Hintertür' : 'gemischt'}): ${path.text}`);
+    }
+    const blocked = causal.paths.filter(path => !path.open);
+    for (const path of blocked.slice(0, 6)) {
+        lines.push(`    Geschlossener Weg: ${path.text} (blockiert durch ${path.blockedBy.map(name).join(', ')})`);
+    }
+    if (causal.conditionedOn.length > 0) {
+        lines.push(`    Adjustiert für: ${causal.conditionedOn.map(entry => entry.label).join(', ')}`);
+    }
+    if (causal.dropped.length > 0) {
+        lines.push(`    Nicht enthalten: ${causal.dropped
+            .map(entry => `${entry.label} (${CAUSAL_DROP_LABEL[entry.reason]})`)
+            .join('; ')}`);
+    }
+    lines.push('    Keine Effektstärke, kein Konfidenzintervall — dieser Kontext nennt Struktur, keine Zahlen.');
+    return lines.join('\n');
+}
+
 /**
  * Linearisierter Kontext (§7.5 Phase 4): [n]-nummerierte Blöcke in
  * Score-Reihenfolge, zitierfähig, gekappt am Token-Budget — ganze Blöcke,
- * entlang der Score-Reihenfolge.
+ * entlang der Score-Reihenfolge. Mit kausaler Erdung (§9) steht der
+ * Vorspann davor: erst die Kette, dann das Material.
  */
 function buildContext(
     orderedNodes: readonly RetrievalNode[],
@@ -906,6 +1065,7 @@ function buildContext(
     provenance: readonly RetrievalProvenance[],
     details: NodeDetails,
     tokenBudget: number,
+    causal: RetrievalCausalExplain | null = null,
 ): ContextResult {
     const numberByIri = new Map(orderedNodes.map((node, index) => [node.iri, index + 1]));
     const provenanceByIri = new Map(provenance.map(p => [p.iri, p]));
@@ -919,6 +1079,12 @@ function buildContext(
     const blocks: string[] = [];
     let tokens = 0;
     let truncated = false;
+    const nameOf = (iri: string) => details.labels.get(iri) ?? localName(iri);
+    if (causal) {
+        const preamble = causalPreamble(causal, nameOf);
+        tokens += estimateTokens(preamble);
+        blocks.push(preamble);
+    }
     for (const node of orderedNodes) {
         const n = numberByIri.get(node.iri)!;
         const label = node.label ?? localName(node.iri);
@@ -932,6 +1098,11 @@ function buildContext(
         if (text) {
             const compact = text.replace(/\s+/g, ' ').trim();
             lines.push(`    ${compact.length > 400 ? `${compact.slice(0, 400)}…` : compact}`);
+        }
+        if (node.causal) {
+            const role = CAUSAL_ROLE_LABEL[node.causal.role] ?? node.causal.role;
+            const path = node.causal.path.map(nameOf).join(' – ');
+            lines.push(`    Kausal: ${role}, ${node.causal.distance} Schritt(e) — ${path}`);
         }
         const related = (edgesBySubject.get(node.iri) ?? [])
             .filter(edge => numberByIri.has(edge.o) && edge.o !== node.iri)
@@ -954,6 +1125,11 @@ function buildContext(
 
 // --- Orchestrierung ------------------------------------------------------
 
+/** Leeres Ergebnis mit Begründung — kein stiller Rückfall (Invariante 10). */
+function emptyResult(explain: RetrievalExplain): RetrievalResult {
+    return { nodes: [], edges: [], provenance: [], truncated: false, explain };
+}
+
 export async function retrieve(
     handle: GraphHandle,
     input: RetrievalRequestInput,
@@ -961,17 +1137,57 @@ export async function retrieve(
     authz: RetrievalAuthz = {},
 ): Promise<RetrievalResult> {
     const request = withRetrievalDefaults(input);
+
+    // Phase 0 (nur mit `causal`, §9): das Kausalmodell auflösen und den
+    // Trace rechnen. Er entscheidet über Seeds UND über das Tor der
+    // Expansion — beides VOR der ersten Query, damit eine ausgeschlossene
+    // Größe nie erst geholt und dann weggefiltert wird.
+    let grounding: CausalGrounding | null = null;
+    if (request.causal) {
+        grounding = await groundCausal(handle, request.causal, {
+            ...(authz.allowedGraphs ? { allowedGraphs: authz.allowedGraphs } : {}),
+        });
+        if (!grounding.grounded) {
+            // Kausal bestellt, kausal nicht lieferbar: Ein semantisches
+            // Ergebnis an dieser Stelle sähe aus wie eine kausale Antwort.
+            return emptyResult({
+                seedStrategy: 'kausal(nicht geerdet)',
+                hopsUsed: 0,
+                notes: grounding.explain.notes,
+                causal: grounding.explain,
+            });
+        }
+    }
+
     const dataset = await retrievalDataset(handle, {
         graphs: request.graphs,
         includeInferred: request.includeInferred,
+        ...(grounding?.modelGraph ? { extraGraphs: [grounding.modelGraph] } : {}),
         ...(authz.allowedGraphs ? { allowedGraphs: authz.allowedGraphs } : {}),
     });
 
-    // Phase 1: Seeding.
+    // Phase 1: Seeding. Die kausalen Seeds kommen zu den gewöhnlichen
+    // dazu; ihr Score IST die kausale Nähe (§9).
     const seeding = await seedPhase(handle, dataset, request.seeds, request.seedLimit ?? 10, deps);
+    if (grounding) {
+        for (const [iri, seed] of grounding.seeds) {
+            mergeSeed(seeding.seeds, iri, seed.score, 'kausal');
+        }
+        seeding.strategy = [
+            `kausal:${grounding.explain.mode}(${grounding.seeds.size})`,
+            ...(seeding.strategy === 'leer' ? [] : [seeding.strategy]),
+        ].join(' + ');
+    }
 
-    // Phase 2: Expansion.
-    const expansion = await expandPhase(handle, dataset, seeding.seeds, request, deps);
+    // Phase 2: Expansion (mit kausalem Tor, falls geerdet).
+    const gate: CausalGate | null = grounding
+        ? {
+            allowed: new Set(grounding.seeds.keys()),
+            variables: grounding.modelVariables,
+            blocked: grounding.bookkeeping,
+        }
+        : null;
+    const expansion = await expandPhase(handle, dataset, seeding.seeds, request, deps, gate);
     const includedIris = [...expansion.nodes.keys()].sort();
 
     // Kanten-Hülle + Details (eine VALUES-Query je Aspekt).
@@ -996,17 +1212,42 @@ export async function retrieve(
             centrality: node.centrality,
             recency: node.recency,
         },
+        ...(grounding?.seeds.has(node.iri)
+            ? {
+                causal: {
+                    distance: grounding.seeds.get(node.iri)!.distance,
+                    role: grounding.seeds.get(node.iri)!.role,
+                    path: grounding.seeds.get(node.iri)!.path,
+                },
+            }
+            : {}),
     }));
 
     const provenance = nodes.map(node =>
         provenanceFor(handle, node.iri, details.graphsByNode.get(node.iri), undefined));
+
+    // Was das Tor abgewiesen hat, gehört in dieselbe Liste wie das, was
+    // schon der Trace aussortiert hat: eine Stelle, ein Grund je Knoten.
+    // Sie steht VOR dem Kontext, weil sein Vorspann daraus entsteht.
+    const causalExplain: RetrievalCausalExplain | null = grounding
+        ? {
+            ...grounding.explain,
+            notes: [...grounding.explain.notes],
+            dropped: [
+                ...grounding.explain.dropped,
+                ...expansion.causalDropped
+                    .filter(iri => !grounding.explain.dropped.some(entry => entry.iri === iri))
+                    .map(iri => ({ iri, label: grounding.label(iri), reason: 'off-chain' as const })),
+            ],
+        }
+        : null;
 
     // Phase 4: Assembly (Kontext nur, wenn angefordert).
     let context: string | undefined;
     let contextTruncated = false;
     if (request.format === 'context' || request.format === 'both') {
         const built = buildContext(nodes, closure.edges, provenance, details,
-            request.tokenBudget ?? RETRIEVAL_DEFAULTS.tokenBudget);
+            request.tokenBudget ?? RETRIEVAL_DEFAULTS.tokenBudget, causalExplain);
         context = built.context;
         contextTruncated = built.truncated;
     }
@@ -1026,6 +1267,7 @@ export async function retrieve(
             hopsUsed: expansion.hopsUsed,
             ...(expansion.prunedAt.length > 0 ? { prunedAt: expansion.prunedAt } : {}),
             ...(notes.length > 0 ? { notes } : {}),
+            ...(causalExplain ? { causal: causalExplain } : {}),
         },
     };
 }

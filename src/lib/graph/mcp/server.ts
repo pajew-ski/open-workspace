@@ -100,7 +100,9 @@ export function createGraphMcpServer(ctx: McpGraphContext): McpServer {
         title: 'Multi-Hop-Retrieval',
         description:
             'Retrieval nach SPEC §7.5: Seeding (IRI/Volltext/Vektor), Expansion über bis zu 4 Hops, ' +
-            'deterministisches Scoring, linearisierter Kontext. Antwort enthält immer explain und provenance.',
+            'deterministisches Scoring, linearisierter Kontext. Antwort enthält immer explain und provenance. ' +
+            'Mit `causal` folgt die Auswahl einem Kausalmodell statt der semantischen Nachbarschaft: ' +
+            'explain trägt dann den kausalen Pfad, und was gegeben blockedBy d-separiert ist, fehlt begründet.',
         annotations: { readOnlyHint: true },
         inputSchema: {
             seeds: z.object({
@@ -121,6 +123,17 @@ export function createGraphMcpServer(ctx: McpGraphContext): McpServer {
             tokenBudget: z.number().int().min(50).max(100_000).optional(),
             seedLimit: z.number().int().min(1).max(100).optional(),
             profile: z.string().max(200).optional().describe('ID eines gespeicherten Retrieval-Profils als Basis'),
+            causal: z.object({
+                mode: z.enum(['ancestors', 'descendants', 'paths', 'markov-blanket'])
+                    .describe('ancestors = Ursachenseite, descendants = Folgenseite, paths = Wege, markov-blanket = Kragen'),
+                treatment: z.string().max(2000).optional().describe('IRI der Ursache'),
+                outcome: z.string().max(2000).optional().describe('IRI der Wirkung'),
+                model: z.string().max(2000).optional().describe('Kennung oder IRI des Kausalmodells (Default: das einzige)'),
+                blockedBy: z.array(z.string().max(2000)).max(50).optional()
+                    .describe('Konditionierungsmenge — d-separierte Größen fallen aus dem Kontext'),
+                minEvidence: z.enum(['hypothesis', 'estimated', 'refuted-clean']).optional()
+                    .describe('Mindest-Belegstand je Kante; geschätzte Kanten gibt es erst mit C4'),
+            }).optional().describe('Kausale Erdung nach CAUSAL_LAYER_SPEC §9'),
         },
     }, async args => {
         const { profile: profileId, ...overrides } = args;

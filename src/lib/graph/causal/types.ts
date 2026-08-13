@@ -16,6 +16,23 @@ export type EdgeClass = (typeof EDGE_CLASSES)[number];
 export const EVIDENCE_LEVELS = ['hypothesis', 'estimated', 'refuted-clean'] as const;
 export type EvidenceLevel = (typeof EVIDENCE_LEVELS)[number];
 
+/**
+ * Der Belegstand ist geordnet: behauptet < geschätzt < refutiert bestanden.
+ * `minEvidence` (§9) filtert damit Kanten, ohne dass irgendwo eine zweite
+ * Rangfolge entsteht. Eine Kante OHNE Angabe zählt als `hypothesis` — das
+ * ist dieselbe Voreinstellung, mit der der Schreibpfad sie anlegt, und die
+ * vorsichtigere von beiden (Invariante C5).
+ */
+export const EVIDENCE_ORDER: Record<EvidenceLevel, number> = {
+    hypothesis: 0,
+    estimated: 1,
+    'refuted-clean': 2,
+};
+
+export function meetsEvidence(level: EvidenceLevel | null, minimum: EvidenceLevel): boolean {
+    return EVIDENCE_ORDER[level ?? 'hypothesis'] >= EVIDENCE_ORDER[minimum];
+}
+
 export interface CausalVariableView {
     iri: string;
     name: string;
