@@ -13,13 +13,16 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getRequestGraph } from '@/lib/graph/server/context';
 import { persistServerGraphSnapshot } from '@/lib/graph/server/instance';
+import { mayCreateGraph, WRITE_SCOPE_HINT } from '@/lib/graph/authz/grant';
 import {
     causalGraphsOf,
     createCausalModel,
     listCausalHypotheses,
     listCausalModels,
 } from '@/lib/graph/causal/model';
+import { listVariables } from '@/lib/graph/observations/variables';
 import { validateStoreGraphs } from '@/lib/graph/reasoning/run';
+import { createNodeRuntimeAdapter } from '@/lib/platform/runtime/server';
 
 const createSchema = z.object({
     id: z.string().min(1).max(64),
@@ -53,10 +56,26 @@ export async function GET(): Promise<Response> {
         const validation = targets.length > 0
             ? await validateStoreGraphs(handle, [...new Set(targets)])
             : { conforms: true, graphs: [] as string[], results: [] };
+        // Erfasste Größen (C3) als Auswahl für den DAG-Editor: Nur was
+        // erfasst ist, lässt sich später adjustieren — deshalb steht es
+        // hier zuerst, und eine reine Modellvariable ist die Ausnahme.
+        const metaReadable = allowedGraphs.includes(iri.sharedGraph('meta'));
+        const observed = (metaReadable ? await listVariables({ store, iri }) : [])
+            .map(variable => ({
+                iri: variable.iri,
+                name: variable.name,
+                ...(variable.unit ? { unit: variable.unit } : {}),
+                count: variable.status.count,
+                enabled: variable.enabled,
+            }));
         return NextResponse.json({
             models,
             hypotheses,
             hypothesesGraph,
+            observedVariables: observed,
+            // Invariante C9: Die Oberfläche zeigt nur, was diese Runtime
+            // wirklich rechnen kann.
+            causalTier: createNodeRuntimeAdapter().capabilities.causalTier,
             validation: {
                 conforms: validation.conforms,
                 graphs: validation.graphs,
@@ -81,8 +100,25 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     try {
-        const { store, iri } = await getRequestGraph();
-        const model = await createCausalModel({ store, iri }, parsed);
+        const { store, iri, identity, grant } = await getRequestGraph();
+        // Anlegen heißt: einen Named Graph im eigenen Kausal-Namensraum
+        // erzeugen. Das Recht dazu kommt aus demselben Scope-Muster wie
+        // beim SPARQL-Editor (C1) — ein zweiter Pfad soll es nicht geben.
+        const graph = iri.causalGraph(parsed.id);
+        const existing = (await store.graphs()).map(g => g.value);
+        const permitted = existing.includes(graph)
+            ? (grant.writableGraphs ?? []).includes(graph)
+            : mayCreateGraph(grant, iri.instanceBase, graph);
+        if (!permitted) {
+            return NextResponse.json(
+                { error: 'Kein Schreibrecht für Kausalmodelle in deinem Namensraum.', details: WRITE_SCOPE_HINT },
+                { status: 403 },
+            );
+        }
+        const model = await createCausalModel({ store, iri }, {
+            ...parsed,
+            ...(identity.userId ? { actor: iri.principal('user', identity.userId) } : {}),
+        });
         await persistServerGraphSnapshot();
         return NextResponse.json({ model }, { status: 201 });
     } catch (error) {

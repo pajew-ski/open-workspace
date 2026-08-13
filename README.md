@@ -269,7 +269,8 @@ tests/ e2e/         # Vitest-Suiten und Playwright-Gate
 - [docs/ai-platform.md](./docs/ai-platform.md) — AI-Plattform: Multi-Provider, Routing, MCP, A2A, Skills, Serverless
 - [docs/multi-user.md](./docs/multi-user.md) — Identität, ACL-Modell, Durchsetzung, öffentlicher Teilgraph
 - [docs/beobachtungen.md](./docs/beobachtungen.md) — Zeitreihen aus Home Assistant erfassen: was der Recorder behält, was er verwirft, und wie der Bestand entsteht
-- [CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md) — Entwurf des Kausal-Layers (Neurosymbolik, Causal Inference) — zur Entscheidung, nicht verbindlich
+- [docs/kausalmodell.md](./docs/kausalmodell.md) — Kausalmodelle als Graph-Bürger: DAG-Editor, Identifikation (Adjustment Sets, Frontdoor, Instrumente), Revisionen — und was bewusst noch keine Zahl liefert
+- [CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md) — verbindliche Spec des Kausal-Layers (Invarianten C1–C10, Meilensteine C0–C5; C7/C8 optional)
 - [GRAPH_CORE_SPEC.md](./GRAPH_CORE_SPEC.md) — verbindliche Spec des Graph-Kerns (M0–M13)
 - [ANALYSE.md](./ANALYSE.md) — Vollständige Analyse, Modernisierung und Roadmap
 - [AGENTS.md](./AGENTS.md) — AI-Agent-Protokoll und Architektur

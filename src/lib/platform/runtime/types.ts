@@ -129,6 +129,15 @@ export interface RuntimeCapabilities {
     federationInbound: boolean;
     multiUser: boolean;
     reasoningTier: 'rl' | 'rl+dl';
+    /**
+     * Kausale Rechenstufe (CAUSAL_LAYER_SPEC §7, Invariante C9):
+     * `none` = keine, `graph` = Tier 1 (Azyklizität, D-Separation,
+     * Backdoor/Frontdoor, Adjustment Sets — reine Graphalgorithmik in
+     * TypeScript), `full` = zusätzlich der Python-Sidecar aus Tier 2
+     * (Struktur-Lernen, ML-Schätzer). Was hier nicht steht, erscheint
+     * nirgends in der UI.
+     */
+    causalTier: 'none' | 'graph' | 'full';
 }
 
 export interface RuntimeAdapter {

@@ -17,13 +17,16 @@
 #
 # Geladen wie die Kern-Shapes nach graph/shapes; ausgewertet auf
 # Anforderung über /api/graph/validate und in der Kausal-Ansicht.
-# Blockierend ist hier nichts: C0 hat keinen Schreibpfad für Kanten
-# (der Mensch schreibt sie per SPARQL), und ein Bericht sagt mehr als
-# ein abgelehnter Schreibvorgang.
+# Seit C1 laufen sie zusätzlich vor jedem Schreibvorgang des DAG-Editors
+# (§7.2 Stelle 1) — blockierend aber NUR bei Verstößen, die die Änderung
+# neu einführt. Was per SPARQL im Graphen steht, bleibt bearbeitbar; für
+# den Altbestand sagt ein Bericht mehr als ein abgelehnter Schreibvorgang.
 #
 # NICHT hier geprüft: Azyklizität, D-Separation, Identifizierbarkeit.
-# Das ist Graphalgorithmik und gehört nach C1 — SHACL kann es nicht,
-# und es hier anzudeuten wäre eine Attrappe.
+# Das ist Graphalgorithmik — SHACL kann es nicht, und es hier
+# anzudeuten wäre eine Attrappe. Sie steht seit C1 im Tier-1-Kern
+# (src/lib/graph/causal/{dag,dsep,identify}.ts); der Editor lehnt eine
+# Kante, die einen Kreis schließt, deshalb schon beim Schreiben ab.
 #################################################################
 
 owsh:CausalModelShape a sh:NodeShape ;
