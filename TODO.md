@@ -412,7 +412,27 @@
       Graphalgorithmik in TypeScript, läuft in allen drei Runtimes.
       Abnahme: Testsuite gegen bekannte Lehrbuch-DAGs; „nicht
       identifizierbar" kommt korrekt UND begründet zurück (welche Variable
-      fehlt); läuft im Browser
+      fehlt); läuft im Browser.
+      **Mit C1 nachzuziehen** (entschieden nach C0):
+      - `capabilities.causalTier` (Invariante C9) — in C0 bewusst
+        weggelassen, weil es ohne Tier-1-Rechenfähigkeit eine Attrappe
+        gewesen wäre; mit C1 gibt es die Fähigkeit, also auch die Angabe
+      - Schreibziele aus **Scope-Mustern** statt aus dem Bestand: Der
+        eigene Kausal-Namensraum (`causal/*`, `causal-hypotheses`) wird
+        ein regulärer Schreib-Scope, damit SPARQL-Editor, CRUD und der
+        DAG-Editor EINEN Schreibweg teilen. Heute scheitert das Anlegen
+        eines Modells per SPARQL nur daran, dass `grantForIdentity` seine
+        Kandidaten aus den vorhandenen Graphen zieht (`control` impliziert
+        `write`, aber der Graph existiert noch nicht) — dieselbe Ausnahme,
+        die `bootstrapAccess` für workspace/public/presentation schon von
+        Hand macht. Systemgraphen und fremde Nutzer bleiben hart
+        geschützt, je mit Negativtest
+      - Modell-Revisionen (`prov:Activity` pro Änderung): Vorleistung für
+        die Reproduktions-Signatur aus Invariante C7 — jetzt billig,
+        später teuer, weil die Historie dann fehlt
+      - Der DAG-Editor gehört hierher und nicht früher: Erst mit
+        Azyklizität, Identifizierbarkeit und Adjustment Sets antwortet er
+        auf jede gezogene Kante, statt nur zeichnen zu lassen
 - [ ] **C2 Causal Path Tracing** im Retrieval (SPEC §9, Erweiterung von
       GRAPH_CORE_SPEC §7.5 um `causal`-Feld).
       Abnahme: `explain` trägt den kausalen Pfad; d-separierte Knoten
