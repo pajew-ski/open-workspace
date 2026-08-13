@@ -52,6 +52,10 @@ data/agents/
 data/settings.json
 # AI platform config: enthält verschlüsselte Provider-Keys/MCP-Auth
 data/ai/
+# Erfasste Messreihen (docs/beobachtungen.md): Betriebsdaten der
+# Installation, oft personenbeziehbar (Anwesenheit, Verbrauch). Sie
+# gehören in ein Backup, nicht ins Produkt-Repo.
+data/observations/
 
 # playwright
 /playwright-report/

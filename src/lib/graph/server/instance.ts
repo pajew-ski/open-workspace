@@ -54,6 +54,7 @@ import { replaceSelfModel } from '../meta/self-model';
 import { loadSelfModelInput } from '../meta/self-model-input.server';
 import { ensureDefaultAuthorizations } from '../authz/acl-graph';
 import { ensureUser, spaceOwners } from '../authz/principals';
+import { ensureCaptureSchedule } from '../observations/schedule.server';
 
 export interface ServerGraph {
     store: OxigraphStore;
@@ -171,6 +172,15 @@ async function createState(): Promise<ServerGraphState> {
     //    Sie entstehen NACH den Standardregeln aus Schritt 5 und bekommen
     //    ihre deshalb beim nächsten Auffüllen (ensureGraphAuthorizations).
     await runReasoning(state);
+    // 7. Zeitgeber der Beobachtungs-Erfassung. Er hängt am Prozess, nicht
+    //    an einer Anfrage: Was Home Assistant nach `purge_keep_days`
+    //    verwirft, ist unwiederbringlich weg — eine Erfassung, die nur auf
+    //    Knopfdruck liefe, käme systematisch zu spät. Ohne aktive
+    //    Beobachtungsgröße ist jeder Takt ein No-Op ohne Netzzugriff.
+    ensureCaptureSchedule(async () => {
+        const current = await getState();
+        return { store: current.store, iri: current.iri };
+    });
     return state;
 }
 

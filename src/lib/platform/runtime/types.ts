@@ -36,6 +36,14 @@ export interface FileSystemLike {
      * weglässt, würde Änderungen bei identischen Stats übersehen.
      */
     stat(path: string): Promise<{ isDirectory: boolean; size?: number; mtimeMs?: number }>;
+    /**
+     * Hängt an eine Datei an, ohne sie vorher zu lesen. Optional, weil
+     * nicht jedes Backing das billig kann (OPFS braucht dafür einen
+     * Schreib-Handle mit Seek). Wer sie nicht hat, wird über Lesen +
+     * Schreiben bedient — korrekt, nur teurer. Gebraucht vom
+     * Beobachtungs-Speicher, der ausschließlich anhängt.
+     */
+    appendFile?(path: string, content: string): Promise<void>;
 }
 
 /**

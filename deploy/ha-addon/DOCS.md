@@ -44,6 +44,31 @@ PWA-Manifest auch unter Ingress.
 Ändert Home Assistant den Ingress-Token, antwortet das Add-on einmal mit
 einem Hinweis und startet neu; danach stimmen die Links wieder.
 
+## Zugriff auf Home Assistant
+
+Das Add-on-Manifest setzt `homeassistant_api: true`. Der Supervisor legt
+daraufhin `SUPERVISOR_TOKEN` in die Umgebung, und damit ist
+`http://supervisor/core/api` erreichbar.
+
+**Was damit möglich wird** — der Grund für die Rechteerweiterung:
+
+- der Connector **Home Assistant** materialisiert die Struktur der
+  Installation als Graph: Etagen, Bereiche, Geräte, Entitäten und die von
+  ihnen beobachteten Größen (SOSA);
+- die **Beobachtungs-Erfassung** (`/graph/observations`) legt ausgewählte
+  Messreihen dauerhaft ab, bevor der Recorder sie nach `purge_keep_days`
+  verwirft — siehe [docs/beobachtungen.md](../../docs/beobachtungen.md).
+
+**Was das Add-on damit nicht tut**: schalten. `homeassistant_api` erlaubt
+technisch auch Service-Calls; der Workspace macht davon keinen Gebrauch. Es
+gibt keinen Schreibpfad zu Home Assistant, keinen Service-Call im Code und
+keine Oberfläche dafür. Wer das prüfen will: `tests/graph/home-assistant.test.ts`
+hält fest, dass der Connector `write: false` trägt und kein `push` besitzt.
+
+Ohne dieses Recht startet das Add-on normal — es sieht von Home Assistant
+dann nur nichts, und beide Funktionen melden das mit einem Hinweis auf
+genau diese Zeile im Manifest statt mit einem nackten 401.
+
 ## Was in dieser Runtime nicht geht
 
 - **Multi-User**: Das Add-on ist Einzelnutzer-Betrieb (SPEC §5.2). Die
