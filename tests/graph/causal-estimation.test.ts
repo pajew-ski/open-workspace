@@ -22,7 +22,7 @@
  * (C9 — dieselbe Rechnung läuft im Browser).
  */
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import type { Quad } from '@rdfjs/types';
@@ -49,6 +49,16 @@ import {
     type VariableMetadata,
 } from '@/lib/graph/causal/study-graph';
 import { dagFromModel } from '@/lib/graph/causal/view';
+
+/**
+ * Ein Studienlauf rechnet wirklich: Bootstrap und Refutationen gehen
+ * mehrfach über dieselben Daten, die Negativkontrolle zieht ihr eigenes
+ * Intervall. Auf einem geteilten CI-Läufer reichen die fünf Sekunden der
+ * Voreinstellung dafür nicht. Die Rechnung so weit zu verkürzen, bis sie
+ * hineinpasst, wäre die falsche Antwort — dann prüfte der Test nicht mehr
+ * das, was im Betrieb läuft.
+ */
+vi.setConfig({ testTimeout: 60_000 });
 
 const INSTANCE_BASE = 'https://ws.example.org/id/';
 const iri = createIriFactory(INSTANCE_BASE);
@@ -325,11 +335,21 @@ async function buildWorld(options: {
     return { store, handle, metadata, series };
 }
 
-function runOptions(world: WorldModel, now = new Date('2026-08-13T10:00:00.000Z')) {
+/**
+ * `bootstrapSamples` steht hier klein: Wo ein Test die Zahl selbst prüft,
+ * braucht er ein belastbares Intervall; wo er nur prüft, WAS im Graphen
+ * landet, genügt die Untergrenze, ab der ein Intervall überhaupt
+ * entsteht.
+ */
+function runOptions(
+    world: WorldModel,
+    samples = 60,
+    now = new Date('2026-08-13T10:00:00.000Z'),
+) {
     return {
         now,
         softwareVersion: '0.1.0-test',
-        bootstrapSamples: 60,
+        bootstrapSamples: samples,
         readSeries: async (variableId: string) => world.series.get(variableId) ?? [],
     };
 }
@@ -457,12 +477,12 @@ describe('Der Lauf schreibt die Studie in den Inferenz-Graphen (C4/C7)', () => {
             estimator: 'regression',
             seed: 42,
         });
-        await runCausalStudies(world.handle, world.metadata, runOptions(world));
+        await runCausalStudies(world.handle, world.metadata, runOptions(world, 40));
         expect(await readCausalStudies(world.handle)).toHaveLength(1);
 
         const { deleteEstimand } = await import('@/lib/graph/causal/estimand');
         await deleteEstimand(world.handle, 'erste-frage');
-        await runCausalStudies(world.handle, world.metadata, runOptions(world));
+        await runCausalStudies(world.handle, world.metadata, runOptions(world, 40));
         expect(await readCausalStudies(world.handle)).toEqual([]);
     });
 });
@@ -567,7 +587,7 @@ describe('Kein Inferenz-Leak (Invariante C6) und keine Studie ohne Signatur (C7)
             estimator: 'regression',
             seed: 42,
         });
-        const summary = await runCausalStudies(world.handle, world.metadata, runOptions(world));
+        const summary = await runCausalStudies(world.handle, world.metadata, runOptions(world, 40));
         expect(summary.scope).toBe('workspace');
 
         const publicQuads = await dump(world.store, causalInferredGraph(iri, 'public'));
@@ -599,7 +619,7 @@ describe('Kein Inferenz-Leak (Invariante C6) und keine Studie ohne Signatur (C7)
             estimator: 'regression',
             seed: 42,
         });
-        await runCausalStudies(world.handle, world.metadata, runOptions(world));
+        await runCausalStudies(world.handle, world.metadata, runOptions(world, 40));
 
         const { listCausalModels } = await import('@/lib/graph/causal/model');
         const narrowed = await listCausalModels(world.handle, {
