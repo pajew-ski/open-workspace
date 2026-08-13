@@ -12,6 +12,7 @@
 
 import type { NextRequest } from 'next/server';
 import { getRequestGraph } from '@/lib/graph/server/context';
+import { persistServerGraphSnapshot } from '@/lib/graph/server/instance';
 import { executeSparqlProtocol } from '@/lib/graph/sparql/protocol';
 import { sparqlHttpResponse, sparqlRequestFromHttp, SparqlBodyTooLargeError } from '@/lib/graph/sparql/http';
 import { invalidateSearchIndexes } from '@/lib/graph/search/cache';
@@ -43,9 +44,14 @@ async function handle(request: NextRequest, method: 'GET' | 'POST'): Promise<Res
             writableGraphs: grant.writableGraphs ?? [],
         });
         // Ein erfolgreiches UPDATE (204) läuft am Mutations-Pfad von
-        // server/instance.ts vorbei — Suchindizes hier invalidieren (M8).
+        // server/instance.ts vorbei — Suchindizes hier invalidieren (M8)
+        // UND den Snapshot schreiben. Ohne das Zweite überlebt kein per
+        // SPARQL geschriebenes Tripel den nächsten Neustart; für einen von
+        // Hand modellierten DAG (CAUSAL_LAYER_SPEC C0) ist der Editor der
+        // vorgesehene Schreibweg, und stiller Verlust wäre dort fatal.
         if (result.status === 204) {
             invalidateSearchIndexes(store);
+            await persistServerGraphSnapshot();
         }
         const report = federation.report();
         return sparqlHttpResponse(

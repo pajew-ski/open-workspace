@@ -172,6 +172,15 @@ export const APP_MODULES: readonly AppModule[] = [
         navigation: 'none',
     },
     {
+        id: 'graph-causal',
+        route: '/graph/causal',
+        label: 'Kausalmodelle',
+        description: 'Kausale Annahmen als DAG: Variablen, gerichtete Kanten und ihre Herkunft — read-only.',
+        entityTypes: [OW.CausalModel],
+        partOf: 'graph',
+        navigation: 'none',
+    },
+    {
         id: 'graph-sparql',
         route: '/graph/sparql',
         label: 'SPARQL',

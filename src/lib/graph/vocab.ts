@@ -53,6 +53,14 @@ export const PREFIXES = {
      * kein eigenes Geräte-Vokabular entsteht (Invariante 8).
      */
     sosa: 'http://www.w3.org/ns/sosa/',
+    /**
+     * OBO Relations Ontology (CAUSAL_LAYER_SPEC Invariante C8). Trägt die
+     * kausale Kante selbst: `RO_0002411 causally upstream of` ist eine
+     * OWL-Objekteigenschaft mit definierter Semantik — Ursache geht der
+     * Wirkung zeitlich voraus — und damit genau die Relation, die ein DAG
+     * behauptet. Deshalb kein eigener `ow:`-Term für die Kante.
+     */
+    obo: 'http://purl.obolibrary.org/obo/',
     xsd: 'http://www.w3.org/2001/XMLSchema#',
 } as const;
 
@@ -181,6 +189,14 @@ export const OW = {
     capturedThrough: ow('capturedThrough'),
     observationCount: ow('observationCount'),
     retentionDays: ow('retentionDays'),
+    // Kausalmodell als Graph-Bürger (CAUSAL_LAYER_SPEC §5, C0). Die Kante
+    // selbst ist fremd (RO.causallyUpstreamOf, Invariante C8); eigen ist
+    // nur, was über sie ausgesagt wird — und das hängt als RDF-1.2-
+    // Annotation am benannten Reifier, nicht in einer Nebentabelle (§5.3).
+    CausalModel: ow('CausalModel'),
+    edgeClass: ow('edgeClass'),
+    temporalLag: ow('temporalLag'),
+    evidenceLevel: ow('evidenceLevel'),
 } as const;
 
 export type OwTerm = (typeof OW)[keyof typeof OW];
@@ -263,6 +279,28 @@ export const SOSA = {
     hosts: `${PREFIXES.sosa}hosts`,
     isHostedBy: `${PREFIXES.sosa}isHostedBy`,
     observes: `${PREFIXES.sosa}observes`,
+} as const;
+
+/**
+ * OBO Relations Ontology — die kausale Kante (CAUSAL_LAYER_SPEC §5.3,
+ * Invariante C8: fremdes Vokabular vor eigenem).
+ *
+ * Geprüfte Alternativen und warum sie es nicht sind:
+ *  - `wdt:P828 has cause` / `wdt:P1542 has effect` (Wikidata) sind
+ *    Aussagen ÜBER Wikidata-Items; P828 zeigt zudem von der Wirkung auf
+ *    die Ursache. Als Prädikat außerhalb von Wikidata sind sie nicht
+ *    definiert, und die umgekehrte Leserichtung machte jeden DAG-Export
+ *    zur Fehlerquelle.
+ *  - `prov:wasDerivedFrom` ist ausdrücklich KEINE Kausalität (C8) und
+ *    darf nicht dafür missbraucht werden.
+ *  - `RO_0002410 causally related to` ist die symmetrische Oberrelation
+ *    und trägt keine Richtung — ein DAG braucht die Richtung.
+ */
+export const RO = {
+    /** `causally upstream of`: die Ursache geht der Wirkung voraus. */
+    causallyUpstreamOf: `${PREFIXES.obo}RO_0002411`,
+    /** Oberrelation ohne Richtung — nur für Alignment-Aussagen. */
+    causallyRelatedTo: `${PREFIXES.obo}RO_0002410`,
 } as const;
 
 export const RDF = {

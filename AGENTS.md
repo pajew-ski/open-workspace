@@ -4,25 +4,39 @@
 
 ## Hier weitermachen (Einstieg für neue Sessions)
 
-> **Neu seit 2026-08-13 — Kausal-Layer, erster Schritt.** Neben dem
-> Graph-Kern steht jetzt ein Entwurf in
-> [CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md) (**nicht verbindlich**,
-> zur Entscheidung). Umgesetzt ist daraus bisher **nur C3, die
-> Erfassung** — weil sie als einzige zeitkritisch ist: Home Assistant
-> verwirft vollständige Zustandswechsel nach `purge_keep_days` (Standard
-> 10 Tage), und was dort fehlt, ist unwiederbringlich. Konkret:
-> `homeassistant_api: true` im Add-on-Manifest (lesend), der Connector
-> `home-assistant` für die Struktur (SOSA), `ow:Variable` in `graph/meta`
-> für die Erfassungsregel, NDJSON-Tagesdateien unter
-> `data/observations/` für die Werte (**nie im Store**, Invariante C3),
-> ein Erfassungslauf mit Backfill und Wasserzeichen, ein Zeitgeber im
-> Serverprozess und die Seite `/graph/observations`. Details:
-> [docs/beobachtungen.md](./docs/beobachtungen.md). Alles Weitere aus dem
-> Entwurf (DAG, Identifikation, Schätzung, Refutation) ist **nicht**
-> gebaut und erscheint deshalb nirgends in der UI.
+> **Neu seit 2026-08-13 — Kausal-Layer, C3 und C0 gebaut.** Neben dem
+> Graph-Kern gilt [CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md)
+> (verbindlich für C0–C5). Umgesetzt sind zwei Meilensteine:
 >
-> **Nächster Meilenstein: C0** (Kausalmodell als Graph-Bürger), danach
-> C1 → C2 → C4 → C5 → C6. Reihenfolge und Begründung in
+> - **C3, die Erfassung** — zuerst, weil als einzige zeitkritisch: Home
+>   Assistant verwirft vollständige Zustandswechsel nach
+>   `purge_keep_days` (Standard 10 Tage), und was dort fehlt, ist
+>   unwiederbringlich. Konkret: `homeassistant_api: true` im
+>   Add-on-Manifest (lesend), der Connector `home-assistant` für die
+>   Struktur (SOSA), `ow:Variable` in `graph/meta` für die
+>   Erfassungsregel, NDJSON-Tagesdateien unter `data/observations/` für
+>   die Werte (**nie im Store**, Invariante C3), ein Erfassungslauf mit
+>   Backfill und Wasserzeichen, ein Zeitgeber im Serverprozess und die
+>   Seite `/graph/observations`. Details:
+>   [docs/beobachtungen.md](./docs/beobachtungen.md).
+> - **C0, das Kausalmodell als Graph-Bürger** — der DAG ist eine
+>   **Annahme** im Graphen, kein Ergebnis. Die kausale Kante ist fremdes
+>   Vokabular (`obo:RO_0002411 causally upstream of`, Invariante C8);
+>   eigen sind nur `ow:CausalModel` und die Annotationen am
+>   RDF-1.2-Reifier (`ow:edgeClass`, `ow:evidenceLevel`,
+>   `ow:temporalLag`). Ein Modell IST sein Named Graph
+>   (`graph/<u>/causal/<modelId>`, dazu `causal-hypotheses`), beide im
+>   Snapshot. SHACL-Shapes in `ontology/shapes/causal.ttl`; Seite
+>   `/graph/causal` **read-only** mit DAG-Bild, Herkunfts-Badges und
+>   SPARQL-Vorlage. Details:
+>   [docs/kausalmodell.md](./docs/kausalmodell.md).
+>
+> **Nicht gebaut** und deshalb nirgends in der UI: Identifikation
+> (D-Separation, Backdoor, Adjustment Sets), Schätzung, Refutation,
+> Hypothesen-Erzeugung. Kein Effekt, keine Zahl, kein Konfidenzintervall.
+>
+> **Nächster Meilenstein: C1** (Identifikation, Tier 1 in TypeScript),
+> danach C2 → C4 → C5 → C6. Reihenfolge und Begründung in
 > CAUSAL_LAYER_SPEC §18, Arbeitsmodus in §19, offener Stand mit Abnahmen
 > in TODO.md unter „Kausal-Layer". C7 und C8 nur nach ausdrücklicher
 > Freigabe.
@@ -566,11 +580,11 @@ und backend-unabhängig** — Details in [docs/ai-platform.md](./docs/ai-platfor
 - **UI**: AI-Hub (`/ai`), Skills (`/skills`), MCP-Verwaltung in `/tools`,
   A2A-Discovery in `/agents`, ModelPicker in beiden Chat-Oberflächen.
 
-Build, Typecheck, Lint (0 Errors), 565 Unit-Tests (plus der Live-Test
+Build, Typecheck, Lint (0 Errors), 586 Unit-Tests (plus der Live-Test
 gegen Wikidata, der ohne `OW_FEDERATION_LIVE=1` sichtbar übersprungen
 wird) und das **blockierende E2E-Gate** (`e2e/mobile-navigation`,
 `e2e/mobile-ux`, `e2e/a11y` inkl. der Seiten `/ai`, `/skills`, `/tools`,
-`/graph/connectors`, `/graph/observations`, `/graph/sparql`,
+`/graph/connectors`, `/graph/observations`, `/graph/causal`, `/graph/sparql`,
 `/graph/federation`, `/graph/access` und seit M14 `/onboarding`, dazu seit M12
 `e2e/ingress.spec.ts` im eigenen Playwright-Projekt `ingress`)
 laufen grün. Der Ingress-Lauf baut sich beim ersten Mal einen zweiten
@@ -586,7 +600,8 @@ vorinstallierten Browser (die Konfiguration wertet die Variable aus).
 1b. [CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md) — verbindliche Spec des
    Kausal-Layers (Invarianten C1–C10, Meilensteine C0–C8, §19 Arbeitsmodus)
    — Pflicht für jede Arbeit am Kausal-Layer, zusammen mit
-   [docs/beobachtungen.md](./docs/beobachtungen.md) (was gebaut ist und
+   [docs/beobachtungen.md](./docs/beobachtungen.md) und
+   [docs/kausalmodell.md](./docs/kausalmodell.md) (was gebaut ist und
    warum)
 2. [docs/multi-user.md](./docs/multi-user.md) — Identität, ACL und
    Durchsetzung (§17) — Pflicht, sobald ein Lesepfad berührt wird
@@ -605,10 +620,13 @@ Graph-Bürger).
 
 **Der laufende Arbeitsstrang ist der Kausal-Layer**
 ([CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md), §16 Meilensteine, §19
-Arbeitsmodus). C3 (Erfassung) ist gebaut; **als Nächstes C0**, danach C1,
-C2, C4, C5 in genau dieser Reihenfolge (Begründung in §18). Der offene
-Stand steht abhakbar in [TODO.md](./TODO.md) unter „Kausal-Layer" — er
-ist die eine Quelle dafür, was noch fehlt.
+Arbeitsmodus). C3 (Erfassung) und C0 (Kausalmodell als Graph-Bürger)
+sind gebaut; **als Nächstes C1** (Identifikation: Azyklizität,
+D-Separation, Backdoor/Frontdoor, minimale Adjustment Sets — reine
+Graphalgorithmik, läuft in allen drei Runtimes), danach C2, C4, C5 in
+genau dieser Reihenfolge (Begründung in §18). Der offene Stand steht
+abhakbar in [TODO.md](./TODO.md) unter „Kausal-Layer" — er ist die eine
+Quelle dafür, was noch fehlt.
 
 Unabhängig davon weiterhin offen, ohne Reihenfolge zum Kausal-Layer:
 

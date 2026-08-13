@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { AppShell } from '@/components/layout';
 import { Card, CardContent, Button, ConfirmDialog, FloatingActionButton } from '@/components/ui';
-import { Settings2, X, RotateCcw, CloudDownload, Globe, ShieldCheck, TerminalSquare } from 'lucide-react';
+import { Settings2, X, RotateCcw, Activity, CloudDownload, GitBranch, Globe, ShieldCheck, TerminalSquare } from 'lucide-react';
 import { isGraphQuery } from '@/lib/graph/sparql/classify';
 import styles from './page.module.css';
 import type { LegacyGraphNode, LegacyGraphView } from '@/lib/graph/projection/schema-org';
@@ -1077,6 +1077,12 @@ export default function GraphExplorerPage() {
                                     </Link>
                                     <Link href="/graph/connectors" className={styles.sourcesLink}>
                                         <CloudDownload size={14} aria-hidden="true" /> Externe Quellen verwalten
+                                    </Link>
+                                    <Link href="/graph/observations" className={styles.sourcesLink}>
+                                        <Activity size={14} aria-hidden="true" /> Beobachtungen erfassen
+                                    </Link>
+                                    <Link href="/graph/causal" className={styles.sourcesLink}>
+                                        <GitBranch size={14} aria-hidden="true" /> Kausalmodelle
                                     </Link>
                                     <Link href="/graph/federation" className={styles.sourcesLink}>
                                         <Globe size={14} aria-hidden="true" /> Föderierte Endpoints
