@@ -347,6 +347,51 @@
       „Aussagen" beschriftet, und ein eigener Abschnitt nennt sichtbare vs.
       vorhandene Knoten und Kanten; jeder Filter zeigt seine Anzahl
 
+## Kausal-Layer (CAUSAL_LAYER_SPEC — Entwurf, einzeln entschieden)
+
+> Der Entwurf steht in [CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md) und ist
+> NICHT verbindlich. Umgesetzt ist bisher nur der zeitkritische Teil: die
+> Erfassung. Sie kommt zuerst, weil Home Assistant Zustandswechsel nach
+> `purge_keep_days` verwirft — jeder Tag ohne Erfassung ist ein verlorener Tag.
+
+- [x] **C3 Erfassung („früh materialisieren")**:
+      `homeassistant_api: true` im Add-on-Manifest (lesend, begründet in
+      DOCS.md); Connector `home-assistant` materialisiert die STRUKTUR
+      (Etagen/Bereiche als `schema:Place`, Geräte als `sosa:Platform`,
+      Entitäten als `sosa:Sensor`/`sosa:Actuator`, `device_class` als
+      `sosa:ObservableProperty`) — Registry über `POST /api/template`, weil
+      die REST-API sie nicht kennt; Revision folgt der Struktur, nicht dem
+      Messwert. Beobachtungsgrößen als `ow:Variable` in `graph/meta` (Muster
+      Retrieval-Profile), Werte NIE im Store, sondern als NDJSON-Tagesdateien
+      unter `data/observations/<u>/<id>/` — im Graphen nur Erfassungsregel und
+      Abdeckung (`ow:capturedFrom`/`-Through`, `ow:observationCount`).
+      Erfassungslauf mit Backfill (14 Tage), Wasserzeichen (idempotent),
+      Verdichtung auf festes Raster (Zustände halten an, Lücken bleiben
+      Lücken, Summen werden nicht fortgeschrieben, unzulässige Verdichtung
+      wird abgelehnt), Aufbewahrung pro Größe; Zeitgeber im Serverprozess
+      (`OW_CAPTURE_INTERVAL`, Default 600 s, `0` = aus, `local` hat ihn
+      nicht). UI `/graph/observations` mit Aktoren zuerst (Treatment-Seite
+      geht zuerst verloren). 11 neue `ow:`-Terme, alles Übrige aus SOSA und
+      schema.org (Invariante 8) — Abnahme: `tests/graph/observations.test.ts`
+      (Idempotenz, kein Messwert im Store, Lücken, Carry-Forward,
+      Fehlerisolation, Backfill-Fenster), `tests/graph/home-assistant.test.ts`
+      (Zugangsauflösung, SOSA-Mapping, Topologie, Revision, Quarantäne,
+      read-only). Doku: [docs/beobachtungen.md](./docs/beobachtungen.md)
+- [ ] **C0/C1 Kausalmodell und Identifikation**: DAG als Graph-Bürger,
+      D-Separation, Backdoor/Frontdoor, minimale Adjustment Sets,
+      Identifizierbarkeits-Entscheidung — reine Graphalgorithmik, läuft in
+      allen drei Runtimes (CAUSAL_LAYER_SPEC §7 Tier 1)
+- [ ] **C2 Causal Path Tracing** im Retrieval (§7.5-Erweiterung)
+- [ ] **C4 Schätzung + Refutation**, `ow:CausalStudy` mit
+      Reproduktions-Signatur
+- [ ] **C5 Open-Data-Connector** `rest-timeseries` (Wetter, Strompreis,
+      Sonnenstand, Feiertage) — die Confounder der Hausdomäne
+- [ ] Backfill aus den Long-Term-Statistics (stündliche Aggregate,
+      unbegrenzt aufbewahrt). Braucht die WebSocket-API
+      (`recorder/statistics_during_period`) — die REST-API kennt sie nicht.
+      Ändert nichts an der Dringlichkeit der Erfassung: die Ursachenseite
+      steht in den Statistics ohnehin nicht
+
 ## Fundament (fertig)
 
 - [x] Next.js 16 App Router, TypeScript strict, CSS Modules, Design Tokens

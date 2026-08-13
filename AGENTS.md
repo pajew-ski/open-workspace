@@ -4,6 +4,23 @@
 
 ## Hier weitermachen (Einstieg für neue Sessions)
 
+> **Neu seit 2026-08-13 — Kausal-Layer, erster Schritt.** Neben dem
+> Graph-Kern steht jetzt ein Entwurf in
+> [CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md) (**nicht verbindlich**,
+> zur Entscheidung). Umgesetzt ist daraus bisher **nur C3, die
+> Erfassung** — weil sie als einzige zeitkritisch ist: Home Assistant
+> verwirft vollständige Zustandswechsel nach `purge_keep_days` (Standard
+> 10 Tage), und was dort fehlt, ist unwiederbringlich. Konkret:
+> `homeassistant_api: true` im Add-on-Manifest (lesend), der Connector
+> `home-assistant` für die Struktur (SOSA), `ow:Variable` in `graph/meta`
+> für die Erfassungsregel, NDJSON-Tagesdateien unter
+> `data/observations/` für die Werte (**nie im Store**, Invariante C3),
+> ein Erfassungslauf mit Backfill und Wasserzeichen, ein Zeitgeber im
+> Serverprozess und die Seite `/graph/observations`. Details:
+> [docs/beobachtungen.md](./docs/beobachtungen.md). Alles Weitere aus dem
+> Entwurf (DAG, Identifikation, Schätzung, Refutation) ist **nicht**
+> gebaut und erscheint deshalb nirgends in der UI.
+
 **Stand 2026-08-10 (12. Ausbaustufe, Graph Core M0–M14 inkl. §12.4 und
 §18 — der Vollausbau der Spec ist damit abgeschlossen)**: Der
 **RDF-Graph ist das kanonische Datenmodell — und seit der 6. Stufe die
@@ -19,7 +36,7 @@ Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
   (SPARQL 1.1 Query/Update, RDF 1.2/RDF-star, Quads) + ehrliches
   In-Memory-Test-Double. Kein Default-Graph-Schreibpfad — jedes Tripel hat
   einen Named Graph, per Store erzwungen.
-- **Vokabular** (`ontology/ow.ttl` + `src/lib/graph/vocab.ts`): 66 eigene
+- **Vokabular** (`ontology/ow.ttl` + `src/lib/graph/vocab.ts`): 96 eigene
   Terme unter der produktweit konstanten Base
   `https://pajew-ski.github.io/open-workspace/ns/v1#`, jeder mit
   de/en-Labels und Begründung. CI-Check `bun run check:ontology` erzwingt

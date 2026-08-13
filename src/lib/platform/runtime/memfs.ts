@@ -58,6 +58,15 @@ export function createMemoryFileSystem(): BinaryFileSystemLike & { files: Map<st
             files.set(normalized, content);
             touch(normalized);
         },
+        appendFile: async (path, content) => {
+            const normalized = normalize(path);
+            const existing = files.get(normalized);
+            const before = existing === undefined
+                ? ''
+                : typeof existing === 'string' ? existing : textDecoder.decode(existing);
+            files.set(normalized, before + content);
+            touch(normalized);
+        },
         readBytes: async path => {
             const content = files.get(normalize(path));
             if (content === undefined) throw enoent(path);

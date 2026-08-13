@@ -163,6 +163,15 @@ export const APP_MODULES: readonly AppModule[] = [
         navigation: 'none',
     },
     {
+        id: 'graph-observations',
+        route: '/graph/observations',
+        label: 'Beobachtungen',
+        description: 'Messreihen aus Home Assistant dauerhaft erfassen, bevor der Recorder sie verwirft.',
+        entityTypes: [OW.Variable],
+        partOf: 'graph',
+        navigation: 'none',
+    },
+    {
         id: 'graph-sparql',
         route: '/graph/sparql',
         label: 'SPARQL',

@@ -46,6 +46,13 @@ export const PREFIXES = {
     void: 'http://rdfs.org/ns/void#',
     /** Web Access Control (SPEC §17.2): die Rechte leben im selben RDF wie die Daten. */
     acl: 'http://www.w3.org/ns/auth/acl#',
+    /**
+     * Sensors, Observations, Samples and Actuators (W3C/OGC). Der Standard
+     * für Sensorik — Plattform, Sensor, Aktor, beobachtete Größe. Wird für
+     * die Struktur externer Messquellen (Home Assistant) verwendet, damit
+     * kein eigenes Geräte-Vokabular entsteht (Invariante 8).
+     */
+    sosa: 'http://www.w3.org/ns/sosa/',
     xsd: 'http://www.w3.org/2001/XMLSchema#',
 } as const;
 
@@ -160,6 +167,20 @@ export const OW = {
     capability: ow('capability'),
     runtime: ow('runtime'),
     availableConnectorKind: ow('availableConnectorKind'),
+    // Beobachtungsgrößen und ihre Erfassung (Kausal-Layer, CAUSAL_LAYER_SPEC
+    // §5/§6). Die Werte selbst stehen NIE im Store — hier liegt nur, was
+    // erfasst wird, woraus, wie verdichtet und bis wann (Invariante C3).
+    Variable: ow('Variable'),
+    observationSource: ow('observationSource'),
+    observationKind: ow('observationKind'),
+    aggregation: ow('aggregation'),
+    samplingInterval: ow('samplingInterval'),
+    captureEnabled: ow('captureEnabled'),
+    captureState: ow('captureState'),
+    capturedFrom: ow('capturedFrom'),
+    capturedThrough: ow('capturedThrough'),
+    observationCount: ow('observationCount'),
+    retentionDays: ow('retentionDays'),
 } as const;
 
 export type OwTerm = (typeof OW)[keyof typeof OW];
@@ -218,6 +239,30 @@ export const SCHEMA = {
     ActiveActionStatus: schemaOrg('ActiveActionStatus'),
     CompletedActionStatus: schemaOrg('CompletedActionStatus'),
     PotentialActionStatus: schemaOrg('PotentialActionStatus'),
+    /** Ort einer Messquelle: Home-Assistant-Bereich und -Etage. */
+    Place: schemaOrg('Place'),
+    containedInPlace: schemaOrg('containedInPlace'),
+    /** Grobe Einordnung einer Quelle (HA-Domain: sensor, light, climate, …). */
+    category: schemaOrg('category'),
+    /** Maßeinheit als Text, quelltreu aus `unit_of_measurement`. */
+    unitText: schemaOrg('unitText'),
+} as const;
+
+/**
+ * SOSA (W3C/OGC Semantic Sensor Network). Trägt die Struktur externer
+ * Messquellen: Plattform (Gerät) hostet Sensoren/Aktoren, ein Sensor
+ * beobachtet eine Größe. Genau die Topologie, die ein Kausalmodell als
+ * Vorannahme braucht — und ein etablierter Standard, also kein eigener
+ * Term (Invariante 8).
+ */
+export const SOSA = {
+    Platform: `${PREFIXES.sosa}Platform`,
+    Sensor: `${PREFIXES.sosa}Sensor`,
+    Actuator: `${PREFIXES.sosa}Actuator`,
+    ObservableProperty: `${PREFIXES.sosa}ObservableProperty`,
+    hosts: `${PREFIXES.sosa}hosts`,
+    isHostedBy: `${PREFIXES.sosa}isHostedBy`,
+    observes: `${PREFIXES.sosa}observes`,
 } as const;
 
 export const RDF = {
@@ -325,6 +370,8 @@ export const XSD = {
     decimal: `${PREFIXES.xsd}decimal`,
     boolean: `${PREFIXES.xsd}boolean`,
     anyURI: `${PREFIXES.xsd}anyURI`,
+    /** Abtastabstand einer Messreihe (ow:samplingInterval), ISO-8601-Dauer. */
+    duration: `${PREFIXES.xsd}duration`,
 } as const;
 
 /** SPARQL-Prolog mit allen Standard-Prefixes, für lesbare Queries. */

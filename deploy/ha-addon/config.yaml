@@ -34,6 +34,21 @@ panel_admin: true
 map:
   - share:rw
 
+# Zugriff auf die Core-API von Home Assistant. Der Supervisor legt dafür
+# SUPERVISOR_TOKEN in die Umgebung; erreichbar wird damit
+# http://supervisor/core/api.
+#
+# Das ist eine bewusste Rechteerweiterung, kein Nebeneffekt: Ohne sie sieht
+# das Add-on von Home Assistant genau nichts, mit ihr LESEND alle Entitäten,
+# ihren Zustand, ihre Historie und die Registry (Bereiche, Etagen, Geräte).
+# Gebraucht wird das vom `home-assistant`-Connector (Struktur) und von der
+# Beobachtungs-Erfassung (Zeitreihen) — beide lesen ausschließlich.
+# Geschaltet wird nichts: `homeassistant_api` erlaubt technisch auch
+# Service-Calls, der Workspace macht davon keinen Gebrauch, und es gibt
+# keine Oberfläche dafür (Invariante 10). Begründung und Umfang:
+# DOCS.md „Zugriff auf Home Assistant".
+homeassistant_api: true
+
 options:
   log_level: info
   instance_base: ""
