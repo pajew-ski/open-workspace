@@ -42,6 +42,11 @@ async function handle(request: NextRequest, method: 'GET' | 'POST'): Promise<Res
             // nur ins Freigegebene — injiziert, nicht nachgefiltert.
             allowedGraphs: grant.readableGraphs,
             writableGraphs: grant.writableGraphs ?? [],
+            // C1: Ein Kausalmodell IST sein Named Graph — er entsteht
+            // deshalb beim ersten Schreibvorgang und kann nicht vorher in
+            // der Liste stehen. Das Muster gilt nur für den eigenen
+            // Namensraum und nur für Graphen, die es noch nicht gibt.
+            writableScopes: grant.writableScopes ?? [],
         });
         // Ein erfolgreiches UPDATE (204) läuft am Mutations-Pfad von
         // server/instance.ts vorbei — Suchindizes hier invalidieren (M8)

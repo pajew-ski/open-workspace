@@ -21,7 +21,14 @@
 
 import type { GraphStore } from '../store/types';
 import { createIriFactory, describeGraph, DEFAULT_USER_ID, type IriFactory } from '../iri';
-import { isAclScope, resolveWriteGraph, scopeMatches, type AccessGrant } from './grant';
+import {
+    isAclScope,
+    matchesProspectiveScope,
+    PROSPECTIVE_WRITE_SCOPES,
+    resolveWriteGraph,
+    scopeMatches,
+    type AccessGrant,
+} from './grant';
 import { graphScopeKey } from './grant';
 import { modesFor, type AclAuthorization, type AclMode, type AclPrincipal } from './acl';
 import { loadAuthorizations } from './acl-graph';
@@ -123,8 +130,26 @@ export async function grantForIdentity(
     const appendableGraphs = byMode('append');
     const controlGraphs = byMode('control');
 
-    // Das Schreibziel ist erst dann eines, wenn die ACL es auch hergibt:
-    // ein Scope-Name allein begründet kein Recht.
+    // Schreibziele aus Scope-Mustern statt aus dem Bestand (C1): Im
+    // eigenen Namensraum darf ein Kausalmodell entstehen, obwohl sein
+    // Graph noch nicht existiert und deshalb noch keine Regel hat. Die
+    // Regel folgt beim ersten Schreibvorgang (`ensureGraphAuthorizations`)
+    // und lautet dann genau, was hier vorweggenommen wird: Eigentümer,
+    // `control`. Fremde Namensräume und Systemgraphen sind nicht dabei —
+    // die Muster tragen die eigene Nutzer-ID im Präfix.
+    const ownPrefix = `u/${encodeURIComponent(userIri.userId)}/`;
+    const writableScopes = identity.userId === ''
+        ? []
+        : PROSPECTIVE_WRITE_SCOPES
+            // Die Verengung eines Zugangs greift auch hier: Ein Token, das
+            // nur `workspace` darf, legt keine Kausalmodelle an.
+            .filter(pattern => !options.narrowTo
+                || options.narrowTo.some(allowed => scopeMatches(allowed, pattern)))
+            .map(pattern => `${ownPrefix}${pattern}`);
+
+    // Das Schreibziel ist erst dann eines, wenn die ACL es hergibt oder
+    // der Namensraum dem Anfragenden selbst gehört: ein Scope-Name allein
+    // begründet kein Recht.
     let writableGraph: string | null = null;
     if (options.writeScope) {
         const target = resolveWriteGraph(userIri, options.writeScope);
@@ -134,7 +159,11 @@ export async function grantForIdentity(
         // Raum ist ein gültiges Ziel für den ersten Schreibvorgang.
         const withinNarrowing = !options.narrowTo
             || options.narrowTo.some(pattern => scopeMatches(pattern, options.writeScope!));
-        if (target && withinNarrowing && modesFor(authorizations, principal, target).has('write')) {
+        const prospective = writableScopes.some(pattern =>
+            matchesProspectiveScope(pattern, `${ownPrefix}${options.writeScope}`))
+            && !existing.includes(target ?? '');
+        if (target && withinNarrowing
+            && (prospective || modesFor(authorizations, principal, target).has('write'))) {
             writableGraph = target;
         }
     }
@@ -143,6 +172,7 @@ export async function grantForIdentity(
         identity: options.label ?? identity.userId,
         readableGraphs,
         writableGraph,
+        writableScopes,
         sparql: options.sparql ?? false,
         writableGraphs,
         appendableGraphs,

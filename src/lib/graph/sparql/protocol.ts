@@ -27,6 +27,7 @@ import type { NamedNode, Quad, Term } from '@rdfjs/types';
 import type { GraphStore, QueryResult } from '../store/types';
 import { GraphStoreError } from '../store/types';
 import type { IriFactory } from '../iri';
+import { matchesProspectiveScope } from '../authz/grant';
 import { namedNode } from '../rdf';
 import { serializeRdf } from '../serialize/io';
 import { quadToNQuadsLine } from '../serialize/nquads';
@@ -102,6 +103,15 @@ function isRestrictedByDefault(iriValue: string, base: string): boolean {
     return false;
 }
 
+/** Was ein Update über den Bestand wissen muss, um ihn zu schützen. */
+interface UpdateGuard {
+    writableGraphs?: readonly string[];
+    /** Muster für Graphen, die neu entstehen dürfen (C1). */
+    writableScopes?: readonly string[];
+    /** Graphen, die es VOR dem Update schon gab. */
+    existing?: ReadonlySet<string>;
+}
+
 /**
  * Systemverwaltete Graphen — für SPARQL-Updates unantastbar.
  *
@@ -111,15 +121,26 @@ function isRestrictedByDefault(iriValue: string, base: string): boolean {
  * Nutzergraphen ändern noch neue Graphen außerhalb des eigenen Rechts
  * anlegen. Die Liste kann nie erweitern: die systemverwalteten Graphen
  * bleiben geschützt, selbst wenn jemand sie hineinschreibt.
+ *
+ * `writableScopes` (C1) macht davon genau eine Ausnahme, und auch die nur
+ * nach oben eng: Ein Graph, den es VOR dem Update noch nicht gab und der
+ * in den eigenen Kausal-Namensraum fällt, darf entstehen. Ein
+ * vorhandener Graph bleibt von den Mustern unberührt — über ihn
+ * entscheidet weiterhin allein `graph/acl`.
  */
-function isProtectedForUpdate(iriValue: string, base: string, writableGraphs?: readonly string[]): boolean {
+function isProtectedForUpdate(iriValue: string, base: string, guard?: UpdateGuard): boolean {
     const scope = graphScope(iriValue, base);
     if (!scope) return true;
     if (scope === 'vocab' || scope === 'meta' || scope === 'shapes' || scope === 'acl') return true;
     if (scope.includes('/import/')) return true; // Connector-eigen (SPEC §6.2)
     if (scope.includes('/inferred/')) return true; // Reasoner-eigen (SPEC §7.3)
-    if (writableGraphs && !writableGraphs.includes(iriValue)) return true;
-    return false;
+    if (!guard?.writableGraphs) return false;
+    if (guard.writableGraphs.includes(iriValue)) return false;
+    const isNew = guard.existing ? !guard.existing.has(iriValue) : false;
+    if (isNew && (guard.writableScopes ?? []).some(pattern => matchesProspectiveScope(pattern, scope))) {
+        return false;
+    }
+    return true;
 }
 
 export interface ResolvedDataset {
@@ -143,6 +164,12 @@ export interface DatasetAuthz {
      * systemverwalteten Graphen wie bisher.
      */
     writableGraphs?: readonly string[];
+    /**
+     * Scope-Muster des eigenen Namensraums, in denen ein NEUER Graph
+     * entstehen darf (C1, `authz/grant.ts`). Wirkt nur auf Graphen, die
+     * es vor dem Update nicht gab.
+     */
+    writableScopes?: readonly string[];
 }
 
 /**
@@ -302,11 +329,17 @@ async function executeGuardedUpdate(
     store: GraphStore,
     iri: IriFactory,
     update: string,
-    writableGraphs?: readonly string[],
+    authz?: Pick<DatasetAuthz, 'writableGraphs' | 'writableScopes'>,
 ): Promise<void> {
     const base = iri.instanceBase;
     await store.transaction(async tx => {
-        const protectedGraphs = (await tx.graphs()).filter(g => isProtectedForUpdate(g.value, base, writableGraphs));
+        // Der Bestand VOR dem Update entscheidet, was „neu" heißt — nur
+        // neue Graphen können über ein Scope-Muster entstehen (C1).
+        const existing = new Set((await tx.graphs()).map(g => g.value));
+        const guard: UpdateGuard = { ...authz, existing };
+        const protectedGraphs = [...existing]
+            .map(namedNode)
+            .filter(g => isProtectedForUpdate(g.value, base, guard));
         const before = new Map<string, string>();
         for (const graph of protectedGraphs) {
             before.set(graph.value, await graphFingerprint(tx, graph));
@@ -314,7 +347,7 @@ async function executeGuardedUpdate(
         await tx.update(update);
         const after = await tx.graphs();
         for (const graph of after) {
-            if (!isProtectedForUpdate(graph.value, base, writableGraphs)) continue;
+            if (!isProtectedForUpdate(graph.value, base, guard)) continue;
             const previous = before.get(graph.value) ?? '';
             if ((await graphFingerprint(tx, graph)) !== previous) {
                 throw new GraphStoreError(
@@ -402,7 +435,10 @@ export async function executeSparqlProtocol(
 
     if (update) {
         try {
-            await executeGuardedUpdate(store, iri, update, options.writableGraphs);
+            await executeGuardedUpdate(store, iri, update, {
+                ...(options.writableGraphs ? { writableGraphs: options.writableGraphs } : {}),
+                ...(options.writableScopes ? { writableScopes: options.writableScopes } : {}),
+            });
             return { status: 204, contentType: 'text/plain; charset=utf-8', body: '' };
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);

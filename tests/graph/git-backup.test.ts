@@ -108,6 +108,7 @@ function testRuntime(store: OxigraphStore, files: BinaryFileSystemLike, git: Git
             federationInbound: false,
             multiUser: false,
             reasoningTier: 'rl',
+            causalTier: 'graph',
         },
     };
 }

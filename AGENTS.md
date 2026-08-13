@@ -4,9 +4,9 @@
 
 ## Hier weitermachen (Einstieg für neue Sessions)
 
-> **Neu seit 2026-08-13 — Kausal-Layer, C3 und C0 gebaut.** Neben dem
+> **Neu seit 2026-08-13 — Kausal-Layer, C3, C0 und C1 gebaut.** Neben dem
 > Graph-Kern gilt [CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md)
-> (verbindlich für C0–C5). Umgesetzt sind zwei Meilensteine:
+> (verbindlich für C0–C5). Umgesetzt sind drei Meilensteine:
 >
 > - **C3, die Erfassung** — zuerst, weil als einzige zeitkritisch: Home
 >   Assistant verwirft vollständige Zustandswechsel nach
@@ -26,22 +26,43 @@
 >   RDF-1.2-Reifier (`ow:edgeClass`, `ow:evidenceLevel`,
 >   `ow:temporalLag`). Ein Modell IST sein Named Graph
 >   (`graph/<u>/causal/<modelId>`, dazu `causal-hypotheses`), beide im
->   Snapshot. SHACL-Shapes in `ontology/shapes/causal.ttl`; Seite
->   `/graph/causal` **read-only** mit DAG-Bild, Herkunfts-Badges und
->   SPARQL-Vorlage. Details:
+>   Snapshot. SHACL-Shapes in `ontology/shapes/causal.ttl`. Details:
+>   [docs/kausalmodell.md](./docs/kausalmodell.md).
+> - **C1, die Identifikation** — die Frage VOR jeder Zahl: Ließe sich der
+>   Effekt von A auf B aus Beobachtungsdaten überhaupt bestimmen, und
+>   worüber müsste man adjustieren? Der Tier-1-Kern
+>   (`src/lib/graph/causal/{dag,dsep,identify}.ts`) ist **pur** — kein
+>   Store, kein Netz, keine Route (per Test erzwungen) — und rechnet
+>   deshalb im Browser: Azyklizität mit Zeugen-Zyklus, topologische
+>   Ordnung, D-Separation über den moralisierten Vorfahrengraphen,
+>   implizierte Unabhängigkeiten, gedeckelte Pfad-Aufzählung für die
+>   Erklärung, **Adjustment-Kriterium** (Shpitser/van der Zander) statt
+>   des engeren Backdoor-Kriteriums, kanonische Menge als Entscheider,
+>   minimale Adjustment Sets, Frontdoor und Instrumentvariablen.
+>   **Beobachtbar heißt erfasst** (C3) — daraus entsteht die Antwort
+>   „nicht identifizierbar, weil die Außentemperatur nicht erfasst wird",
+>   getrennt von der Auskunft, ob die Struktur eine Antwort hergäbe.
+>   Dazu: `/graph/causal` ist jetzt ein **DAG-Editor** (Variablen, Kanten
+>   mit Herkunft und Zeitversatz; eine Kante, die einen Kreis schließt,
+>   wird mit dem Kreis im Klartext abgelehnt; SHACL vor dem Schreiben,
+>   blockierend nur bei NEUEN Verstößen), jede Änderung schreibt eine
+>   Revision (`prov:Activity` + `schema:version`, Vorleistung für C7),
+>   `capabilities.causalTier` steht auf `graph`, und Schreibziele kommen
+>   aus **Scope-Mustern** (`causal/*`, `causal-hypotheses` im eigenen
+>   Namensraum dürfen als NEUER Graph entstehen; vorhandene Graphen
+>   bleiben allein Sache von `graph/acl`). Details:
 >   [docs/kausalmodell.md](./docs/kausalmodell.md).
 >
-> **Nicht gebaut** und deshalb nirgends in der UI: Identifikation
-> (D-Separation, Backdoor, Adjustment Sets), Schätzung, Refutation,
-> Hypothesen-Erzeugung. Kein Effekt, keine Zahl, kein Konfidenzintervall.
+> **Nicht gebaut** und deshalb nirgends in der UI: Schätzung, Refutation,
+> kausales Retrieval, Hypothesen-Erzeugung. Kein Effekt, keine Zahl, kein
+> Konfidenzintervall — die Identifikation nennt Mengen, Wege und fehlende
+> Größen, mehr nicht.
 >
-> **Nächster Meilenstein: C1** (Identifikation, Tier 1 in TypeScript;
-> dort mit nachzuziehen: `capabilities.causalTier`, Schreibziele aus
-> Scope-Mustern, Modell-Revisionen und der DAG-Editor — Begründungen in
-> TODO.md), danach C2 → C4 → C5 → C6. Reihenfolge und Begründung in
-> CAUSAL_LAYER_SPEC §18, Arbeitsmodus in §19, offener Stand mit Abnahmen
-> in TODO.md unter „Kausal-Layer". C7 und C8 nur nach ausdrücklicher
-> Freigabe.
+> **Nächster Meilenstein: C2** (Causal Path Tracing im Retrieval, SPEC §9
+> — die Bausteine dafür liegen als pure Funktionen in C1), danach
+> C4 → C5 → C6. Reihenfolge und Begründung in CAUSAL_LAYER_SPEC §18,
+> Arbeitsmodus in §19, offener Stand mit Abnahmen in TODO.md unter
+> „Kausal-Layer". C7 und C8 nur nach ausdrücklicher Freigabe.
 
 **Stand 2026-08-10 (12. Ausbaustufe, Graph Core M0–M14 inkl. §12.4 und
 §18 — der Vollausbau der Spec ist damit abgeschlossen)**: Der
@@ -582,7 +603,7 @@ und backend-unabhängig** — Details in [docs/ai-platform.md](./docs/ai-platfor
 - **UI**: AI-Hub (`/ai`), Skills (`/skills`), MCP-Verwaltung in `/tools`,
   A2A-Discovery in `/agents`, ModelPicker in beiden Chat-Oberflächen.
 
-Build, Typecheck, Lint (0 Errors), 586 Unit-Tests (plus der Live-Test
+Build, Typecheck, Lint (0 Errors), 633 Unit-Tests (plus der Live-Test
 gegen Wikidata, der ohne `OW_FEDERATION_LIVE=1` sichtbar übersprungen
 wird) und das **blockierende E2E-Gate** (`e2e/mobile-navigation`,
 `e2e/mobile-ux`, `e2e/a11y` inkl. der Seiten `/ai`, `/skills`, `/tools`,
@@ -622,11 +643,12 @@ Graph-Bürger).
 
 **Der laufende Arbeitsstrang ist der Kausal-Layer**
 ([CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md), §16 Meilensteine, §19
-Arbeitsmodus). C3 (Erfassung) und C0 (Kausalmodell als Graph-Bürger)
-sind gebaut; **als Nächstes C1** (Identifikation: Azyklizität,
-D-Separation, Backdoor/Frontdoor, minimale Adjustment Sets — reine
-Graphalgorithmik, läuft in allen drei Runtimes), danach C2, C4, C5 in
-genau dieser Reihenfolge (Begründung in §18). Der offene Stand steht
+Arbeitsmodus). C3 (Erfassung), C0 (Kausalmodell als Graph-Bürger) und C1
+(Identifikation: Azyklizität, D-Separation, Backdoor/Frontdoor, minimale
+Adjustment Sets, Instrumente — reine Graphalgorithmik, läuft in allen drei
+Runtimes) sind gebaut; **als Nächstes C2** (Causal Path Tracing im
+Retrieval), danach C4, C5 in genau dieser Reihenfolge (Begründung in
+§18). Der offene Stand steht
 abhakbar in [TODO.md](./TODO.md) unter „Kausal-Layer" — er ist die eine
 Quelle dafür, was noch fehlt.
 
