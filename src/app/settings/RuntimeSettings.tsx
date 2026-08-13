@@ -24,6 +24,7 @@ interface RuntimeInfo {
         federationInbound: boolean;
         multiUser: boolean;
         reasoningTier: 'rl' | 'rl+dl';
+        causalTier: 'none' | 'graph' | 'full';
     };
     basePath: string;
     ingress: { active: boolean; basePath: string | null };
@@ -103,6 +104,11 @@ export function RuntimeSettings() {
             info.capabilities.federationInbound ? 'Föderation eingehend' : null,
             info.capabilities.multiUser ? 'Mehrbenutzerbetrieb' : null,
             `Reasoning ${info.capabilities.reasoningTier.toUpperCase()}`,
+            // Invariante C9: Was die Runtime kausal kann, steht hier —
+            // „graph" heißt Identifikation ohne Schätzung (C1).
+            info.capabilities.causalTier === 'graph' ? 'Kausal: Identifikation'
+                : info.capabilities.causalTier === 'full' ? 'Kausal: Identifikation + Schätzung'
+                    : null,
         ].filter(Boolean).join(' · ')
         : '';
 

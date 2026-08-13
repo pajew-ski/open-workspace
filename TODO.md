@@ -356,6 +356,7 @@
 > nächste. C3 steht zuerst und ist erledigt, weil er als einziger
 > zeitkritisch war: Home Assistant verwirft Zustandswechsel nach
 > `purge_keep_days`, jeder Tag ohne Erfassung war unwiederbringlich.
+> Gebaut sind C3, C0 und C1; offen ist als Nächstes C2.
 
 - [x] **C3 Erfassung („früh materialisieren")**:
       `homeassistant_api: true` im Add-on-Manifest (lesend, begründet in
@@ -406,35 +407,51 @@
       getrennt, Shapes melden erfundene Klasse/kaputten Versatz/fehlende
       Herkunft, Layout-Blacklist hält, Modell überlebt den Neustart) +
       Ontologie-CI. Doku: [docs/kausalmodell.md](./docs/kausalmodell.md)
-- [ ] **C1 Identifikation** (SPEC §7 Tier 1) — *als Nächstes*: Azyklizität, D-Separation,
-      Backdoor-/Frontdoor-Kriterium, minimale Adjustment Sets,
-      IV-Erkennung, Identifizierbarkeits-Entscheidung. Reine
-      Graphalgorithmik in TypeScript, läuft in allen drei Runtimes.
-      Abnahme: Testsuite gegen bekannte Lehrbuch-DAGs; „nicht
-      identifizierbar" kommt korrekt UND begründet zurück (welche Variable
-      fehlt); läuft im Browser.
-      **Mit C1 nachzuziehen** (entschieden nach C0):
-      - `capabilities.causalTier` (Invariante C9) — in C0 bewusst
-        weggelassen, weil es ohne Tier-1-Rechenfähigkeit eine Attrappe
-        gewesen wäre; mit C1 gibt es die Fähigkeit, also auch die Angabe
-      - Schreibziele aus **Scope-Mustern** statt aus dem Bestand: Der
-        eigene Kausal-Namensraum (`causal/*`, `causal-hypotheses`) wird
-        ein regulärer Schreib-Scope, damit SPARQL-Editor, CRUD und der
-        DAG-Editor EINEN Schreibweg teilen. Heute scheitert das Anlegen
-        eines Modells per SPARQL nur daran, dass `grantForIdentity` seine
-        Kandidaten aus den vorhandenen Graphen zieht (`control` impliziert
-        `write`, aber der Graph existiert noch nicht) — dieselbe Ausnahme,
-        die `bootstrapAccess` für workspace/public/presentation schon von
-        Hand macht. Systemgraphen und fremde Nutzer bleiben hart
-        geschützt, je mit Negativtest
-      - Modell-Revisionen (`prov:Activity` pro Änderung): Vorleistung für
-        die Reproduktions-Signatur aus Invariante C7 — jetzt billig,
-        später teuer, weil die Historie dann fehlt
-      - Der DAG-Editor gehört hierher und nicht früher: Erst mit
-        Azyklizität, Identifizierbarkeit und Adjustment Sets antwortet er
-        auf jede gezogene Kante, statt nur zeichnen zu lassen
+- [x] **C1 Identifikation** (SPEC §7 Tier 1): Der Tier-1-Kern liegt in
+      `src/lib/graph/causal/{dag,dsep,identify}.ts` und ist **pur** —
+      kein Store, kein Netz, keine Route; ein Test erzwingt das, und der
+      DAG-Editor rechnet damit im Browser. Enthalten: Azyklizität mit
+      Zeugen-Zyklus, topologische Ordnung, D-Separation (moralisierter
+      Vorfahrengraph) plus implizierte Unabhängigkeiten, Pfad-Aufzählung
+      für die Erklärung (gedeckelt, meldet Deckelung), das
+      **Adjustment-Kriterium** (Shpitser/van der Zander) statt des
+      engeren Backdoor-Kriteriums, kanonische Menge als Entscheider,
+      minimale Adjustment Sets, Frontdoor über beobachtbare Mediatoren
+      und Instrumentvariablen (auch bedingte). **Beobachtbar heißt
+      erfasst** (C3): Daraus entsteht die Antwort „nicht identifizierbar,
+      weil die Außentemperatur nicht erfasst wird" — und getrennt davon
+      die Auskunft, ob die Struktur eine Antwort hergäbe. Keine
+      Schätzung, keine Zahl (das bleibt C4).
+      Mit erledigt, wie nach C0 entschieden:
+      - `capabilities.causalTier` (Invariante C9) steht auf `graph` in
+        `server` und `local` — Tier 1 ist pur und läuft überall; `full`
+        gäbe es erst mit dem Sidecar (C8), und der ist nicht gebaut
+      - Schreibziele aus **Scope-Mustern** (`authz/grant.ts`,
+        `PROSPECTIVE_WRITE_SCOPES`): `causal/*` und `causal-hypotheses`
+        im eigenen Namensraum dürfen als NEUER Graph entstehen — die
+        verallgemeinerte Fassung der Bootstrap-Ausnahme für
+        workspace/public/presentation. Ein vorhandener Graph bleibt allein
+        Sache von `graph/acl`; fremde Namensräume, Systemgraphen, anonyme
+        und verengte Zugänge sind gesperrt, je mit Negativtest
+      - Modell-Revisionen: `prov:Activity` pro Änderung IM Modell-Graphen
+        plus `schema:version` am Modell (Anlage = Revision 1)
+      - DAG-Editor auf `/graph/causal`: Variablen aufnehmen (erfasste
+        Größe oder reine Modellvariable), Kanten mit Herkunft und
+        Zeitversatz ziehen und entfernen; eine Kante, die einen Kreis
+        schließt, wird mit dem Kreis im Klartext abgelehnt; SHACL läuft
+        vor dem Schreiben und blockiert nur NEUE Verstöße
+      Abnahme: `tests/graph/causal-identification.test.ts` (Lehrbuch-DAGs:
+      Konfundierung, Kette, Collider, M-Bias, Frontdoor, Instrument,
+      kein Wirkweg, Zyklus; „nicht identifizierbar" mit Namen der
+      fehlenden Variablen; Browser-Tauglichkeit als Import-Test; Laufzeit
+      bei 40 Störgrößen) und `tests/graph/causal-editor.test.ts`
+      (Schreibweg, Revisionen, Zyklus-Ablehnung, Scope-Muster mit fünf
+      Negativtests, Brücke Modell → DAG). Doku:
+      [docs/kausalmodell.md](./docs/kausalmodell.md)
 - [ ] **C2 Causal Path Tracing** im Retrieval (SPEC §9, Erweiterung von
-      GRAPH_CORE_SPEC §7.5 um `causal`-Feld).
+      GRAPH_CORE_SPEC §7.5 um `causal`-Feld) — *als Nächstes*. Der
+      Tier-1-Kern aus C1 liefert die Bausteine (Pfade, D-Separation) und
+      ist pur, also auch im Retrieval-Pfad verwendbar.
       Abnahme: `explain` trägt den kausalen Pfad; d-separierte Knoten
       fallen bei gegebener Konditionierung nachweislich raus
 - [ ] **C4 Schätzung + Refutation** (SPEC §13.1/13.2): Stratifikation,

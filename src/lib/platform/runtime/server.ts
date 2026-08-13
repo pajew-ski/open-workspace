@@ -73,6 +73,10 @@ export function createNodeRuntimeAdapter(options: NodeRuntimeOptions = {}): Runt
             // graph/acl, geteilte Räume, Durchsetzung im Dataset-Resolver.
             multiUser: true,
             reasoningTier: 'rl',
+            // Tier 1 (C1): Identifikation läuft nativ in TypeScript und
+            // braucht weder Netz noch Sidecar. Tier 2 (`full`) gäbe es
+            // erst mit C8 — der ist nicht gebaut und wird nicht behauptet.
+            causalTier: 'graph',
         },
     };
 }

@@ -262,6 +262,12 @@ export const SCHEMA = {
     category: schemaOrg('category'),
     /** Maßeinheit als Text, quelltreu aus `unit_of_measurement`. */
     unitText: schemaOrg('unitText'),
+    /**
+     * Revision eines Artefakts (Kausalmodell, C1). Fremdes Vokabular vor
+     * eigenem (Invariante 8): Eine Studie beruft sich später auf genau
+     * diese Zahl (Invariante C7), und `schema:version` sagt das bereits.
+     */
+    version: schemaOrg('version'),
 } as const;
 
 /**
