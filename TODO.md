@@ -347,6 +347,90 @@
       „Aussagen" beschriftet, und ein eigener Abschnitt nennt sichtbare vs.
       vorhandene Knoten und Kanten; jeder Filter zeigt seine Anzahl
 
+## Kausal-Layer (CAUSAL_LAYER_SPEC, C0–C5 verbindlich)
+
+> Die Spec steht in [CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md) und ist für
+> **C0–C5 verbindlich**; C7 (Experimente) und C8 (Sidecar) bleiben opt-in.
+> Arbeitsmodus: ein Meilenstein = eine Session = ein Branch = ein PR (§19).
+> **Die Liste ist in Baureihenfolge** — der oberste offene Punkt ist der
+> nächste. C3 steht zuerst und ist erledigt, weil er als einziger
+> zeitkritisch war: Home Assistant verwirft Zustandswechsel nach
+> `purge_keep_days`, jeder Tag ohne Erfassung war unwiederbringlich.
+
+- [x] **C3 Erfassung („früh materialisieren")**:
+      `homeassistant_api: true` im Add-on-Manifest (lesend, begründet in
+      DOCS.md); Connector `home-assistant` materialisiert die STRUKTUR
+      (Etagen/Bereiche als `schema:Place`, Geräte als `sosa:Platform`,
+      Entitäten als `sosa:Sensor`/`sosa:Actuator`, `device_class` als
+      `sosa:ObservableProperty`) — Registry über `POST /api/template`, weil
+      die REST-API sie nicht kennt; Revision folgt der Struktur, nicht dem
+      Messwert. Beobachtungsgrößen als `ow:Variable` in `graph/meta` (Muster
+      Retrieval-Profile), Werte NIE im Store, sondern als NDJSON-Tagesdateien
+      unter `data/observations/<u>/<id>/` — im Graphen nur Erfassungsregel und
+      Abdeckung (`ow:capturedFrom`/`-Through`, `ow:observationCount`).
+      Erfassungslauf mit Backfill (14 Tage), Wasserzeichen (idempotent),
+      Verdichtung auf festes Raster (Zustände halten an, Lücken bleiben
+      Lücken, Summen werden nicht fortgeschrieben, unzulässige Verdichtung
+      wird abgelehnt), Aufbewahrung pro Größe; Zeitgeber im Serverprozess
+      (`OW_CAPTURE_INTERVAL`, Default 600 s, `0` = aus, `local` hat ihn
+      nicht). UI `/graph/observations` mit Aktoren zuerst (Treatment-Seite
+      geht zuerst verloren). 11 neue `ow:`-Terme, alles Übrige aus SOSA und
+      schema.org (Invariante 8) — Abnahme: `tests/graph/observations.test.ts`
+      (Idempotenz, kein Messwert im Store, Lücken, Carry-Forward,
+      Fehlerisolation, Backfill-Fenster), `tests/graph/home-assistant.test.ts`
+      (Zugangsauflösung, SOSA-Mapping, Topologie, Revision, Quarantäne,
+      read-only). Doku: [docs/beobachtungen.md](./docs/beobachtungen.md)
+- [ ] **C0 Kausalmodell als Graph-Bürger** (SPEC §5, §16) — *als Nächstes*:
+      Vokabular nach Invariante C8 (fremdes zuerst prüfen: RO
+      `causally upstream of`, Wikidata P828/P1542), Named Graphs
+      `causal/<modelId>` und `causal-hypotheses`, `ow:CausalModel` und die
+      Kanten-Annotation über RDF-star (§5.3), SHACL-Shapes für kausale
+      Kanten, Kantenklassen nach Invariante C2 (hypothesis | structural |
+      learned | asserted), DAG-Ansicht read-only.
+      Abnahme: Ontologie-CI grün; ein handmodellierter DAG ist per SPARQL
+      abfragbar; die Layout-Blacklist hält (Invariante 2)
+- [ ] **C1 Identifikation** (SPEC §7 Tier 1): Azyklizität, D-Separation,
+      Backdoor-/Frontdoor-Kriterium, minimale Adjustment Sets,
+      IV-Erkennung, Identifizierbarkeits-Entscheidung. Reine
+      Graphalgorithmik in TypeScript, läuft in allen drei Runtimes.
+      Abnahme: Testsuite gegen bekannte Lehrbuch-DAGs; „nicht
+      identifizierbar" kommt korrekt UND begründet zurück (welche Variable
+      fehlt); läuft im Browser
+- [ ] **C2 Causal Path Tracing** im Retrieval (SPEC §9, Erweiterung von
+      GRAPH_CORE_SPEC §7.5 um `causal`-Feld).
+      Abnahme: `explain` trägt den kausalen Pfad; d-separierte Knoten
+      fallen bei gegebener Konditionierung nachweislich raus
+- [ ] **C4 Schätzung + Refutation** (SPEC §13.1/13.2): Stratifikation,
+      Regression mit Adjustierung, IPW, DiD, ITS; Placebo, Random Common
+      Cause, Subset-Stabilität, Negativkontrolle, E-Value.
+      `ow:CausalStudy` mit vollständiger Reproduktions-Signatur
+      (Invariante C7), Ergebnis-UI mit DAG, CI und Refutations-Badge.
+      Abnahme: bekannter Effekt aus synthetischen Daten wird korrekt
+      geschätzt; ein konfundierter Fall wird als solcher erkannt; ein
+      durchgefallener Effekt erscheint **nicht** als Effekt (Invariante C5)
+- [ ] **C5 Open-Data-Connector** `rest-timeseries` (SPEC §10/§11): Wetter
+      (DWD/Bright Sky), Strompreis, Sonnenstand, Feiertage — die
+      Confounder der Hausdomäne.
+      Abnahme: dieselbe Frage mit und ohne Adjustierung liefert
+      nachweislich unterschiedliche Ergebnisse, und die Differenz wird
+      erklärt
+- [ ] **C6 Neurosymbolische Schleife** (SPEC §8): LLM-Hypothesen mit
+      Provenienz nach `causal-hypotheses`, symbolische Filter
+      (Azyklizität, SHACL, temporale Zulässigkeit, Topologie,
+      Identifizierbarkeit), Vergleich der drei Strukturquellen,
+      Widerspruchs-UI.
+      Abnahme: keine Hypothese erreicht ohne Filter den Studien-Pfad; ein
+      temporal unmöglicher Vorschlag wird automatisch verworfen
+- [ ] *Opt-in, nicht ohne ausdrückliche Freigabe*: **C7 Experimente**
+      (randomisierte Automationen, SPEC §13.3 samt Leitplanken C10) und
+      **C8 Tier-2-Sidecar** (DoWhy/EconML/causal-learn, Struktur-Lernen,
+      Föderation von Kausalmodellen)
+- [ ] Backfill aus den Long-Term-Statistics (stündliche Aggregate,
+      unbegrenzt aufbewahrt). Braucht die WebSocket-API
+      (`recorder/statistics_during_period`) — die REST-API kennt sie nicht.
+      Ändert nichts an der Dringlichkeit der Erfassung: die Ursachenseite
+      steht in den Statistics ohnehin nicht
+
 ## Fundament (fertig)
 
 - [x] Next.js 16 App Router, TypeScript strict, CSS Modules, Design Tokens

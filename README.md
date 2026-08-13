@@ -42,6 +42,14 @@ konfigurierte Tools selbstständig aus.
   Knoten als Resources `graph://<iri>`, Retrieval-Profile als Prompts. Zugang
   nur per Token; ein Token nennt den Nutzer, dessen Rechte aus `graph/acl`
   gelten (`OW_MCP_TOKENS`)
+- **Beobachtungen** (`/graph/observations`, [docs/beobachtungen.md](./docs/beobachtungen.md)):
+  Messreihen aus Home Assistant dauerhaft erfassen. Der `home-assistant`-Connector
+  materialisiert die Struktur (Etagen, Bereiche, Geräte, Sensoren/Aktoren in
+  SOSA), die Erfassung legt ausgewählte Reihen verdichtet auf ein festes Raster
+  ab — **bevor** der Recorder sie nach `purge_keep_days` verwirft. Die Werte
+  liegen als NDJSON neben dem Store, im Graphen steht die Erfassungsregel und die
+  Abdeckung (`ow:capturedFrom`/`-Through`, `ow:observationCount`). Read-only:
+  es wird nichts geschaltet
 - **Föderation** (`/graph/federation`): `SERVICE`-Abfragen gegen registrierte
   SPARQL-Endpoints (Vertrauensstufe entscheidet, ob lokale Join-Schlüssel
   mitgeschickt werden), SSRF-Schutz, Zeit- und Ergebnis-Limits — und der eigene
@@ -243,6 +251,10 @@ tests/ e2e/         # Vitest-Suiten und Playwright-Gate
 | `GET /api/graph/access` | Identität, sichtbare Graphen, Freigaben, Räume |
 | `POST/DELETE /api/graph/access/authorizations`, `/spaces`, `/groups` | Freigaben, geteilte Räume, Gruppen verwalten |
 | `POST /api/graph/access/publish` | Knoten freigeben (kopieren/verschieben, als `prov:Activity` protokolliert) |
+| `GET/POST /api/graph/observations` | Beobachtungsgrößen und Kandidaten; Quelle zur Erfassung aufnehmen |
+| `GET/PATCH/DELETE /api/graph/observations/[id]` | Größe lesen, pausieren, entfernen (`?purge=1` löscht auch den Bestand) |
+| `GET /api/graph/observations/[id]/series` | Messreihe einer Größe (`from`, `to`, `limit`) |
+| `POST /api/graph/observations/capture` | Erfassungslauf auf Anforderung (regulär läuft der Zeitgeber) |
 | `GET /api/graph/self-model` | Selbstmodell der Installation (Module, Fähigkeiten, Connector-Arten) |
 | `GET /api/graph/provenance` | Aussagen je Herkunft (nativ, importiert, inferiert) |
 | `GET/POST/DELETE /api/onboarding` | Einführungsstrecke: Zustand, Schritt ausführen, zurücknehmen |
@@ -256,6 +268,8 @@ tests/ e2e/         # Vitest-Suiten und Playwright-Gate
 
 - [docs/ai-platform.md](./docs/ai-platform.md) — AI-Plattform: Multi-Provider, Routing, MCP, A2A, Skills, Serverless
 - [docs/multi-user.md](./docs/multi-user.md) — Identität, ACL-Modell, Durchsetzung, öffentlicher Teilgraph
+- [docs/beobachtungen.md](./docs/beobachtungen.md) — Zeitreihen aus Home Assistant erfassen: was der Recorder behält, was er verwirft, und wie der Bestand entsteht
+- [CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md) — Entwurf des Kausal-Layers (Neurosymbolik, Causal Inference) — zur Entscheidung, nicht verbindlich
 - [GRAPH_CORE_SPEC.md](./GRAPH_CORE_SPEC.md) — verbindliche Spec des Graph-Kerns (M0–M13)
 - [ANALYSE.md](./ANALYSE.md) — Vollständige Analyse, Modernisierung und Roadmap
 - [AGENTS.md](./AGENTS.md) — AI-Agent-Protokoll und Architektur

@@ -13,6 +13,9 @@ export function createNodeFileSystem(): BinaryFileSystemLike {
         writeFile: async (path, content) => {
             await fs.writeFile(path, content, 'utf-8');
         },
+        appendFile: async (path, content) => {
+            await fs.appendFile(path, content, 'utf-8');
+        },
         readBytes: async path => new Uint8Array(await fs.readFile(path)),
         writeBytes: async (path, data) => {
             await fs.writeFile(path, data);

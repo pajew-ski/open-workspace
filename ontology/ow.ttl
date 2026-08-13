@@ -677,3 +677,88 @@ ow:OnboardingStep a owl:Class ;
     rdfs:label "Einführungsschritt"@de, "onboarding step"@en ;
     rdfs:comment "Ausgeführter Schritt der Einführungsstrecke (SPEC §18) als reale Aktivität im Graphen: wer ihn wann ausgeführt hat (prov:wasAttributedTo, prov:endedAtTime) und was dabei entstanden ist (prov:generated). Der Fortschritt ist damit abfragbar statt UI-Zustand, und 'rückgängig' heißt: den Schritt und das von ihm Erzeugte löschen. prov:Activity trägt die Semantik, benennt aber nicht die Rolle im Ablauf — ohne Markierung wäre ein Einführungsschritt von jedem Sync-Lauf und jeder Freigabe ununterscheidbar."@de ;
     rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+#################################################################
+# Beobachtungsgrößen und ihre Erfassung
+#
+# Kausal-Layer (CAUSAL_LAYER_SPEC §5/§6): Der Graph trägt, WAS erfasst
+# wird und WIE — die Messwerte selbst liegen daneben im Beobachtungs-
+# Speicher und nie als Tripel (Invariante C3). Die Struktur der Quellen
+# (Gerät, Sensor, beobachtete Größe, Ort) kommt aus SOSA und schema.org;
+# eigene Terme entstehen nur für die Erfassungsregel, die dort fehlt.
+#################################################################
+
+ow:Variable a owl:Class ;
+    rdfs:subClassOf <http://www.w3.org/ns/sosa/ObservableProperty> ;
+    rdfs:label "Beobachtungsgröße"@de, "variable"@en ;
+    rdfs:comment "Eine Größe, deren Zeitreihe dieser Workspace dauerhaft erfasst, samt Erfassungsregel: Quelle, Verdichtung, Abtastabstand, Aufbewahrung, Wasserzeichen. sosa:ObservableProperty benennt die beobachtbare Eigenschaft, sagt aber nichts über Erfassung und Aufbewahrung — genau das unterscheidet eine erfasste Variable von einer bloß beobachtbaren Eigenschaft, und genau das muss abfragbar sein, damit eine kausale Studie reproduzierbar ist. Die Messwerte stehen NIE im Graphen: eine Reihe mit Millionen Punkten wäre als Tripel unbrauchbar und würde nie per SPARQL gelesen."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:observationSource a owl:DatatypeProperty ;
+    rdfs:domain ow:Variable ;
+    rdfs:range xsd:string ;
+    rdfs:label "Quellschlüssel"@de, "observation source"@en ;
+    rdfs:comment "Schlüssel der Größe in ihrer Quelle, quelltreu (bei Home Assistant die entity_id, z. B. 'sensor.wohnzimmer_temperatur'). Er ist die Adresse, unter der die Erfassung nachlädt, und überlebt Umbenennungen der Anzeige. dcterms:identifier trägt bereits die workspace-eigene stabile ID der Variablen; beides in einen Term zu legen, machte unauflösbar, welcher Bezeichner in welchem System gilt."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:observationKind a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "Messgrößenart"@de, "observation kind"@en ;
+    rdfs:comment "Skalenniveau der Reihe: 'numeric', 'binary' oder 'categorical'. Es entscheidet, welche Verdichtung zulässig ist (ein Mittelwert über Lichtschalter-Zustände ist sinnlos) und welcher Schätzer später überhaupt in Frage kommt. Kein Standard-Vokabular führt das Skalenniveau als abfragbares Attribut einer Messreihe; schema:measurementTechnique beschreibt das Verfahren, nicht die Werteart."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:aggregation a owl:DatatypeProperty ;
+    rdfs:domain ow:Variable ;
+    rdfs:range xsd:string ;
+    rdfs:label "Verdichtung"@de, "aggregation"@en ;
+    rdfs:comment "Regel, mit der Rohwerte auf das Abtastraster verdichtet werden ('last', 'mean', 'min', 'max', 'sum'). Sie ist Teil der Definition der Variablen, nicht der Auswertung: dieselbe Quelle mit 'mean' und mit 'last' sind zwei verschiedene Größen. Ohne festgehaltene Verdichtung ist keine Studie reproduzierbar (Invariante C7)."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:samplingInterval a owl:DatatypeProperty ;
+    rdfs:domain ow:Variable ;
+    rdfs:range xsd:duration ;
+    rdfs:label "Abtastabstand"@de, "sampling interval"@en ;
+    rdfs:comment "Zeitraster der erfassten Reihe als xsd:duration (z. B. PT5M). Es begrenzt das Datenvolumen und macht mehrere Reihen ohne Nachbearbeitung gemeinsam auswertbar. schema:frequency ist Freitext für Publikationsrhythmen und nicht als Dauer typisiert."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:captureEnabled a owl:DatatypeProperty ;
+    rdfs:domain ow:Variable ;
+    rdfs:range xsd:boolean ;
+    rdfs:label "Erfassung aktiv"@de, "capture enabled"@en ;
+    rdfs:comment "Absicht des Nutzers: Soll diese Größe weiter erfasst werden? Abgegrenzt von ow:captureState (Ergebnis des letzten Laufs) und von ow:enabled, dessen rdfs:domain die abonnierte Quelle ist — ein bestehender Term wird nach SPEC §4.4 nie umdefiniert. Ausgeschaltet heißt: nicht mehr nachladen, Bestand behalten."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:captureState a owl:DatatypeProperty ;
+    rdfs:domain ow:Variable ;
+    rdfs:range xsd:string ;
+    rdfs:label "Erfassungszustand"@de, "capture state"@en ;
+    rdfs:comment "Betriebszustand der Erfassung einer Größe ('idle', 'capturing', 'error'). Systemzustand, kein Wissensinhalt — dieselbe Rolle wie ow:syncState beim Connector, aber ein eigener Term, weil dessen rdfs:domain ow:Connector ist und eine Variable über OWL RL sonst zum Connector würde."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:capturedFrom a owl:DatatypeProperty ;
+    rdfs:domain ow:Variable ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "Erfasst ab"@de, "captured from"@en ;
+    rdfs:comment "Ältester Zeitpunkt, für den der Beobachtungs-Speicher dieser Größe Werte hält. Er sagt, wie weit eine Auswertung überhaupt zurückreichen kann, und ist damit die ehrliche Grenze jeder Studie. schema:startDate benennt den Beginn eines Ereignisses, nicht die Abdeckung eines Bestands."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:capturedThrough a owl:DatatypeProperty ;
+    rdfs:domain ow:Variable ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "Erfasst bis"@de, "captured through"@en ;
+    rdfs:comment "Wasserzeichen der Erfassung: jüngster übernommener Zeitpunkt. Der nächste Lauf holt ausschließlich Werte danach — dadurch ist jeder Lauf idempotent und ein Wiederholen erzeugt keine Dubletten. Kein Standard-Term modelliert den Fortschritt eines inkrementellen Abrufs; ow:revision trägt eine Quell-Revision, keine Zeitgrenze."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:observationCount a owl:DatatypeProperty ;
+    rdfs:domain ow:Variable ;
+    rdfs:range xsd:integer ;
+    rdfs:label "Messpunkte"@de, "observation count"@en ;
+    rdfs:comment "Anzahl der im Beobachtungs-Speicher liegenden Messpunkte dieser Größe. Weil die Werte selbst nicht im Graphen stehen (Invariante C3), ist dies die einzige per SPARQL erreichbare Aussage über den Umfang des Bestands — ohne sie wäre die Abdeckung nur über das Dateisystem sichtbar. void:triples zählt Tripel eines Datasets, nicht Punkte einer externen Reihe."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:retentionDays a owl:DatatypeProperty ;
+    rdfs:domain ow:Variable ;
+    rdfs:range xsd:integer ;
+    rdfs:label "Aufbewahrung in Tagen"@de, "retention days"@en ;
+    rdfs:comment "Aufbewahrungsdauer der erfassten Reihe in Tagen; 0 bedeutet unbegrenzt (der Default — der Zweck der Erfassung ist gerade, das zu behalten, was die Quelle verwirft). Sie steht an der Variablen und nicht als globale Einstellung, weil sich hochfrequente und seltene Größen im Volumen um Größenordnungen unterscheiden."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
