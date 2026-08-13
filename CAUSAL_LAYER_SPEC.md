@@ -1,12 +1,16 @@
 # SPEC-ENTWURF: Kausal-Layer — Neurosymbolik und Causal Inference im Graph-Kern
 
 **Repo**: `pajew-ski/open-workspace`
-**Typ**: Architektur-Entwurf zur Entscheidung — **noch nicht verbindlich**
-**Umsetzungsstand**: Von den Meilensteinen in §16 ist **C3 (Erfassung)
-gebaut** — bewusst zuerst, weil er als einziger zeitkritisch ist (§15.5).
-Alles Übrige ist Entwurf und erscheint nirgends in der UI. Was gebaut ist,
-steht in [docs/beobachtungen.md](./docs/beobachtungen.md); die Reihenfolge
-der weiteren Schritte begründet §18.
+**Typ**: Technische Spezifikation, **verbindlich für die Umsetzung von
+C0–C5**. C7 (Experimente) und C8 (Tier-2-Sidecar) bleiben ausdrücklich
+opt-in und werden einzeln entschieden — sie greifen in die physische Welt
+bzw. bringen eine zweite Laufzeitumgebung mit.
+**Umsetzungsstand**: **C3 (Erfassung) ist gebaut** — bewusst zuerst, weil
+er als einziger zeitkritisch ist (§15.5). Alles Übrige ist spezifiziert
+und nicht gebaut; es erscheint deshalb nirgends in der UI (Invariante 10).
+Was gebaut ist, steht in [docs/beobachtungen.md](./docs/beobachtungen.md),
+der offene Stand abhakbar in [TODO.md](./TODO.md); Reihenfolge und
+Arbeitsmodus stehen in §18 und §19.
 **Verhältnis zu bestehenden Dokumenten**: `GRAPH_CORE_SPEC.md` behält
 uneingeschränkt Vorrang. Dieser Entwurf setzt auf ihm auf und darf keine
 seiner Invarianten aufweichen. Wo er das täte, ist der Entwurf falsch, nicht
@@ -660,19 +664,77 @@ Im Arbeitsmodus der Spec: ein Meilenstein, eine Session, ein Branch, ein PR.
 
 ---
 
-## 18. Empfehlung
+## 18. Reihenfolge
 
-Bauen — aber in der Reihenfolge C2 → C0/C1 → C3 → C4, nicht in der Reihenfolge
-der Vorlage.
+**C3 → C0 → C1 → C2 → C4 → C5**, danach optional C6, und C7/C8 nur nach
+eigener Entscheidung.
 
-Begründung: **C2 zahlt sofort und ohne Daten ein.** Kausal geerdetes Retrieval
-verbessert die bestehende Assistenz messbar, sobald ein einziger von Hand
-modellierter DAG existiert. C0/C1 sind reine Algorithmik, vollständig testbar,
-ohne externe Abhängigkeit und ohne Sidecar — sie laufen in allen drei Runtimes
-und sind damit die einzige kausale Fähigkeit, die zum Local-First-Anspruch
-ohne Einschränkung passt. Erst C3 bringt den Datenaufwand, und erst C4 bringt
-Zahlen, die man falsch verstehen kann.
+> **Korrektur gegenüber der ersten Fassung dieses Dokuments.** Dort stand
+> „C2 zuerst", weil kausal geerdetes Retrieval ohne Daten einzahlt. Das ist
+> als Nutzen richtig, als Reihenfolge falsch: C2 folgt kausalen Kanten, und
+> kausale Kanten gibt es erst mit dem Vokabular und den Named Graphs aus
+> C0. Ein von Hand modellierter DAG ist keine Vorbedingung von C0, sondern
+> sein Ergebnis. Verbindlich ist die Reihenfolge oben.
+
+Begründung der einzelnen Schritte:
+
+- **C3 zuerst, und das ist erledigt.** Als einziger Meilenstein ist er
+  zeitkritisch: Home Assistant verwirft die Ursachenseite nach zehn Tagen
+  (§15.5). Jeder Tag ohne Erfassung ist unwiederbringlich; alles andere
+  kann warten, ohne dass etwas verloren geht.
+- **C0 und C1 sind reine Algorithmik** — Vokabular, DAG als Graph-Bürger,
+  D-Separation, Backdoor/Frontdoor, Adjustment Sets, Identifizierbarkeit.
+  Vollständig testbar gegen Lehrbuch-DAGs, ohne Netz, ohne Daten, ohne
+  Sidecar. Sie laufen in allen drei Runtimes und sind damit die einzige
+  kausale Fähigkeit, die den Local-First-Anspruch ohne Einschränkung hält.
+- **C2 danach**: Sobald kausale Kanten existieren, verbessert kausal
+  geerdetes Retrieval die bestehende Assistenz sofort — noch bevor eine
+  einzige Zahl geschätzt wird.
+- **C4 zuletzt vor den Quellen**: Erst hier entstehen Zahlen, die man
+  falsch verstehen kann. Sie brauchen die Identifikation aus C1 und die
+  Refutation aus demselben Meilenstein, sonst wären sie genau die
+  selbstbewusste Scheinpräzision, gegen die §2.2 argumentiert.
+- **C5 schließt die Lücke**, die C4 sichtbar macht: Der häufigste Grund für
+  „nicht identifizierbar" ist eine fehlende Störvariable, und die
+  wichtigsten der Hausdomäne sind offen verfügbar (§11).
 
 Der umgekehrte Weg — zuerst LLM-Extraktion großer Kausalgraphen aus Text, wie
 die Vorlage vorschlägt — erzeugt schnell viel Struktur, die niemand prüfen
 kann, und genau dafür hat dieses Repo mit Invariante 10 bereits eine Haltung.
+
+---
+
+## 19. Arbeitsmodus der Sessions
+
+Wie beim Graph-Kern: **ein Meilenstein = eine Session = ein Branch = ein
+PR** (GRAPH_CORE_SPEC §13). Kein Meilenstein wird aufgeteilt, keine zwei
+werden zusammengelegt.
+
+Jede Session:
+
+1. liest `AGENTS.md` („Hier weitermachen"), dieses Dokument und den
+   Abschnitt zum anstehenden Meilenstein in §16, dazu `TODO.md`
+   („Kausal-Layer") für den offenen Stand;
+2. setzt **genau einen** Meilenstein vollständig um, inklusive seiner
+   Abnahme aus §16;
+3. erfüllt die Definition of Done aus GRAPH_CORE_SPEC §14 — Lint 0,
+   Typecheck sauber, kein `any` unter `src/lib/graph/`, Ontologie-Check
+   grün, Unit-Tests für jedes neue Mapping, E2E-Gate grün inklusive neuer
+   Seiten, deutsche UI-Labels, Mobile-First;
+4. hakt in `TODO.md` ab und aktualisiert `AGENTS.md`;
+5. hält die Invarianten C1–C10 aus §4 ein. Sie sind Review-Blocker, nicht
+   Empfehlungen.
+
+**Was eine Session NICHT tut**: diese Spec neu verhandeln. Die
+Entscheidungen in §2 (Bewertung der Vorlage), §4 (Invarianten), §7 (zwei
+Tiers) und §18 (Reihenfolge) sind getroffen. Wer beim Bauen auf einen
+echten Widerspruch stößt, hält ihn fest und legt ihn vor, statt ihn
+eigenmächtig aufzulösen.
+
+**Was eine Session zusätzlich nicht tut**: C7 (Experimente in der echten
+Welt) oder C8 (Python-Sidecar) anfangen. Beide brauchen eine ausdrückliche
+Freigabe — C7 greift über Aktoren in die Wohnung ein und betrifft
+Mitbewohner, C8 bringt eine zweite Laufzeitumgebung ins Deployment.
+
+Startpunkt einer Session, wenn nichts anderes gesagt ist: **der oberste
+nicht abgehakte Punkt unter „Kausal-Layer" in TODO.md.**

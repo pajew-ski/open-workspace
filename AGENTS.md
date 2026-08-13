@@ -20,6 +20,12 @@
 > [docs/beobachtungen.md](./docs/beobachtungen.md). Alles Weitere aus dem
 > Entwurf (DAG, Identifikation, Schätzung, Refutation) ist **nicht**
 > gebaut und erscheint deshalb nirgends in der UI.
+>
+> **Nächster Meilenstein: C0** (Kausalmodell als Graph-Bürger), danach
+> C1 → C2 → C4 → C5 → C6. Reihenfolge und Begründung in
+> CAUSAL_LAYER_SPEC §18, Arbeitsmodus in §19, offener Stand mit Abnahmen
+> in TODO.md unter „Kausal-Layer". C7 und C8 nur nach ausdrücklicher
+> Freigabe.
 
 **Stand 2026-08-10 (12. Ausbaustufe, Graph Core M0–M14 inkl. §12.4 und
 §18 — der Vollausbau der Spec ist damit abgeschlossen)**: Der
@@ -560,12 +566,12 @@ und backend-unabhängig** — Details in [docs/ai-platform.md](./docs/ai-platfor
 - **UI**: AI-Hub (`/ai`), Skills (`/skills`), MCP-Verwaltung in `/tools`,
   A2A-Discovery in `/agents`, ModelPicker in beiden Chat-Oberflächen.
 
-Build, Typecheck, Lint (0 Errors), 495 Unit-Tests (plus der Live-Test
+Build, Typecheck, Lint (0 Errors), 565 Unit-Tests (plus der Live-Test
 gegen Wikidata, der ohne `OW_FEDERATION_LIVE=1` sichtbar übersprungen
 wird) und das **blockierende E2E-Gate** (`e2e/mobile-navigation`,
 `e2e/mobile-ux`, `e2e/a11y` inkl. der Seiten `/ai`, `/skills`, `/tools`,
-`/graph/connectors`, `/graph/sparql`, `/graph/federation`,
-`/graph/access` und seit M14 `/onboarding`, dazu seit M12
+`/graph/connectors`, `/graph/observations`, `/graph/sparql`,
+`/graph/federation`, `/graph/access` und seit M14 `/onboarding`, dazu seit M12
 `e2e/ingress.spec.ts` im eigenen Playwright-Projekt `ingress`)
 laufen grün. Der Ingress-Lauf baut sich beim ersten Mal einen zweiten
 Build (`.next-ingress`, Base-Path-Platzhalter) und startet die
@@ -577,6 +583,11 @@ vorinstallierten Browser (die Konfiguration wertet die Variable aus).
 **Bevor du etwas Neues baust, lies in dieser Reihenfolge:**
 1. [GRAPH_CORE_SPEC.md](./GRAPH_CORE_SPEC.md) — verbindliche Spec des
    Graph-Ausbaus (M0–M14, Invarianten, Abnahmen) — Pflicht für Graph-Arbeit
+1b. [CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md) — verbindliche Spec des
+   Kausal-Layers (Invarianten C1–C10, Meilensteine C0–C8, §19 Arbeitsmodus)
+   — Pflicht für jede Arbeit am Kausal-Layer, zusammen mit
+   [docs/beobachtungen.md](./docs/beobachtungen.md) (was gebaut ist und
+   warum)
 2. [docs/multi-user.md](./docs/multi-user.md) — Identität, ACL und
    Durchsetzung (§17) — Pflicht, sobald ein Lesepfad berührt wird
 3. [docs/selbstmodell.md](./docs/selbstmodell.md) — Selbstmodell,
@@ -590,8 +601,16 @@ vorinstallierten Browser (die Konfiguration wertet die Variable aus).
 **Nächste sinnvolle Schritte**: Der Graph-Ausbau nach GRAPH_CORE_SPEC ist
 mit M14 **vollständig** — auch §18 ist umgesetzt. Punkt 2 der früheren
 Liste ist mit M15 erledigt (Kalender, Chats, AI-Konfiguration sind
-Graph-Bürger). Was jetzt kommt, steht nicht mehr in der Spec und will
-zuerst entschieden werden. Naheliegend, in dieser Reihenfolge:
+Graph-Bürger).
+
+**Der laufende Arbeitsstrang ist der Kausal-Layer**
+([CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md), §16 Meilensteine, §19
+Arbeitsmodus). C3 (Erfassung) ist gebaut; **als Nächstes C0**, danach C1,
+C2, C4, C5 in genau dieser Reihenfolge (Begründung in §18). Der offene
+Stand steht abhakbar in [TODO.md](./TODO.md) unter „Kausal-Layer" — er
+ist die eine Quelle dafür, was noch fehlt.
+
+Unabhängig davon weiterhin offen, ohne Reihenfolge zum Kausal-Layer:
 
 1. **Die Anwendung selbst auf die Runtime `local` stellen**. Die Bausteine
    stehen seit M12 (Store im Web Worker, OPFS als `FileSystemLike`,
