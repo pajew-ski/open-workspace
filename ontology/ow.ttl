@@ -1009,3 +1009,43 @@ ow:confoundingShift a owl:DatatypeProperty ;
     rdfs:label "Verschiebung durch Adjustierung"@de, "confounding shift"@en ;
     rdfs:comment "Adjustierter Wert minus rohem Wert. Der Betrag ist der Anteil des rohen Zusammenhangs, der auf die Störgrößen zurückgeht und nicht auf die Behandlung — die Antwort auf die Frage, was das Einbinden einer offenen Quelle gebracht hat. Er wird gespeichert und nicht beim Lesen gerechnet, damit eine zitierte Studie ihn auch dann trägt, wenn die Rohdaten längst außerhalb der Aufbewahrungsfrist liegen."@de ;
     rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+#################################################################
+# Die neurosymbolische Schleife (CAUSAL_LAYER_SPEC §8, Meilenstein C6)
+#
+# Auffällig kurz — und das ist die Aussage. Ein Vorschlag ist keine
+# neue Art von Ding: Er IST eine kausale Kante (obo:RO_0002411), nur
+# in graph/<u>/causal-hypotheses statt im Modell-Graphen, und er
+# trägt am Reifier dieselbe ow:edgeClass wie jede andere Kante
+# ("hypothesis" für LLM und Literatur, "structural" für die
+# Geräte-Topologie). Eine eigene Klasse „Hypothese" hätte zwei
+# Schreibweisen für dieselbe Sache geschaffen (Invariante 8) — und
+# spätestens beim Übernehmen ins Modell hätte jemand konvertieren
+# müssen, was Gelegenheit zum Verlieren von Herkunft gewesen wäre.
+#
+# Fremdes Vokabular trägt hier fast alles: prov:wasAttributedTo auf
+# einen prov:SoftwareAgent (Modell und Prompt-Version stehen als
+# schema:name und schema:softwareVersion an ihm — §8 verlangt genau
+# diese beiden), prov:generatedAtTime für den Zeitpunkt des Laufs,
+# schema:isPartOf für das Modell, gegen dessen DAG geprüft wurde,
+# schema:description für die Begründung im Klartext, dcterms:identifier
+# für die Adresse. Mehrere Quellen, die dieselbe Kante vorschlagen,
+# bekommen je einen eigenen Reifier auf DASSELBE Triple — genau dafür
+# gibt es benannte Reifier in RDF 1.2, und daraus entsteht der
+# Quellenvergleich aus §8 ohne eine einzige Nebentabelle.
+#
+# Eigen sind nur die zwei Aussagen, für die es keinen Standard gibt:
+# das Urteil der symbolischen Filter und der Filter, an dem es lag.
+#################################################################
+
+ow:hypothesisVerdict a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "Urteil über einen Vorschlag"@de, "hypothesis verdict"@en ;
+    rdfs:comment "Ergebnis der symbolischen Filter für eine vorgeschlagene kausale Kante, als Annotation am Reifier: 'accepted' (alle Filter bestanden, der Vorschlag darf ins Modell), 'open' (strukturell zulässig, aber mit den erfassten Größen nicht identifizierbar — die konstruktive Antwort aus §8 nennt die fehlende Variable) oder 'rejected' (ein harter Filter hat ihn verworfen). Ohne diesen Wert erreichte ein Vorschlag den Studien-Pfad ungeprüft, und genau das verbietet die Abnahme von C6. sh:ValidationResult bewertet Datenform statt kausaler Zulässigkeit, prov nennt Herkunft statt Geltung, und ow:evidenceLevel stuft den Beleg einer bereits gesetzten Kante ab, nicht die Zulässigkeit eines Vorschlags."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:filterRejectedBy a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "verwerfender Filter"@de, "rejecting filter"@en ;
+    rdfs:comment "Der Filter, an dem ein Vorschlag gescheitert ist: 'cycle' (er schlösse einen Kreis im DAG), 'shacl' (er verstößt gegen die Shapes kausaler Kanten), 'temporal' (die Ursache kann der Wirkung nicht vorausgehen) oder 'topology' (zwischen den Orten der beiden Größen gibt es keinen Pfad). Er steht neben der Begründung im Klartext, weil eine Oberfläche nach ihm gruppieren können muss, ohne deutsche Sätze zu parsen — und weil sich nur so zählen lässt, welcher Filter das LLM-Rauschen wirklich wegnimmt. Analog zu ow:refutationMethod, aber vor jeder Schätzung; kein Standard-Vokabular kennt diese Filterstufen."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .

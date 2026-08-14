@@ -138,7 +138,14 @@ function viewFromQuads(handle: GraphHandle, variableIri: string, quads: Quad[]):
 
     const unit = value(SCHEMA.unitText);
     const placeIri = value(SCHEMA.location);
-    const sensorIri = mine.find(q => q.predicate.value === SOSA.observes)?.subject.value;
+    // Die Kante zeigt vom SENSOR auf die Variable (SOSA-Richtung, seit
+    // docs/spec-widersprueche.md Eintrag 8) — sie steht deshalb nicht in
+    // `mine`, wo nur Quads mit der Variablen als Subjekt liegen. Sie hier
+    // zu suchen war der Fehler: Der Schreibpfad baut die Quads aus DIESEM
+    // Lesemodell neu, also verlor jedes `saveVariable` die Kante still,
+    // und mit ihr die Verbindung zur Messquelle (Ort, Gerät, Größenart).
+    const sensorIri = quads.find(q =>
+        q.predicate.value === SOSA.observes && q.object.value === variableIri)?.subject.value;
 
     return {
         id,

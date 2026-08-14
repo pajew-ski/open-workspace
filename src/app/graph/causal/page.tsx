@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Copy, GitBranch, Plus, Sigma, Trash2 } from 'lucide-react';
+import { AlertTriangle, Copy, GitBranch, Lightbulb, Plus, Sigma, Trash2 } from 'lucide-react';
 import { AppShell } from '@/components/layout';
 import { Button, ConfirmDialog } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
@@ -22,6 +22,11 @@ import type { EstimandView } from '@/lib/graph/causal/estimand';
 import type { StudyView } from '@/lib/graph/causal/study-graph';
 import type { ArchiveEntryView } from '@/lib/graph/causal/archive';
 import type { DagPath } from '@/lib/graph/causal/dsep';
+import { HYPOTHESIS_FILTER_LABEL, HYPOTHESIS_VERDICT_LABEL } from '@/lib/graph/causal/filters';
+import { PROPOSAL_SOURCE_LABEL } from '@/lib/graph/causal/propose';
+import { ABSENT_SOURCES, STRUCTURE_SOURCE_LABEL, type Agreement, type StructureComparison } from '@/lib/graph/causal/compare';
+import type { HypothesisView } from '@/lib/graph/causal/hypothesis';
+import type { ProposalRunSummary } from '@/lib/graph/causal/propose.server';
 import styles from './page.module.css';
 
 /**
@@ -46,9 +51,18 @@ import styles from './page.module.css';
  * Refutation (Invariante C5); ein durchgefallener Versuch wird als
  * durchgefallen angezeigt und nicht als kleinerer Effekt.
  *
+ * **Seit C6 schlagen Quellen vor** — und keine davon schreibt ins Modell.
+ * Sprachmodell, Geräte&shy;topologie und Wikidata liefern Kandidatenkanten
+ * und vor allem Störgrößen nach `causal-hypotheses`; die symbolischen
+ * Filter urteilen davor, und übernehmen tut ein Mensch. Ein verworfener
+ * Vorschlag bleibt sichtbar samt Grund: Zu wissen, dass eine Quelle etwas
+ * Unmögliches gesagt hat, ist mehr wert als eine aufgeräumte Liste.
+ *
  * Was hier weiterhin FEHLT: Struktur-Lernen aus Daten (C8) und
  * randomisierte Eingriffe über Aktoren (C7). Beide brauchen eine
- * ausdrückliche Freigabe und erscheinen deshalb nirgends.
+ * ausdrückliche Freigabe und erscheinen deshalb nirgends — der
+ * Quellenvergleich benennt das Struktur-Lernen als fehlende Stimme,
+ * statt so zu tun, als seien alle Quellen befragt.
  */
 
 interface ObservedVariable {
@@ -69,7 +83,10 @@ interface ValidationResult {
 
 interface CausalResponse {
     models: CausalModelView[];
-    hypotheses: CausalEdgeView[];
+    /** Vorschläge samt Herkunft und Urteil der Filter (§8, C6). */
+    hypotheses: HypothesisView[];
+    /** Was die Quellen zusammen sagen — je Modell (§8 Rückkopplung). */
+    comparisons: Array<{ modelId: string; entries: StructureComparison[] }>;
     hypothesesGraph: string;
     observedVariables: ObservedVariable[];
     estimands: EstimandView[];
@@ -93,6 +110,12 @@ interface RunResponse {
     skipped: Array<{ estimandId: string; reason: string }>;
     rejected: Array<{ estimandId: string; messages: string[] }>;
 }
+
+const AGREEMENT_LABEL: Record<Agreement, string> = {
+    contradiction: 'Widerspruch',
+    agreed: 'Mehrere Quellen einig',
+    single: 'Eine Stimme',
+};
 
 const VERDICT_HINT: Record<StudyVerdict, string> = {
     passed: 'Geschätzt und allen blockierenden Falsifikationsversuchen standgehalten.',
@@ -973,17 +996,208 @@ function StudiesPanel({
     );
 }
 
+/**
+ * Vorschläge und Quellenvergleich (§8, C6).
+ *
+ * Die Reihenfolge auf dem Bildschirm ist die Aussage: erst der Knopf, der
+ * fremde Quellen befragt, dann die **Widersprüche** (§8: „der interessante
+ * Fall"), dann die Vorschläge selbst — zulässige zuerst, verworfene
+ * zuletzt, aber sichtbar. Ein verworfener Vorschlag verschwindet nicht:
+ * Zu wissen, dass ein Sprachmodell etwas Unmögliches vorgeschlagen hat,
+ * ist mehr wert als eine aufgeräumte Liste.
+ */
+function HypothesesPanel({
+    hypotheses,
+    comparison,
+    lastRun,
+    running,
+    busy,
+    onPropose,
+    onAdopt,
+    onDiscard,
+}: {
+    hypotheses: readonly HypothesisView[];
+    comparison: readonly StructureComparison[];
+    lastRun: ProposalRunSummary | null;
+    running: boolean;
+    busy: boolean;
+    onPropose(): Promise<void>;
+    onAdopt(id: string): Promise<void>;
+    onDiscard(id: string): Promise<void>;
+}) {
+    return (
+        <div className={styles.hypotheses}>
+            <h5 className={styles.editorTitle}>Vorschläge</h5>
+            <p className={styles.editorHint}>
+                Drei Quellen schlagen Kanten und vor allem <strong>Störgrößen</strong> vor: ein
+                Sprachmodell, die Geräte&shy;topologie aus der Registry und Wikidata über die
+                Föderation. Nichts davon landet im Modell. Jeder Vorschlag durchläuft zuerst
+                die harten Filter — Kreis, Shapes, Zeit, Topologie — und erst was sie überlebt,
+                kannst du übernehmen. Struktur&shy;lernen aus Daten gibt es hier nicht; es
+                gehört zu C8 und ist nicht gebaut.
+            </p>
+            <div className={styles.runRow}>
+                <Button variant="secondary" onClick={onPropose} disabled={running || busy}>
+                    <Lightbulb size={16} aria-hidden="true" />
+                    {running ? 'Frage die Quellen…' : 'Vorschläge holen'}
+                </Button>
+                {lastRun && (
+                    <span className={styles.signature} role="status">
+                        {lastRun.sources.map(source =>
+                            `${source.label}: ${source.unavailable
+                                ? 'nicht verfügbar'
+                                : `${source.proposed} Vorschläge, ${source.accepted} zulässig, `
+                                    + `${source.open} ohne Schätzbarkeit, ${source.rejected} verworfen`}`,
+                        ).join(' · ')}
+                    </span>
+                )}
+            </div>
+            {lastRun?.sources.filter(source => source.unavailable || source.problems.length > 0).map(source => (
+                <ul key={source.source} className={styles.findingList}>
+                    {[source.unavailable, ...source.problems].filter((entry): entry is string => Boolean(entry))
+                        .map((entry, index) => (
+                            <li key={`${source.source}-${index}`} className={styles.finding}>
+                                <AlertTriangle size={16} aria-hidden="true" />
+                                <span><strong>{source.label}:</strong> {entry}</span>
+                            </li>
+                        ))}
+                </ul>
+            ))}
+
+            {comparison.length > 0 && (
+                <>
+                    <h5 className={styles.editorTitle}>Was die Quellen zusammen sagen</h5>
+                    <ul className={styles.comparisonList}>
+                        {comparison.map(entry => (
+                            <li
+                                key={entry.key}
+                                className={`${styles.comparison}${entry.agreement === 'contradiction' ? ` ${styles.contradiction}` : ''}`}
+                            >
+                                <span className={styles.hypothesisEdge}>
+                                    {entry.fromName}
+                                    <span aria-hidden="true"> → </span>
+                                    <span className={styles.visuallyHidden}> wirkt auf </span>
+                                    {entry.toName}
+                                </span>
+                                <span className={styles.badges}>
+                                    <span className={`${styles.badge} ${entry.agreement === 'contradiction'
+                                        ? styles.badgeFailed
+                                        : entry.agreement === 'agreed' ? styles.badgePassed : styles.badgeMissing}`}>
+                                        {AGREEMENT_LABEL[entry.agreement]}
+                                    </span>
+                                    {entry.claims.map(claim => (
+                                        <span key={`${claim.source}-${claim.direction}`} className={styles.badge}>
+                                            {STRUCTURE_SOURCE_LABEL[claim.source]}
+                                            {claim.direction === 'reverse' ? ' (umgekehrt)' : ''}
+                                        </span>
+                                    ))}
+                                </span>
+                                <p className={styles.hypothesisReason}>{entry.summary}</p>
+                            </li>
+                        ))}
+                    </ul>
+                    {ABSENT_SOURCES.map(absent => (
+                        <p key={absent.id} className={styles.absentSource}>
+                            <strong>{absent.label}</strong> fehlt als vierte Stimme. {absent.reason}
+                        </p>
+                    ))}
+                </>
+            )}
+
+            {hypotheses.length === 0 ? (
+                <p className={styles.hint}>
+                    Noch keine Vorschläge. Der Lauf kostet einen Aufruf beim Sprachmodell und
+                    schreibt nichts ins Modell — er füllt nur diese Liste.
+                </p>
+            ) : (
+                <ul className={styles.hypothesisList}>
+                    {hypotheses.map(hypothesis => (
+                        <li
+                            key={hypothesis.id}
+                            className={`${styles.hypothesis}${hypothesis.verdict === 'rejected' ? ` ${styles.hypothesisRejected}` : ''}`}
+                        >
+                            <div className={styles.hypothesisHead}>
+                                <span className={styles.hypothesisEdge}>
+                                    {hypothesis.fromName}
+                                    <span aria-hidden="true"> → </span>
+                                    <span className={styles.visuallyHidden}> wirkt auf </span>
+                                    {hypothesis.toName}
+                                </span>
+                                <span className={styles.badges}>
+                                    <span className={`${styles.badge} ${hypothesis.verdict === 'accepted'
+                                        ? styles.badgePassed
+                                        : hypothesis.verdict === 'open' ? styles.badgeOpen : styles.badgeFailed}`}>
+                                        {HYPOTHESIS_VERDICT_LABEL[hypothesis.verdict]}
+                                        {hypothesis.rejectedBy
+                                            ? `: ${HYPOTHESIS_FILTER_LABEL[hypothesis.rejectedBy]}`
+                                            : ''}
+                                    </span>
+                                    <span className={`${styles.badge} ${styles.badgeClass}`}>
+                                        {PROPOSAL_SOURCE_LABEL[hypothesis.source]}
+                                    </span>
+                                    <span className={`${styles.badge} ${styles.badgeHypothesis}`}>
+                                        {EDGE_CLASS_LABEL[hypothesis.edgeClass]}
+                                    </span>
+                                    {hypothesis.temporalLag && (
+                                        <span className={styles.badge}>{formatLag(hypothesis.temporalLag)}</span>
+                                    )}
+                                    {hypothesis.inModel && (
+                                        <span className={styles.badge}>übernommen</span>
+                                    )}
+                                </span>
+                            </div>
+                            <p className={styles.hypothesisReason}>{hypothesis.reason}</p>
+                            <span className={styles.signature}>
+                                {hypothesis.agentName} · Version {hypothesis.agentVersion}
+                                {hypothesis.generatedAt
+                                    ? ` · ${new Date(hypothesis.generatedAt).toLocaleString('de-DE')}`
+                                    : ''}
+                            </span>
+                            <div className={styles.hypothesisActions}>
+                                {hypothesis.verdict !== 'rejected' && !hypothesis.inModel && (
+                                    <Button
+                                        variant="secondary"
+                                        disabled={busy}
+                                        onClick={() => onAdopt(hypothesis.id)}
+                                    >
+                                        <Plus size={16} aria-hidden="true" />
+                                        Ins Modell übernehmen
+                                    </Button>
+                                )}
+                                <Button variant="ghost" disabled={busy} onClick={() => onDiscard(hypothesis.id)}>
+                                    <Trash2 size={16} aria-hidden="true" />
+                                    <span className={styles.visuallyHidden}>
+                                        Vorschlag {hypothesis.fromName} nach {hypothesis.toName}{' '}
+                                    </span>
+                                    Verwerfen
+                                </Button>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+}
+
 interface ModelCardProps {
     model: CausalModelView;
     observedVariables: readonly ObservedVariable[];
     estimands: readonly EstimandView[];
     studies: readonly StudyView[];
     archive: readonly ArchiveEntryView[];
+    hypotheses: readonly HypothesisView[];
+    comparison: readonly StructureComparison[];
+    lastProposal: ProposalRunSummary | null;
+    proposing: boolean;
     busy: boolean;
     onOperation(operation: Record<string, unknown>): Promise<void>;
     onAsk(input: Record<string, unknown>): Promise<void>;
     onRemoveEstimand(estimandId: string): Promise<void>;
     onDiscardArchive(entryId: string): Promise<void>;
+    onPropose(): Promise<void>;
+    onAdopt(id: string): Promise<void>;
+    onDiscardHypothesis(id: string): Promise<void>;
     onCopy(): void;
     onRemove(): void;
 }
@@ -1000,11 +1214,18 @@ function ModelCard({
     estimands,
     studies,
     archive,
+    hypotheses,
+    comparison,
+    lastProposal,
+    proposing,
     busy,
     onOperation,
     onAsk,
     onRemoveEstimand,
     onDiscardArchive,
+    onPropose,
+    onAdopt,
+    onDiscardHypothesis,
     onCopy,
     onRemove,
 }: ModelCardProps) {
@@ -1110,6 +1331,17 @@ function ModelCard({
                 onOperation={onOperation}
             />
 
+            <HypothesesPanel
+                hypotheses={hypotheses}
+                comparison={comparison}
+                lastRun={lastProposal}
+                running={proposing}
+                busy={busy}
+                onPropose={onPropose}
+                onAdopt={onAdopt}
+                onDiscard={onDiscardHypothesis}
+            />
+
             <IdentificationPanel
                 model={model}
                 exposure={exposure}
@@ -1183,6 +1415,8 @@ export default function GraphCausalPage() {
     const [removing, setRemoving] = useState<CausalModelView | null>(null);
     const [running, setRunning] = useState(false);
     const [lastRun, setLastRun] = useState<RunResponse | null>(null);
+    const [proposing, setProposing] = useState<string | null>(null);
+    const [lastProposal, setLastProposal] = useState<Record<string, ProposalRunSummary>>({});
 
     const { data, isLoading } = useQuery<CausalResponse>({
         queryKey: ['graph-causal'],
@@ -1193,7 +1427,12 @@ export default function GraphCausalPage() {
     const estimands = data?.estimands ?? [];
     const studies = data?.studies ?? [];
     const hypotheses = data?.hypotheses ?? [];
+    const comparisons = data?.comparisons ?? [];
     const findings = (data?.validation.results ?? []).filter(result => !result.severity.endsWith('Info'));
+    // Vorschläge zu einem gelöschten Modell: Sie stehen weiter im
+    // Hypothesen-Graphen, aber ohne DAG lässt sich über sie nichts sagen.
+    // Sie zu verschweigen wäre ein stiller Rest im Graphen.
+    const orphaned = hypotheses.filter(entry => !models.some(model => model.id === entry.modelId));
 
     const invalidate = () => queryClient.invalidateQueries({ queryKey: ['graph-causal'] });
 
@@ -1285,6 +1524,65 @@ export default function GraphCausalPage() {
             toast.success(result.message);
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Frage konnte nicht entfernt werden.');
+        } finally {
+            setBusy(false);
+            invalidate();
+        }
+    };
+
+    /**
+     * Die Quellen befragen (§8). Der Lauf schreibt ausschließlich nach
+     * `causal-hypotheses` — ins Modell kommt erst, was ein Mensch
+     * übernimmt, und auch das nur, wenn die Filter es durchgelassen haben.
+     */
+    const proposeFor = async (modelId: string) => {
+        setProposing(modelId);
+        try {
+            const result = await fetchJson<ProposalRunSummary>('/api/graph/causal/hypotheses', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ modelId }),
+            });
+            setLastProposal(previous => ({ ...previous, [modelId]: result }));
+            const total = result.sources.reduce((sum, source) => sum + source.proposed, 0);
+            const usable = result.sources.reduce((sum, source) => sum + source.accepted + source.open, 0);
+            toast.success(total === 0
+                ? 'Keine Quelle hatte etwas vorzuschlagen — was daran lag, steht unter „Vorschläge".'
+                : `${total} Vorschläge, ${usable} davon durch die Filter gekommen.`);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Der Vorschlagslauf ist fehlgeschlagen.');
+        } finally {
+            setProposing(null);
+            invalidate();
+        }
+    };
+
+    const adoptHypothesis = async (id: string) => {
+        setBusy(true);
+        try {
+            const result = await fetchJson<{ message: string }>(
+                `/api/graph/causal/hypotheses/${encodeURIComponent(id)}`,
+                { method: 'POST' },
+            );
+            toast.success(result.message);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Vorschlag konnte nicht übernommen werden.');
+        } finally {
+            setBusy(false);
+            invalidate();
+        }
+    };
+
+    const discardHypothesis = async (id: string) => {
+        setBusy(true);
+        try {
+            const result = await fetchJson<{ message: string }>(
+                `/api/graph/causal/hypotheses/${encodeURIComponent(id)}`,
+                { method: 'DELETE' },
+            );
+            toast.success(result.message);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Vorschlag konnte nicht verworfen werden.');
         } finally {
             setBusy(false);
             invalidate();
@@ -1485,11 +1783,18 @@ export default function GraphCausalPage() {
                                     estimands={estimands.filter(estimand => estimand.modelId === model.id)}
                                     studies={studies}
                                     archive={data?.archive ?? []}
+                                    hypotheses={hypotheses.filter(entry => entry.modelId === model.id)}
+                                    comparison={comparisons.find(entry => entry.modelId === model.id)?.entries ?? []}
+                                    lastProposal={lastProposal[model.id] ?? null}
+                                    proposing={proposing === model.id}
                                     busy={busy}
                                     onOperation={operation => runOperation(model.id, operation)}
                                     onAsk={askQuestion}
                                     onRemoveEstimand={removeQuestion}
                                     onDiscardArchive={discardArchiveEntry}
+                                    onPropose={() => proposeFor(model.id)}
+                                    onAdopt={adoptHypothesis}
+                                    onDiscardHypothesis={discardHypothesis}
                                     onCopy={() => handleCopy(model)}
                                     onRemove={() => setRemoving(model)}
                                 />
@@ -1498,23 +1803,46 @@ export default function GraphCausalPage() {
                     )}
                 </section>
 
-                {hypotheses.length > 0 && (
+                {orphaned.length > 0 && (
                     <section className={styles.section}>
-                        <h3>Hypothesen</h3>
+                        <h3>Vorschläge ohne Modell</h3>
                         <p className={styles.sectionHint}>
-                            Vorschläge aus <code>causal-hypotheses</code>. Sie gehören zu keinem Modell und
-                            zählen als Hörensagen, bis jemand sie in ein Modell übernimmt — deshalb stehen
-                            sie hier getrennt und nicht im DAG.
+                            Diese Vorschläge in <code>causal-hypotheses</code> beziehen sich auf ein
+                            Modell, das es nicht mehr gibt. Ohne DAG lässt sich über sie nichts sagen —
+                            weder ob sie einen Kreis schlössen noch ob ihr Effekt bestimmbar wäre.
+                            Verwirf sie, oder leg das Modell erneut an.
                         </p>
-                        <ul className={styles.edgeList}>
-                            {hypotheses.map(edge => (
-                                <li key={`${edge.from}->${edge.to}`} className={styles.edgeRow}>
-                                    <span className={styles.edgeText}>
-                                        {decodeURIComponent(edge.from.split('/').pop() ?? edge.from)}
-                                        <span aria-hidden="true"> → </span>
-                                        {decodeURIComponent(edge.to.split('/').pop() ?? edge.to)}
-                                    </span>
-                                    <EdgeBadges edge={edge} />
+                        <ul className={styles.hypothesisList}>
+                            {orphaned.map(hypothesis => (
+                                <li key={hypothesis.id} className={`${styles.hypothesis} ${styles.hypothesisRejected}`}>
+                                    <div className={styles.hypothesisHead}>
+                                        <span className={styles.hypothesisEdge}>
+                                            {hypothesis.fromName}
+                                            <span aria-hidden="true"> → </span>
+                                            {hypothesis.toName}
+                                        </span>
+                                        <span className={styles.badges}>
+                                            <span className={`${styles.badge} ${styles.badgeMissing}`}>
+                                                Modell {hypothesis.modelId || 'unbekannt'} fehlt
+                                            </span>
+                                            <span className={`${styles.badge} ${styles.badgeClass}`}>
+                                                {PROPOSAL_SOURCE_LABEL[hypothesis.source]}
+                                            </span>
+                                        </span>
+                                    </div>
+                                    <div className={styles.hypothesisActions}>
+                                        <Button
+                                            variant="ghost"
+                                            disabled={busy}
+                                            onClick={() => discardHypothesis(hypothesis.id)}
+                                        >
+                                            <Trash2 size={16} aria-hidden="true" />
+                                            <span className={styles.visuallyHidden}>
+                                                Vorschlag {hypothesis.fromName} nach {hypothesis.toName}{' '}
+                                            </span>
+                                            Verwerfen
+                                        </Button>
+                                    </div>
                                 </li>
                             ))}
                         </ul>
