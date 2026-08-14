@@ -5,10 +5,11 @@
 ## Hier weitermachen (Einstieg für neue Sessions)
 
 > **Neu seit 2026-08-14 — der Kausal-Layer ist in seinem verbindlichen
-> Teil vollständig: C3, C0, C1, C2, C4, C5 und C6 sind gebaut.** Neben dem
-> Graph-Kern gilt [CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md)
+> Teil vollständig: C3, C0, C1, C2, C4, C5 und C6 sind gebaut, dazu der
+> aus C3 offen gebliebene Rückgriff auf die Long-Term-Statistics.** Neben
+> dem Graph-Kern gilt [CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md)
 > (verbindlich für C0–C6; C7 und C8 bleiben opt-in). Umgesetzt sind sieben
-> Meilensteine:
+> Meilensteine und die Nachzügler:
 >
 > - **C3, die Erfassung** — zuerst, weil als einzige zeitkritisch: Home
 >   Assistant verwirft vollständige Zustandswechsel nach
@@ -146,6 +147,29 @@
 >   still, und Vorschläge sind behauptet und persistiert. Details:
 >   [docs/kausalmodell.md](./docs/kausalmodell.md).
 >
+> - **Der Rückgriff auf die Long-Term-Statistics** — der Bestand wächst
+>   nach hinten. Er war der aus C3 offen gebliebene Punkt und ist der
+>   oberste, den eine Session ohne Freigabe beginnen darf (siehe unten).
+>   Über die **WebSocket-API** (`recorder/statistics_during_period`, die
+>   REST-API kennt sie nicht), mit einem Kanal, der so schmal ist wie
+>   möglich — öffnen, anmelden, ein Kommando, schließen; kein Abonnement,
+>   keine Wiederverbindung — und unter derselben SSRF-Politik wie der
+>   HTTP-Abruf. Eine **einmalige, angeforderte Handlung** je Größe
+>   (`POST /api/graph/observations/<id>/backfill`, Knopf „Aus Statistik
+>   nachfüllen"), kein zweiter Erfassungslauf: Vor dem Bestand entsteht
+>   nichts Neues. Jede Regel steht gegen eine bestimmte stille Unwahrheit:
+>   **ein Aggregat je Stunde bleibt ein Punkt je Stunde** (Verfeinern
+>   erfände elf von zwölf Messungen), **ein Tag mit Messpunkten wird nie
+>   angefasst**, das Fenster endet, **wo die Erfassung noch selbst
+>   hinkommt**, **nur numerische Größen** (die Ursachenseite steht dort
+>   nicht — der Rückgriff verlängert allein die Wirkungsseite), **Summen
+>   abgelehnt** (`sum` ist ein Zählerstand, keine Intervallsumme), Feld
+>   nach der Verdichtung der Größe. Die nachgefüllte Strecke wird
+>   **benannt** (`ow:aggregatedFrom/-Through`, `ow:aggregateInterval`, plus
+>   eigener `prov:Activity`-Knoten), damit niemand — auch keine Studie —
+>   einen Stundenmittelwert für eine Messung hält. Details:
+>   [docs/beobachtungen.md](./docs/beobachtungen.md).
+>
 > - **Die Widersprüche der Spec sind entschieden** (14.08.2026, die ersten
 >   acht in
 >   [docs/spec-widersprueche.md](./docs/spec-widersprueche.md); wo die
@@ -172,8 +196,15 @@
 >   statt erfunden); dass Identifizierbarkeit als ablehnender Filter
 >   Invariante C1 bräche (sie erzeugt `open`, nicht `rejected`); und wie
 >   weit „temporal maschinell entscheidbar" trägt (Vorzeichen und
->   Abdeckung — die Richtung aus Korrelationen wäre C8). **Keiner der elf
->   Einträge steht offen.**
+>   Abdeckung — die Richtung aus Korrelationen wäre C8). **Zwei weitere
+>   kamen mit dem Statistik-Rückgriff hinzu** (Einträge 12–13): dass §19
+>   als Startpunkt den obersten offenen Punkt nennt, während der Absatz
+>   darüber genau diesen Punkt (C7/C8) verbietet — entschieden: das Verbot
+>   gewinnt, der Startpunkt wandert zum obersten Punkt, den eine Session
+>   **ohne Freigabe beginnen darf**; und dass §3 „minutengenau über
+>   Monate" versprach, was §15.5 widerruft — über Monate gibt es
+>   Stundenwerte, und die nur für die numerische Hälfte. **Keiner der
+>   dreizehn Einträge steht offen.**
 >
 > **Nicht gebaut** und deshalb nirgends in der UI: Frontdoor- und
 > IV-**Schätzer** (identifiziert, aber nicht gerechnet — die Studie sagt
@@ -185,14 +216,22 @@
 > Hause war, ob das Fenster offen stand.
 >
 > **Kein nächster Pflicht-Meilenstein.** Mit C6 ist der verbindliche Teil
-> der Spec (C0–C6) abgeschlossen. Offen sind nur noch **C7**
+> der Spec (C0–C6) abgeschlossen, mit dem Statistik-Rückgriff auch der
+> letzte aus C3 offen gebliebene Punkt. Offen sind nur noch **C7**
 > (randomisierte Experimente, §13.3 samt Leitplanken C10) und **C8**
 > (Tier-2-Sidecar, Struktur-Lernen, Föderation von Kausalmodellen) —
-> beide ausdrücklich opt-in und **nur nach Freigabe** (§19). Wer ohne
-> Freigabe weiterarbeiten will, nimmt die einzeln erledigbaren
-> Nacharbeiten in TODO.md unter „Nacharbeiten aus C5 und C6"; die oberste
-> davon ist, dem Vorschlagslauf das Automations-YAML zu zeigen (§8 nennt
-> es als Quelle, gelesen wird es noch nicht).
+> beide ausdrücklich opt-in und **nur nach Freigabe** (§19).
+>
+> **Wie der nächste Punkt zu finden ist** (seit Eintrag 12 auch so in
+> §19): der oberste nicht abgehakte Punkt unter „Kausal-Layer" in TODO.md,
+> **den eine Session ohne Freigabe beginnen darf** — die Opt-in-Zeile
+> C7/C8 wird übersprungen, nicht abgehakt und nicht angefangen. Damit
+> stehen als Nächstes die einzeln erledigbaren Nacharbeiten; die oberste
+> davon ist, Studien über die aus Aggregaten nachgefüllte Strecke auf
+> einem groben Raster rechnen zu lassen (das Panel verliert dort heute elf
+> von zwölf Zeilen — konservativ, aber teuer), danach dem Vorschlagslauf
+> das Automations-YAML zu zeigen (§8 nennt es als Quelle, gelesen wird es
+> noch nicht).
 
 **Stand 2026-08-10 (12. Ausbaustufe, Graph Core M0–M14 inkl. §12.4 und
 §18 — der Vollausbau der Spec ist damit abgeschlossen)**: Der
@@ -209,7 +248,7 @@ Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
   (SPARQL 1.1 Query/Update, RDF 1.2/RDF-star, Quads) + ehrliches
   In-Memory-Test-Double. Kein Default-Graph-Schreibpfad — jedes Tripel hat
   einen Named Graph, per Store erzwungen.
-- **Vokabular** (`ontology/ow.ttl` + `src/lib/graph/vocab.ts`): 126 eigene
+- **Vokabular** (`ontology/ow.ttl` + `src/lib/graph/vocab.ts`): 131 eigene
   Terme unter der produktweit konstanten Base
   `https://pajew-ski.github.io/open-workspace/ns/v1#`, jeder mit
   de/en-Labels und Begründung. CI-Check `bun run check:ontology` erzwingt
@@ -740,7 +779,7 @@ und backend-unabhängig** — Details in [docs/ai-platform.md](./docs/ai-platfor
 - **UI**: AI-Hub (`/ai`), Skills (`/skills`), MCP-Verwaltung in `/tools`,
   A2A-Discovery in `/agents`, ModelPicker in beiden Chat-Oberflächen.
 
-Build, Typecheck, Lint (0 Errors), 760 Unit-Tests (plus der Live-Test
+Build, Typecheck, Lint (0 Errors), 778 Unit-Tests (plus der Live-Test
 gegen Wikidata, der ohne `OW_FEDERATION_LIVE=1` sichtbar übersprungen
 wird) und das **blockierende E2E-Gate** (`e2e/mobile-navigation`,
 `e2e/mobile-ux`, `e2e/a11y` inkl. der Seiten `/ai`, `/skills`, `/tools`,

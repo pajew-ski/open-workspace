@@ -131,7 +131,7 @@ das in der Kausalforschung als Goldstandard gilt:
 | Was kausale Inferenz braucht | Woher es in `ha-addon` kommt |
 |---|---|
 | **Strukturelle Vorannahme (DAG)** | Device Registry, Areas, Floors, Integrationen. Ein Thermostat in Raum A kann die Temperatur in Raum A beeinflussen; ein Sensor in Raum B nicht direkt. Das ist **bekannte Physik und Topologie**, nicht LLM-Raterei |
-| **Dichte, zeitgestempelte Beobachtungen** | Recorder-History und Long-Term-Statistics: multivariate Zeitreihen über Monate, minutengenau |
+| **Dichte, zeitgestempelte Beobachtungen** | Recorder-History: multivariate Zeitreihen, minutengenau — aber nur `purge_keep_days` lang (Standard 10). Über Monate bleiben allein die Long-Term-Statistics: Stundenwerte, und die nur für numerische Größen mit `state_class`. Beides zusammen gibt es nicht (§15.5), und genau deshalb ist die eigene Erfassung (C3) der zeitkritische Meilenstein |
 | **Zeitliche Ordnung** | Jeder State-Change trägt `last_changed`. Zyklen lassen sich temporal auflösen, statt sie wegzudefinieren |
 | **Dokumentierte Interventionen** | **Jede Automation ist ein `do()`.** Jeder manuelle Schalterdruck ist ein `do()`. Automation-Traces protokollieren, wann was ausgelöst wurde und warum |
 | **Natürliche Experimente** | Der Tag, an dem eine Automation aktiviert oder geändert wurde, ist ein Interventionszeitpunkt — Interrupted Time Series und Difference-in-Differences werden direkt anwendbar |
@@ -719,7 +719,7 @@ Im Arbeitsmodus der Spec: ein Meilenstein, eine Session, ein Branch, ein PR.
 | **C0** | Vokabular (nach C8 fremdes zuerst), Named Graphs, SHACL-Shapes für kausale Kanten, `ow:CausalModel`/`Variable` als Graph-Bürger, DAG-Editor read-only | Ontologie-CI grün; ein von Hand modellierter DAG ist per SPARQL abfragbar; Layout-Blacklist hält |
 | **C1** | Tier-1-Kern: Azyklizität, D-Separation, Backdoor/Frontdoor, minimale Adjustment Sets, Identifizierbarkeits-Entscheidung. Reine Graphalgorithmik, keine Daten | Testsuite gegen bekannte Lehrbuch-DAGs; „nicht identifizierbar" wird korrekt und begründet zurückgegeben; läuft im Browser |
 | **C2** | Causal Path Tracing im Retrieval (§9) + Anzeige im Explorer | `explain` trägt den kausalen Pfad; d-separierte Knoten fallen bei gegebener Konditionierung nachweislich raus |
-| **C3** ✅ | Observation Store + `home-assistant`-Connector (Registry → Struktur, History → Reihen) + `homeassistant_api` im Add-on. **Gebaut** — Abnahme in `tests/graph/observations.test.ts` und `tests/graph/home-assistant.test.ts`, Doku in `docs/beobachtungen.md`. Offen geblieben und einzeln notiert: Automations-Traces als Interventionslog, LTS-Backfill über die WebSocket-API | Zwei Läufe erzeugen keine Dublette (Wasserzeichen); kein Messwert landet im Store; Lücken werden erfasst statt fortgeschrieben; ein Fehler bei einer Größe lässt die anderen laufen |
+| **C3** ✅ | Observation Store + `home-assistant`-Connector (Registry → Struktur, History → Reihen) + `homeassistant_api` im Add-on. **Gebaut** — Abnahme in `tests/graph/observations.test.ts` und `tests/graph/home-assistant.test.ts`, Doku in `docs/beobachtungen.md`. Der **LTS-Backfill** ist nachgezogen (`recorder/statistics_during_period` über die WebSocket-API — Abnahme in `tests/graph/observations-backfill.test.ts`): Er verlängert den Bestand in Stundenschritten nach hinten, füllt nur Tage ohne Messpunkte und weist die aggregierte Strecke als solche aus. Offen geblieben und einzeln notiert: Automations-Traces als Interventionslog | Zwei Läufe erzeugen keine Dublette (Wasserzeichen); kein Messwert landet im Store; Lücken werden erfasst statt fortgeschrieben; ein Fehler bei einer Größe lässt die anderen laufen |
 | **C4** | Schätzung + Refutation Tier 1, `ow:CausalStudy` mit vollständiger Reproduktions-Signatur, Ergebnis-UI mit DAG, CI und Refutations-Badge | Ein bekannter Effekt aus synthetischen Daten wird korrekt geschätzt; ein konfundierter Fall wird als solcher erkannt; ein durchgefallener Effekt erscheint **nicht** als Effekt |
 | **C5** ✅ | Open-Data-Connector `rest-timeseries` + Confounder-Katalog (Wetter, Preis, Sonnenstand, Feiertag), dazu `csv-observations` und `solar-position`. **Gebaut** — Abnahme in `tests/graph/open-data.test.ts`, Doku in `docs/kausalmodell.md` | Dieselbe Frage mit und ohne Adjustierung liefert nachweislich unterschiedliche Ergebnisse, und die Differenz wird erklärt |
 | **C6** ✅ | Neurosymbolische Schleife: LLM-Hypothesen mit Provenienz, symbolische Filter, Vergleich der drei Strukturquellen, Widerspruchs-UI. **Gebaut** — Abnahme in `tests/graph/causal-hypotheses.test.ts`, Doku in `docs/kausalmodell.md`. Die dritte Strukturquelle ist `wikidata` statt Struktur-Lernen (gehört zu C8, §19) — die fehlende Quelle wird im Vergleich benannt, nicht erfunden (docs/spec-widersprueche.md, Eintrag 9) | Keine Hypothese erreicht ohne Filter den Studien-Pfad; ein temporal unmöglicher Vorschlag wird automatisch verworfen |
@@ -831,4 +831,9 @@ Freigabe — C7 greift über Aktoren in die Wohnung ein und betrifft
 Mitbewohner, C8 bringt eine zweite Laufzeitumgebung ins Deployment.
 
 Startpunkt einer Session, wenn nichts anderes gesagt ist: **der oberste
-nicht abgehakte Punkt unter „Kausal-Layer" in TODO.md.**
+nicht abgehakte Punkt unter „Kausal-Layer" in TODO.md, den eine Session
+ohne Freigabe beginnen darf.** C7 und C8 stehen dort als „opt-in" und
+werden übersprungen — nicht abgehakt, nicht angefangen. Ohne diesen
+Zusatz zeigte der Startpunkt seit C6 auf genau die beiden Meilensteine,
+die der Absatz darüber verbietet (docs/spec-widersprueche.md, Eintrag
+12): Eine Reihenfolgeregel hebt keine Sicherheitsregel auf.

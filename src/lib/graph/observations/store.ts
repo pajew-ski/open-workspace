@@ -177,6 +177,53 @@ export class ObservationStore {
         return { appended: fresh.length, firstAt: fresh[0].t, lastAt: fresh[fresh.length - 1].t };
     }
 
+    /**
+     * Füllt die Vergangenheit — und zwar ausschließlich dort, wo noch
+     * nichts liegt (Rückgriff auf die Long-Term-Statistics).
+     *
+     * Das Anhängen (`append`) taugt dafür nicht: Es schreibt ans Ende der
+     * Tagesdatei, und ein Rückgriff kommt aus einer anderen Richtung. Die
+     * Regel ist deshalb hart und einfach: **Ein Tag, für den es schon
+     * Messpunkte gibt, wird nie angefasst.** Damit
+     *  - bleibt jede Datei streng aufsteigend,
+     *  - vermischt sich kein Stundenaggregat mit einem fein erfassten Tag,
+     *  - ist ein zweiter Lauf ein No-Op (die Tage sind jetzt da),
+     *  - und ein grober Rückgriff kann nie einen feinen Bestand
+     *    überschreiben — die Erfassung hat immer Vorrang vor dem Aggregat.
+     */
+    async backfill(
+        variableId: string,
+        observations: ReadonlyArray<Observation>,
+    ): Promise<{ written: number; days: string[]; skippedDays: string[] }> {
+        const existing = new Set((await this.segments(variableId)).map(segment => segment.day));
+        const byDay = new Map<string, Observation[]>();
+        const skipped = new Set<string>();
+        for (const entry of observations) {
+            if (!Number.isFinite(entry.t)) continue;
+            const day = dayOf(entry.t);
+            if (existing.has(day)) {
+                skipped.add(day);
+                continue;
+            }
+            const list = byDay.get(day);
+            if (list) list.push(entry);
+            else byDay.set(day, [entry]);
+        }
+        if (byDay.size === 0) {
+            return { written: 0, days: [], skippedDays: [...skipped].sort() };
+        }
+
+        await this.files.mkdir(this.dirFor(variableId));
+        const days = [...byDay.keys()].sort();
+        let written = 0;
+        for (const day of days) {
+            const entries = (byDay.get(day) ?? []).sort((a, b) => a.t - b.t);
+            await this.files.writeFile(this.pathFor(variableId, day), entries.map(serialize).join(''));
+            written += entries.length;
+        }
+        return { written, days, skippedDays: [...skipped].sort() };
+    }
+
     /** Liest eine Reihe im Zeitfenster, aufsteigend. */
     async read(variableId: string, range: ReadRange = {}): Promise<ReadResult> {
         const after = range.after ?? Number.NEGATIVE_INFINITY;

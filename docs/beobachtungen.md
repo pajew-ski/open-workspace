@@ -207,6 +207,51 @@ Die Runtime `local` hat keinen dauerhaft laufenden Prozess und damit auch
 keine Erfassung — ein Browser-Tab, der zufällig offen ist, wäre kein
 Zeitgeber, sondern ein Zufallsgenerator.
 
+### Rückgriff auf die Long-Term-Statistics
+
+Die Erfassung hält fest, was ab ihrem ersten Lauf geschieht. Für die Zeit
+davor gibt es genau eine Quelle, und sie ist halbiert: die
+**Long-Term-Statistics** — Stundenwerte, unbegrenzt aufbewahrt, aber nur
+für numerische Größen mit `state_class`. Erreichbar sind sie allein über
+die WebSocket-API (`recorder/statistics_during_period`); die REST-API
+kennt sie nicht.
+
+Gebaut ist das als **einmalige, angeforderte Handlung** je Größe, nicht
+als zweiter Erfassungslauf: `POST /api/graph/observations/<id>/backfill`,
+in der Oberfläche der Knopf „Aus Statistik nachfüllen". Ein Zeitgeber
+wäre sinnlos — vor dem Bestand entsteht nichts Neues mehr.
+
+**Die Regeln, und wogegen jede einzelne steht:**
+
+| Regel | Was sie verhindert |
+|---|---|
+| Ein Aggregat je Stunde bleibt **ein Punkt je Stunde** | Einen Stundenmittelwert zwölfmal ins Fünf-Minuten-Raster zu schreiben, erfände elf Messungen und bliese jede spätere Fallzahl auf |
+| Ein Tag mit Messpunkten wird **nie angefasst** | Der feine Bestand hat Vorrang; keine Tagesdatei mischt Erfassung und Aggregat |
+| Das Fenster endet dort, wo die **Erfassung noch selbst hinkommt** (ältester erfasster Punkt, höchstens 14 Tage vor jetzt, auf Mitternacht abgerundet) | Ein grober Rückgriff auf Zeiträume, die es in voller Auflösung gibt |
+| Nur **numerische** Größen | Schalter, Fenster, Anwesenheit stehen in der Statistik nicht — eine leere Antwort sähe aus wie „nichts passiert" |
+| **Summen werden abgelehnt** | Das Feld `sum` ist ein fortlaufender Zählerstand, keine Intervallsumme: dieselbe Einheit, andere Größe |
+| Das Feld folgt der **Verdichtung der Größe** (`mean`→`mean`, `min`→`min`, `max`→`max`, `last`→`state`) | Ersatzweise ein anderes Feld zu nehmen, machte still eine andere Größe daraus |
+
+**Die nachgefüllte Strecke wird benannt**, nicht verschwiegen: Am
+`ow:Variable`-Knoten stehen `ow:aggregatedFrom`, `ow:aggregatedThrough`
+und `ow:aggregateInterval` (PT1H), der Lauf selbst als eigene
+`prov:Activity` — eigener Knoten, damit der nächste Erfassungslauf zehn
+Minuten später ihn nicht überschreibt. Die Karte in der Oberfläche sagt
+denselben Satz im Klartext.
+
+**Was der Rückgriff in einer Auswertung wert ist — und was nicht.** Das
+Panel einer Studie liest einen Wert nur so lange, wie das Raster seiner
+Reihe reicht (C4). Eine Größe im Fünf-Minuten-Raster trägt in der
+nachgefüllten Strecke deshalb nur die **vollen Stunden** bei; die übrigen
+Rasterpunkte fallen als Lücke heraus und stehen als solche in der Studie.
+Das ist gewollt: lieber elf von zwölf Zeilen verlieren als elf von zwölf
+erfinden. Wer die alte Strecke wirklich auswerten will, braucht Größen
+im Stundenraster — für Wetter, Preis und Verbrauch ist das ohnehin das
+passende.
+
+Ein zweiter Lauf ist ein No-Op: Die Tage sind dann da, und ein
+vorhandener Tag wird nicht überschrieben.
+
 ## Bedienung
 
 `/graph/observations`. Aktoren stehen in der Kandidatenliste oben: Sie
@@ -230,6 +275,7 @@ Long-Term-Statistics — sie sind wichtig, aber nicht dringend.
 | `GET/PATCH/DELETE /api/graph/observations/<id>` | lesen, pausieren, entfernen (`?purge=1` löscht auch den Bestand) |
 | `GET /api/graph/observations/<id>/series` | Messreihe (`from`, `to`, `limit`) |
 | `POST /api/graph/observations/capture` | Lauf auf Anforderung |
+| `POST /api/graph/observations/<id>/backfill` | Rückgriff auf die Long-Term-Statistics (`days`, Default 365, Maximum 1825) |
 
 Das Entfernen ist zweistufig: Der erfasste Bestand ist genau das, was die
 Quelle nicht mehr hat — ihn mit der Definition wegzuwerfen wäre für einen
@@ -237,12 +283,13 @@ Fehlklick eine unwiederbringliche Strafe.
 
 ## Grenzen, ehrlich
 
-- **Der Backfill reicht nur so weit wie der Recorder.** Long-Term-
-  Statistics sind über die REST-API nicht erreichbar (sie brauchen die
-  WebSocket-Kommandos `recorder/statistics_during_period`). Ein einmaliger
-  Rückgriff auf die Stundenaggregate ist deshalb nicht gebaut — er wäre
-  eine sinnvolle Ergänzung, ändert aber nichts an der Dringlichkeit: die
-  Ursachenseite steht dort ohnehin nicht.
+- **Der Rückgriff verlängert nur die Wirkungsseite.** Er holt
+  Stundenaggregate (siehe oben) — Schalter, Fenster und Anwesenheit stehen
+  dort nicht. An der Dringlichkeit der laufenden Erfassung ändert er
+  deshalb nichts: Die Ursachenseite entsteht ausschließlich hier und jetzt.
+- **Der Backfill der Erfassung selbst reicht nur so weit wie der
+  Recorder** (14 Tage Fenster, `purge_keep_days` Standard 10). Alles
+  Ältere gibt es nur noch als Stundenwert.
 - **Vor der ersten Erfassung gibt es keine Daten.** Wer heute anfängt, hat
   in drei Monaten drei Monate. Das ist der ganze Punkt.
 - **Ein Wechsel des Abtastabstands ändert die Größe.** Die alte Reihe

@@ -67,6 +67,26 @@ export interface VariableDefinition {
     retentionDays: number;
 }
 
+/**
+ * Die aus Aggregaten nachgefüllte Strecke des Bestands (§15.5).
+ *
+ * Sie steht getrennt vom übrigen Zustand, weil sie eine andere Aussage
+ * macht: Hier liegen keine erfassten Zustandswechsel, sondern
+ * Stundenmittel aus den Long-Term-Statistics. Ohne diese Angabe sähe der
+ * Bestand vor und nach der Grenze gleich aus, obwohl er es nicht ist.
+ */
+export interface AggregateCoverage {
+    /** Ältester Punkt aus Aggregaten (ISO). */
+    from: string;
+    /** Jüngster Punkt aus Aggregaten (ISO). */
+    through: string;
+    /** Tatsächliche Auflösung dieser Strecke in Sekunden (Statistik: 3600). */
+    intervalSeconds: number;
+    /** Letzter Rückgriff: Zeitpunkt und Zusammenfassung (deutsch). */
+    at?: string;
+    summary?: string;
+}
+
 /** Erfassungszustand — liegt in `graph/meta`, nicht beim Wissen. */
 export interface CaptureStatus {
     state: CaptureState;
@@ -80,6 +100,8 @@ export interface CaptureStatus {
         summary: string;
         errors: string[];
     };
+    /** Aus Aggregaten nachgefüllte Strecke, falls es eine gibt. */
+    aggregate?: AggregateCoverage;
 }
 
 export interface VariableView extends VariableDefinition {
