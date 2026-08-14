@@ -6,10 +6,11 @@ fest und legt ihn vor. Diese Datei ist dieser Ort.
 
 **Wie sie zu lesen ist**: Jeder Eintrag nennt die Stelle, den
 Widerspruch, wie er beim Bauen aufgelöst wurde und was es kosten würde,
-ihn anders aufzulösen. Alle acht Einträge sind am **14.08.2026**
-entschieden worden; wo die Entscheidung den Text der Spec betrifft, ist
-sie dort eingearbeitet. Wer beim Bauen auf einen neuen stößt, trägt ihn
-hier ein.
+ihn anders aufzulösen. Die Einträge 1–8 sind am **14.08.2026**
+entschieden worden, die Einträge 9–11 kamen beim Bauen von C6 hinzu und
+sind mit ihm entschieden; wo die Entscheidung den Text der Spec betrifft,
+ist sie dort eingearbeitet. Wer beim Bauen auf einen neuen stößt, trägt
+ihn hier ein. **Kein Eintrag steht offen.**
 
 | # | Stelle | Meilenstein | Stand |
 |---|---|---|---|
@@ -21,6 +22,9 @@ hier ein.
 | 6 | §16 C5-Abnahme liest sich wie zwei gleichrangige Ergebnisse | C5 | entschieden, umgesetzt |
 | 7 | §10 nennt vier Connector-Arten, §16 verlangt für C5 eine | C5 | entschieden, **`csv-observations` gebaut** |
 | 8 | §5.2 `ow:observedBy` gegen Invariante 8 | C3/C5 | entschieden, Spec angepasst |
+| 9 | §8 verlangt für C6 drei Strukturquellen, eine davon ist C8 | C6 | entschieden, **fehlende Quelle wird benannt** |
+| 10 | §8 zählt Identifizierbarkeit zu den Filtern — gegen Invariante C1 | C6 | entschieden, umgesetzt |
+| 11 | §8 „temporale Zulässigkeit maschinell entscheidbar" — wie weit? | C6 | entschieden, Spec präzisiert |
 
 ---
 
@@ -223,3 +227,118 @@ Zeichenkette, kein Knoten, und dafür gibt es keinen Standard-Term.
 **Was die Gegenrichtung gekostet hätte.** Einen 127. eigenen Term, der
 dasselbe sagt wie ein W3C-Standard — und einen Export, den ein fremder
 SOSA-Client nicht mehr versteht.
+
+## 9. §8 verlangt drei Strukturquellen, eine davon gehört zu C8 (C6)
+
+**Die Stelle.** §8 („Die Rückkopplung"): „Drei Quellen für Struktur —
+LLM-Vorschlag, physische Topologie, **Struktur-Lernen aus Daten** — werden
+verglichen." §16 definiert C6 als „Vergleich der drei Strukturquellen".
+
+**Der Widerspruch.** Struktur-Lernen aus Daten steht in derselben Tabelle
+(§16) als Inhalt von **C8** — „*Optional*: Tier-2-Sidecar, Struktur-Lernen,
+Föderation von Kausalmodellen". §19 verbietet einer Session ausdrücklich,
+C7 oder C8 ohne Freigabe anzufangen. C6 kann also nicht liefern, was C6
+verlangt. Hinzu kommt, dass TODO.md unter C6 eine **vierte** Quelle nennt,
+die §8 nicht kennt: Wikidata über die Föderation (§10, seit M11
+verfügbar).
+
+**Entschieden: drei Quellen, aber diese drei.** Gebaut sind
+`llm` (§8, das Sprachmodell), `topology` (§8, die Device Registry als
+Prior) und `wikidata` (§10 + TODO, fremdes Weltwissen ohne Import). Das
+Struktur-Lernen bleibt aus — und wird **benannt**: Der Quellenvergleich
+führt es als fehlende Quelle mit Begründung, die Kantenklasse `learned`
+bleibt leer, und die Oberfläche sagt, dass eine Übereinstimmung hier eine
+von zwei Quellen ist und nicht von dreien.
+
+**Warum nicht andersherum.** Die Alternative wäre gewesen, ein einfaches
+Struktur-Lernen (PC-Algorithmus über partielle Korrelationen) in C6
+mitzubauen. Das hätte drei Dinge gekostet: Es hätte C8 angefangen, ohne
+gefragt zu haben (§19); es hätte in einem Meilenstein zwei Meilensteine
+vermischt (§19: „Kein Meilenstein wird aufgeteilt, keine zwei werden
+zusammengelegt"); und es hätte die Richtung von Kanten aus Korrelationen
+abgeleitet, also genau die Sorte selbstbewusster Struktur erzeugt, gegen
+die §18 im letzten Absatz argumentiert. Ein Vergleich mit einer erfundenen
+dritten Stimme ist schlechter als einer mit zwei ehrlichen.
+
+**Was zu tun bliebe**, wenn die Freigabe kommt: `learned` ist als
+Kantenklasse (C0), als Quelle im Vergleich und als Filterstrecke bereits
+vorgesehen — eine vierte Quelle einzuhängen ist eine Funktion, kein
+Umbau.
+
+## 10. §8 zählt Identifizierbarkeit zu den Filtern (C6)
+
+**Die Stelle.** §8 nummeriert fünf Filter, die eine Hypothese durchläuft,
+„bevor sie überhaupt geschätzt wird". Nummer 5: „Identifizierbarkeit — ist
+der Effekt aus den vorhandenen Variablen überhaupt schätzbar?"
+
+**Der Widerspruch.** Identifizierbarkeit hängt daran, welche Störgrößen
+**erfasst** sind (C3) — sie ist eine Frage der Datenlage, nicht der
+Struktur. Ein Filter, der deshalb ablehnt, ließe die Daten über die
+Annahme entscheiden. Genau das verbietet Invariante C1: „Struktur ist
+Annahme, nicht Ergebnis." Ein Modell darf eine Kante behaupten, für die
+noch niemand die passende Störgröße erfasst hat — das ist der Normalfall
+und der Grund, warum man überhaupt einen DAG zeichnet. §8 sagt das im
+selben Absatz auch selbst: „Wenn nein: sagen, welche Variable fehlen
+würde. Das ist eine **konstruktive** Antwort und in der Praxis oft die
+nützlichste."
+
+**Entschieden: ein drittes Urteil statt einer Ablehnung.** Die vier harten
+Filter (`cycle`, `shacl`, `temporal`, `topology`) verwerfen; die
+Identifizierbarkeit erzeugt das Urteil `open` samt der fehlenden Größe.
+`accepted` und `open` dürfen ins Modell übernommen werden, `rejected`
+nicht — serverseitig geprüft.
+
+**Warum das die Abnahme nicht aufweicht.** „Keine Hypothese erreicht ohne
+Filter den Studien-Pfad" bleibt wahr: Der Studien-Pfad beginnt bei einer
+Frage (`ow:Estimand`), und die gibt seit C4 für einen nicht
+identifizierbaren Effekt ohnehin `not-identifiable` zurück statt einer
+Zahl. Ein `open`-Vorschlag im Modell führt also zu keiner Zahl, sondern zu
+der Auskunft, welche Größe zu erfassen wäre — dieselbe konstruktive
+Antwort, nur an der Stelle, an der man etwas dagegen tun kann.
+
+**Was die Gegenrichtung gekostet hätte.** Die nützlichsten Vorschläge
+wären die ersten gewesen, die durchfallen: Ein Confounder, der noch nicht
+erfasst wird, macht die Kante, an der er hängt, per Definition nicht
+identifizierbar. Ein Filter, der ihn verwirft, verwirft genau das, wofür
+man ihn gebaut hat.
+
+## 11. §8: „temporale Zulässigkeit ist maschinell entscheidbar" (C6)
+
+**Die Stelle.** §8, Filter 3: „**Temporale Zulässigkeit** — die Ursache
+muss der Wirkung vorausgehen. Mit HA-Zeitstempeln ist das maschinell
+entscheidbar und eliminiert einen erheblichen Teil des LLM-Rauschens ohne
+eine einzige Schätzung."
+
+**Der Widerspruch.** „Die Ursache geht der Wirkung voraus" ist als
+Aussage über die **Richtung der Kausalität** aus Zeitstempeln gerade
+nicht entscheidbar. Was man aus Beobachtungsreihen über zeitliche
+Vorordnung gewinnen kann — Kreuzkorrelation bei positivem und negativem
+Versatz, Granger-artige Tests — ist Richtungsschluss aus Daten, also
+**Struktur-Lernen**. Das gehört zu C8 (§16) und darf hier nicht
+angefangen werden (§19). Zudem sind Beobachtungsreihen autokorreliert;
+dass die Lehrbuchformel darauf nicht trägt, hat C4 bereits an anderer
+Stelle festgehalten (§15.2, Moving Block Bootstrap).
+
+**Entschieden: entscheidbar heißt Abdeckung und Vorzeichen.** Der Filter
+prüft zwei Dinge, beide allein aus Zeitstempeln:
+
+1. **Das Vorzeichen des Zeitversatzes.** `-PT15M` behauptet, die Wirkung
+   ginge der Ursache voraus — dann ist die vorgeschlagene Richtung die
+   falsche.
+2. **Die Abdeckung.** Beginnt die Erfassung der Ursache (um ihren Versatz
+   verschoben) nach dem Ende der Erfassung der Wirkung, kann keine
+   erfasste Ursache einer erfassten Wirkung vorausgehen. Das ist die
+   Fassung von „zeitlich unmöglich", die ein Zeitstempel wirklich hergibt.
+
+Fehlt eine der Angaben, wird **nicht** abgelehnt: Unwissen ist kein
+Befund. Und ein Vorschlag, der die im Modell gesetzte Richtung umdreht,
+fällt schon beim Azyklizitäts-Filter — mit dem Kreis im Klartext, was die
+bessere Auskunft ist.
+
+**Was die Gegenrichtung gekostet hätte.** Ein korrelationsbasierter
+Richtungstest hätte mehr Vorschläge weggenommen — und dabei genau die
+Fehler gemacht, gegen die dieser Layer gebaut ist: Bei zwei Größen mit
+gemeinsamer Ursache (Außentemperatur → Heizen, Außentemperatur →
+Verbrauch) zeigt die Kreuzkorrelation eine Richtung, die es nicht gibt.
+Ein Filter, der so etwas verwirft oder bestätigt, wäre eine Schätzung im
+Gewand einer Formprüfung.

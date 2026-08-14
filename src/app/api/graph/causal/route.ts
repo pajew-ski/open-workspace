@@ -17,9 +17,10 @@ import { mayCreateGraph, WRITE_SCOPE_HINT } from '@/lib/graph/authz/grant';
 import {
     causalGraphsOf,
     createCausalModel,
-    listCausalHypotheses,
     listCausalModels,
 } from '@/lib/graph/causal/model';
+import { readHypotheses } from '@/lib/graph/causal/hypothesis';
+import { compareStructureSources } from '@/lib/graph/causal/compare';
 import { listEstimands } from '@/lib/graph/causal/estimand';
 import { causalArchiveGraph, readCausalArchive } from '@/lib/graph/causal/archive';
 import { causalInferredGraph, readCausalStudies } from '@/lib/graph/causal/study-graph';
@@ -46,7 +47,10 @@ export async function GET(): Promise<Response> {
         const handle = { store, iri };
         const allowedGraphs = grant.readableGraphs;
         const models = await listCausalModels(handle, { allowedGraphs });
-        const hypotheses = await listCausalHypotheses(handle, { allowedGraphs });
+        // Seit C6 sind Vorschläge mehr als Kanten: Sie tragen Herkunft,
+        // Urteil und Begründung (§8). Gelesen wird derselbe Graph wie
+        // vorher — nur vollständig.
+        const hypotheses = await readHypotheses(handle, { allowedGraphs });
         // Die Shapes aus ontology/shapes/causal.ttl sind nur dann etwas
         // wert, wenn ihre Befunde auch ankommen — deshalb laufen sie bei
         // jedem Lesen über die Kausal-Graphen (§7.2 Stelle 3). Blockieren
@@ -96,9 +100,25 @@ export async function GET(): Promise<Response> {
         const archive = allowedGraphs.includes(causalArchiveGraph(iri))
             ? await readCausalArchive(handle, { limit: ARCHIVE_LIMIT })
             : [];
+        // Der Quellenvergleich (§8 „Die Rückkopplung") ist je Modell eine
+        // eigene Frage: Dieselbe Kante kann in einem Modell Widerspruch
+        // sein und im anderen gar nicht vorkommen.
+        const comparisons = models.map(model => {
+            const names = new Map(model.variables.map(variable => [variable.iri, variable.name]));
+            const own = hypotheses.filter(hypothesis => hypothesis.modelId === model.id);
+            for (const hypothesis of own) {
+                names.set(hypothesis.from, hypothesis.fromName);
+                names.set(hypothesis.to, hypothesis.toName);
+            }
+            return {
+                modelId: model.id,
+                entries: compareStructureSources(own, model.edges, node => names.get(node) ?? node),
+            };
+        });
         return NextResponse.json({
             models,
             hypotheses,
+            comparisons,
             hypothesesGraph,
             observedVariables: observed,
             estimands,

@@ -274,6 +274,35 @@ describe('Beobachtungsgrößen im Graphen', () => {
         expect(updated?.enabled).toBe(false);
         expect((await listVariables(handle))).toHaveLength(1);
     });
+
+    /**
+     * Nebenbefund, gefunden beim Bauen von C6: Die Kante zeigt seit
+     * docs/spec-widersprueche.md (Eintrag 8) vom SENSOR auf die Variable —
+     * gesucht wurde sie beim Lesen aber unter den Quads MIT der Variablen
+     * als Subjekt, wo sie nie stehen kann. Weil der Schreibpfad die Quads
+     * aus dem Lesemodell neu baut, verlor jedes Speichern die Kante still:
+     * nach dem ersten Erfassungslauf wusste keine Größe mehr, aus welcher
+     * Messquelle sie stammt — und damit fielen Ort, Gerät und Größenart
+     * für die Topologie (C6) und die Adjustierung weg.
+     */
+    it('behält die Kante zur Messquelle über ein Speichern hinweg', async () => {
+        const handle = newHandle();
+        const sensor = handle.iri.entity('sensor', 'sensor.wohnzimmer_temperatur');
+        const created = await createVariable(handle, {
+            id: 'sensor-wohnzimmer-temperatur',
+            name: 'Wohnzimmer Temperatur',
+            sourceKind: 'home-assistant',
+            source: 'sensor.wohnzimmer_temperatur',
+            kind: 'numeric',
+            aggregation: 'mean',
+            intervalSeconds: 300,
+            sensorIri: sensor,
+        });
+        expect((await getVariable(handle, created.id))?.sensorIri).toBe(sensor);
+
+        await updateVariable(handle, created.id, { enabled: false });
+        expect((await getVariable(handle, created.id))?.sensorIri).toBe(sensor);
+    });
 });
 
 describe('Erfassungslauf', () => {
