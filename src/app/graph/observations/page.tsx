@@ -55,8 +55,18 @@ interface CaptureCandidate {
     unit?: string;
     placeName?: string;
     actuator: boolean;
+    /** Art der Quelle (C5): `home-assistant`, `rest-timeseries`, … */
+    sourceKind: string;
+    /** Ein Satz zur Rolle im Kausalmodell, falls die Quelle ihn mitgibt. */
+    note?: string;
     variableId?: string;
 }
+
+/** Herkunft in einem Wort — die Liste mischt seit C5 Haus und Open Data. */
+const SOURCE_KIND_LABEL: Record<string, string> = {
+    'home-assistant': 'Home Assistant',
+    'rest-timeseries': 'offene Quelle',
+};
 
 interface ScheduleStatus {
     active: boolean;
@@ -352,7 +362,10 @@ export default function GraphObservationsPage() {
                     <p className={styles.sectionHint}>
                         Aus dem Graphen, nicht aus einem zweiten Abruf — die Liste steht auch dann,
                         wenn Home Assistant gerade nicht erreichbar ist. Schaltbares zuerst: Es ist
-                        das, was am schnellsten verloren geht.
+                        das, was am schnellsten verloren geht. Seit C5 stehen hier auch die
+                        Störgrößen aus offenen Quellen (Wetter, Strompreis, Einstrahlung,
+                        Feiertage) — in derselben Liste, weil sie im Modell dieselbe Rolle
+                        spielen können.
                     </p>
                     <div className={styles.filterRow}>
                         <input
@@ -360,7 +373,7 @@ export default function GraphObservationsPage() {
                             type="search"
                             value={filter}
                             onChange={event => setFilter(event.target.value)}
-                            placeholder="Nach Name, entity_id oder Raum filtern…"
+                            placeholder="Nach Name, Quellschlüssel oder Ort filtern…"
                             aria-label="Quellen filtern"
                         />
                     </div>
@@ -371,7 +384,7 @@ export default function GraphObservationsPage() {
                             <AlertTriangle size={32} aria-hidden="true" />
                             <p>
                                 {filter.trim() === ''
-                                    ? 'Keine Quellen im Graphen. Lege unter Graph → Quellen einen Connector der Art „Home Assistant" an und synchronisiere ihn.'
+                                    ? 'Keine Quellen im Graphen. Lege unter Graph → Quellen einen Connector an — „Home Assistant" für das Haus, „Offene Zeitreihen (REST)" für Wetter, Strompreis oder Feiertage — und synchronisiere ihn.'
                                     : 'Kein Treffer für diesen Filter.'}
                             </p>
                         </div>
@@ -383,12 +396,16 @@ export default function GraphObservationsPage() {
                                         <div className={styles.candidateText}>
                                             <span className={styles.candidateName}>{candidate.name}</span>
                                             <span className={styles.source}>{candidate.source}</span>
+                                            {candidate.note && <span className={styles.candidateNote}>{candidate.note}</span>}
                                         </div>
                                         <div className={styles.badges}>
                                             {candidate.actuator && (
                                                 <span className={`${styles.badge} ${styles.badgeTreatment}`}>schaltbar</span>
                                             )}
                                             <span className={styles.badge}>{KIND_LABEL[candidate.kind]}</span>
+                                            <span className={styles.badge}>
+                                                {SOURCE_KIND_LABEL[candidate.sourceKind] ?? candidate.sourceKind}
+                                            </span>
                                             {candidate.placeName && <span className={styles.badge}>{candidate.placeName}</span>}
                                         </div>
                                         <Button

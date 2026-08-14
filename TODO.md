@@ -356,7 +356,12 @@
 > nächste. C3 steht zuerst und ist erledigt, weil er als einziger
 > zeitkritisch war: Home Assistant verwirft Zustandswechsel nach
 > `purge_keep_days`, jeder Tag ohne Erfassung war unwiederbringlich.
-> Gebaut sind C3, C0, C1, C2 und C4; offen ist als Nächstes C5.
+> Gebaut sind C3, C0, C1, C2, C4 und C5; offen ist als Nächstes C6.
+> Alle acht Widersprüche, die beim Bauen von C3, C4 und C5 auffielen, sind
+> am 14.08.2026 **entschieden** und in
+> [docs/spec-widersprueche.md](./docs/spec-widersprueche.md)
+> festgehalten; wo die Entscheidung den Text betrifft, ist sie in die
+> Spec eingearbeitet.
 
 - [x] **C3 Erfassung („früh materialisieren")**:
       `homeassistant_api: true` im Add-on-Manifest (lesend, begründet in
@@ -538,17 +543,112 @@
       Rückgabe noch im Graphen; vollständiger Replace; Panel-Regeln; DiD
       und ITS; C6-Negativtests; C7-Signatur; Reinheit des Kerns).
       Doku: [docs/kausalmodell.md](./docs/kausalmodell.md)
-- [ ] **C5 Open-Data-Connector** `rest-timeseries` (SPEC §10/§11) — *als Nächstes*: Wetter
-      (DWD/Bright Sky), Strompreis, Sonnenstand, Feiertage — die
-      Confounder der Hausdomäne.
-      Abnahme: dieselbe Frage mit und ohne Adjustierung liefert
-      nachweislich unterschiedliche Ergebnisse, und die Differenz wird
-      erklärt
+- [x] **C5 Open-Data-Connector** `rest-timeseries` (SPEC §10/§11): Die
+      Störgrößen der Hausdomäne über den EINEN Connector-Vertrag — kein
+      zweiter Import-Pfad, keine Sonderpipeline.
+      - **Der Connector materialisiert die Angebotsseite, nie den Wert**
+        (Invariante C3): welche Größen die Quelle liefert, in welcher
+        Einheit, an welchem Ort, mit welchem Skalenniveau — als SOSA in
+        den Import-Graphen, genau wie `home-assistant` in C3. Revision
+        folgt der Struktur, nicht der Zahl (andere Werte = No-Op); eine
+        beschriebene, aber nicht gelieferte Größe wird quarantäniert
+        statt behauptet. Dass §10 diesen Connector „materialize" nennt
+        und trotzdem keine Reihe schreiben darf, ist als Widerspruch
+        festgehalten (docs/spec-widersprueche.md, Eintrag 5)
+      - **Die Abbildung ist deklarativ und pur**
+        (`connectors/rest-timeseries/mapping.ts`) und kennt die drei
+        Formen, in denen offene Kataloge liefern: `points`
+        (Datensatzliste), `columns` (parallele Arrays) und `intervals`
+        (Zeitspannen mit einem Wert **außerhalb** — ohne den bestünde
+        eine Feiertagsreihe nur aus Einsen). Dazu Fenster-Zerlegung,
+        Einheiten-Umrechnung, Filter je Datensatz (Bundesland),
+        Drosselung je Host und ein Zwischenspeicher: Bright Sky liefert
+        acht Größen in EINEM Dokument, und die Erfassung holt es einmal
+      - **Confounder-Katalog** als Vorlagen: Wetter (DWD über Bright
+        Sky), Strompreis (EPEX Spot über aWATTar), Einstrahlung
+        (Open-Meteo), Feiertage (Nager.Date) — dazu `custom` für eine
+        eigene JSON-/CSV-API ohne neuen Code. „Sonnenstand" aus §10
+        liefert der Katalog als **Einstrahlung** — den atmosphärischen
+        Teil; den geometrischen rechnet seit der Entscheidung vom
+        14.08.2026 der Connector `solar-position`
+        (docs/spec-widersprueche.md, Eintrag 4)
+      - **Die Erfassung ist quellenagnostisch geworden**
+        (`observations/sources.ts`): Die Quellart steht an der Größe und
+        wird aus dem Import-Graphen abgeleitet — der Sensor liegt im
+        Graphen genau des Connectors, der ihn materialisiert hat. Eine
+        unerreichbare Quellart legt nur ihre eigenen Größen still; ein
+        fehlender Home-Assistant-Zugang lässt die Wetterreihen laufen
+        (vor C5 riss er den ganzen Lauf mit)
+      - **Der Adjustierungs-Kontrast** ist der Nachweis: Ein Lauf mit
+        Adjustierung rechnet dieselbe Frage ein zweites Mal ohne sie —
+        auf DEMSELBEN Panel, mit demselben Verfahren und demselben
+        Startwert, sonst wäre die Differenz nicht der Adjustierung
+        zuzuschreiben. Der rohe Wert ist ein **Zusammenhang, keine
+        Wirkung**: eigene Terme (`ow:ConfoundingContrast`,
+        `ow:crudeAssociation`, `ow:crudeCiLow/-High`,
+        `ow:confoundingShift`), nie `ow:effectSize` — dieser Term zöge
+        per SHACL die bestandene Refutation nach sich (Invariante C5).
+        Warum die Abnahme wörtlich gelesen zwei gleichrangige Ergebnisse
+        verlangte: docs/spec-widersprueche.md, Eintrag 6
+      - Nebenbefund behoben: Das Formular unter Graph → Quellen zeigte
+        für `home-assistant` die GitHub-Felder und legte stillschweigend
+        eine Supervisor-Verbindung an
+      Abnahme: `tests/graph/open-data.test.ts` — die geforderte
+      Gegenprobe über die ganze Kette (Connector anlegen → Struktur
+      importieren → Störgröße aus der Kandidatenliste aufnehmen → Werte
+      erfassen → rechnen): vorher „nicht identifizierbar, weil die
+      Außentemperatur nicht erfasst wird", nachher die wahre Wirkung
+      **und** daneben der rohe Zusammenhang, der Heizen wirkungslos
+      aussehen lässt, samt Erklärung der Differenz. Dazu: drei
+      Reihenformen, kein Messwert im Store, Revision an der Struktur,
+      Zwischenspeicher, Quarantäne, Fehlerisolation zwischen Quellarten.
+      Doku: [docs/kausalmodell.md](./docs/kausalmodell.md),
+      [docs/beobachtungen.md](./docs/beobachtungen.md)
+- [x] **Widersprüche der Spec entschieden** (14.08.2026,
+      [docs/spec-widersprueche.md](./docs/spec-widersprueche.md)) — drei
+      davon brauchten Code:
+      - **Eine berechnete Größe IST eine Beobachtung** (Eintrag 4): Der
+        Connector `solar-position` rechnet Sonnenhöhe, Azimut, Tag/Nacht
+        und die extraterrestrische Einstrahlung aus Ort und Zeit
+        (Astronomical Almanac, Fehler unter 0,01°) — ohne Netz, ohne
+        Lücken, über den EINEN Connector-Vertrag. Ehrlich bleibt sie durch
+        das Verfahren im Graphen (`ssn:implements` → `sosa:Procedure`);
+        Refraktion, Parallaxe und jedes Atmosphärenmodell fehlen bewusst
+      - **`csv-observations` gebaut** (Eintrag 7): der Datei- statt des
+        Netz-Wegs. Pfad-Politik wie `obsidian-vault`, Skalenniveau je
+        Spalte aus dem **Bestand** statt aus dem Spaltennamen, Revision =
+        Inhalts-Hash
+      - **Die Studien-Chronik** (Eintrag 3): `graph/<u>/causal-archive`
+        hält fest, was eine Frage wann gesagt hat — behauptet und
+        persistiert, weil ein Lauf ein **Ereignis** ist und kein
+        abgeleiteter Zustand. Der Effekt eines Eintrags hängt NIE am
+        Reifier der Kante, eingetragen wird nur eine Änderung (Urteil,
+        Modell-Revision oder Effekt außerhalb des letzten Intervalls), und
+        beantwortet wird eine Frage weiterhin nur aus dem Inferenz-Graphen.
+        Ein Eintrag lässt sich **verwerfen** (`DELETE
+        /api/graph/causal/archive/<id>`, Knopf in der Chronik): Ein Lauf
+        auf falsch erfassten Daten ist keine Geschichte, sondern Störung —
+        wer ihn nicht loswird, hört auf hinzuschauen. Geändert wird ein
+        Eintrag nie, sonst stünde dort etwas, das so nie gerechnet wurde
+      - Ohne Code entschieden: getrennte Terme für Identifikation und
+        Verfahren (Eintrag 1), `schema:unitText` statt QUDT (Eintrag 2),
+        „materialize" heißt Angebotsseite (Eintrag 5), der rohe
+        Zusammenhang ist kein zweites Ergebnis (Eintrag 6)
+      Abnahme: `tests/graph/causal-archive.test.ts` (Chronik: erster Lauf,
+      unveränderter zweiter, geänderte Revision, Effekt nicht am Reifier,
+      Neustart) und die Sonnenstand-/CSV-Abschnitte in
+      `tests/graph/open-data.test.ts` (bekannte Sonnenstände, Nacht ohne
+      Rest-Einstrahlung, Verfahren im Graphen, lückenlose Erfassung;
+      Skalenniveau aus dem Bestand, Kopfzeile als Wahrheit, Pfad-Politik)
 - [ ] **C6 Neurosymbolische Schleife** (SPEC §8): LLM-Hypothesen mit
       Provenienz nach `causal-hypotheses`, symbolische Filter
       (Azyklizität, SHACL, temporale Zulässigkeit, Topologie,
       Identifizierbarkeit), Vergleich der drei Strukturquellen,
-      Widerspruchs-UI.
+      Widerspruchs-UI. Dazu gehört die dritte Strukturquelle, die §10
+      nennt und die seit M11 bereitsteht: **Wikidata über die Föderation**
+      als Lieferant von Confounder-Kandidaten und Geräteklassen — ohne
+      Import, als Vorschlag, der dieselben Filter durchläuft wie jeder
+      andere.
       Abnahme: keine Hypothese erreicht ohne Filter den Studien-Pfad; ein
       temporal unmöglicher Vorschlag wird automatisch verworfen
 - [ ] *Opt-in, nicht ohne ausdrückliche Freigabe*: **C7 Experimente**
@@ -560,6 +660,51 @@
       (`recorder/statistics_during_period`) — die REST-API kennt sie nicht.
       Ändert nichts an der Dringlichkeit der Erfassung: die Ursachenseite
       steht in den Statistics ohnehin nicht
+
+### Nacharbeiten aus C5 (kein Meilenstein, einzeln erledigbar)
+
+> Nichts davon blockiert C6. Es sind die Kanten, die beim Bauen von C5 und
+> beim Auflösen der Widersprüche sichtbar geworden sind — in Reihenfolge
+> ihres Nutzens.
+
+- [ ] **Weitere Vorlagen aus dem §10-Katalog**: SMARD/ENTSO-E
+      (Erzeugungsmix, Netzlast), UBA Luftdaten / Sensor.Community / OpenAQ
+      (Außenluftqualität als Confounder für Lüftungsfragen), Destatis
+      GENESIS / Eurostat (Vergleichsgruppen), GTFS/DELFI (Mobilität und
+      Anwesenheit). Alle vier gehen heute schon als `custom`-Abbildung —
+      was fehlt, ist die Vorlage mit ihren Parametern und der Angabe, wozu
+      die Quelle im Modell taugt
+- [ ] **Aufbewahrung der Chronik**: Sie wächst nur bei Änderung, aber
+      unbegrenzt. Eine Regel (Höchstzahl je Frage oder Alter) fehlt —
+      solange sie klein bleibt, ist das kein Problem, aber es wird eines,
+      wenn eine Frage jahrelang läuft
+- [ ] **Chronik-Vergleich**: zwei Einträge nebeneinander, mit der
+      Differenz und ihrer wahrscheinlichen Ursache (andere Revision,
+      anderes Datenfenster, andere Adjustierung). Heute steht die Liste
+      da, den Vergleich macht der Mensch im Kopf
+- [ ] **Einheiten für CSV-Spalten**: Eine Datei sagt nicht, ob eine Spalte
+      Kilogramm oder Kilowattstunden trägt. Heute bleibt die Einheit leer;
+      eine Angabe je Spalte in der Connector-Konfiguration wäre die
+      ehrliche Ergänzung (raten wäre es nicht)
+- [ ] **Formular statt JSON für eigene Quellen**: Die `custom`-Abbildung
+      des `rest-timeseries`-Connectors ist im UI ein Textfeld mit JSON.
+      Für den Fall „eine API, die dem Katalog fehlt" ist das zumutbar,
+      schön ist es nicht
+- [ ] **Live-Test gegen die echten Quellen**, opt-in wie
+      `OW_FEDERATION_LIVE=1` bei Wikidata: Bright Sky, aWATTar,
+      Open-Meteo und Nager.Date antworten heute in den Tests nur als
+      Stub. Ein Vertragsbruch der Anbieter (umbenanntes Feld, geänderte
+      Struktur) fiele erst im Betrieb auf
+- [ ] **Erfassung in `local`**: `solar-position` und `csv-observations`
+      brauchen weder Netz noch Serverprozess und wären damit die einzigen
+      Quellarten, die im Browser vollständig liefen. Was fehlt, ist der
+      Beobachtungs-Speicher über OPFS und ein Zeitgeber — hängt an der
+      großen `local`-Baustelle (siehe unten)
+- [ ] **Sonnenstand: abgeleitete Zeitpunkte** (Sonnenauf- und -untergang,
+      Tageslänge) als eigene Reihen. Heute gibt es Höhe, Azimut,
+      Tag/Nacht und die extraterrestrische Einstrahlung; Zeitpunkte
+      wären eine Nullstellensuche über dieselbe Funktion. Nur bauen, wenn
+      eine Frage sie braucht
 
 ## Fundament (fertig)
 

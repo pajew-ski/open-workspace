@@ -7,6 +7,7 @@ import { Archive, BookOpen, Bot, CloudDownload, FileCode2, GitBranch, LayoutDash
 import { AppShell } from '@/components/layout';
 import { Button, ConfirmDialog, FloatingActionButton } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
+import { REST_PRESETS } from '@/lib/graph/connectors/rest-timeseries/presets';
 import styles from './page.module.css';
 
 /**
@@ -142,6 +143,22 @@ export default function GraphConnectorsPage() {
     const [formCardUrl, setFormCardUrl] = useState('');
     const [formMcpUrl, setFormMcpUrl] = useState('');
     const [formMcpTransport, setFormMcpTransport] = useState<'auto' | 'streamable-http' | 'sse'>('auto');
+    const [formHaUrl, setFormHaUrl] = useState('');
+    const [formHaTokenEnv, setFormHaTokenEnv] = useState('');
+    const [formPreset, setFormPreset] = useState(REST_PRESETS[0].id);
+    const [formPresetParams, setFormPresetParams] = useState<Record<string, string>>({});
+    const [formMapping, setFormMapping] = useState('');
+    const [formCsvPath, setFormCsvPath] = useState('');
+    const [formCsvTimeField, setFormCsvTimeField] = useState('timestamp');
+    const [formCsvTimeFormat, setFormCsvTimeFormat] = useState<'iso' | 'date' | 'unix-s' | 'unix-ms'>('iso');
+    const [formCsvDelimiter, setFormCsvDelimiter] = useState(',');
+    const [formLatitude, setFormLatitude] = useState('');
+    const [formLongitude, setFormLongitude] = useState('');
+    const [formPlaceName, setFormPlaceName] = useState('');
+
+    const preset = useMemo(() => REST_PRESETS.find(entry => entry.id === formPreset) ?? null, [formPreset]);
+    const presetValue = (key: string): string =>
+        formPresetParams[key] ?? preset?.params.find(param => param.key === key)?.default ?? '';
 
     const { data, isLoading } = useQuery<{ connectors: ConnectorView[]; kinds: ConnectorKindInfo[] }>({
         queryKey: ['graph-connectors'],
@@ -168,10 +185,44 @@ export default function GraphConnectorsPage() {
         setFormCardUrl('');
         setFormMcpUrl('');
         setFormMcpTransport('auto');
+        setFormHaUrl('');
+        setFormHaTokenEnv('');
+        setFormPreset(REST_PRESETS[0].id);
+        setFormPresetParams({});
+        setFormMapping('');
+        setFormCsvPath('');
+        setFormCsvTimeField('timestamp');
+        setFormCsvTimeFormat('iso');
+        setFormCsvDelimiter(',');
+        setFormLatitude('');
+        setFormLongitude('');
+        setFormPlaceName('');
     };
 
     const configForForm = (): unknown => {
         if (formKind === 'rdf-file') return { url: formUrl.trim() };
+        if (formKind === 'home-assistant') return { url: formHaUrl.trim(), tokenEnv: formHaTokenEnv.trim() };
+        if (formKind === 'csv-observations') {
+            return {
+                path: formCsvPath.trim(),
+                timeField: formCsvTimeField.trim() || 'timestamp',
+                timeFormat: formCsvTimeFormat,
+                delimiter: formCsvDelimiter || ',',
+            };
+        }
+        if (formKind === 'solar-position') {
+            return {
+                latitude: formLatitude.trim(),
+                longitude: formLongitude.trim(),
+                placeName: formPlaceName.trim(),
+            };
+        }
+        if (formKind === 'rest-timeseries') {
+            if (formPreset === 'custom') return { preset: 'custom', mapping: formMapping.trim() };
+            const params: Record<string, string> = {};
+            for (const param of preset?.params ?? []) params[param.key] = presetValue(param.key).trim();
+            return { preset: formPreset, params };
+        }
         if (formKind === 'a2a-agent-card') return { url: formCardUrl.trim() };
         if (formKind === 'mcp-server') return { url: formMcpUrl.trim(), transport: formMcpTransport };
         if (formKind === 'obsidian-vault') return { path: formVaultPath.trim() };
@@ -192,7 +243,17 @@ export default function GraphConnectorsPage() {
     };
 
     const formReady = formName.trim() !== '' && (
-        formKind === 'rdf-file' ? formUrl.trim() !== ''
+        // Home Assistant kommt im Add-on ohne jede Angabe aus (Zugang über
+        // den Supervisor) — deshalb ist die Art hier absichtlich „immer
+        // bereit".
+        formKind === 'home-assistant' ? true
+        : formKind === 'csv-observations' ? formCsvPath.trim() !== ''
+        : formKind === 'solar-position' ? formLatitude.trim() !== '' && formLongitude.trim() !== ''
+        : formKind === 'rest-timeseries'
+            ? (formPreset === 'custom'
+                ? formMapping.trim() !== ''
+                : (preset?.params ?? []).every(param => !param.required || presetValue(param.key).trim() !== ''))
+        : formKind === 'rdf-file' ? formUrl.trim() !== ''
         : formKind === 'a2a-agent-card' ? formCardUrl.trim() !== ''
         : formKind === 'mcp-server' ? formMcpUrl.trim() !== ''
         : formKind === 'obsidian-vault' ? formVaultPath.trim() !== ''
@@ -487,6 +548,169 @@ export default function GraphConnectorsPage() {
                                             <option value="sse">sse (Legacy)</option>
                                         </select>
                                     </label>
+                                </>
+                            ) : formKind === 'home-assistant' ? (
+                                <>
+                                    <label className={styles.field}>
+                                        <span>Basis-URL (leer im Add-on — dann läuft der Zugang über den Supervisor)</span>
+                                        <input
+                                            type="url"
+                                            value={formHaUrl}
+                                            onChange={e => setFormHaUrl(e.target.value)}
+                                            placeholder="http://homeassistant.local:8123"
+                                        />
+                                    </label>
+                                    <label className={styles.field}>
+                                        <span>Umgebungsvariable mit dem Long-Lived Access Token (leer im Add-on)</span>
+                                        <input
+                                            value={formHaTokenEnv}
+                                            onChange={e => setFormHaTokenEnv(e.target.value)}
+                                            placeholder="HA_TOKEN"
+                                        />
+                                    </label>
+                                </>
+                            ) : formKind === 'rest-timeseries' ? (
+                                <>
+                                    <label className={styles.field}>
+                                        <span>Vorlage</span>
+                                        <select value={formPreset} onChange={e => setFormPreset(e.target.value)}>
+                                            {REST_PRESETS.map(entry => (
+                                                <option key={entry.id} value={entry.id}>{entry.label}</option>
+                                            ))}
+                                            <option value="custom">Eigene Quelle (JSON-Abbildung)</option>
+                                        </select>
+                                    </label>
+                                    {preset ? (
+                                        <p className={styles.kindDescription}>
+                                            {preset.description} <strong>Rolle im Kausalmodell:</strong> {preset.causalRole}
+                                        </p>
+                                    ) : (
+                                        <p className={styles.kindDescription}>
+                                            Beschreibung einer eigenen JSON- oder CSV-API: Endpunkt, Zeitfenster-Parameter,
+                                            Pfad zur Reihe und die Felder je Größe.
+                                        </p>
+                                    )}
+                                    {formPreset === 'custom' ? (
+                                        <label className={styles.field}>
+                                            <span>Abbildung (JSON)</span>
+                                            <textarea
+                                                value={formMapping}
+                                                onChange={e => setFormMapping(e.target.value)}
+                                                rows={8}
+                                                placeholder={'{"label":"Meine Quelle","url":"https://…","timeField":"t","series":[…]}'}
+                                            />
+                                        </label>
+                                    ) : (preset?.params ?? []).map(param => (
+                                        <label className={styles.field} key={param.key}>
+                                            <span>{param.label}</span>
+                                            {param.options ? (
+                                                <select
+                                                    value={presetValue(param.key)}
+                                                    onChange={e => setFormPresetParams(current => ({
+                                                        ...current,
+                                                        [param.key]: e.target.value,
+                                                    }))}
+                                                >
+                                                    {param.options.map(option => (
+                                                        <option key={option.value} value={option.value}>{option.label}</option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <input
+                                                    value={presetValue(param.key)}
+                                                    onChange={e => setFormPresetParams(current => ({
+                                                        ...current,
+                                                        [param.key]: e.target.value,
+                                                    }))}
+                                                    placeholder={param.placeholder ?? ''}
+                                                />
+                                            )}
+                                        </label>
+                                    ))}
+                                    <p className={styles.kindDescription}>
+                                        Importiert wird das Angebot der Quelle. Die Messwerte holt danach die Erfassung
+                                        unter <Link href="/graph/observations">Graph → Beobachtungen</Link> — im Store
+                                        landet nie ein Messwert.
+                                    </p>
+                                </>
+                            ) : formKind === 'csv-observations' ? (
+                                <>
+                                    <label className={styles.field}>
+                                        <span>CSV-Datei (unter data/vaults/ oder einer Wurzel aus OW_VAULT_ROOTS)</span>
+                                        <input
+                                            value={formCsvPath}
+                                            onChange={e => setFormCsvPath(e.target.value)}
+                                            placeholder="data/vaults/messungen/gewicht.csv"
+                                        />
+                                    </label>
+                                    <label className={styles.field}>
+                                        <span>Zeitspalte</span>
+                                        <input
+                                            value={formCsvTimeField}
+                                            onChange={e => setFormCsvTimeField(e.target.value)}
+                                            placeholder="timestamp"
+                                        />
+                                    </label>
+                                    <label className={styles.field}>
+                                        <span>Zeitformat</span>
+                                        <select
+                                            value={formCsvTimeFormat}
+                                            onChange={e => setFormCsvTimeFormat(
+                                                e.target.value as 'iso' | 'date' | 'unix-s' | 'unix-ms',
+                                            )}
+                                        >
+                                            <option value="iso">ISO 8601 (2026-08-14T10:00:00Z)</option>
+                                            <option value="date">nur Datum (2026-08-14)</option>
+                                            <option value="unix-s">Unix-Zeit in Sekunden</option>
+                                            <option value="unix-ms">Unix-Zeit in Millisekunden</option>
+                                        </select>
+                                    </label>
+                                    <label className={styles.field}>
+                                        <span>Trennzeichen</span>
+                                        <input
+                                            value={formCsvDelimiter}
+                                            onChange={e => setFormCsvDelimiter(e.target.value)}
+                                            placeholder=","
+                                            maxLength={1}
+                                        />
+                                    </label>
+                                    <p className={styles.kindDescription}>
+                                        Das Skalenniveau jeder Spalte wird aus dem Bestand erkannt: nur Zahlen heißt
+                                        numerisch, nur 0/1 zweiwertig, alles andere kategorial.
+                                    </p>
+                                </>
+                            ) : formKind === 'solar-position' ? (
+                                <>
+                                    <label className={styles.field}>
+                                        <span>Breitengrad</span>
+                                        <input
+                                            value={formLatitude}
+                                            onChange={e => setFormLatitude(e.target.value)}
+                                            placeholder="52.52"
+                                        />
+                                    </label>
+                                    <label className={styles.field}>
+                                        <span>Längengrad</span>
+                                        <input
+                                            value={formLongitude}
+                                            onChange={e => setFormLongitude(e.target.value)}
+                                            placeholder="13.40"
+                                        />
+                                    </label>
+                                    <label className={styles.field}>
+                                        <span>Name des Ortes (optional)</span>
+                                        <input
+                                            value={formPlaceName}
+                                            onChange={e => setFormPlaceName(e.target.value)}
+                                            placeholder="Zuhause"
+                                        />
+                                    </label>
+                                    <p className={styles.kindDescription}>
+                                        Diese Quelle rechnet, statt abzurufen: Sonnenhöhe, Azimut, Tag/Nacht und die
+                                        extraterrestrische Einstrahlung sind eine Funktion von Ort und Zeit — lückenlos
+                                        und ohne Netz. Das Verfahren steht als sosa:Procedure im Graphen, damit eine
+                                        gerechnete Reihe nie wie eine gemessene aussieht.
+                                    </p>
                                 </>
                             ) : formKind === 'obsidian-vault' ? (
                                 <label className={styles.field}>

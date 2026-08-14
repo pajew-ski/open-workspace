@@ -4,6 +4,25 @@ Der Kausal-Layer braucht zwei Dinge: eine Struktur (welcher Sensor misst
 welchen Raum) und Beobachtungen (was hat er gemessen). Home Assistant hat
 beides — behält aber nur eine Hälfte.
 
+Seit C5 kommen drei weitere Quellarten dazu, und der Erfassungslauf
+bleibt derselbe — was sich unterscheidet, ist nur das Holen der
+Rohpunkte:
+
+| Quellart | Woher die Werte kommen |
+|---|---|
+| `home-assistant` | Recorder-Historie über die REST-API |
+| `rest-timeseries` | offene APIs: Wetter, Strompreis, Einstrahlung, Feiertage |
+| `csv-observations` | eine CSV-Datei im Datenverzeichnis |
+| `solar-position` | **gerechnet** aus Ort und Zeit, ohne Netz |
+
+Die letzte ist die ungewöhnliche: Eine berechnete Größe ist eine
+Beobachtung (entschieden am 14.08.2026,
+[docs/spec-widersprueche.md](./spec-widersprueche.md) Eintrag 4) — und
+zwar eine verlässlichere als eine gemessene, weil sie weder Lücken noch
+Messfehler hat. Erkennbar bleibt sie am Verfahren im Graphen
+(`ssn:implements` → `sosa:Procedure`). Katalog und Rolle im Modell:
+[docs/kausalmodell.md](./kausalmodell.md).
+
 ## Was der Recorder wirklich aufbewahrt
 
 Die kurze Antwort auf „aggregiert bei längeren Zeiträumen, verliert aber
@@ -131,8 +150,10 @@ Frage, die vor jeder Studie steht — *wie weit reicht mein Bestand?*
 
 1. **Fenster bestimmen.** Ohne Wasserzeichen ist es ein Backfill über 14
    Tage (deckt den Recorder-Horizont mit Reserve). Mit Wasserzeichen nur
-   der Zuwachs.
-2. **Rohwerte holen**, in 24-Stunden-Scheiben.
+   der Zuwachs. Offene Quellen halten ihre Archive länger vor — dort ist
+   das Fenster eine Höflichkeit, keine Grenze.
+2. **Rohwerte holen** — bei Home Assistant in 24-Stunden-Scheiben, bei
+   einer offenen Quelle in den Fenstern, die ihre Abbildung erlaubt.
 3. **Verdichten** auf den Abtastabstand.
 4. **Anhängen**, strikt nach dem Wasserzeichen — jeder Lauf ist
    idempotent, ein Wiederholen erzeugt keine Dubletten.
@@ -140,7 +161,17 @@ Frage, die vor jeder Studie steht — *wie weit reicht mein Bestand?*
    abgelaufene Tage.
 6. **Zustand schreiben.**
 
-Ein Fehler bei einer Größe beendet nie den Lauf der anderen.
+Ein Fehler bei einer Größe beendet nie den Lauf der anderen — und seit
+C5 gilt das auch für die **Quellart**: Ein fehlender
+Home-Assistant-Zugang legt genau die Größen still, die ihn brauchen. Die
+Wetterreihen laufen weiter.
+
+**Woher die Quellart kommt.** Sie steht an der Größe (`schema:category`
+am `ow:Variable`-Knoten) und wird beim Aufnehmen aus dem **Import-Graphen
+der Quelle** abgeleitet: Der Sensor liegt im Graphen genau des
+Connectors, der ihn materialisiert hat, und die Registry weiß, welcher
+Art dieser Connector ist. Eine zweite Angabe am Knoten wäre eine zweite
+Wahrheit — und irgendwann falsch.
 
 ### Zwei Regeln der Verdichtung, die inhaltlich zählen
 
@@ -180,7 +211,10 @@ Zeitgeber, sondern ein Zufallsgenerator.
 
 `/graph/observations`. Aktoren stehen in der Kandidatenliste oben: Sie
 tragen die Treatment-Seite und sind genau das, was am schnellsten
-verloren geht.
+verloren geht. Offene Störgrößen stehen in derselben Liste — sie tragen
+im Modell dieselbe Rolle wie ein Sensor aus dem Haus, und eine zweite
+Liste gäbe es nur, damit sie irgendwann abweicht. Ein Merkmal
+(„Home Assistant" / „offene Quelle") sagt, woher eine Reihe kommt.
 
 **Womit anfangen**, wenn die Installation groß ist: Fenster- und
 Türkontakte, Bewegungsmelder, Anwesenheit, Heizungs- und Lichtschalter,

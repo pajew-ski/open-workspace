@@ -63,6 +63,12 @@ export type EntityType =
     | 'sensor'
     | 'observable'
     | 'variable'
+    /**
+     * Rechenverfahren hinter einer gerechneten Reihe (C5): Der
+     * Sonnenstand ist eine Beobachtung, aber keine Messung — und das
+     * muss im Graphen stehen, nicht in einer Fußnote der UI.
+     */
+    | 'procedure'
     /** Kausalmodell (CAUSAL_LAYER_SPEC §5.2 / C0): der DAG als Artefakt. */
     | 'causal-model'
     /**
@@ -71,7 +77,13 @@ export type EntityType =
      * `study` = der Lauf (inferiert, wird bei jedem Lauf ersetzt).
      */
     | 'estimand'
-    | 'study';
+    | 'study'
+    /**
+     * Chronik-Eintrag einer Studie: derselbe Lauf, aber **behauptet**
+     * statt inferiert — er hält fest, was wann gesagt wurde, und wird
+     * deshalb nie ersetzt (docs/spec-widersprueche.md, Eintrag 3).
+     */
+    | 'study-record';
 
 /**
  * Instanzweite Entitäten (SPEC §17.1 / M13). Nutzer, Gruppen, geteilte
@@ -131,12 +143,16 @@ export interface IriFactory {
     entity(type: EntityType, stableId: string): string;
     /**
      * Nutzerskalierte Graphen: workspace | public | presentation |
-     * causal-hypotheses. Der Hypothesen-Graph (CAUSAL_LAYER_SPEC §5.1)
-     * ist bewusst EIN Graph pro Nutzer und keiner pro Modell: Vorschläge
-     * entstehen modellübergreifend und dürfen nie versehentlich in einem
-     * Modell-Graphen landen, wo sie wie gesetzte Struktur aussähen (C2).
+     * causal-hypotheses | causal-archive. Der Hypothesen-Graph
+     * (CAUSAL_LAYER_SPEC §5.1) ist bewusst EIN Graph pro Nutzer und
+     * keiner pro Modell: Vorschläge entstehen modellübergreifend und
+     * dürfen nie versehentlich in einem Modell-Graphen landen, wo sie wie
+     * gesetzte Struktur aussähen (C2). Die Chronik (`causal-archive`)
+     * hält fest, was eine Frage wann gesagt hat — behauptet und
+     * persistiert, im Gegensatz zum flüchtigen Inferenz-Graphen
+     * (docs/spec-widersprueche.md, Eintrag 3).
      */
-    graph(name: 'workspace' | 'public' | 'presentation' | 'causal-hypotheses'): string;
+    graph(name: 'workspace' | 'public' | 'presentation' | 'causal-hypotheses' | 'causal-archive'): string;
     /** Import-Graph eines Connectors: `graph/<u>/import/<connectorId>`. */
     importGraph(connectorId: string): string;
     /** Kausalmodell-Graph: `graph/<u>/causal/<modelId>` (§5.1). */

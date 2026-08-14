@@ -24,6 +24,7 @@ import type { IriFactory } from '../../iri';
 import { factory, literal, namedNode } from '../../rdf';
 import { DCTERMS, OW, RDF, SCHEMA, SOSA } from '../../vocab';
 import type { ObservationKind } from '../../observations/types';
+import { slugify } from '../../observations/naming';
 import type { HaEntityRecord } from './api';
 
 /**
@@ -100,20 +101,11 @@ export function parseState(raw: string, kind: ObservationKind): ParsedState {
     return { value: state };
 }
 
-/** IRI-sicherer Slug aus einem Anzeigenamen. */
-export function slugify(value: string): string {
-    const slug = value
-        .toLowerCase()
-        .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '');
-    return slug === '' ? 'unbenannt' : slug;
-}
-
-/** Vorschlags-ID einer Variablen aus einer entity_id (stabil, kollisionsarm). */
-export function variableIdFor(entityId: string): string {
-    return slugify(entityId);
-}
+// Slug und Vorschlags-ID gelten für jede Quelle, nicht nur für Home
+// Assistant — sie liegen seit C5 in `observations/naming.ts`. Hier bleibt
+// die Adresse erhalten, damit kein Aufrufer wegen eines Umzugs umgebaut
+// werden muss.
+export { slugify, variableIdFor } from '../../observations/naming';
 
 export interface StructureMappingResult {
     quads: Quad[];
