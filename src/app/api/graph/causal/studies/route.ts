@@ -17,7 +17,9 @@
 
 import { NextResponse } from 'next/server';
 import { getRequestGraph } from '@/lib/graph/server/context';
+import { persistServerGraphSnapshot } from '@/lib/graph/server/instance';
 import { readCausalStudies } from '@/lib/graph/causal/study-graph';
+import { readCausalArchive } from '@/lib/graph/causal/archive';
 import { runCausalStudiesOnServer } from '@/lib/graph/causal/study-run.server';
 import { createNodeRuntimeAdapter } from '@/lib/platform/runtime/server';
 
@@ -48,6 +50,10 @@ export async function POST(): Promise<Response> {
         const summary = await runCausalStudiesOnServer({ store, iri }, {
             ...(identity.userId ? { actor: iri.principal('user', identity.userId) } : {}),
         });
+        // Der Inferenz-Graph wird nie persistiert (§8.1) — die Chronik
+        // schon: Ein Ereignis lässt sich nicht neu berechnen. Deshalb
+        // schreibt ein Lauf, der etwas festgehalten hat, den Snapshot.
+        if (summary.archived.length > 0) await persistServerGraphSnapshot();
         return NextResponse.json({
             scope: summary.scope,
             graph: summary.graph,
@@ -61,6 +67,11 @@ export async function POST(): Promise<Response> {
                 notIdentifiable: summary.results.filter(result => result.verdict === 'not-identifiable').length,
             },
             skipped: summary.skipped,
+            // Was sich gegenüber dem letzten festgehaltenen Stand geändert
+            // hat, ist in die Chronik gegangen (docs/spec-widersprueche.md,
+            // Eintrag 3). Unverändertes nicht — zwanzig gleiche Läufe sind
+            // keine Historie.
+            archived: summary.archived,
             // Was die Signaturprüfung nicht bestanden hat, wurde nicht
             // geschrieben (Invariante C7) — gemeldet wird es trotzdem.
             rejected: summary.rejected.map(entry => ({
@@ -68,6 +79,7 @@ export async function POST(): Promise<Response> {
                 messages: entry.violations.map(violation => violation.message),
             })),
             studies: await readCausalStudies({ store, iri }),
+            archive: await readCausalArchive({ store, iri }, { limit: 100 }),
         });
     } catch (error) {
         console.error('Causal Study Run Error:', error);

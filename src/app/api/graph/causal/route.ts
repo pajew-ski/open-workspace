@@ -21,10 +21,18 @@ import {
     listCausalModels,
 } from '@/lib/graph/causal/model';
 import { listEstimands } from '@/lib/graph/causal/estimand';
+import { causalArchiveGraph, readCausalArchive } from '@/lib/graph/causal/archive';
 import { causalInferredGraph, readCausalStudies } from '@/lib/graph/causal/study-graph';
 import { listVariables } from '@/lib/graph/observations/variables';
 import { validateStoreGraphs } from '@/lib/graph/reasoning/run';
 import { createNodeRuntimeAdapter } from '@/lib/platform/runtime/server';
+
+/**
+ * Wie viele Chronik-Einträge die Seite bekommt. Die Chronik wächst nur,
+ * wenn sich etwas ändert — trotzdem ist sie unbegrenzt, und eine Route
+ * gibt nichts Unbegrenztes aus.
+ */
+const ARCHIVE_LIMIT = 100;
 
 const createSchema = z.object({
     id: z.string().min(1).max(64),
@@ -80,6 +88,14 @@ export async function GET(): Promise<Response> {
         const studies = allowedGraphs.includes(inferredGraph)
             ? await readCausalStudies(handle)
             : [];
+        // Die Chronik (docs/spec-widersprueche.md, Eintrag 3) beantwortet
+        // die einzige Frage, die der flüchtige Inferenz-Graph nicht kann:
+        // Was sagte dieselbe Frage früher? Sie ist behauptet, persistiert
+        // und wird — wie alles andere — nur gezeigt, wenn der Aufrufer
+        // ihren Graphen lesen darf (Invariante C6).
+        const archive = allowedGraphs.includes(causalArchiveGraph(iri))
+            ? await readCausalArchive(handle, { limit: ARCHIVE_LIMIT })
+            : [];
         return NextResponse.json({
             models,
             hypotheses,
@@ -87,6 +103,7 @@ export async function GET(): Promise<Response> {
             observedVariables: observed,
             estimands,
             studies,
+            archive,
             // Invariante C9: Die Oberfläche zeigt nur, was diese Runtime
             // wirklich rechnen kann.
             causalTier: createNodeRuntimeAdapter().capabilities.causalTier,

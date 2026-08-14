@@ -486,9 +486,36 @@ wird quarantäniert statt behauptet.
 | **Feiertage (Nager.Date)** | zweiwertige Reihe, 1 an Feiertagen | Anwesenheits-Confounder, und exogen: kein Zustand des Hauses wirkt auf den Kalender zurück |
 | **Eigene Quelle** | beliebige JSON-/CSV-API | dieselbe Abbildung, direkt als JSON |
 
-„Sonnenstand" aus §10 liefert der Katalog als **Einstrahlung** und nicht
-als Azimut/Elevation — Begründung in
-[Eintrag 4](./spec-widersprueche.md).
+Dazu zwei Quellen, die nicht aus dem Netz kommen:
+
+| Connector | Liefert | Rolle |
+|---|---|---|
+| **`solar-position`** (gerechnet) | Sonnenhöhe, Azimut, Tag/Nacht, extraterrestrische Einstrahlung | Exogen und lückenlos — die geometrische Hälfte der Einstrahlung, während das Wetter die atmosphärische liefert |
+| **`csv-observations`** (Datei) | beliebige Spalten einer CSV-Datei | Eigene Messungen, Self-Tracking-Exporte, alles ohne API |
+
+### Eine berechnete Größe ist eine Beobachtung
+
+§10 nennt den Sonnenstand als Störgröße, aber es gibt dafür keine offene
+Zeitreihen-API — und es braucht auch keine: Azimut und Elevation sind eine
+Funktion von Ort und Zeit. Entschieden am 14.08.2026
+([Eintrag 4](./spec-widersprueche.md)): Eine gerechnete Reihe ist eine
+Beobachtung, und zwar eine **verlässlichere** als eine gemessene — exakt,
+lückenlos, ohne Ausfall.
+
+Zwei Dinge halten sie ehrlich:
+
+- Sie läuft über **denselben Connector-Vertrag** wie alles Externe. Keine
+  zweite Erfassungspipeline (Invariante 5), dieselbe Kandidatenliste,
+  derselbe Beobachtungs-Speicher.
+- Das **Verfahren steht im Graphen**: `ssn:implements` →
+  `sosa:Procedure`. SOSA lässt das ausdrücklich zu (ein Sensor ist dort
+  alles, was eine Beobachtung ausführt), und wer eine Reihe adjustiert,
+  sieht damit, dass sie aus Ort und Zeit entstand und nicht aus einem
+  Gerät.
+
+Bewusst nicht gerechnet: Refraktion und Parallaxe (für eine Störgröße ohne
+Belang) und jedes Atmosphärenmodell — was von der Einstrahlung ankommt,
+sagt das Wetter.
 
 ### Drei Formen, in denen offene Kataloge liefern
 
@@ -537,6 +564,39 @@ kalt heißt niedrige Innentemperatur. Ohne die Außentemperatur sieht
 Heizen deshalb wirkungslos oder schädlich aus; mit ihr steht die wahre
 Wirkung da. Genau dieser Fall ist die Abnahme
 (`tests/graph/open-data.test.ts`), von der Quelle bis zur Zahl.
+
+## Die Chronik: was dieselbe Frage früher sagte
+
+Der Inferenz-Graph trägt immer nur den **aktuellen** Stand: Er wird bei
+jedem Lauf vollständig ersetzt (Invariante C4) und nie persistiert
+(§8.1). Damit gab es keine Historie — „Was sagte dieselbe Frage vor drei
+Monaten?" war nicht beantwortbar. Entschieden am 14.08.2026
+([Eintrag 3](./spec-widersprueche.md)): Ein Lauf hält jede **Änderung**
+seines Ergebnisses in `graph/<u>/causal-archive` fest.
+
+**Warum das keine Invariante bricht.** Der Inferenz-Graph behauptet: *So
+ist es nach heutiger Datenlage.* Die Chronik behauptet: *Am 14.08.2026
+lief diese Frage auf Revision 7 und sagte das hier.* Das ist ein
+Ereignis, kein abgeleiteter Zustand — eine `prov:Activity`, die
+stattgefunden hat. Ereignisse werden behauptet, nicht inferiert; deshalb
+liegt die Chronik in einem behaupteten, persistierten Graphen
+(asserted ≠ inferred bleibt unberührt).
+
+Drei Regeln:
+
+1. **Der Effekt hängt nie am Reifier der Kante**, sondern an einem
+   studieneigenen Knoten. Sonst lägen alte Läufe über der aktuellen
+   Annahme, und `minEvidence` (C2), Adjustierung und Modellansicht
+   wüssten nicht mehr, welcher gilt.
+2. **Eingetragen wird nur, was sich geändert hat**: der erste Lauf einer
+   Frage, danach ein anderes Urteil, eine andere Modell-Revision oder ein
+   Effekt außerhalb des zuletzt festgehaltenen Intervalls. Zwanzig
+   identische Läufe sind keine Historie, sondern Rauschen.
+3. **Beantwortet wird eine Frage weiterhin nur aus dem Inferenz-Graphen.**
+   Die Chronik zeigt, was war — sie sagt nie, was gilt.
+
+Auf `/graph/causal` steht sie als „Chronik" an der jeweiligen Frage.
+Abnahme: `tests/graph/causal-archive.test.ts`.
 
 ## Revisionen: woran sich eine Studie später beruft
 
@@ -671,11 +731,13 @@ wer zu Hause war, ob das Fenster offen stand, wie viele Gäste da waren.
 
 ## Abweichungen von der Spec, zur Entscheidung vorgelegt
 
-§19 verbietet einer Session, die Spec neu zu verhandeln. Alle Stellen,
-die sich beim Bauen nicht wörtlich umsetzen ließen, stehen gesammelt in
-[docs/spec-widersprueche.md](./spec-widersprueche.md) — mit Auflösung,
-Stand und dem, was die Gegenrichtung kosten würde. Die drei aus C4 sind
-hier ausformuliert; geändert wurde an der Spec nichts.
+§19 verbietet einer Session, die Spec neu zu verhandeln — sie hält
+Widersprüche fest und legt sie vor. Alle sieben, die beim Bauen von C4 und
+C5 auffielen, sind am 14.08.2026 **entschieden** worden und stehen mit
+Auflösung, Begründung und den Kosten der Gegenrichtung in
+[docs/spec-widersprueche.md](./spec-widersprueche.md); wo die Entscheidung
+den Text der Spec betrifft, ist sie dort eingearbeitet. Die drei aus C4
+sind hier zusätzlich ausformuliert.
 
 1. **`ow:Estimand` und die Identifikationsstrategie (§5.2).** Die Spec
    nennt als Wertebereich `backdoor | frontdoor | iv | did | its | none`.
@@ -693,12 +755,8 @@ hier ausformuliert; geändert wurde an der Spec nichts.
    keine QUDT-IRI vorliegt. Ein eigener Term wäre eine zweite Schreibweise
    für dasselbe (Invariante 8). Eine QUDT-Abbildung bleibt möglich — sie
    gehört dann an die Variable, nicht an den Effekt.
-3. **Ergebnisse sind flüchtig (C4 + §8.1).** Studien liegen im
-   Inferenz-Graphen, werden bei jedem Lauf vollständig ersetzt (C4) und
-   nie persistiert (§8.1) — nach einem Neustart sind sie fort, bis
-   jemand rechnet. Das ist mit C7 vereinbar (reproduzierbar heißt
-   herstellbar, nicht aufbewahrt), heißt aber auch: Es gibt **keine
-   Historie** von Effekten über Modell-Revisionen hinweg. Wer „was sagte
-   dieselbe Frage vor drei Monaten?" beantworten will, braucht einen
-   dauerhaften Ort für abgeschlossene Studien — das wäre eine Erweiterung
-   der Spec, keine Auslegung, und ist deshalb nicht gebaut.
+3. **Ergebnisse waren flüchtig (C4 + §8.1)** — behoben. Studien liegen
+   weiterhin im Inferenz-Graphen, werden bei jedem Lauf ersetzt und nie
+   persistiert; die **Chronik** (siehe oben) hält daneben fest, was eine
+   Frage wann gesagt hat. Sie ist behauptet statt inferiert, weil ein
+   Lauf ein Ereignis ist und kein abgeleiteter Zustand.

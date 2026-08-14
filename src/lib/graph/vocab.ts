@@ -54,6 +54,15 @@ export const PREFIXES = {
      */
     sosa: 'http://www.w3.org/ns/sosa/',
     /**
+     * Semantic Sensor Network (W3C/OGC), der Oberbau von SOSA. Gebraucht
+     * für genau eine Aussage (C5): `ssn:implements` verbindet ein System
+     * mit dem **Verfahren**, das es ausführt. Eine gerechnete Reihe —
+     * Sonnenstand aus Ort und Zeit — ist in SOSA ein zulässiger Sensor,
+     * aber sie muss als gerechnet erkennbar bleiben, sonst sähe sie aus
+     * wie eine Messung.
+     */
+    ssn: 'http://www.w3.org/ns/ssn/',
+    /**
      * OBO Relations Ontology (CAUSAL_LAYER_SPEC Invariante C8). Trägt die
      * kausale Kante selbst: `RO_0002411 causally upstream of` ist eine
      * OWL-Objekteigenschaft mit definierter Semantik — Ursache geht der
@@ -335,12 +344,19 @@ export const SCHEMA = {
  */
 export const SOSA = {
     Platform: `${PREFIXES.sosa}Platform`,
+    /** Verfahren hinter einer gerechneten Reihe (C5). */
+    Procedure: `${PREFIXES.sosa}Procedure`,
     Sensor: `${PREFIXES.sosa}Sensor`,
     Actuator: `${PREFIXES.sosa}Actuator`,
     ObservableProperty: `${PREFIXES.sosa}ObservableProperty`,
     hosts: `${PREFIXES.sosa}hosts`,
     isHostedBy: `${PREFIXES.sosa}isHostedBy`,
     observes: `${PREFIXES.sosa}observes`,
+} as const;
+
+/** SSN — nur das, was SOSA nicht selbst trägt (C5). */
+export const SSN = {
+    implements: `${PREFIXES.ssn}implements`,
 } as const;
 
 /**
@@ -393,6 +409,8 @@ export const OWL = {
 
 export const DCTERMS = {
     identifier: `${PREFIXES.dcterms}identifier`,
+    /** Herkunft einer Quelle, wenn sie keine URL ist (Dateipfad, C5). */
+    source: `${PREFIXES.dcterms}source`,
     created: `${PREFIXES.dcterms}created`,
     modified: `${PREFIXES.dcterms}modified`,
 } as const;

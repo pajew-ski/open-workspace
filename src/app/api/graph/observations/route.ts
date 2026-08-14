@@ -24,6 +24,16 @@ const createSchema = z.object({
     retentionDays: z.number().int().min(0).max(36_500).default(0),
 }).strict();
 
+/**
+ * Quellarten, für die es eine Erfassung gibt (`observations/sources.ts`).
+ * Eine Quelle ohne Erfassung wird gar nicht erst aufgenommen: Sonst
+ * stünde im Graphen eine Größe, die bei jedem Lauf scheitert
+ * (Invariante 10 — keine Attrappen).
+ */
+const CAPTURABLE_SOURCE_KINDS: ReadonlySet<string> = new Set([
+    'home-assistant', 'rest-timeseries', 'csv-observations', 'solar-position',
+]);
+
 /** Sinnvolle Verdichtung je Skalenniveau, wenn der Aufrufer keine nennt. */
 function defaultAggregation(kind: 'numeric' | 'binary' | 'categorical'): 'last' | 'mean' {
     return kind === 'numeric' ? 'mean' : 'last';
@@ -80,14 +90,11 @@ export async function POST(request: Request): Promise<Response> {
                 { status: 404 },
             );
         }
-        // Eine Quelle, für die es keine Erfassung gibt, wird gar nicht erst
-        // aufgenommen: Sonst stünde im Graphen eine Größe, die bei jedem
-        // Lauf scheitert (Invariante 10 — keine Attrappen).
-        if (candidate.sourceKind !== 'home-assistant' && candidate.sourceKind !== 'rest-timeseries') {
+        if (!CAPTURABLE_SOURCE_KINDS.has(candidate.sourceKind)) {
             return NextResponse.json(
                 {
                     error: `Für die Quellart "${candidate.sourceKind}" gibt es keine Erfassung.`,
-                    details: 'Erfassbar sind heute Home Assistant und offene Zeitreihen (rest-timeseries).',
+                    details: `Erfassbar sind: ${[...CAPTURABLE_SOURCE_KINDS].join(', ')}.`,
                 },
                 { status: 422 },
             );

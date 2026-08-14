@@ -20,6 +20,7 @@ import { REFUTATION_LABEL, type RefutationMethod, type RefutationVerdict } from 
 import { ESTIMATOR_CHOICES, STUDY_VERDICT_LABEL, type StudyVerdict } from '@/lib/graph/causal/study';
 import type { EstimandView } from '@/lib/graph/causal/estimand';
 import type { StudyView } from '@/lib/graph/causal/study-graph';
+import type { ArchiveEntryView } from '@/lib/graph/causal/archive';
 import type { DagPath } from '@/lib/graph/causal/dsep';
 import styles from './page.module.css';
 
@@ -73,6 +74,8 @@ interface CausalResponse {
     observedVariables: ObservedVariable[];
     estimands: EstimandView[];
     studies: StudyView[];
+    /** Chronik: was dieselbe Frage früher gesagt hat (Widerspruch 3). */
+    archive: ArchiveEntryView[];
     causalTier: 'none' | 'graph' | 'full';
     validation: { conforms: boolean; graphs: string[]; results: ValidationResult[] };
 }
@@ -628,15 +631,17 @@ interface StudiesProps {
     model: CausalModelView;
     estimands: readonly EstimandView[];
     studies: readonly StudyView[];
+    archive: readonly ArchiveEntryView[];
     busy: boolean;
     onAsk(input: Record<string, unknown>): Promise<void>;
     onRemove(estimandId: string): Promise<void>;
 }
 
-function StudyCard({ model, estimand, study }: {
+function StudyCard({ model, estimand, study, history }: {
     model: CausalModelView;
     estimand: EstimandView;
     study?: StudyView;
+    history: readonly ArchiveEntryView[];
 }) {
     const verdict = study?.verdict;
     return (
@@ -730,6 +735,42 @@ function StudyCard({ model, estimand, study }: {
                 </ul>
             )}
 
+            {/*
+              * Die Chronik (docs/spec-widersprueche.md, Eintrag 3): Der
+              * Inferenz-Graph trägt immer nur den aktuellen Stand, und er
+              * wird bei jedem Lauf ersetzt. Was eine Frage FRÜHER gesagt
+              * hat, stünde damit nirgends — deshalb hält ein Lauf jede
+              * Änderung fest, und nur die.
+              */}
+            {history.length > 0 && (
+                <details className={styles.template}>
+                    <summary>Chronik ({history.length} {history.length === 1 ? 'Eintrag' : 'Einträge'})</summary>
+                    <ul className={styles.edgeList}>
+                        {history.map(entry => (
+                            <li key={entry.iri} className={styles.edgeRow}>
+                                <span className={styles.edgeText}>
+                                    {entry.effect
+                                        ? `${num(entry.effect.value)}${entry.effect.unit ? ` ${entry.effect.unit}` : ''} `
+                                            + `[${num(entry.effect.ciLow)}; ${num(entry.effect.ciHigh)}]`
+                                        : STUDY_VERDICT_LABEL[entry.verdict]}
+                                </span>
+                                <span className={styles.badges}>
+                                    <span className={styles.badge}>Rev. {entry.modelRevision}</span>
+                                    {entry.generatedAt && (
+                                        <span className={styles.badge}>
+                                            {new Date(entry.generatedAt).toLocaleDateString('de-DE')}
+                                        </span>
+                                    )}
+                                    {entry.softwareVersion && (
+                                        <span className={styles.badge}>v{entry.softwareVersion}</span>
+                                    )}
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                </details>
+            )}
+
             {study && (
                 <p className={styles.signature}>
                     Modell-Revision {study.modelRevision}
@@ -750,7 +791,7 @@ function StudyCard({ model, estimand, study }: {
  * (Invariante C1). Wer die Struktur darüber ändert, sieht sofort, dass
  * das Ergebnis darunter zu einer anderen Revision gehört.
  */
-function StudiesPanel({ model, estimands, studies, busy, onAsk, onRemove }: StudiesProps) {
+function StudiesPanel({ model, estimands, studies, archive, busy, onAsk, onRemove }: StudiesProps) {
     const [treatment, setTreatment] = useState('');
     const [outcome, setOutcome] = useState('');
     const [estimator, setEstimator] = useState<string>('auto');
@@ -795,7 +836,12 @@ function StudiesPanel({ model, estimands, studies, busy, onAsk, onRemove }: Stud
                 <ul className={styles.studyList}>
                     {estimands.map(estimand => (
                         <li key={estimand.id}>
-                            <StudyCard model={model} estimand={estimand} study={byId.get(estimand.id)} />
+                            <StudyCard
+                                model={model}
+                                estimand={estimand}
+                                study={byId.get(estimand.id)}
+                                history={archive.filter(entry => entry.estimandId === estimand.id)}
+                            />
                             <Button variant="ghost" disabled={busy} onClick={() => onRemove(estimand.id)}>
                                 <Trash2 size={16} aria-hidden="true" />
                                 <span className={styles.visuallyHidden}>Frage {estimand.name} </span>
@@ -911,6 +957,7 @@ interface ModelCardProps {
     observedVariables: readonly ObservedVariable[];
     estimands: readonly EstimandView[];
     studies: readonly StudyView[];
+    archive: readonly ArchiveEntryView[];
     busy: boolean;
     onOperation(operation: Record<string, unknown>): Promise<void>;
     onAsk(input: Record<string, unknown>): Promise<void>;
@@ -930,6 +977,7 @@ function ModelCard({
     observedVariables,
     estimands,
     studies,
+    archive,
     busy,
     onOperation,
     onAsk,
@@ -1052,6 +1100,7 @@ function ModelCard({
                 model={model}
                 estimands={estimands}
                 studies={studies}
+                archive={archive}
                 busy={busy}
                 onAsk={onAsk}
                 onRemove={onRemoveEstimand}
@@ -1390,6 +1439,7 @@ export default function GraphCausalPage() {
                                     observedVariables={data?.observedVariables ?? []}
                                     estimands={estimands.filter(estimand => estimand.modelId === model.id)}
                                     studies={studies}
+                                    archive={data?.archive ?? []}
                                     busy={busy}
                                     onOperation={operation => runOperation(model.id, operation)}
                                     onAsk={askQuestion}

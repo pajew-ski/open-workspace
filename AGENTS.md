@@ -118,17 +118,30 @@
 >   `ow:confoundingShift`), nie `ow:effectSize`. Details:
 >   [docs/kausalmodell.md](./docs/kausalmodell.md).
 >
+> - **Die Widersprüche der Spec sind entschieden** (14.08.2026, alle
+>   sieben in
+>   [docs/spec-widersprueche.md](./docs/spec-widersprueche.md); wo die
+>   Entscheidung den Text betrifft, ist sie in die Spec eingearbeitet).
+>   Drei brauchten Code: **`solar-position`** — eine berechnete Größe IST
+>   eine Beobachtung, und zwar eine verlässlichere als eine gemessene;
+>   Sonnenhöhe, Azimut, Tag/Nacht und extraterrestrische Einstrahlung
+>   werden aus Ort und Zeit gerechnet (Astronomical Almanac, Fehler unter
+>   0,01°), laufen über den EINEN Vertrag und bleiben durch das Verfahren
+>   im Graphen erkennbar (`ssn:implements` → `sosa:Procedure`).
+>   **`csv-observations`** — der Datei- statt des Netz-Wegs, Pfad-Politik
+>   wie `obsidian-vault`, Skalenniveau je Spalte aus dem Bestand statt aus
+>   dem Spaltennamen. Und die **Studien-Chronik**
+>   (`graph/<u>/causal-archive`): Sie hält fest, was eine Frage wann
+>   gesagt hat — behauptet und persistiert, weil ein Lauf ein Ereignis ist
+>   und kein abgeleiteter Zustand. Der Effekt eines Eintrags hängt NIE am
+>   Reifier der Kante, eingetragen wird nur eine Änderung, und beantwortet
+>   wird eine Frage weiterhin nur aus dem Inferenz-Graphen.
+>
 > **Nicht gebaut** und deshalb nirgends in der UI: Hypothesen-Erzeugung
 > (C6), Frontdoor- und IV-**Schätzer** (identifiziert, aber nicht
-> gerechnet — die Studie sagt es), Struktur-Lernen, randomisierte
-> Eingriffe und `csv-observations` (in §10 genannt, aber ohne
-> Meilenstein). Was es an offenen Quellen nicht gibt, gibt es weiterhin
-> nicht: wer zu Hause war, ob das Fenster offen stand.
->
-> **Widersprüche der Spec** stehen gesammelt in
-> [docs/spec-widersprueche.md](./docs/spec-widersprueche.md) — je mit
-> Auflösung, Stand und den Kosten der Gegenrichtung. Geändert wurde an
-> der Spec nichts (§19).
+> gerechnet — die Studie sagt es), Struktur-Lernen und randomisierte
+> Eingriffe. Was es an Quellen nicht gibt, gibt es weiterhin nicht: wer zu
+> Hause war, ob das Fenster offen stand.
 >
 > **Nächster Meilenstein: C6** (neurosymbolische Schleife, SPEC §8 —
 > LLM-Hypothesen mit Provenienz, symbolische Filter, Vergleich der drei
@@ -683,7 +696,7 @@ und backend-unabhängig** — Details in [docs/ai-platform.md](./docs/ai-platfor
 - **UI**: AI-Hub (`/ai`), Skills (`/skills`), MCP-Verwaltung in `/tools`,
   A2A-Discovery in `/agents`, ModelPicker in beiden Chat-Oberflächen.
 
-Build, Typecheck, Lint (0 Errors), 699 Unit-Tests (plus der Live-Test
+Build, Typecheck, Lint (0 Errors), 717 Unit-Tests (plus der Live-Test
 gegen Wikidata, der ohne `OW_FEDERATION_LIVE=1` sichtbar übersprungen
 wird) und das **blockierende E2E-Gate** (`e2e/mobile-navigation`,
 `e2e/mobile-ux`, `e2e/a11y` inkl. der Seiten `/ai`, `/skills`, `/tools`,
@@ -707,7 +720,8 @@ vorinstallierten Browser (die Konfiguration wertet die Variable aus).
    [docs/kausalmodell.md](./docs/kausalmodell.md) (was gebaut ist und
    warum) sowie
    [docs/spec-widersprueche.md](./docs/spec-widersprueche.md) (wo die
-   Spec sich widerspricht und wie es beim Bauen ausgelegt wurde)
+   Spec sich widersprach, wie entschieden wurde und was die
+   Gegenrichtung gekostet hätte)
 2. [docs/multi-user.md](./docs/multi-user.md) — Identität, ACL und
    Durchsetzung (§17) — Pflicht, sobald ein Lesepfad berührt wird
 3. [docs/selbstmodell.md](./docs/selbstmodell.md) — Selbstmodell,
@@ -739,8 +753,8 @@ quellenagnostische Erfassung, Adjustierungs-Kontrast als Nachweis) sind
 gebaut; **als Nächstes C6** (neurosymbolische Schleife, §8) in genau
 dieser Reihenfolge (Begründung in §18). Der offene Stand steht
 abhakbar in [TODO.md](./TODO.md) unter „Kausal-Layer" — er ist die eine
-Quelle dafür, was noch fehlt; Widersprüche der Spec stehen in
-[docs/spec-widersprueche.md](./docs/spec-widersprueche.md).
+Quelle dafür, was noch fehlt; die entschiedenen Widersprüche der Spec
+stehen in [docs/spec-widersprueche.md](./docs/spec-widersprueche.md).
 
 Unabhängig davon weiterhin offen, ohne Reihenfolge zum Kausal-Layer:
 

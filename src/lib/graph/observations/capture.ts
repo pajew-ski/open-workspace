@@ -225,6 +225,7 @@ export async function captureObservations(
     // Scheitert eine Art, scheitert genau das, was sie braucht — seit C5
     // laufen Größen verschiedener Herkunft nebeneinander.
     const sources = new SourceRegistry(handle, {
+        files: options.files,
         ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
         ...(options.signal ? { signal: options.signal } : {}),
         ...(options.clientOverride ? { homeAssistantClient: options.clientOverride } : {}),
