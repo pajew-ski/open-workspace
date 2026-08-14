@@ -7,6 +7,7 @@ import { Archive, BookOpen, Bot, CloudDownload, FileCode2, GitBranch, LayoutDash
 import { AppShell } from '@/components/layout';
 import { Button, ConfirmDialog, FloatingActionButton } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
+import { REST_PRESETS } from '@/lib/graph/connectors/rest-timeseries/presets';
 import styles from './page.module.css';
 
 /**
@@ -142,6 +143,15 @@ export default function GraphConnectorsPage() {
     const [formCardUrl, setFormCardUrl] = useState('');
     const [formMcpUrl, setFormMcpUrl] = useState('');
     const [formMcpTransport, setFormMcpTransport] = useState<'auto' | 'streamable-http' | 'sse'>('auto');
+    const [formHaUrl, setFormHaUrl] = useState('');
+    const [formHaTokenEnv, setFormHaTokenEnv] = useState('');
+    const [formPreset, setFormPreset] = useState(REST_PRESETS[0].id);
+    const [formPresetParams, setFormPresetParams] = useState<Record<string, string>>({});
+    const [formMapping, setFormMapping] = useState('');
+
+    const preset = useMemo(() => REST_PRESETS.find(entry => entry.id === formPreset) ?? null, [formPreset]);
+    const presetValue = (key: string): string =>
+        formPresetParams[key] ?? preset?.params.find(param => param.key === key)?.default ?? '';
 
     const { data, isLoading } = useQuery<{ connectors: ConnectorView[]; kinds: ConnectorKindInfo[] }>({
         queryKey: ['graph-connectors'],
@@ -168,10 +178,22 @@ export default function GraphConnectorsPage() {
         setFormCardUrl('');
         setFormMcpUrl('');
         setFormMcpTransport('auto');
+        setFormHaUrl('');
+        setFormHaTokenEnv('');
+        setFormPreset(REST_PRESETS[0].id);
+        setFormPresetParams({});
+        setFormMapping('');
     };
 
     const configForForm = (): unknown => {
         if (formKind === 'rdf-file') return { url: formUrl.trim() };
+        if (formKind === 'home-assistant') return { url: formHaUrl.trim(), tokenEnv: formHaTokenEnv.trim() };
+        if (formKind === 'rest-timeseries') {
+            if (formPreset === 'custom') return { preset: 'custom', mapping: formMapping.trim() };
+            const params: Record<string, string> = {};
+            for (const param of preset?.params ?? []) params[param.key] = presetValue(param.key).trim();
+            return { preset: formPreset, params };
+        }
         if (formKind === 'a2a-agent-card') return { url: formCardUrl.trim() };
         if (formKind === 'mcp-server') return { url: formMcpUrl.trim(), transport: formMcpTransport };
         if (formKind === 'obsidian-vault') return { path: formVaultPath.trim() };
@@ -192,7 +214,15 @@ export default function GraphConnectorsPage() {
     };
 
     const formReady = formName.trim() !== '' && (
-        formKind === 'rdf-file' ? formUrl.trim() !== ''
+        // Home Assistant kommt im Add-on ohne jede Angabe aus (Zugang über
+        // den Supervisor) — deshalb ist die Art hier absichtlich „immer
+        // bereit".
+        formKind === 'home-assistant' ? true
+        : formKind === 'rest-timeseries'
+            ? (formPreset === 'custom'
+                ? formMapping.trim() !== ''
+                : (preset?.params ?? []).every(param => !param.required || presetValue(param.key).trim() !== ''))
+        : formKind === 'rdf-file' ? formUrl.trim() !== ''
         : formKind === 'a2a-agent-card' ? formCardUrl.trim() !== ''
         : formKind === 'mcp-server' ? formMcpUrl.trim() !== ''
         : formKind === 'obsidian-vault' ? formVaultPath.trim() !== ''
@@ -487,6 +517,90 @@ export default function GraphConnectorsPage() {
                                             <option value="sse">sse (Legacy)</option>
                                         </select>
                                     </label>
+                                </>
+                            ) : formKind === 'home-assistant' ? (
+                                <>
+                                    <label className={styles.field}>
+                                        <span>Basis-URL (leer im Add-on — dann läuft der Zugang über den Supervisor)</span>
+                                        <input
+                                            type="url"
+                                            value={formHaUrl}
+                                            onChange={e => setFormHaUrl(e.target.value)}
+                                            placeholder="http://homeassistant.local:8123"
+                                        />
+                                    </label>
+                                    <label className={styles.field}>
+                                        <span>Umgebungsvariable mit dem Long-Lived Access Token (leer im Add-on)</span>
+                                        <input
+                                            value={formHaTokenEnv}
+                                            onChange={e => setFormHaTokenEnv(e.target.value)}
+                                            placeholder="HA_TOKEN"
+                                        />
+                                    </label>
+                                </>
+                            ) : formKind === 'rest-timeseries' ? (
+                                <>
+                                    <label className={styles.field}>
+                                        <span>Vorlage</span>
+                                        <select value={formPreset} onChange={e => setFormPreset(e.target.value)}>
+                                            {REST_PRESETS.map(entry => (
+                                                <option key={entry.id} value={entry.id}>{entry.label}</option>
+                                            ))}
+                                            <option value="custom">Eigene Quelle (JSON-Abbildung)</option>
+                                        </select>
+                                    </label>
+                                    {preset ? (
+                                        <p className={styles.kindDescription}>
+                                            {preset.description} <strong>Rolle im Kausalmodell:</strong> {preset.causalRole}
+                                        </p>
+                                    ) : (
+                                        <p className={styles.kindDescription}>
+                                            Beschreibung einer eigenen JSON- oder CSV-API: Endpunkt, Zeitfenster-Parameter,
+                                            Pfad zur Reihe und die Felder je Größe.
+                                        </p>
+                                    )}
+                                    {formPreset === 'custom' ? (
+                                        <label className={styles.field}>
+                                            <span>Abbildung (JSON)</span>
+                                            <textarea
+                                                value={formMapping}
+                                                onChange={e => setFormMapping(e.target.value)}
+                                                rows={8}
+                                                placeholder={'{"label":"Meine Quelle","url":"https://…","timeField":"t","series":[…]}'}
+                                            />
+                                        </label>
+                                    ) : (preset?.params ?? []).map(param => (
+                                        <label className={styles.field} key={param.key}>
+                                            <span>{param.label}</span>
+                                            {param.options ? (
+                                                <select
+                                                    value={presetValue(param.key)}
+                                                    onChange={e => setFormPresetParams(current => ({
+                                                        ...current,
+                                                        [param.key]: e.target.value,
+                                                    }))}
+                                                >
+                                                    {param.options.map(option => (
+                                                        <option key={option.value} value={option.value}>{option.label}</option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <input
+                                                    value={presetValue(param.key)}
+                                                    onChange={e => setFormPresetParams(current => ({
+                                                        ...current,
+                                                        [param.key]: e.target.value,
+                                                    }))}
+                                                    placeholder={param.placeholder ?? ''}
+                                                />
+                                            )}
+                                        </label>
+                                    ))}
+                                    <p className={styles.kindDescription}>
+                                        Importiert wird das Angebot der Quelle. Die Messwerte holt danach die Erfassung
+                                        unter <Link href="/graph/observations">Graph → Beobachtungen</Link> — im Store
+                                        landet nie ein Messwert.
+                                    </p>
                                 </>
                             ) : formKind === 'obsidian-vault' ? (
                                 <label className={styles.field}>

@@ -685,6 +685,31 @@ function StudyCard({ model, estimand, study }: {
                 </p>
             )}
 
+            {/*
+              * Was die Adjustierung geändert hat (C5). Der rohe Wert heißt hier
+              * bewusst „Zusammenhang" und nie „Effekt": Er ist die Zahl, die
+              * ohne Störgröße herauskäme, und genau deshalb steht sie da —
+              * nicht als zweites Ergebnis, sondern als Beleg dafür, was das
+              * Einbinden der Quelle gebracht hat.
+              */}
+            {study?.contrast && (
+                <div className={styles.contrast}>
+                    <p className={styles.contrastHead}>
+                        Ohne Adjustierung:{' '}
+                        <strong>
+                            {study.contrast.crude !== undefined
+                                ? `${num(study.contrast.crude)}${study.effect?.unit ? ` ${study.effect.unit}` : ''}`
+                                : 'nicht zu rechnen'}
+                        </strong>
+                        {study.contrast.crudeCiLow !== undefined && study.contrast.crudeCiHigh !== undefined
+                            && ` [${num(study.contrast.crudeCiLow)}; ${num(study.contrast.crudeCiHigh)}]`}
+                        {study.contrast.shift !== undefined
+                            && ` · Verschiebung durch Adjustierung ${num(study.contrast.shift)}`}
+                    </p>
+                    <p className={styles.contrastText}>{study.contrast.explanation}</p>
+                </div>
+            )}
+
             {study && study.refutations.length > 0 && (
                 <ul className={styles.refutationList}>
                     {study.refutations.map(refutation => (

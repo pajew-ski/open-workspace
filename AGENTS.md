@@ -4,9 +4,9 @@
 
 ## Hier weitermachen (Einstieg für neue Sessions)
 
-> **Neu seit 2026-08-13 — Kausal-Layer, C3, C0, C1, C2 und C4 gebaut.**
+> **Neu seit 2026-08-14 — Kausal-Layer, C3, C0, C1, C2, C4 und C5 gebaut.**
 > Neben dem Graph-Kern gilt [CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md)
-> (verbindlich für C0–C5). Umgesetzt sind fünf Meilensteine:
+> (verbindlich für C0–C5). Umgesetzt sind sechs Meilensteine:
 >
 > - **C3, die Erfassung** — zuerst, weil als einzige zeitkritisch: Home
 >   Assistant verwirft vollständige Zustandswechsel nach
@@ -95,18 +95,47 @@
 >   mit Negativtest. Details:
 >   [docs/kausalmodell.md](./docs/kausalmodell.md).
 >
+> - **C5, die Störgrößen aus offenen Quellen** — die Lücke, die C4
+>   sichtbar macht: Der häufigste Grund für „nicht identifizierbar" ist
+>   keine fehlende Methode, sondern eine fehlende Störgröße. Der
+>   Connector `rest-timeseries` holt sie über den EINEN Vertrag und
+>   materialisiert dabei die **Angebotsseite**, nie einen Messwert
+>   (Invariante C3, dieselbe Trennung wie bei `home-assistant` in C3);
+>   die Revision folgt der Struktur, nicht der Zahl. Die Abbildung
+>   (`mapping.ts`) ist pur und deklarativ und kennt die drei Formen
+>   offener Kataloge — `points`, `columns`, `intervals` (mit dem Wert
+>   **außerhalb** der Zeitspanne, ohne den eine Feiertagsreihe nur aus
+>   Einsen bestünde). Katalog: Wetter (DWD/Bright Sky), Strompreis (EPEX
+>   Spot/aWATTar), Einstrahlung (Open-Meteo), Feiertage (Nager.Date),
+>   dazu `custom` ohne neuen Code. Die **Erfassung ist quellenagnostisch**
+>   geworden (`observations/sources.ts`): Die Quellart kommt aus dem
+>   Import-Graphen des Connectors, und eine unerreichbare Quellart legt
+>   nur ihre eigenen Größen still. Der Nachweis ist der
+>   **Adjustierungs-Kontrast**: dieselbe Frage, dasselbe Panel, derselbe
+>   Startwert — einmal ohne Adjustierung. Der rohe Wert ist ein
+>   **Zusammenhang, keine Wirkung** und trägt deshalb eigene Terme
+>   (`ow:ConfoundingContrast`, `ow:crudeAssociation`,
+>   `ow:confoundingShift`), nie `ow:effectSize`. Details:
+>   [docs/kausalmodell.md](./docs/kausalmodell.md).
+>
 > **Nicht gebaut** und deshalb nirgends in der UI: Hypothesen-Erzeugung
 > (C6), Frontdoor- und IV-**Schätzer** (identifiziert, aber nicht
-> gerechnet — die Studie sagt es), Struktur-Lernen und randomisierte
-> Eingriffe. Open-Data-Confounder gibt es noch nicht, und genau deshalb
-> endet manche Frage bei „nicht identifizierbar".
+> gerechnet — die Studie sagt es), Struktur-Lernen, randomisierte
+> Eingriffe und `csv-observations` (in §10 genannt, aber ohne
+> Meilenstein). Was es an offenen Quellen nicht gibt, gibt es weiterhin
+> nicht: wer zu Hause war, ob das Fenster offen stand.
 >
-> **Nächster Meilenstein: C5** (Open-Data-Connector `rest-timeseries`,
-> SPEC §10/§11 — Wetter, Strompreis, Sonnenstand, Feiertage: die
-> Störgrößen der Hausdomäne, und damit die Lücke, die C4 sichtbar macht),
-> danach C6. Reihenfolge und Begründung in CAUSAL_LAYER_SPEC §18,
-> Arbeitsmodus in §19, offener Stand mit Abnahmen in TODO.md unter
-> „Kausal-Layer". C7 und C8 nur nach ausdrücklicher Freigabe.
+> **Widersprüche der Spec** stehen gesammelt in
+> [docs/spec-widersprueche.md](./docs/spec-widersprueche.md) — je mit
+> Auflösung, Stand und den Kosten der Gegenrichtung. Geändert wurde an
+> der Spec nichts (§19).
+>
+> **Nächster Meilenstein: C6** (neurosymbolische Schleife, SPEC §8 —
+> LLM-Hypothesen mit Provenienz, symbolische Filter, Vergleich der drei
+> Strukturquellen, Widerspruchs-UI). Reihenfolge und Begründung in
+> CAUSAL_LAYER_SPEC §18, Arbeitsmodus in §19, offener Stand mit Abnahmen
+> in TODO.md unter „Kausal-Layer". C7 und C8 nur nach ausdrücklicher
+> Freigabe.
 
 **Stand 2026-08-10 (12. Ausbaustufe, Graph Core M0–M14 inkl. §12.4 und
 §18 — der Vollausbau der Spec ist damit abgeschlossen)**: Der
@@ -123,7 +152,7 @@ Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
   (SPARQL 1.1 Query/Update, RDF 1.2/RDF-star, Quads) + ehrliches
   In-Memory-Test-Double. Kein Default-Graph-Schreibpfad — jedes Tripel hat
   einen Named Graph, per Store erzwungen.
-- **Vokabular** (`ontology/ow.ttl` + `src/lib/graph/vocab.ts`): 96 eigene
+- **Vokabular** (`ontology/ow.ttl` + `src/lib/graph/vocab.ts`): 126 eigene
   Terme unter der produktweit konstanten Base
   `https://pajew-ski.github.io/open-workspace/ns/v1#`, jeder mit
   de/en-Labels und Begründung. CI-Check `bun run check:ontology` erzwingt
@@ -654,7 +683,7 @@ und backend-unabhängig** — Details in [docs/ai-platform.md](./docs/ai-platfor
 - **UI**: AI-Hub (`/ai`), Skills (`/skills`), MCP-Verwaltung in `/tools`,
   A2A-Discovery in `/agents`, ModelPicker in beiden Chat-Oberflächen.
 
-Build, Typecheck, Lint (0 Errors), 679 Unit-Tests (plus der Live-Test
+Build, Typecheck, Lint (0 Errors), 699 Unit-Tests (plus der Live-Test
 gegen Wikidata, der ohne `OW_FEDERATION_LIVE=1` sichtbar übersprungen
 wird) und das **blockierende E2E-Gate** (`e2e/mobile-navigation`,
 `e2e/mobile-ux`, `e2e/a11y` inkl. der Seiten `/ai`, `/skills`, `/tools`,
@@ -676,7 +705,9 @@ vorinstallierten Browser (die Konfiguration wertet die Variable aus).
    — Pflicht für jede Arbeit am Kausal-Layer, zusammen mit
    [docs/beobachtungen.md](./docs/beobachtungen.md) und
    [docs/kausalmodell.md](./docs/kausalmodell.md) (was gebaut ist und
-   warum)
+   warum) sowie
+   [docs/spec-widersprueche.md](./docs/spec-widersprueche.md) (wo die
+   Spec sich widerspricht und wie es beim Bauen ausgelegt wurde)
 2. [docs/multi-user.md](./docs/multi-user.md) — Identität, ACL und
    Durchsetzung (§17) — Pflicht, sobald ein Lesepfad berührt wird
 3. [docs/selbstmodell.md](./docs/selbstmodell.md) — Selbstmodell,
@@ -702,12 +733,14 @@ dem DAG statt der semantischen Nachbarschaft, `explain` trägt den Weg) und
 C4 (Schätzung + Refutation: fünf Tier-1-Schätzer, Konfidenz aus dem
 Moving Block Bootstrap, sechs Falsifikationsversuche, `ow:CausalStudy` mit
 erzwungener Reproduktions-Signatur — ein Effekt ohne bestandene Refutation
-wird in keiner Form ausgegeben) sind gebaut; **als Nächstes C5**
-(Open-Data-Connector `rest-timeseries` — die Störgrößen der Hausdomäne),
-danach C6 in genau dieser Reihenfolge (Begründung in
-§18). Der offene Stand steht
+wird in keiner Form ausgegeben) und C5 (Open-Data-Connector
+`rest-timeseries`: die Störgrößen der Hausdomäne über den EINEN Vertrag,
+quellenagnostische Erfassung, Adjustierungs-Kontrast als Nachweis) sind
+gebaut; **als Nächstes C6** (neurosymbolische Schleife, §8) in genau
+dieser Reihenfolge (Begründung in §18). Der offene Stand steht
 abhakbar in [TODO.md](./TODO.md) unter „Kausal-Layer" — er ist die eine
-Quelle dafür, was noch fehlt.
+Quelle dafür, was noch fehlt; Widersprüche der Spec stehen in
+[docs/spec-widersprueche.md](./docs/spec-widersprueche.md).
 
 Unabhängig davon weiterhin offen, ohne Reihenfolge zum Kausal-Layer:
 
