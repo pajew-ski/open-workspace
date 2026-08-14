@@ -565,6 +565,168 @@ Heizen deshalb wirkungslos oder schädlich aus; mit ihr steht die wahre
 Wirkung da. Genau dieser Fall ist die Abnahme
 (`tests/graph/open-data.test.ts`), von der Quelle bis zur Zahl.
 
+## Die neurosymbolische Schleife (C6)
+
+Bis C5 hat die Struktur ausschließlich ein Mensch geschrieben. Seit C6
+schlagen Quellen vor — und keine davon schreibt ins Modell.
+
+SPEC §8 teilt die Arbeit in drei Rollen mit klarer Beweislast:
+
+> **Das LLM schlägt vor. Die Symbolik richtet. Die Daten entscheiden.**
+
+Genau so ist es gebaut, und die Trennung ist an den Named Graphs
+ablesbar: Vorschläge gehen nach `graph/<u>/causal-hypotheses`, gesetzte
+Struktur steht im Modell-Graphen, Zahlen im Inferenz-Graphen. Zwischen der
+ersten und der zweiten Stelle gibt es genau **einen** Weg, und der prüft.
+
+### Drei Quellen, je mit eigener Herkunft
+
+| Quelle | Was sie liefert | Kantenklasse | Ohne sie |
+|---|---|---|---|
+| `llm` | Kandidatenkanten und vor allem **Störgrößen** aus Namen, Einheiten, Orten und Quellarten | `hypothesis` | „Kein Sprachmodell konfiguriert" — kein Vorschlag, keine Attrappe |
+| `topology` | Aktor → Sensor am selben Gerät oder im selben Bereich, aus der Geräte-Registry (C3) | `structural` | nichts; sie braucht weder Netz noch Modell |
+| `wikidata` | `P828 has cause` / `P1542 has effect` zwischen den **Größenarten** (`device_class`), über die Föderation (M11), ohne Import | `hypothesis` | „Kein Wikidata-Endpoint registriert" |
+
+Die Kantenklasse hängt an der Quelle und ist nicht wählbar — sonst könnte
+ein Vorschlag sich als Struktur ausgeben (Invariante C2). Dass die
+Topologie `structural` liefert, ist keine Großzügigkeit: Ein Heizkörper
+und ein Thermometer im selben Raum sind eine Ablesung der Installation,
+keine Vermutung. Die Regel ist bewusst eng — nur Aktor → Sensor, nur
+gleiches Gerät oder gleicher Bereich. Ein Raum weiter wäre schon Physik,
+und Physik behauptet dieses Verfahren nicht.
+
+**Wikidata lesen ist nicht Wikidata übernehmen.** C0 hat `P828`/`P1542`
+als eigenes Kantenvokabular geprüft und verworfen, weil sie außerhalb von
+Wikidata nicht definiert sind. Sie dort zu **lesen**, wo sie definiert
+sind, ist die Gegenprobe dazu und kein Rückfall: Was ankommt, wird auf
+`obo:RO_0002411` abgebildet und trägt `hypothesis`.
+
+### Herkunft ist Pflicht
+
+§8 verlangt die Zuschreibung „auf Modell und Prompt-Version". Beides hängt
+an einem `prov:SoftwareAgent` je Modell und Quelle:
+
+```turtle
+# in graph/<u>/causal-hypotheses
+<…/link/hypothesis/wohnung~llm~heizung~temperatur>
+    rdf:reifies      <<( <…/variable/heizung> obo:RO_0002411 <…/variable/temperatur> )>> ;
+    ow:edgeClass         "hypothesis" ;
+    ow:evidenceLevel     "hypothesis" ;
+    ow:temporalLag       "PT30M"^^xsd:duration ;
+    schema:isPartOf      <…/causal-model/wohnung> ;
+    ow:hypothesisVerdict "accepted" ;
+    schema:description   "Heizen erwärmt den Raum. Identifizierbar durch …"@de ;
+    prov:wasAttributedTo <…/agent/causal/wohnung/llm> ;
+    prov:generatedAtTime "2026-08-14T10:00:00Z"^^xsd:dateTime .
+
+<…/agent/causal/wohnung/llm> a prov:SoftwareAgent ;
+    dcterms:identifier    "llm" ;
+    schema:name           "qwen3:14b" ;      # das Modell
+    schema:softwareVersion "1" .             # die Prompt-Version
+```
+
+Ein Vorschlag ohne Agenten fällt durch die Shapes. Das ist keine Pedanterie:
+Sobald jemand die Modellwahl ändert, wäre sonst nicht mehr feststellbar, ob
+ein schlechter Vorschlag am Modell oder an der Frage lag — und der
+Quellenvergleich wäre wertlos.
+
+**Ein Reifier je Quelle, nicht je Kante.** Schlagen Sprachmodell und
+Topologie dieselbe Kante vor, entstehen zwei benannte Reifier auf
+dasselbe Triple. Genau dafür gibt es benannte Reifier in RDF 1.2 (§5.3),
+und daraus entsteht der Quellenvergleich ohne eine einzige Nebentabelle.
+
+### Die Filter, in der Reihenfolge aus §8
+
+| # | Filter | Was er entscheidet | Wirkung |
+|---|---|---|---|
+| 1 | `cycle` | Schlösse die Kante einen Kreis? | verwirft, mit dem Kreis im Klartext |
+| 2 | `shacl` | Typverträglichkeit, Klassen, Form des Zeitversatzes | verwirft, mit der Shape-Meldung |
+| 3 | `temporal` | Kann die Ursache der Wirkung vorausgehen? | verwirft |
+| 4 | `topology` | Gibt es einen Pfad zwischen den Orten? | verwirft |
+| 5 | Identifizierbarkeit | Wäre der Effekt aus den erfassten Größen bestimmbar? | **verwirft nicht** — Urteil `open` samt fehlender Größe |
+
+Der erste, der greift, entscheidet. Weiterzuprüfen wäre nicht nur
+Verschwendung, sondern irreführend: Eine Begründung, die gleichzeitig
+„schließt einen Kreis" und „nicht identifizierbar" sagt, lenkt von der
+Ursache ab, die man beheben müsste.
+
+Die Filter 1, 3, 4 und 5 liegen im **puren** Tier-1-Kern
+(`src/lib/graph/causal/filters.ts`) — kein Store, kein Netz, keine Route,
+per Test erzwungen. Filter 2 braucht `graph/shapes` und läuft deshalb im
+Schreibpfad.
+
+**Was „temporal" heißt — und was nicht.** Aus Zeitstempeln allein sind
+zwei Dinge entscheidbar: das Vorzeichen des Zeitversatzes (ein negativer
+sagt, die Wirkung ginge der Ursache voraus) und die Abdeckung — wurde die
+Ursache überhaupt zu einer Zeit erfasst, die einer erfassten Wirkung
+vorausgeht? Beispiel: Die Heizung wird erst seit Mai erfasst, der
+Temperatursturz nur bis Februar; dann kann keine erfasste Ursache einer
+erfassten Wirkung vorausgehen, und der Vorschlag ist zeitlich unmöglich.
+Was daraus **nicht** folgt, ist die Richtung der Wirkung. Sie aus
+Korrelationen zu erschließen wäre Struktur-Lernen und damit C8
+([Eintrag 11](./spec-widersprueche.md)).
+
+**Warum Identifizierbarkeit nicht ablehnt.** Sie hängt daran, welche
+Störgrößen *erfasst* sind — eine Frage der Datenlage, nicht der Struktur.
+Einen strukturell einwandfreien Vorschlag zu verwerfen, weil die
+Außentemperatur noch nicht erfasst wird, hieße die Daten über die Annahme
+entscheiden zu lassen; das verbietet Invariante C1. Das Urteil lautet
+`open`, und die Begründung nennt die fehlende Größe — §8 nennt das „die
+konstruktive Antwort und in der Praxis oft die nützlichste"
+([Eintrag 10](./spec-widersprueche.md)).
+
+### Der eine Weg ins Modell
+
+Übernehmen (`POST /api/graph/causal/hypotheses/<id>`) ist die einzige
+Brücke vom Hypothesen-Graphen in die gesetzte Struktur — und damit in den
+Studien-Pfad. Ein verworfener Vorschlag wird dort **serverseitig**
+abgelehnt, nicht bloß in der Oberfläche ausgegraut: Eine Regel, die nur im
+Client steht, ist keine. Wer ihn trotzdem für richtig hält, zieht die
+Kante im DAG-Editor selbst; sie trägt dann `asserted` — die Herkunft eines
+Menschen, der sie verantwortet.
+
+Beim Übernehmen wird eine noch nicht modellierte Störgröße **mit
+aufgenommen**. Das ist der Regelfall, nicht die Ausnahme: §8 hält
+Confounder-Vorschläge für den wertvolleren Teil, und ein Vorschlag, den
+man nur nach drei Handgriffen annehmen kann, wird nicht angenommen. Jeder
+Schritt schreibt eine Revision.
+
+Der Vorschlag bleibt danach im Hypothesen-Graphen stehen und ist als
+„übernommen" markiert. Ihn zu löschen hieße die Herkunft zu verlieren.
+
+### Ein Lauf ersetzt seine eigene Quelle
+
+Dasselbe Muster wie beim Connector-Import (§6.2): Wer nur das
+Sprachmodell laufen lässt, verliert die topologischen Vorschläge nicht.
+Eine Quelle, die nicht antwortet, legt die anderen nicht still —
+dieselbe Fehlerisolation wie bei der quellenagnostischen Erfassung (C5).
+Was ausgefallen ist, steht im Bericht; was das Sprachmodell unbrauchbar
+geantwortet hat (erfundene Größen, kein JSON), landet einzeln in der
+Quarantäne, wie bei jedem Connector.
+
+Vorschläge sind **behauptet und persistiert** — anders als eine Studie
+überleben sie den Neustart. Ein Lauf kostet einen Sprachmodell-Aufruf, und
+den zweimal zu bezahlen, weil niemand gesichert hat, wäre kein Sparen.
+
+### Der Quellenvergleich (§8 „Die Rückkopplung")
+
+> „Übereinstimmung heißt hohe Konfidenz. **Widerspruch ist der
+> interessante Fall** und wird dem Menschen vorgelegt."
+
+Der Vergleich liest, was ohnehin im Graphen steht: mehrere Reifier auf
+demselben Triple sind Übereinstimmung, Reifier auf beiden Richtungen sind
+ein Widerspruch. Die vierte Stimme ist das Modell selbst — was ein Mensch
+gesetzt hat, ist eine Quelle wie jede andere. Widersprüche stehen oben.
+
+**Die dritte Quelle aus §8 fehlt, und das steht so da.** Struktur-Lernen
+aus Daten gehört nach §16 zu C8 und darf nach §19 ohne ausdrückliche
+Freigabe nicht angefangen werden. Die Kantenklasse `learned` bleibt
+deshalb leer, und der Vergleich führt sie als **fehlende Quelle**:
+Übereinstimmung von zwei Quellen ist dann eben Übereinstimmung von zwei,
+nicht von dreien ([Eintrag 9](./spec-widersprueche.md)).
+
+Abnahme: `tests/graph/causal-hypotheses.test.ts`.
+
 ## Die Chronik: was dieselbe Frage früher sagte
 
 Der Inferenz-Graph trägt immer nur den **aktuellen** Stand: Er wird bei
@@ -722,13 +884,13 @@ SELECT ?ursacheName ?klasse ?evidenz ?versatz WHERE {
 
 | | Was fehlt | Meilenstein |
 |---|---|---|
-| Hypothesen-Erzeugung | LLM-Vorschläge mit Provenienz und symbolischen Filtern | C6 |
 | Frontdoor- und IV-Schätzer | identifiziert (C1), aber nicht gerechnet — die Studie sagt es | C8 (Sidecar) |
 | Struktur-Lernen, CATE, formale Sensitivität | Python-Sidecar, `causalTier: full` | C8, nur nach Freigabe |
 | Randomisierte Eingriffe | die dritte Falsifikationsebene (§13.3) über Aktoren | C7, nur nach Freigabe |
 
-Der Hypothesen-Graph existiert bereits als Ort, aber bis C6 schreibt
-niemand automatisch hinein: Was dort steht, hat ein Mensch geschrieben.
+Das Struktur-Lernen ist die einzige der drei Strukturquellen aus §8, die
+fehlt. Sie wird im Quellenvergleich als fehlend **benannt** — die
+Kantenklasse `learned` bleibt leer, statt gefüllt auszusehen.
 
 Der häufigste Grund für `not-identifiable` bleibt eine fehlende
 Störgröße. Die wichtigsten der Hausdomäne sind seit C5 offen verfügbar

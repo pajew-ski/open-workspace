@@ -4,9 +4,11 @@
 
 ## Hier weitermachen (Einstieg für neue Sessions)
 
-> **Neu seit 2026-08-14 — Kausal-Layer, C3, C0, C1, C2, C4 und C5 gebaut.**
-> Neben dem Graph-Kern gilt [CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md)
-> (verbindlich für C0–C5). Umgesetzt sind sechs Meilensteine:
+> **Neu seit 2026-08-14 — der Kausal-Layer ist in seinem verbindlichen
+> Teil vollständig: C3, C0, C1, C2, C4, C5 und C6 sind gebaut.** Neben dem
+> Graph-Kern gilt [CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md)
+> (verbindlich für C0–C6; C7 und C8 bleiben opt-in). Umgesetzt sind sieben
+> Meilensteine:
 >
 > - **C3, die Erfassung** — zuerst, weil als einzige zeitkritisch: Home
 >   Assistant verwirft vollständige Zustandswechsel nach
@@ -118,7 +120,33 @@
 >   `ow:confoundingShift`), nie `ow:effectSize`. Details:
 >   [docs/kausalmodell.md](./docs/kausalmodell.md).
 >
-> - **Die Widersprüche der Spec sind entschieden** (14.08.2026, alle
+> - **C6, die neurosymbolische Schleife** — „Das LLM schlägt vor, die
+>   Symbolik richtet, die Daten entscheiden" (§8), und die Trennung ist an
+>   den Named Graphs ablesbar: Vorschläge gehen ausschließlich nach
+>   `graph/<u>/causal-hypotheses`, gesetzte Struktur bleibt im
+>   Modell-Graphen, dazwischen liegt genau EIN Weg — und der prüft
+>   **serverseitig**. Drei Quellen mit je eigener Herkunft: `llm`
+>   (Kandidatenkanten und vor allem **Störgrößen**, Klasse `hypothesis`),
+>   `topology` (Aktor → Sensor am selben Gerät oder im selben Bereich aus
+>   der Registry, deterministisch, `structural`) und `wikidata`
+>   (P828/P1542 zwischen den Größenarten über die Föderation, ohne Import,
+>   `hypothesis`). Die Klasse hängt an der Quelle und ist nicht wählbar
+>   (Invariante C2). Herkunft ist Pflicht: `prov:wasAttributedTo` auf einen
+>   `prov:SoftwareAgent` mit Sprachmodell und **Prompt-Version** — ein
+>   Vorschlag ohne Agenten fällt durch die Shapes. **Ein Reifier je
+>   Quelle, nicht je Kante**: zwei Quellen auf demselben Triple sind zwei
+>   benannte Reifier (RDF 1.2), und daraus entsteht der Quellenvergleich
+>   ohne Nebentabelle. Die Filter in der Reihenfolge aus §8 —
+>   Azyklizität, SHACL, temporale Zulässigkeit, Topologie — liegen **pur**
+>   im Tier-1-Kern (`causal/filters.ts`), der erste, der greift,
+>   entscheidet; die Identifizierbarkeit **verwirft nicht**, sondern
+>   erzeugt `open` samt fehlender Größe (Invariante C1: die Datenlage
+>   entscheidet nicht über die Annahme). Ein Lauf ersetzt seine eigene
+>   Quelle (§6.2-Muster), eine ausgefallene Quelle legt die anderen nicht
+>   still, und Vorschläge sind behauptet und persistiert. Details:
+>   [docs/kausalmodell.md](./docs/kausalmodell.md).
+>
+> - **Die Widersprüche der Spec sind entschieden** (14.08.2026, die ersten
 >   acht in
 >   [docs/spec-widersprueche.md](./docs/spec-widersprueche.md); wo die
 >   Entscheidung den Text betrifft, ist sie in die Spec eingearbeitet).
@@ -137,20 +165,34 @@
 >   Reifier der Kante, eingetragen wird nur eine Änderung, und beantwortet
 >   wird eine Frage weiterhin nur aus dem Inferenz-Graphen. Ein Eintrag
 >   lässt sich verwerfen (ein Lauf auf falschen Daten ist keine
->   Geschichte), aber nie ändern.
+>   Geschichte), aber nie ändern. **Drei weitere kamen mit C6 hinzu**
+>   (Einträge 9–11, ebenfalls entschieden und eingearbeitet): dass §8 als
+>   dritte Strukturquelle das Struktur-Lernen verlangt, das zu C8 gehört
+>   (gebaut ist stattdessen Wikidata, die fehlende Quelle wird **benannt**
+>   statt erfunden); dass Identifizierbarkeit als ablehnender Filter
+>   Invariante C1 bräche (sie erzeugt `open`, nicht `rejected`); und wie
+>   weit „temporal maschinell entscheidbar" trägt (Vorzeichen und
+>   Abdeckung — die Richtung aus Korrelationen wäre C8). **Keiner der elf
+>   Einträge steht offen.**
 >
-> **Nicht gebaut** und deshalb nirgends in der UI: Hypothesen-Erzeugung
-> (C6), Frontdoor- und IV-**Schätzer** (identifiziert, aber nicht
-> gerechnet — die Studie sagt es), Struktur-Lernen und randomisierte
-> Eingriffe. Was es an Quellen nicht gibt, gibt es weiterhin nicht: wer zu
+> **Nicht gebaut** und deshalb nirgends in der UI: Frontdoor- und
+> IV-**Schätzer** (identifiziert, aber nicht gerechnet — die Studie sagt
+> es), Struktur-Lernen und randomisierte Eingriffe. Das Struktur-Lernen
+> ist zusätzlich der einzige Fall, in dem eine Lücke *aktiv angezeigt*
+> wird: Der Quellenvergleich aus C6 führt es als fehlende vierte Stimme,
+> damit eine Übereinstimmung von zwei Quellen nicht wie eine von drei
+> aussieht. Was es an Quellen nicht gibt, gibt es weiterhin nicht: wer zu
 > Hause war, ob das Fenster offen stand.
 >
-> **Nächster Meilenstein: C6** (neurosymbolische Schleife, SPEC §8 —
-> LLM-Hypothesen mit Provenienz, symbolische Filter, Vergleich der drei
-> Strukturquellen, Widerspruchs-UI). Reihenfolge und Begründung in
-> CAUSAL_LAYER_SPEC §18, Arbeitsmodus in §19, offener Stand mit Abnahmen
-> in TODO.md unter „Kausal-Layer". C7 und C8 nur nach ausdrücklicher
-> Freigabe.
+> **Kein nächster Pflicht-Meilenstein.** Mit C6 ist der verbindliche Teil
+> der Spec (C0–C6) abgeschlossen. Offen sind nur noch **C7**
+> (randomisierte Experimente, §13.3 samt Leitplanken C10) und **C8**
+> (Tier-2-Sidecar, Struktur-Lernen, Föderation von Kausalmodellen) —
+> beide ausdrücklich opt-in und **nur nach Freigabe** (§19). Wer ohne
+> Freigabe weiterarbeiten will, nimmt die einzeln erledigbaren
+> Nacharbeiten in TODO.md unter „Nacharbeiten aus C5 und C6"; die oberste
+> davon ist, dem Vorschlagslauf das Automations-YAML zu zeigen (§8 nennt
+> es als Quelle, gelesen wird es noch nicht).
 
 **Stand 2026-08-10 (12. Ausbaustufe, Graph Core M0–M14 inkl. §12.4 und
 §18 — der Vollausbau der Spec ist damit abgeschlossen)**: Der
@@ -698,7 +740,7 @@ und backend-unabhängig** — Details in [docs/ai-platform.md](./docs/ai-platfor
 - **UI**: AI-Hub (`/ai`), Skills (`/skills`), MCP-Verwaltung in `/tools`,
   A2A-Discovery in `/agents`, ModelPicker in beiden Chat-Oberflächen.
 
-Build, Typecheck, Lint (0 Errors), 719 Unit-Tests (plus der Live-Test
+Build, Typecheck, Lint (0 Errors), 760 Unit-Tests (plus der Live-Test
 gegen Wikidata, der ohne `OW_FEDERATION_LIVE=1` sichtbar übersprungen
 wird) und das **blockierende E2E-Gate** (`e2e/mobile-navigation`,
 `e2e/mobile-ux`, `e2e/a11y` inkl. der Seiten `/ai`, `/skills`, `/tools`,
@@ -751,9 +793,13 @@ Moving Block Bootstrap, sechs Falsifikationsversuche, `ow:CausalStudy` mit
 erzwungener Reproduktions-Signatur — ein Effekt ohne bestandene Refutation
 wird in keiner Form ausgegeben) und C5 (Open-Data-Connector
 `rest-timeseries`: die Störgrößen der Hausdomäne über den EINEN Vertrag,
-quellenagnostische Erfassung, Adjustierungs-Kontrast als Nachweis) sind
-gebaut; **als Nächstes C6** (neurosymbolische Schleife, §8) in genau
-dieser Reihenfolge (Begründung in §18). Der offene Stand steht
+quellenagnostische Erfassung, Adjustierungs-Kontrast als Nachweis) und C6
+(neurosymbolische Schleife: drei Vorschlagsquellen mit Provenienz, vier
+harte symbolische Filter vor jedem Schreiben, Quellenvergleich mit
+Widersprüchen — und genau ein geprüfter Weg vom Vorschlag ins Modell)
+sind gebaut, in genau dieser Reihenfolge (Begründung in §18). **Damit ist
+der verbindliche Teil der Spec abgeschlossen**; C7 und C8 bleiben opt-in
+und brauchen eine ausdrückliche Freigabe (§19). Der offene Stand steht
 abhakbar in [TODO.md](./TODO.md) unter „Kausal-Layer" — er ist die eine
 Quelle dafür, was noch fehlt; die entschiedenen Widersprüche der Spec
 stehen in [docs/spec-widersprueche.md](./docs/spec-widersprueche.md).

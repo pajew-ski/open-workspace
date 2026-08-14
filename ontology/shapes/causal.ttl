@@ -346,3 +346,114 @@ owsh:CausalEffectShape a sh:NodeShape ;
         sh:severity sh:Violation ;
         sh:message "Ein Effekt muss auf die Studie zeigen, aus der er stammt (prov:wasGeneratedBy)."@de ;
     ] .
+
+#################################################################
+# Vorschläge und ihre Herkunft (§8, Meilenstein C6)
+#
+# Der Vorschlag selbst ist eine kausale Kante und wird deshalb schon
+# von den Shapes oben geprüft (Klasse, Evidenzstufe, Lag-Form). Was
+# hier dazukommt, ist genau das, was §8 zusätzlich verlangt:
+#
+#  - ein Urteil der symbolischen Filter — ohne es hätte ein Vorschlag
+#    den Studien-Pfad ungeprüft erreichen können, und die Abnahme von
+#    C6 sagt, dass das nicht passieren darf;
+#  - eine Zuschreibung „auf Modell und Prompt-Version". Sie ist Pflicht
+#    und nicht Zierde: Ein Vorschlag ohne Agenten ist nicht mehr
+#    zuzuordnen, sobald jemand die Modellwahl ändert, und dann ist auch
+#    der Quellenvergleich aus §8 wertlos.
+#
+# Der Agent wird über den Pfad geprüft (sh:node) und NICHT über
+# sh:targetClass prov:SoftwareAgent: Diese Klasse tragen auch die
+# Connector-Instanzen (ow:Connector ⊑ prov:SoftwareAgent), und die
+# haben weder Prompt-Version noch Vorschlagsquelle.
+#################################################################
+
+owsh:CausalHypothesisShape a sh:NodeShape ;
+    sh:targetSubjectsOf ow:hypothesisVerdict ;
+    sh:name "Vorschlag einer kausalen Kante"@de ;
+    sh:property [
+        sh:path ow:hypothesisVerdict ;
+        sh:in ( "accepted" "open" "rejected" ) ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Ein Vorschlag braucht genau ein Urteil der Filter: 'accepted', 'open' oder 'rejected'."@de ;
+    ] ;
+    sh:property [
+        sh:path rdf:reifies ;
+        sh:minCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Ein Urteil gehört an den Reifier einer kausalen Kante (rdf:reifies), nicht an einen freistehenden Knoten."@de ;
+    ] ;
+    sh:property [
+        sh:path schema:isPartOf ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:nodeKind sh:IRI ;
+        sh:severity sh:Violation ;
+        sh:message "Ein Vorschlag muss das Kausalmodell nennen, gegen dessen DAG er geprüft wurde (schema:isPartOf) — ohne Modell ist ein Urteil über Kreise und Identifizierbarkeit sinnlos."@de ;
+    ] ;
+    sh:property [
+        sh:path prov:generatedAtTime ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:dateTime ;
+        sh:severity sh:Violation ;
+        sh:message "Ein Vorschlag braucht seinen Zeitpunkt (prov:generatedAtTime)."@de ;
+    ] ;
+    sh:property [
+        sh:path prov:wasAttributedTo ;
+        sh:minCount 1 ;
+        sh:nodeKind sh:IRI ;
+        sh:severity sh:Violation ;
+        sh:message "Ein Vorschlag ohne Urheber ist Hörensagen ohne Absender (§8: Zuschreibung auf Modell und Prompt-Version)."@de ;
+        sh:node owsh:ProposalAgentShape ;
+    ] .
+
+owsh:ProposalAgentShape a sh:NodeShape ;
+    sh:name "Vorschlagende Quelle"@de ;
+    sh:property [
+        sh:path dcterms:identifier ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Die vorschlagende Quelle braucht ihre Kennung (dcterms:identifier: llm, topology, wikidata) — der Quellenvergleich gruppiert nach ihr."@de ;
+    ] ;
+    sh:property [
+        sh:path schema:name ;
+        sh:minCount 1 ;
+        sh:minLength 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Die vorschlagende Quelle muss sagen, WAS vorgeschlagen hat — das benutzte Sprachmodell oder das Verfahren (schema:name)."@de ;
+    ] ;
+    sh:property [
+        sh:path schema:softwareVersion ;
+        sh:minCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Die vorschlagende Quelle muss ihre Prompt- bzw. Verfahrensversion nennen (schema:softwareVersion) — sonst ist später nicht feststellbar, ob ein schlechter Vorschlag am Modell oder an der Frage lag."@de ;
+    ] .
+
+owsh:HypothesisFilterShape a sh:NodeShape ;
+    sh:targetSubjectsOf ow:filterRejectedBy ;
+    sh:name "Verwerfender Filter"@de ;
+    sh:property [
+        sh:path ow:filterRejectedBy ;
+        sh:in ( "cycle" "shacl" "temporal" "topology" ) ;
+        sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Der verwerfende Filter muss einer der vier harten sein: 'cycle', 'shacl', 'temporal' oder 'topology'."@de ;
+    ] ;
+    sh:property [
+        sh:path ow:hypothesisVerdict ;
+        sh:hasValue "rejected" ;
+        sh:minCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Ein verwerfender Filter steht nur an einem verworfenen Vorschlag — sonst behauptete der Graph, etwas sei zugleich zulässig und durchgefallen."@de ;
+    ] ;
+    sh:property [
+        sh:path schema:description ;
+        sh:minCount 1 ;
+        sh:minLength 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Ein verworfener Vorschlag braucht seine Begründung im Klartext (schema:description) — \"ungültig\" ist keine Auskunft."@de ;
+    ] .

@@ -610,3 +610,104 @@
     align-items: center;
     gap: var(--space-3);
 }
+
+/* --- Vorschläge und Quellenvergleich (§8, C6) -------------------------
+   Ein Vorschlag darf nie aussehen wie eine gesetzte Kante (Invariante
+   C2). Deshalb steht er in einem eigenen, deutlich abgesetzten Block,
+   und sein Urteil ist das Erste, was man sieht — nicht der Inhalt. */
+.hypotheses {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border);
+}
+
+.hypothesisList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.hypothesis {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-sunken);
+}
+
+/* Verworfen heißt verworfen: zurückgenommen, aber nicht versteckt. */
+.hypothesisRejected {
+    opacity: 0.75;
+}
+
+.hypothesisHead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-2);
+}
+
+.hypothesisEdge {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-text-primary);
+    overflow-wrap: anywhere;
+}
+
+.hypothesisReason {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    color: var(--color-text-secondary);
+}
+
+.hypothesisActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.badgeOpen {
+    border-style: dashed;
+    border-color: var(--color-primary);
+    color: var(--color-primary-text);
+}
+
+/* Der Widerspruch ist laut §8 der interessante Fall — er bekommt eine
+   Kante, die man sieht, und steht oben. */
+.contradiction {
+    border-left: 3px solid var(--color-warning-text, var(--color-primary));
+}
+
+.comparisonList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.comparison {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+}
+
+.absentSource {
+    font-size: var(--text-xs);
+    line-height: var(--leading-normal);
+    color: var(--color-text-tertiary, var(--color-text-secondary));
+}
