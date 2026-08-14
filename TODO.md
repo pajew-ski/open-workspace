@@ -357,9 +357,11 @@
 > zeitkritisch war: Home Assistant verwirft Zustandswechsel nach
 > `purge_keep_days`, jeder Tag ohne Erfassung war unwiederbringlich.
 > Gebaut sind C3, C0, C1, C2, C4 und C5; offen ist als Nächstes C6.
-> Widersprüche der Spec, die beim Bauen auffielen, stehen gesammelt in
-> [docs/spec-widersprueche.md](./docs/spec-widersprueche.md) — mit
-> Auflösung und Stand, aber ohne Änderung an der Spec (§19).
+> Alle sieben Widersprüche, die beim Bauen von C4 und C5 auffielen, sind
+> am 14.08.2026 **entschieden** und in
+> [docs/spec-widersprueche.md](./docs/spec-widersprueche.md)
+> festgehalten; wo die Entscheidung den Text betrifft, ist sie in die
+> Spec eingearbeitet.
 
 - [x] **C3 Erfassung („früh materialisieren")**:
       `homeassistant_api: true` im Add-on-Manifest (lesend, begründet in
@@ -602,6 +604,37 @@
       Zwischenspeicher, Quarantäne, Fehlerisolation zwischen Quellarten.
       Doku: [docs/kausalmodell.md](./docs/kausalmodell.md),
       [docs/beobachtungen.md](./docs/beobachtungen.md)
+- [x] **Widersprüche der Spec entschieden** (14.08.2026,
+      [docs/spec-widersprueche.md](./docs/spec-widersprueche.md)) — drei
+      davon brauchten Code:
+      - **Eine berechnete Größe IST eine Beobachtung** (Eintrag 4): Der
+        Connector `solar-position` rechnet Sonnenhöhe, Azimut, Tag/Nacht
+        und die extraterrestrische Einstrahlung aus Ort und Zeit
+        (Astronomical Almanac, Fehler unter 0,01°) — ohne Netz, ohne
+        Lücken, über den EINEN Connector-Vertrag. Ehrlich bleibt sie durch
+        das Verfahren im Graphen (`ssn:implements` → `sosa:Procedure`);
+        Refraktion, Parallaxe und jedes Atmosphärenmodell fehlen bewusst
+      - **`csv-observations` gebaut** (Eintrag 7): der Datei- statt des
+        Netz-Wegs. Pfad-Politik wie `obsidian-vault`, Skalenniveau je
+        Spalte aus dem **Bestand** statt aus dem Spaltennamen, Revision =
+        Inhalts-Hash
+      - **Die Studien-Chronik** (Eintrag 3): `graph/<u>/causal-archive`
+        hält fest, was eine Frage wann gesagt hat — behauptet und
+        persistiert, weil ein Lauf ein **Ereignis** ist und kein
+        abgeleiteter Zustand. Der Effekt eines Eintrags hängt NIE am
+        Reifier der Kante, eingetragen wird nur eine Änderung (Urteil,
+        Modell-Revision oder Effekt außerhalb des letzten Intervalls), und
+        beantwortet wird eine Frage weiterhin nur aus dem Inferenz-Graphen
+      - Ohne Code entschieden: getrennte Terme für Identifikation und
+        Verfahren (Eintrag 1), `schema:unitText` statt QUDT (Eintrag 2),
+        „materialize" heißt Angebotsseite (Eintrag 5), der rohe
+        Zusammenhang ist kein zweites Ergebnis (Eintrag 6)
+      Abnahme: `tests/graph/causal-archive.test.ts` (Chronik: erster Lauf,
+      unveränderter zweiter, geänderte Revision, Effekt nicht am Reifier,
+      Neustart) und die Sonnenstand-/CSV-Abschnitte in
+      `tests/graph/open-data.test.ts` (bekannte Sonnenstände, Nacht ohne
+      Rest-Einstrahlung, Verfahren im Graphen, lückenlose Erfassung;
+      Skalenniveau aus dem Bestand, Kopfzeile als Wahrheit, Pfad-Politik)
 - [ ] **C6 Neurosymbolische Schleife** (SPEC §8): LLM-Hypothesen mit
       Provenienz nach `causal-hypotheses`, symbolische Filter
       (Azyklizität, SHACL, temporale Zulässigkeit, Topologie,

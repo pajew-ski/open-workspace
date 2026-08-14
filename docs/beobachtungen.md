@@ -4,11 +4,24 @@ Der Kausal-Layer braucht zwei Dinge: eine Struktur (welcher Sensor misst
 welchen Raum) und Beobachtungen (was hat er gemessen). Home Assistant hat
 beides — behält aber nur eine Hälfte.
 
-Seit C5 kommt die zweite Quellart dazu: **offene Zeitreihen** (Wetter,
-Strompreis, Einstrahlung, Feiertage). Der Erfassungslauf ist derselbe;
-was sich unterscheidet, ist nur das Holen der Rohpunkte. Siehe
-[docs/kausalmodell.md](./kausalmodell.md) für den Katalog und die Rolle
-dieser Größen im Modell.
+Seit C5 kommen drei weitere Quellarten dazu, und der Erfassungslauf
+bleibt derselbe — was sich unterscheidet, ist nur das Holen der
+Rohpunkte:
+
+| Quellart | Woher die Werte kommen |
+|---|---|
+| `home-assistant` | Recorder-Historie über die REST-API |
+| `rest-timeseries` | offene APIs: Wetter, Strompreis, Einstrahlung, Feiertage |
+| `csv-observations` | eine CSV-Datei im Datenverzeichnis |
+| `solar-position` | **gerechnet** aus Ort und Zeit, ohne Netz |
+
+Die letzte ist die ungewöhnliche: Eine berechnete Größe ist eine
+Beobachtung (entschieden am 14.08.2026,
+[docs/spec-widersprueche.md](./spec-widersprueche.md) Eintrag 4) — und
+zwar eine verlässlichere als eine gemessene, weil sie weder Lücken noch
+Messfehler hat. Erkennbar bleibt sie am Verfahren im Graphen
+(`ssn:implements` → `sosa:Procedure`). Katalog und Rolle im Modell:
+[docs/kausalmodell.md](./kausalmodell.md).
 
 ## Was der Recorder wirklich aufbewahrt
 

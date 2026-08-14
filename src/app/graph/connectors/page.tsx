@@ -148,6 +148,13 @@ export default function GraphConnectorsPage() {
     const [formPreset, setFormPreset] = useState(REST_PRESETS[0].id);
     const [formPresetParams, setFormPresetParams] = useState<Record<string, string>>({});
     const [formMapping, setFormMapping] = useState('');
+    const [formCsvPath, setFormCsvPath] = useState('');
+    const [formCsvTimeField, setFormCsvTimeField] = useState('timestamp');
+    const [formCsvTimeFormat, setFormCsvTimeFormat] = useState<'iso' | 'date' | 'unix-s' | 'unix-ms'>('iso');
+    const [formCsvDelimiter, setFormCsvDelimiter] = useState(',');
+    const [formLatitude, setFormLatitude] = useState('');
+    const [formLongitude, setFormLongitude] = useState('');
+    const [formPlaceName, setFormPlaceName] = useState('');
 
     const preset = useMemo(() => REST_PRESETS.find(entry => entry.id === formPreset) ?? null, [formPreset]);
     const presetValue = (key: string): string =>
@@ -183,11 +190,33 @@ export default function GraphConnectorsPage() {
         setFormPreset(REST_PRESETS[0].id);
         setFormPresetParams({});
         setFormMapping('');
+        setFormCsvPath('');
+        setFormCsvTimeField('timestamp');
+        setFormCsvTimeFormat('iso');
+        setFormCsvDelimiter(',');
+        setFormLatitude('');
+        setFormLongitude('');
+        setFormPlaceName('');
     };
 
     const configForForm = (): unknown => {
         if (formKind === 'rdf-file') return { url: formUrl.trim() };
         if (formKind === 'home-assistant') return { url: formHaUrl.trim(), tokenEnv: formHaTokenEnv.trim() };
+        if (formKind === 'csv-observations') {
+            return {
+                path: formCsvPath.trim(),
+                timeField: formCsvTimeField.trim() || 'timestamp',
+                timeFormat: formCsvTimeFormat,
+                delimiter: formCsvDelimiter || ',',
+            };
+        }
+        if (formKind === 'solar-position') {
+            return {
+                latitude: formLatitude.trim(),
+                longitude: formLongitude.trim(),
+                placeName: formPlaceName.trim(),
+            };
+        }
         if (formKind === 'rest-timeseries') {
             if (formPreset === 'custom') return { preset: 'custom', mapping: formMapping.trim() };
             const params: Record<string, string> = {};
@@ -218,6 +247,8 @@ export default function GraphConnectorsPage() {
         // den Supervisor) — deshalb ist die Art hier absichtlich „immer
         // bereit".
         formKind === 'home-assistant' ? true
+        : formKind === 'csv-observations' ? formCsvPath.trim() !== ''
+        : formKind === 'solar-position' ? formLatitude.trim() !== '' && formLongitude.trim() !== ''
         : formKind === 'rest-timeseries'
             ? (formPreset === 'custom'
                 ? formMapping.trim() !== ''
@@ -600,6 +631,85 @@ export default function GraphConnectorsPage() {
                                         Importiert wird das Angebot der Quelle. Die Messwerte holt danach die Erfassung
                                         unter <Link href="/graph/observations">Graph → Beobachtungen</Link> — im Store
                                         landet nie ein Messwert.
+                                    </p>
+                                </>
+                            ) : formKind === 'csv-observations' ? (
+                                <>
+                                    <label className={styles.field}>
+                                        <span>CSV-Datei (unter data/vaults/ oder einer Wurzel aus OW_VAULT_ROOTS)</span>
+                                        <input
+                                            value={formCsvPath}
+                                            onChange={e => setFormCsvPath(e.target.value)}
+                                            placeholder="data/vaults/messungen/gewicht.csv"
+                                        />
+                                    </label>
+                                    <label className={styles.field}>
+                                        <span>Zeitspalte</span>
+                                        <input
+                                            value={formCsvTimeField}
+                                            onChange={e => setFormCsvTimeField(e.target.value)}
+                                            placeholder="timestamp"
+                                        />
+                                    </label>
+                                    <label className={styles.field}>
+                                        <span>Zeitformat</span>
+                                        <select
+                                            value={formCsvTimeFormat}
+                                            onChange={e => setFormCsvTimeFormat(
+                                                e.target.value as 'iso' | 'date' | 'unix-s' | 'unix-ms',
+                                            )}
+                                        >
+                                            <option value="iso">ISO 8601 (2026-08-14T10:00:00Z)</option>
+                                            <option value="date">nur Datum (2026-08-14)</option>
+                                            <option value="unix-s">Unix-Zeit in Sekunden</option>
+                                            <option value="unix-ms">Unix-Zeit in Millisekunden</option>
+                                        </select>
+                                    </label>
+                                    <label className={styles.field}>
+                                        <span>Trennzeichen</span>
+                                        <input
+                                            value={formCsvDelimiter}
+                                            onChange={e => setFormCsvDelimiter(e.target.value)}
+                                            placeholder=","
+                                            maxLength={1}
+                                        />
+                                    </label>
+                                    <p className={styles.kindDescription}>
+                                        Das Skalenniveau jeder Spalte wird aus dem Bestand erkannt: nur Zahlen heißt
+                                        numerisch, nur 0/1 zweiwertig, alles andere kategorial.
+                                    </p>
+                                </>
+                            ) : formKind === 'solar-position' ? (
+                                <>
+                                    <label className={styles.field}>
+                                        <span>Breitengrad</span>
+                                        <input
+                                            value={formLatitude}
+                                            onChange={e => setFormLatitude(e.target.value)}
+                                            placeholder="52.52"
+                                        />
+                                    </label>
+                                    <label className={styles.field}>
+                                        <span>Längengrad</span>
+                                        <input
+                                            value={formLongitude}
+                                            onChange={e => setFormLongitude(e.target.value)}
+                                            placeholder="13.40"
+                                        />
+                                    </label>
+                                    <label className={styles.field}>
+                                        <span>Name des Ortes (optional)</span>
+                                        <input
+                                            value={formPlaceName}
+                                            onChange={e => setFormPlaceName(e.target.value)}
+                                            placeholder="Zuhause"
+                                        />
+                                    </label>
+                                    <p className={styles.kindDescription}>
+                                        Diese Quelle rechnet, statt abzurufen: Sonnenhöhe, Azimut, Tag/Nacht und die
+                                        extraterrestrische Einstrahlung sind eine Funktion von Ort und Zeit — lückenlos
+                                        und ohne Netz. Das Verfahren steht als sosa:Procedure im Graphen, damit eine
+                                        gerechnete Reihe nie wie eine gemessene aussieht.
                                     </p>
                                 </>
                             ) : formKind === 'obsidian-vault' ? (

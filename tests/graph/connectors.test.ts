@@ -490,8 +490,8 @@ describe('Quad-Werkzeuge', () => {
 });
 
 describe('Katalog: nur Implementiertes existiert (Invariante 10)', () => {
-    it('führt genau die Arten aus M3–M6, a2a-agent-card/mcp-server (M9), home-assistant (C3) und rest-timeseries (C5)', () => {
-        expect(listConnectorKinds().map(c => c.kind).sort()).toEqual(['a2a-agent-card', 'git-backup', 'github-rdf', 'home-assistant', 'json-canvas', 'mcp-server', 'obsidian-vault', 'rdf-file', 'rest-timeseries']);
+    it('führt genau die Arten aus M3–M6, a2a-agent-card/mcp-server (M9), home-assistant (C3) und die vier Messquellen aus C5', () => {
+        expect(listConnectorKinds().map(c => c.kind).sort()).toEqual(['a2a-agent-card', 'csv-observations', 'git-backup', 'github-rdf', 'home-assistant', 'json-canvas', 'mcp-server', 'obsidian-vault', 'rdf-file', 'rest-timeseries', 'solar-position']);
         expect(getConnectorKind('sparql-endpoint')).toBeNull();
         expect(getConnectorKind('graphml')).toBeNull();
         expect(getConnectorKind('rdf-file')).toBe(rdfFileConnector);

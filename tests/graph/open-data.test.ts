@@ -31,7 +31,7 @@ import type { Quad } from '@rdfjs/types';
 import { OxigraphStore } from '@/lib/graph/store/oxigraph';
 import { createIriFactory } from '@/lib/graph/iri';
 import { namedNode } from '@/lib/graph/rdf';
-import { DCTERMS, OW, SCHEMA, SOSA } from '@/lib/graph/vocab';
+import { DCTERMS, OW, SCHEMA, SOSA, SSN } from '@/lib/graph/vocab';
 import { createMemoryFileSystem } from '@/lib/platform/runtime/memfs';
 import { createConnector } from '@/lib/graph/connectors/registry';
 import { syncConnector } from '@/lib/graph/connectors/sync';
@@ -52,6 +52,9 @@ import {
 import { REST_PRESETS, getRestPreset } from '@/lib/graph/connectors/rest-timeseries/presets';
 import { resetRestTimeseriesCache } from '@/lib/graph/connectors/rest-timeseries/client';
 import { restSourceKey } from '@/lib/graph/connectors/rest-timeseries/structure';
+import { solarPosition } from '@/lib/graph/connectors/solar-position/astronomy';
+import { SOLAR_PROCEDURE_ID, solarPositionConnector } from '@/lib/graph/connectors/solar-position';
+import { classifyColumn, inventoryFromCsv } from '@/lib/graph/connectors/csv-observations';
 import { ObservationStore } from '@/lib/graph/observations/store';
 import { createVariable, listVariables } from '@/lib/graph/observations/variables';
 import { listCaptureCandidates } from '@/lib/graph/observations/candidates';
@@ -524,6 +527,257 @@ describe('Erfassung: die Werte liegen daneben, nicht im Store', () => {
         expect(report.results[0].message).toContain('503');
         const observations = new ObservationStore({ files, root: ROOT, userId: 'default' });
         expect((await observations.read('wetter-temperature')).observations).toEqual([]);
+    });
+});
+
+// --- Gerechnete Reihen: der Sonnenstand ----------------------------------
+
+describe('Sonnenstand: eine berechnete Größe IST eine Beobachtung', () => {
+    it('trifft die bekannten Werte — Sonnenwende, Tagundnachtgleiche, Äquator', () => {
+        const berlin = { lat: 52.52, lon: 13.405 };
+        // Sommersonnenwende, wahrer Mittag in Berlin: 90° − Breite +
+        // Deklination = 60,9°. Die Zahl steht in jedem Tafelwerk.
+        const summer = solarPosition(Date.parse('2026-06-21T11:07:00Z'), berlin.lat, berlin.lon);
+        expect(summer.elevation).toBeCloseTo(60.9, 0);
+        expect(summer.declination).toBeCloseTo(23.44, 1);
+        // Wahrer Mittag heißt: die Sonne steht im Süden.
+        expect(summer.azimuth).toBeGreaterThan(175);
+        expect(summer.azimuth).toBeLessThan(185);
+
+        // Wintersonnenwende: 90° − Breite − Deklination = 14,0°.
+        const winter = solarPosition(Date.parse('2026-12-21T11:12:00Z'), berlin.lat, berlin.lon);
+        expect(winter.elevation).toBeCloseTo(14.0, 0);
+        expect(winter.declination).toBeCloseTo(-23.44, 1);
+
+        // Tagundnachtgleiche: Deklination null.
+        const equinox = solarPosition(Date.parse('2026-03-20T11:10:00Z'), berlin.lat, berlin.lon);
+        expect(Math.abs(equinox.declination)).toBeLessThan(0.5);
+        expect(equinox.elevation).toBeCloseTo(37.4, 0);
+
+        // Am Äquator zur Tagundnachtgleiche steht die Sonne mittags fast
+        // im Zenit — die Probe darauf, dass die Breitenrechnung stimmt.
+        expect(solarPosition(Date.parse('2026-03-20T12:00:00Z'), 0, 0).elevation).toBeGreaterThan(87);
+    });
+
+    it('meldet die Nacht als Nacht statt als kleine Zahl', () => {
+        const night = solarPosition(Date.parse('2026-06-21T00:00:00Z'), 52.52, 13.405);
+        expect(night.elevation).toBeLessThan(0);
+        // Unter dem Horizont gibt es keine Einstrahlung — auch keine
+        // winzige. Ein Rest wäre eine Erfindung.
+        expect(night.extraterrestrialIrradiance).toBe(0);
+    });
+
+    it('läuft ohne Netz, hält den Locator und behauptet keine Erreichbarkeit', async () => {
+        const config = { latitude: '52.52', longitude: '13.405', placeName: 'Zuhause' };
+        expect(solarPositionConnector.configFromLocator(solarPositionConnector.locatorFor(config)))
+            .toEqual(config);
+        expect(() => solarPositionConnector.parseConfig({ latitude: '95', longitude: '0' }))
+            .toThrow(/Breitengrad/);
+
+        const handle = newHandle();
+        const impl = getConnectorKind('solar-position');
+        expect(impl).not.toBeNull();
+        if (!impl) return;
+        await createConnector(handle, {
+            id: 'sonne', name: 'Sonnenstand', kind: 'solar-position',
+            locator: impl.locatorFor(impl.parseConfig(config)),
+        });
+        // Kein fetch-Stub: Diese Quelle darf gar nicht ins Netz greifen.
+        const first = await syncConnector(handle, 'sonne', {});
+        expect(first.status).toBe('imported');
+        const second = await syncConnector(handle, 'sonne', {});
+        expect(second.status).toBe('noop');
+        expect(second.revision).toBe(first.revision);
+    });
+
+    it('schreibt das Verfahren in den Graphen, damit gerechnet nie wie gemessen aussieht', async () => {
+        const handle = newHandle();
+        const impl = getConnectorKind('solar-position');
+        if (!impl) return;
+        await createConnector(handle, {
+            id: 'sonne', name: 'Sonnenstand', kind: 'solar-position',
+            locator: impl.locatorFor(impl.parseConfig({ latitude: '52.52', longitude: '13.405' })),
+        });
+        await syncConnector(handle, 'sonne', {});
+
+        const quads = await dump(handle.store, handle.iri.importGraph('sonne'));
+        const procedureIri = handle.iri.entity('procedure', SOLAR_PROCEDURE_ID);
+        expect(quads.some(quad =>
+            quad.subject.value === procedureIri && quad.object.value === SOSA.Procedure)).toBe(true);
+        const sensor = handle.iri.entity('sensor', 'sonne#elevation');
+        expect(quads.some(quad =>
+            quad.subject.value === sensor
+            && quad.predicate.value === SSN.implements
+            && quad.object.value === procedureIri)).toBe(true);
+
+        // Und sie steht in derselben Kandidatenliste wie alles andere.
+        const candidates = await listCaptureCandidates(handle.store, handle.iri);
+        const candidate = candidates.find(entry => entry.source === 'sonne#elevation');
+        expect(candidate?.sourceKind).toBe('solar-position');
+        expect(candidate?.kind).toBe('numeric');
+        expect(candidates.find(entry => entry.source === 'sonne#daylight')?.kind).toBe('binary');
+    });
+
+    it('erfasst gerechnete Werte auf dem Raster der Größe — lückenlos', async () => {
+        const handle = newHandle();
+        const files = createMemoryFileSystem();
+        const impl = getConnectorKind('solar-position');
+        if (!impl) return;
+        await createConnector(handle, {
+            id: 'sonne', name: 'Sonnenstand', kind: 'solar-position',
+            locator: impl.locatorFor(impl.parseConfig({ latitude: '52.52', longitude: '13.405' })),
+        });
+        await syncConnector(handle, 'sonne', {});
+        for (const [key, kind] of [['elevation', 'numeric'], ['daylight', 'binary']] as const) {
+            await createVariable(handle, {
+                id: variableIdFor(`sonne#${key}`),
+                name: key,
+                sourceKind: 'solar-position',
+                source: `sonne#${key}`,
+                kind,
+                aggregation: kind === 'numeric' ? 'mean' : 'last',
+                intervalSeconds: 3600,
+            });
+        }
+
+        const now = Date.parse('2026-06-22T00:00:00.000Z');
+        const report = await captureObservations(handle, {
+            files, root: ROOT, backfillDays: 1, now: () => new Date(now),
+        });
+        expect(report.results.every(result => result.status === 'captured')).toBe(true);
+
+        const observations = new ObservationStore({ files, root: ROOT, userId: 'default' });
+        const elevation = await observations.read('sonne-elevation');
+        // 24 Stunden, stündlich, ohne eine einzige Lücke: Das ist der
+        // Gewinn einer gerechneten Reihe.
+        expect(elevation.observations.length).toBeGreaterThanOrEqual(24);
+        expect(elevation.observations.some(point => point.v === null)).toBe(false);
+
+        const daylight = await observations.read('sonne-daylight');
+        const values = new Set(daylight.observations.map(point => point.v));
+        expect(values.has(0)).toBe(true);
+        expect(values.has(1)).toBe(true);
+    });
+});
+
+// --- Eigene Messreihen aus einer Datei -----------------------------------
+
+describe('csv-observations: der Datei- statt des Netz-Wegs', () => {
+    const CSV = [
+        'timestamp,gewicht,stimmung,geheizt',
+        '2026-06-01T00:00:00Z,81.4,gut,1',
+        '2026-06-02T00:00:00Z,81.1,mittel,0',
+        '2026-06-03T00:00:00Z,80.9,gut,1',
+    ].join('\n');
+
+    const CSV_PATH = 'data/vaults/messungen/tagebuch.csv';
+
+    function csvFiles(content = CSV) {
+        const files = createMemoryFileSystem();
+        return { files, content };
+    }
+
+    async function withCsv(content = CSV) {
+        const handle = newHandle();
+        const { files } = csvFiles();
+        await files.mkdir(`${process.cwd()}/data/vaults/messungen`);
+        await files.writeFile(`${process.cwd()}/${CSV_PATH}`, content);
+        const impl = getConnectorKind('csv-observations');
+        if (!impl) throw new Error('csv-observations fehlt');
+        await createConnector(handle, {
+            id: 'tagebuch',
+            name: 'Tagebuch',
+            kind: 'csv-observations',
+            locator: impl.locatorFor(impl.parseConfig({ path: CSV_PATH })),
+        });
+        return { handle, files };
+    }
+
+    it('erkennt das Skalenniveau am Bestand, nicht am Spaltennamen', () => {
+        expect(classifyColumn(['81.4', '80.9'])).toBe('numeric');
+        expect(classifyColumn(['1', '0', '1'])).toBe('binary');
+        expect(classifyColumn(['gut', 'mittel'])).toBe('categorical');
+        // Eine leere Spalte ist nicht numerisch — sie ist unbekannt, und
+        // die vorsichtigste Einstufung ist kategorial.
+        expect(classifyColumn(['', ' '])).toBe('categorical');
+    });
+
+    it('liest die Kopfzeile als Wahrheit und meldet eine fehlende Zeitspalte', () => {
+        const inventory = inventoryFromCsv(
+            { path: CSV_PATH, timeField: 'timestamp', timeFormat: 'iso', delimiter: ',' },
+            CSV,
+        );
+        expect(inventory.mapping.series.map(entry => entry.key)).toEqual(['gewicht', 'stimmung', 'geheizt']);
+        expect(inventory.mapping.series.map(entry => entry.kind)).toEqual(['numeric', 'categorical', 'binary']);
+        expect(() => inventoryFromCsv(
+            { path: CSV_PATH, timeField: 'zeit', timeFormat: 'iso', delimiter: ',' },
+            CSV,
+        )).toThrow(/Zeitspalte/);
+    });
+
+    it('importiert die Spalten als Struktur und die Datei als Herkunft', async () => {
+        const { handle, files } = await withCsv();
+        const result = await syncConnector(handle, 'tagebuch', { files });
+        expect(result.status).toBe('imported');
+
+        const quads = await dump(handle.store, handle.iri.importGraph('tagebuch'));
+        const sensor = handle.iri.entity('sensor', 'tagebuch#gewicht');
+        expect(quads.some(quad => quad.subject.value === sensor && quad.object.value === SOSA.Sensor)).toBe(true);
+        // Ein Dateipfad ist keine URL — er steht unter dcterms:source.
+        expect(quads.some(quad => quad.predicate.value === DCTERMS.source && quad.object.value === CSV_PATH))
+            .toBe(true);
+        expect(quads.some(quad => quad.predicate.value === SCHEMA.url)).toBe(false);
+        // Und kein Messwert im Store (Invariante C3).
+        expect(quads.some(quad => quad.object.value === '81.4')).toBe(false);
+    });
+
+    it('erfasst die Werte aus der Datei und liest sie nur einmal', async () => {
+        const { handle, files } = await withCsv();
+        await syncConnector(handle, 'tagebuch', { files });
+        for (const [key, kind] of [['gewicht', 'numeric'], ['geheizt', 'binary']] as const) {
+            await createVariable(handle, {
+                id: variableIdFor(`tagebuch#${key}`),
+                name: key,
+                sourceKind: 'csv-observations',
+                source: `tagebuch#${key}`,
+                kind,
+                aggregation: kind === 'numeric' ? 'mean' : 'last',
+                intervalSeconds: 86_400,
+            });
+        }
+        const report = await captureObservations(handle, {
+            files, root: ROOT, backfillDays: 10,
+            now: () => new Date(Date.parse('2026-06-04T00:00:00.000Z')),
+        });
+        expect(report.results.every(result => result.status === 'captured')).toBe(true);
+
+        const observations = new ObservationStore({ files, root: ROOT, userId: 'default' });
+        const weight = await observations.read('tagebuch-gewicht');
+        expect(weight.observations.map(point => point.v)).toContain(81.4);
+        expect((await observations.read('tagebuch-geheizt')).observations.some(point => point.v === 0)).toBe(true);
+    });
+
+    it('lehnt einen Pfad außerhalb der erlaubten Wurzeln ab', async () => {
+        const impl = getConnectorKind('csv-observations');
+        if (!impl) return;
+        const handle = newHandle();
+        const { files } = csvFiles();
+        await createConnector(handle, {
+            id: 'boese', name: 'Böse', kind: 'csv-observations',
+            locator: impl.locatorFor(impl.parseConfig({ path: '/etc/passwd' })),
+        });
+        const result = await syncConnector(handle, 'boese', { files });
+        expect(result.status).toBe('failed');
+        expect(result.message).toContain('blockiert');
+    });
+
+    it('folgt der Datei: geänderter Inhalt ist eine neue Revision', async () => {
+        const { handle, files } = await withCsv();
+        const first = await syncConnector(handle, 'tagebuch', { files });
+        await files.writeFile(`${process.cwd()}/${CSV_PATH}`, `${CSV}\n2026-06-04T00:00:00Z,80.5,gut,0`);
+        const second = await syncConnector(handle, 'tagebuch', { files });
+        expect(second.status).toBe('imported');
+        expect(second.revision).not.toBe(first.revision);
     });
 });
 

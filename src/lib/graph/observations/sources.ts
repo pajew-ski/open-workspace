@@ -28,8 +28,18 @@ import { mappingForConfig, type RestTimeseriesConfig } from '../connectors/rest-
 import { RestTimeseriesClient } from '../connectors/rest-timeseries/client';
 import type { RestSourceMapping } from '../connectors/rest-timeseries/mapping';
 import { parseRestSourceKey } from '../connectors/rest-timeseries/structure';
+import {
+    inventoryFromCsv,
+    readCsvFile,
+    type CsvObservationsConfig,
+} from '../connectors/csv-observations';
+import { extractSeries } from '../connectors/rest-timeseries/mapping';
+import { solarPosition } from '../connectors/solar-position/astronomy';
+import { coordinateOf, type SolarPositionConfig } from '../connectors/solar-position';
 import { getConnector, listConnectors } from '../connectors/registry';
 import { getConnectorKind } from '../connectors/catalog';
+import { parseSourceKey } from './source-structure';
+import type { FileSystemLike } from '@/lib/platform/runtime/types';
 import type { RawPoint } from './resample';
 import type { GraphHandle } from './variables';
 import type { VariableView } from './types';
@@ -57,6 +67,8 @@ export interface ObservationSource {
 export interface SourceOptions {
     fetchImpl?: typeof fetch;
     signal?: AbortSignal;
+    /** Dateizugriff der Runtime — Voraussetzung für Datei-Quellen (CSV). */
+    files?: FileSystemLike;
     /** Nur für Tests: fertiger HA-Client statt Auflösung über die Registry. */
     homeAssistantClient?: HomeAssistantClient;
 }
@@ -199,6 +211,149 @@ class RestTimeseriesSource implements ObservationSource {
     }
 }
 
+// --- Eigene Messreihen aus einer Datei -----------------------------------
+
+/**
+ * CSV-Dateien werden je Lauf **einmal** gelesen und für alle Spalten
+ * derselben Datei ausgewertet — dieselbe Überlegung wie beim
+ * Zwischenspeicher der REST-Quelle: Zehn Spalten sind kein Grund, eine
+ * Datei zehnmal zu parsen.
+ */
+class CsvObservationsSource implements ObservationSource {
+    readonly kind = 'csv-observations';
+    private readonly parsed = new Map<string, Map<string, RawPoint[]>>();
+
+    constructor(
+        private readonly handle: GraphHandle,
+        private readonly options: SourceOptions,
+    ) {}
+
+    private async seriesFor(connectorId: string): Promise<Map<string, RawPoint[]>> {
+        const cached = this.parsed.get(connectorId);
+        if (cached) return cached;
+        const view = await getConnector(this.handle, connectorId);
+        if (!view) {
+            throw new Error(`Die Quelle „${connectorId}" gibt es nicht (mehr).`);
+        }
+        const impl = getConnectorKind('csv-observations');
+        if (!impl) throw new Error('Die Connector-Art "csv-observations" ist nicht verfügbar.');
+        const config = impl.configFromLocator(view.locator) as CsvObservationsConfig;
+        const body = await readCsvFile({ files: this.options.files }, config.path);
+        const { mapping } = inventoryFromCsv(config, body);
+        // Das Fenster spielt beim Lesen keine Rolle: Eine Datei wird ganz
+        // gelesen, gefiltert wird danach. Die Grenzen sind bewusst offen.
+        const extracted = extractSeries(mapping, body, {
+            from: Number.NEGATIVE_INFINITY,
+            through: Number.POSITIVE_INFINITY,
+        });
+        if (extracted.problem) throw new Error(extracted.problem);
+        this.parsed.set(connectorId, extracted.series);
+        return extracted.series;
+    }
+
+    async fetchRaw(variable: VariableView, fromMs: number, toMs: number): Promise<RawSeriesResult> {
+        const parsed = parseSourceKey(variable.source);
+        if (!parsed) {
+            throw new Error(
+                `Der Quellschlüssel „${variable.source}" nennt keine Quelle und keine Spalte `
+                + '(erwartet: <quelle>#<spalte>).',
+            );
+        }
+        const series = await this.seriesFor(parsed.connectorId);
+        const points = series.get(parsed.seriesKey);
+        if (!points) {
+            throw new Error(`Die Datei hat keine Spalte „${parsed.seriesKey}" (mehr).`);
+        }
+        const inWindow = points.filter(point => point.t >= fromMs && point.t <= toMs);
+        const truncated = inWindow.length > MAX_RAW_POINTS;
+        return {
+            points: truncated ? inWindow.slice(0, MAX_RAW_POINTS) : inWindow,
+            truncated,
+        };
+    }
+}
+
+// --- Gerechnete Reihen ---------------------------------------------------
+
+/**
+ * Der Sonnenstand wird gerechnet statt geholt (entschieden am
+ * 2026-08-14: eine berechnete Größe IST eine Beobachtung). Erzeugt werden
+ * die Punkte direkt auf dem Abtastraster der Größe — eine gerechnete
+ * Reihe hat keine Ereignisse, an denen sie sich orientieren könnte, und
+ * jeder andere Zeitpunkt wäre willkürlich.
+ */
+class SolarPositionSource implements ObservationSource {
+    readonly kind = 'solar-position';
+    private readonly places = new Map<string, { latitude: number; longitude: number }>();
+
+    constructor(private readonly handle: GraphHandle) {}
+
+    private async placeFor(connectorId: string): Promise<{ latitude: number; longitude: number }> {
+        const cached = this.places.get(connectorId);
+        if (cached) return cached;
+        const view = await getConnector(this.handle, connectorId);
+        if (!view) {
+            throw new Error(`Die Quelle „${connectorId}" gibt es nicht (mehr).`);
+        }
+        const impl = getConnectorKind('solar-position');
+        if (!impl) throw new Error('Die Connector-Art "solar-position" ist nicht verfügbar.');
+        const config = impl.configFromLocator(view.locator) as SolarPositionConfig;
+        const place = {
+            latitude: coordinateOf(config.latitude),
+            longitude: coordinateOf(config.longitude),
+        };
+        this.places.set(connectorId, place);
+        return place;
+    }
+
+    async fetchRaw(variable: VariableView, fromMs: number, toMs: number): Promise<RawSeriesResult> {
+        const parsed = parseSourceKey(variable.source);
+        if (!parsed) {
+            throw new Error(
+                `Der Quellschlüssel „${variable.source}" nennt keine Quelle und keine Größe `
+                + '(erwartet: <quelle>#<größe>).',
+            );
+        }
+        const place = await this.placeFor(parsed.connectorId);
+        const stepMs = Math.max(60, variable.intervalSeconds) * 1000;
+        const first = Math.ceil(fromMs / stepMs) * stepMs;
+
+        const points: RawPoint[] = [];
+        let truncated = false;
+        for (let t = first; t <= toMs; t += stepMs) {
+            if (points.length >= MAX_RAW_POINTS) {
+                truncated = true;
+                break;
+            }
+            const position = solarPosition(t, place.latitude, place.longitude);
+            const value = valueOfSolarSeries(parsed.seriesKey, position);
+            if (value === null) {
+                throw new Error(`„${parsed.seriesKey}" ist keine gerechnete Größe dieser Quelle.`);
+            }
+            points.push({ t, value });
+        }
+        return { points, truncated };
+    }
+}
+
+function valueOfSolarSeries(
+    key: string,
+    position: ReturnType<typeof solarPosition>,
+): number | null {
+    switch (key) {
+        case 'elevation':
+            return position.elevation;
+        case 'azimuth':
+            return position.azimuth;
+        case 'daylight':
+            return position.elevation > 0 ? 1 : 0;
+        case 'extraterrestrial-irradiance':
+            return position.extraterrestrialIrradiance;
+        default:
+            return null;
+    }
+}
+
 // --- Auflösung -----------------------------------------------------------
 
 /**
@@ -240,9 +395,18 @@ export class SourceRegistry {
         if (kind === 'rest-timeseries') {
             return new RestTimeseriesSource(this.handle, this.options);
         }
+        if (kind === 'csv-observations') {
+            if (!this.options.files) {
+                throw new Error('Ohne Dateizugriff der Runtime lässt sich keine CSV-Reihe lesen.');
+            }
+            return new CsvObservationsSource(this.handle, this.options);
+        }
+        if (kind === 'solar-position') {
+            return new SolarPositionSource(this.handle);
+        }
         throw new Error(
-            `Für die Quellart „${kind}" gibt es keine Erfassung. `
-            + 'Bekannt sind "home-assistant" und "rest-timeseries".',
+            `Für die Quellart „${kind}" gibt es keine Erfassung. Bekannt sind `
+            + '"home-assistant", "rest-timeseries", "csv-observations" und "solar-position".',
         );
     }
 }

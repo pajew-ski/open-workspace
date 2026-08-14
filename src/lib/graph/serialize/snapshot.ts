@@ -85,6 +85,11 @@ export function snapshotFileForGraph(graphIri: string, instanceBase: string): st
     // nach dem nächsten Neustart weg. Ein Graph pro Modell, damit ein
     // Modell als Ganzes versioniert, verglichen und ersetzt werden kann.
     if (scope === 'causal-hypotheses') return `${prefix}causal-hypotheses.nq`;
+    // Die Studien-Chronik (docs/spec-widersprueche.md, Eintrag 3): Sie
+    // hält fest, was eine Frage wann gesagt hat. Ein Ereignis lässt sich
+    // nicht neu berechnen — anders als der Inferenz-Graph MUSS sie in den
+    // Snapshot, sonst wäre die Historie nach dem Neustart weg.
+    if (scope === 'causal-archive') return `${prefix}causal-archive.nq`;
     const causalMatch = scope.match(/^causal\/(.+)$/);
     if (causalMatch) return `${prefix}causal/${sanitizeFileSegment(causalMatch[1])}.nq`;
     const importMatch = scope.match(/^import\/(.+)$/);

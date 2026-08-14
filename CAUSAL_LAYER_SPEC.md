@@ -226,12 +226,37 @@ ow:Variable         eine Modellvariable; verweist per ow:observedBy auf die Quel
                     (HA-Entity, Open-Data-Reihe, Task-Aggregat) und trägt Einheit,
                     Skalenniveau, Aggregationsregel, erlaubte Lags
 ow:CausalStudy      ein Lauf: Modell + Datenfenster + Estimand + Verfahren + Ergebnis
-ow:Estimand         was geschätzt werden soll, samt Identifikationsstrategie
-                    (backdoor | frontdoor | iv | did | its | none)
+ow:Estimand         was geschätzt werden soll
 ow:AdjustmentSet    die Menge, über die adjustiert wird (aus dem DAG berechnet)
 ow:Refutation       ein Falsifikationsversuch mit Verfahren und Verdikt
 ow:Experiment       eine aktiv randomisierte Intervention (§13.3)
 ```
+
+**Identifikation und Verfahren sind ZWEI Angaben** (entschieden am
+2026-08-14, docs/spec-widersprueche.md Eintrag 1; die erste Fassung nannte
+einen gemeinsamen Wertebereich `backdoor | frontdoor | iv | did | its |
+none`). Sie gehören getrennt, weil sie aus verschiedenen Quellen kommen:
+
+```
+ow:identificationStrategy   Antwort des DAGs: backdoor | frontdoor | iv | none
+ow:estimator                gerechnetes Verfahren: stratification | regression |
+                            ipw | did | its
+```
+
+`did` und `its` sind **Studiendesigns**, nicht Identifikationsstrategien —
+sie setzen ihrerseits eine Backdoor-Identifikation voraus. In einem Feld
+zusammengefasst wäre nicht mehr ablesbar, ob eine ITS-Studie überhaupt
+identifiziert war.
+
+**Die Chronik** (entschieden am 2026-08-14, Eintrag 3): Ergebnisse liegen im
+Inferenz-Graphen und werden bei jedem Lauf ersetzt (Invariante C4), und
+Inferenz-Graphen werden nie persistiert (§8.1). Damit gäbe es keine
+Historie. Deshalb hält ein Lauf jede **Änderung** seines Ergebnisses in
+`graph/<u>/causal-archive` fest — behauptet und persistiert, weil ein
+Ereignis („am 14.08.2026 sagte diese Frage auf Revision 7 das hier") kein
+abgeleiteter Zustand ist, sondern eine `prov:Activity`, die stattgefunden
+hat. Der Effekt eines Chronik-Eintrags hängt **nie** am Reifier der Kante;
+sonst lägen alte Läufe über der aktuellen Annahme.
 
 ### 5.3 RDF-star statt Kantentabelle
 
@@ -245,7 +270,7 @@ Grund, warum kein Property-Graph nötig ist:
     ow:temporalLag      "PT15M"^^xsd:duration ;
     ow:evidenceLevel    "estimated" ;
     ow:effectSize       0.83 ;
-    ow:effectUnit       qudt:KiloW-HR ;
+    schema:unitText     "kWh" ;
     ow:ciLow            0.61 ; ow:ciHigh 1.04 ;
     ow:adjustedFor      ( :aussentemperatur :windgeschwindigkeit :tageszeit ) ;
     ow:refutationPassed true ;
@@ -255,6 +280,15 @@ Grund, warum kein Property-Graph nötig ist:
 Damit ist eine kausale Aussage **zitierfähig**: Effekt, Unsicherheit,
 Adjustierung, Falsifikationsstatus und Studie hängen an der Kante selbst, nicht
 in einer Nebentabelle.
+
+**Die Einheit ist Text, keine QUDT-IRI** (entschieden am 2026-08-14,
+docs/spec-widersprueche.md Eintrag 2; die erste Fassung zeigte
+`ow:effectUnit qudt:KiloW-HR`). Grund: Die Erfassung (C3/C5) übernimmt
+Einheiten quelltreu — Home Assistant liefert `unit_of_measurement`, Bright
+Sky `°C`, aWATTar `ct/kWh` —, und eine QUDT-IRI liegt dort nirgends vor.
+`schema:unitText` trägt beides, ein eigener Term wäre eine zweite
+Schreibweise für dieselbe Sache (Invariante 8). Eine QUDT-Abbildung bleibt
+möglich; sie gehört dann an die Variable, nicht an den Effekt.
 
 ---
 
@@ -413,6 +447,24 @@ Sonderpipeline (Invariante 5).
 | `rest-timeseries` | materialize | generischer Zeitreihen-Holer für offene APIs (JSON/CSV, Mapping-Konfiguration, Rate-Limit, Caching) | alle |
 | `sparql-endpoint` | federate | **existiert bereits** — Wikidata für Hintergrundwissen und Confounder-Kandidaten | alle |
 | `csv-observations` | materialize | manueller Import eigener Messungen, Self-Tracking-Exporte | alle, besonders `local` |
+| `solar-position` | materialize | Sonnenhöhe, Azimut, Tag/Nacht und extraterrestrische Einstrahlung — **gerechnet statt geholt** | alle |
+
+**Was „materialize" für diese Connectors heißt** (entschieden am
+2026-08-14, docs/spec-widersprueche.md Eintrag 5): die **Angebotsseite**,
+nicht die Reihe. Messwerte gehören nie in den Store (Invariante C3);
+materialisiert wird, welche Größen eine Quelle liefert, in welcher
+Einheit, an welchem Ort, mit welchem Skalenniveau. Die Werte holt der
+Erfassungslauf in den Beobachtungs-Speicher — dieselbe Trennung wie bei
+`home-assistant`.
+
+**Eine berechnete Größe IST eine Beobachtung** (entschieden am 2026-08-14,
+Eintrag 4). Der Sonnenstand hat keine offene Zeitreihen-API und braucht
+auch keine: Azimut und Elevation sind eine Funktion von Ort und Zeit,
+exakt, lückenlos und ohne Ausfall. Sie laufen deshalb über denselben
+Connector-Vertrag wie alles Externe (Invariante 5) und bleiben ehrlich
+über das Verfahren im Graphen: `ssn:implements` → `sosa:Procedure`. SOSA
+lässt das ausdrücklich zu — ein Sensor ist dort alles, was eine
+Beobachtung ausführt, auch ein Rechenverfahren.
 
 **Für den `ha-addon`-Fall fehlt heute eine Kleinigkeit mit großer Wirkung**:
 `deploy/ha-addon/config.yaml` setzt kein `homeassistant_api: true`. Ohne das
@@ -430,6 +482,7 @@ sie erweitert die Rechte des Add-ons erheblich und gehört in DOCS.md begründet
 | UBA Luftdaten, Sensor.Community, OpenAQ | Außenluftqualität | Confounder für Lüftungs- und Innenraumluft-Fragen |
 | PVGIS, Sonnenstandsrechner | Einstrahlung, Azimut/Elevation | Confounder für PV-Ertrag, Verschattung, Innentemperatur |
 | Feiertags-/Schulferien-APIs, eigener Kalender | Anwesenheitsmuster | Klassischer Confounder für Verbrauch — und seit M15 ist der Kalender bereits Graph-Bürger |
+| Sonnenstand (gerechnet, `solar-position`) | Azimut, Elevation, Tag/Nacht, extraterrestrische Einstrahlung | Exogen und lückenlos: die geometrische Hälfte der Einstrahlung, während das Wetter die atmosphärische liefert |
 | Destatis GENESIS, Eurostat | Referenzwerte, Benchmarks | Einordnung, Vergleichsgruppen |
 | Wikidata, DBpedia | Geräteklassen, physikalische Zusammenhänge, Einheiten | Struktur-Prior und Vokabular-Alignment — **über die vorhandene Föderation, ohne Import** |
 | OSM/Overpass | Gebäudegeometrie, Ausrichtung, Umgebung | Struktur-Prior für Wärmemodelle |
@@ -643,7 +696,7 @@ Im Arbeitsmodus der Spec: ein Meilenstein, eine Session, ein Branch, ein PR.
 | **C2** | Causal Path Tracing im Retrieval (§9) + Anzeige im Explorer | `explain` trägt den kausalen Pfad; d-separierte Knoten fallen bei gegebener Konditionierung nachweislich raus |
 | **C3** ✅ | Observation Store + `home-assistant`-Connector (Registry → Struktur, History → Reihen) + `homeassistant_api` im Add-on. **Gebaut** — Abnahme in `tests/graph/observations.test.ts` und `tests/graph/home-assistant.test.ts`, Doku in `docs/beobachtungen.md`. Offen geblieben und einzeln notiert: Automations-Traces als Interventionslog, LTS-Backfill über die WebSocket-API | Zwei Läufe erzeugen keine Dublette (Wasserzeichen); kein Messwert landet im Store; Lücken werden erfasst statt fortgeschrieben; ein Fehler bei einer Größe lässt die anderen laufen |
 | **C4** | Schätzung + Refutation Tier 1, `ow:CausalStudy` mit vollständiger Reproduktions-Signatur, Ergebnis-UI mit DAG, CI und Refutations-Badge | Ein bekannter Effekt aus synthetischen Daten wird korrekt geschätzt; ein konfundierter Fall wird als solcher erkannt; ein durchgefallener Effekt erscheint **nicht** als Effekt |
-| **C5** | Open-Data-Connector `rest-timeseries` + Confounder-Katalog (Wetter, Preis, Sonnenstand, Feiertag) | Dieselbe Frage mit und ohne Adjustierung liefert nachweislich unterschiedliche Ergebnisse, und die Differenz wird erklärt |
+| **C5** ✅ | Open-Data-Connector `rest-timeseries` + Confounder-Katalog (Wetter, Preis, Sonnenstand, Feiertag), dazu `csv-observations` und `solar-position`. **Gebaut** — Abnahme in `tests/graph/open-data.test.ts`, Doku in `docs/kausalmodell.md` | Dieselbe Frage mit und ohne Adjustierung liefert nachweislich unterschiedliche Ergebnisse, und die Differenz wird erklärt |
 | **C6** | Neurosymbolische Schleife: LLM-Hypothesen mit Provenienz, symbolische Filter, Vergleich der drei Strukturquellen, Widerspruchs-UI | Keine Hypothese erreicht ohne Filter den Studien-Pfad; ein temporal unmöglicher Vorschlag wird automatisch verworfen |
 | **C7** | *Optional, eigene Entscheidung*: Experimente (§13.3) mit allen Leitplanken | Nur freigegebene Entitäten; Not-Aus getestet; vollständiges `prov`-Protokoll; Grenzverletzung bricht ab |
 | **C8** | *Optional*: Tier-2-Sidecar, Struktur-Lernen, Föderation von Kausalmodellen | `capabilities.causalTier` steuert die UI ehrlich; ohne Sidecar ist nichts sichtbar, was ihn braucht |
@@ -667,7 +720,8 @@ Im Arbeitsmodus der Spec: ein Meilenstein, eine Session, ein Branch, ein PR.
 ## 18. Reihenfolge
 
 **C3 → C0 → C1 → C2 → C4 → C5**, danach optional C6, und C7/C8 nur nach
-eigener Entscheidung.
+eigener Entscheidung. **C3, C0, C1, C2, C4 und C5 sind gebaut; als
+Nächstes steht C6.**
 
 > **Korrektur gegenüber der ersten Fassung dieses Dokuments.** Dort stand
 > „C2 zuerst", weil kausal geerdetes Retrieval ohne Daten einzahlt. Das ist
@@ -724,6 +778,13 @@ Jede Session:
 4. hakt in `TODO.md` ab und aktualisiert `AGENTS.md`;
 5. hält die Invarianten C1–C10 aus §4 ein. Sie sind Review-Blocker, nicht
    Empfehlungen.
+
+**Wo diese Spec sich widerspricht**, steht es gesammelt in
+[docs/spec-widersprueche.md](./docs/spec-widersprueche.md) — mit
+Auflösung, Stand und den Kosten der Gegenrichtung. Einträge mit dem Stand
+„entschieden" sind hier eingearbeitet; „offen" heißt: die dort
+beschriebene Auslegung gilt und ist umgesetzt, aber sie ist eine
+Auslegung. Wer beim Bauen auf einen neuen stößt, trägt ihn dort ein.
 
 **Was eine Session NICHT tut**: diese Spec neu verhandeln. Die
 Entscheidungen in §2 (Bewertung der Vorlage), §4 (Invarianten), §7 (zwei
