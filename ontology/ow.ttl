@@ -804,3 +804,158 @@ ow:evidenceLevel a owl:DatatypeProperty ;
     rdfs:label "Evidenzstufe"@de, "evidence level"@en ;
     rdfs:comment "Belegstand einer kausalen Kante am Reifier: 'hypothesis' (nur behauptet), 'estimated' (geschätzt, aber nicht falsifiziert) oder 'refuted-clean' (Schätzung samt bestandener Refutation). Sie ist von ow:edgeClass getrennt, weil Herkunft und Belegstand unabhängig sind — eine vom Menschen gesetzte Kante bleibt unbelegt, bis eine Studie sie prüft — und sie ist die Filtergröße, mit der Invariante C5 durchgesetzt wird ('ein Effekt ohne Refutation existiert nicht'). Kein Standard-Term stuft die Belegkraft einer Aussage ab: sh:severity bewertet Validierungsbefunde, prov nennt Herkunft, nicht Geltung."@de ;
     rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+#################################################################
+# Schätzung und Refutation (CAUSAL_LAYER_SPEC §5.2/§13, Meilenstein C4)
+#
+# Hier entsteht die erste Zahl dieses Layers — und deshalb steht in
+# diesem Block mehr Buchführung als Ergebnis. Invariante C7 verlangt,
+# dass jede Studie reproduzierbar ist: DAG-Revision, Datenfenster,
+# Verdichtung, Estimand, Verfahren, Seed, Refutationen und
+# Softwareversion. Ohne diese Angaben wird nicht geschrieben.
+#
+# Fremdes Vokabular trägt, wo es kann (Invariante C8): prov:used für
+# alles, was in einen Lauf eingegangen ist, prov:wasGeneratedBy von der
+# annotierten Kante auf die Studie, prov:generatedAtTime für den
+# Zeitpunkt, schema:softwareVersion, schema:temporalCoverage,
+# schema:numberOfItems, schema:value und schema:unitText für Kennzahl,
+# Umfang und Einheit. Geprüft und für den Kern dieses Blocks als
+# untragfähig verworfen: STATO/OBI (statistische Verfahren, aber ohne
+# Estimand-Begriff in dieser Fassung und mit numerischen IDs, die eine
+# Fehlbenennung unsichtbar machen), schema:Observation (eine Messung,
+# kein Schätzergebnis), prov:Plan (Handlungsplan, keine Zielgröße).
+#
+# Was hier NICHT steht: ein Term für „Effekt". Der Effekt ist die
+# Annotation ow:effectSize am Reifier der kausalen Kante — im
+# Inferenz-Graphen, nie im Modell (Invariante C4). So bleibt die
+# Annahme frei von Ergebnissen, und beide reden trotzdem über
+# dieselbe Kante.
+#################################################################
+
+ow:CausalStudy a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "Kausalstudie"@de, "causal study"@en ;
+    rdfs:comment "Ein Lauf: Kausalmodell samt Revision, Datenfenster, Estimand, Schätzverfahren, Seed, Ergebnis und Refutationsversuche. prov:Activity ist die richtige Oberklasse, weil eine Studie ein Vorgang ist und keine Ressource — was sie verwendet hat, hängt an prov:used, was sie erzeugt hat, zeigt per prov:wasGeneratedBy auf sie zurück. Kein Standard-Vokabular bündelt Identifikationsstrategie, Adjustierung und Falsifikationsstatus in einem reproduzierbaren Lauf; schema:Dataset beschreibt Daten, nicht ihre Auswertung."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:Estimand a owl:Class ;
+    rdfs:label "Zielgröße"@de, "estimand"@en ;
+    rdfs:comment "Die FRAGE, nicht die Antwort: welche Wirkung welcher Größe auf welche geschätzt werden soll, mit welchem Verfahren, in welchem Fenster und mit welchem Seed. Sie ist eine menschliche Setzung und überlebt deshalb jeden Lauf — sie liegt in graph/meta wie ein Retrieval-Profil, während die Ergebnisse in den Inferenz-Graphen gehen und dort bei jedem Lauf ersetzt werden (Invariante C4). Der Begriff ist in der Kausalliteratur fest umrissen (Pearl, Hernán/Robins) und hat in keinem verbreiteten RDF-Vokabular eine Entsprechung."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:AdjustmentSet a owl:Class ;
+    rdfs:label "Adjustierungsmenge"@de, "adjustment set"@en ;
+    rdfs:comment "Die Menge von Störgrößen, über die eine Studie adjustiert hat. Sie ist ein eigener Knoten und keine Liste am Studien-Knoten, weil sie zitierfähig sein muss: Zwei Studien mit gleichem Effekt, aber verschiedener Adjustierung, sagen Verschiedenes, und die Menge ist der Grund. Sie wird aus dem DAG berechnet (Adjustment-Kriterium, C1) und nie geraten."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:Refutation a owl:Class ;
+    rdfs:label "Falsifikationsversuch"@de, "refutation"@en ;
+    rdfs:comment "Ein einzelner Versuch, die eigene Schätzung zu widerlegen: Verfahren, Verdikt und Kennzahl. Invariante C5 macht ihn zur Existenzbedingung des Effekts — ein Effekt ohne bestandene Refutation wird nicht ausgegeben. Ein fehlgeschlagener Versuch bleibt trotzdem im Graphen: Er ist ein Ergebnis und wird angezeigt, nicht verschwiegen. Kein Standard-Term modelliert einen Falsifikationsversuch; sh:ValidationResult prüft Datenform, nicht statistische Geltung."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:treatment a owl:ObjectProperty ;
+    rdfs:range ow:Variable ;
+    rdfs:label "Behandlung"@de, "treatment"@en ;
+    rdfs:comment "Die Größe, deren Wirkung geschätzt werden soll (die Ursachenseite des Estimands). Sie zeigt auf dieselbe ow:Variable, die im DAG steht und erfasst wird — Frage, Modell und Erfassung reden so über einen Knoten. Kein Standard-Term nennt die Ursachenseite einer Schätzfrage; obo:RO_0002411 verbindet zwei Größen, benennt aber keine Rolle in einer Studie."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:outcome a owl:ObjectProperty ;
+    rdfs:range ow:Variable ;
+    rdfs:label "Wirkung"@de, "outcome"@en ;
+    rdfs:comment "Die Größe, auf die gewirkt wird (die Wirkungsseite des Estimands). Gegenstück zu ow:treatment und aus demselben Grund eigen."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:controlOutcome a owl:ObjectProperty ;
+    rdfs:range ow:Variable ;
+    rdfs:label "Kontroll-Wirkung"@de, "control outcome"@en ;
+    rdfs:comment "Die Vergleichsgröße einer Differenz-von-Differenzen-Schätzung: eine Wirkung, die derselbe Trend trifft, der Eingriff aber nicht. Sie trägt die Parallel-Trend-Annahme des Verfahrens und muss deshalb benannt und nachlesbar sein, statt im Verfahren zu verschwinden."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:interventionAt a owl:DatatypeProperty ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "Zeitpunkt des Eingriffs"@de, "intervention time"@en ;
+    rdfs:comment "Der Zeitpunkt, an dem der Eingriff wirksam wurde — die Trennlinie zwischen Vorher und Nachher bei DiD und unterbrochener Zeitreihe. Er ist eine Setzung des Menschen und keine Ableitung aus den Daten; ihn zu raten hieße, den Befund zu bauen, den man sucht. schema:startTime bezeichnet den Beginn eines Ereignisses, nicht den Schnitt in einer Auswertung."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:identificationStrategy a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "Identifikationsstrategie"@de, "identification strategy"@en ;
+    rdfs:comment "Wie der Effekt aus Beobachtungsdaten überhaupt bestimmbar ist: 'backdoor', 'frontdoor', 'iv' oder 'none'. Sie kommt aus dem DAG (Adjustment-Kriterium, C1) und nicht aus den Daten — sie ist deshalb von ow:estimator getrennt, der das Rechenverfahren nennt. Ein Effekt ohne Strategie wäre eine Korrelation mit besserem Namen."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:estimator a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "Schätzverfahren"@de, "estimator"@en ;
+    rdfs:comment "Das gerechnete Verfahren: 'stratification', 'regression', 'ipw', 'did' oder 'its'. Getrennt von ow:identificationStrategy, weil dieselbe Strategie mit verschiedenen Verfahren gerechnet werden kann und der Vergleich zweier Verfahren auf derselben Strategie ein eigenes Argument ist. Teil der Reproduktions-Signatur (Invariante C7)."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:adjustedFor a owl:ObjectProperty ;
+    rdfs:domain ow:AdjustmentSet ;
+    rdfs:range ow:Variable ;
+    rdfs:label "adjustiert über"@de, "adjusted for"@en ;
+    rdfs:comment "Ein Mitglied der Adjustierungsmenge. Mehrere Werte bilden die Menge; die leere Menge ist eine gültige Aussage und heißt 'keine Adjustierung nötig', nicht 'keine Angabe'. Deshalb existiert der Mengen-Knoten auch dann, wenn er kein Mitglied hat."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:modelRevision a owl:DatatypeProperty ;
+    rdfs:domain ow:CausalStudy ;
+    rdfs:range xsd:integer ;
+    rdfs:label "Modell-Revision"@de, "model revision"@en ;
+    rdfs:comment "Die Revision des Kausalmodells, auf die sich die Studie beruft (schema:version am Modell). Wer den DAG ändert, ändert das Ergebnis (Invariante C1) — ohne die Nummer wüsste niemand, welche Annahme zu welcher Zahl gehört, und die Studie wäre nicht reproduzierbar (Invariante C7)."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:seed a owl:DatatypeProperty ;
+    rdfs:range xsd:integer ;
+    rdfs:label "Startwert des Zufalls"@de, "random seed"@en ;
+    rdfs:comment "Der gesetzte Startwert jeder Ziehung in Bootstrap und Refutation. Ohne ihn ergäbe derselbe Lauf zweimal verschiedene Intervalle, und Invariante C7 wäre nicht einlösbar. Er steht am Estimand (die Frage legt ihn fest) und in der Studie (der Lauf hat ihn benutzt)."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:studyVerdict a owl:DatatypeProperty ;
+    rdfs:domain ow:CausalStudy ;
+    rdfs:range xsd:string ;
+    rdfs:label "Urteil der Studie"@de, "study verdict"@en ;
+    rdfs:comment "Wie der Lauf ausging: 'not-identifiable' (der DAG oder die Erfassung geben die Frage nicht her), 'not-estimable' (identifizierbar, aber die Datenlage trägt nicht), 'refuted' (geschätzt und durchgefallen — der Wert wird nicht ausgegeben, Invariante C5) oder 'passed'. Drei der vier Ausgänge sind keine Zahl, und genau deshalb braucht es den Term: Ein fehlendes Ergebnis ist ein Ergebnis und darf nicht wie ein fehlender Lauf aussehen."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:effectSize a owl:DatatypeProperty ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "Effektstärke"@de, "effect size"@en ;
+    rdfs:comment "Der geschätzte kausale Effekt, als Annotation am Reifier der kausalen Kante und ausschließlich im Inferenz-Graphen (Invariante C4). Die Einheit steht daneben in schema:unitText, die Unsicherheit in ow:ciLow/ow:ciHigh. Er wird NUR geschrieben, wenn alle blockierenden Refutationen bestanden sind (Invariante C5). schema:value trägt eine Kennzahl ohne kausale Deutung und wäre hier zu schwach: Der Unterschied zwischen Zusammenhang und Wirkung ist der ganze Punkt dieses Layers."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:standardError a owl:DatatypeProperty ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "Standardfehler"@de, "standard error"@en ;
+    rdfs:comment "Streuung der Bootstrap-Verteilung des Effekts. Sie stammt aus dem Moving Block Bootstrap und nicht aus der Lehrbuchformel: Beobachtungsreihen sind autokorreliert (§15.2), und ein klassischer Standardfehler wäre systematisch zu klein — ein zu enges Intervall behauptet Sicherheit, die niemand hat."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:ciLow a owl:DatatypeProperty ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "untere Intervallgrenze"@de, "confidence interval lower bound"@en ;
+    rdfs:comment "Untere Grenze des 95-%-Konfidenzintervalls (Perzentil-Methode über den Block-Bootstrap). Sie wird nie ohne ow:ciHigh und nie ohne ow:effectSize geschrieben: Eine Punktschätzung ohne Intervall ist in diesem Layer keine Ausgabe."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:ciHigh a owl:DatatypeProperty ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "obere Intervallgrenze"@de, "confidence interval upper bound"@en ;
+    rdfs:comment "Obere Grenze des 95-%-Konfidenzintervalls; Gegenstück zu ow:ciLow."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:refutationMethod a owl:DatatypeProperty ;
+    rdfs:domain ow:Refutation ;
+    rdfs:range xsd:string ;
+    rdfs:label "Verfahren des Falsifikationsversuchs"@de, "refutation method"@en ;
+    rdfs:comment "Welcher Versuch unternommen wurde: 'placebo', 'random-common-cause', 'subset', 'negative-control', 'implied-independence' oder 'e-value'. Die ersten drei fangen Implementierungsfehler (§13.1), die beiden nächsten prüfen die ANNAHME gegen die Daten (§13.2), der E-Wert ist eine Sensitivitätskennzahl und blockiert nie."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:refutationVerdict a owl:DatatypeProperty ;
+    rdfs:domain ow:Refutation ;
+    rdfs:range xsd:string ;
+    rdfs:label "Verdikt des Falsifikationsversuchs"@de, "refutation verdict"@en ;
+    rdfs:comment "Ausgang eines einzelnen Versuchs: 'passed', 'failed', 'inconclusive' (nicht prüfbar — kein Bestehen) oder 'informative' (eine Kennzahl ohne Urteil, wie der E-Wert). 'inconclusive' ist bewusst kein Bestehen: 'Wir konnten es nicht prüfen' und 'es hat gehalten' sind verschiedene Aussagen, und sie zu vermengen wäre die bequemste Art, Invariante C5 zu unterlaufen."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:refutationPassed a owl:DatatypeProperty ;
+    rdfs:range xsd:boolean ;
+    rdfs:label "Refutation bestanden"@de, "refutation passed"@en ;
+    rdfs:comment "Zusammenfassung aller blockierenden Versuche als Annotation am Reifier der kausalen Kante: true nur, wenn jeder von ihnen bestanden hat. Sie steht neben ow:effectSize, damit eine zitierte kausale Aussage ihren Falsifikationsstatus mitträgt und nicht in einer Nebentabelle nachgeschlagen werden muss (§5.3)."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .

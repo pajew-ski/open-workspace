@@ -20,6 +20,8 @@ import {
     listCausalHypotheses,
     listCausalModels,
 } from '@/lib/graph/causal/model';
+import { listEstimands } from '@/lib/graph/causal/estimand';
+import { causalInferredGraph, readCausalStudies } from '@/lib/graph/causal/study-graph';
 import { listVariables } from '@/lib/graph/observations/variables';
 import { validateStoreGraphs } from '@/lib/graph/reasoning/run';
 import { createNodeRuntimeAdapter } from '@/lib/platform/runtime/server';
@@ -68,11 +70,23 @@ export async function GET(): Promise<Response> {
                 count: variable.status.count,
                 enabled: variable.enabled,
             }));
+        // Fragen und Ergebnisse gehören auf dieselbe Seite wie der DAG:
+        // Ein Effekt wird nie ohne das Modell ausgegeben, aus dem er
+        // folgt (Invariante C1). Die Studien kommen aus dem
+        // Inferenz-Graphen und nur, wenn der Aufrufer ihn lesen darf
+        // (Invariante C6).
+        const inferredGraph = causalInferredGraph(iri, 'workspace');
+        const estimands = metaReadable ? await listEstimands(handle) : [];
+        const studies = allowedGraphs.includes(inferredGraph)
+            ? await readCausalStudies(handle)
+            : [];
         return NextResponse.json({
             models,
             hypotheses,
             hypothesesGraph,
             observedVariables: observed,
+            estimands,
+            studies,
             // Invariante C9: Die Oberfläche zeigt nur, was diese Runtime
             // wirklich rechnen kann.
             causalTier: createNodeRuntimeAdapter().capabilities.causalTier,

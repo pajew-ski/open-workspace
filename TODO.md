@@ -356,7 +356,7 @@
 > nächste. C3 steht zuerst und ist erledigt, weil er als einziger
 > zeitkritisch war: Home Assistant verwirft Zustandswechsel nach
 > `purge_keep_days`, jeder Tag ohne Erfassung war unwiederbringlich.
-> Gebaut sind C3, C0, C1 und C2; offen ist als Nächstes C4.
+> Gebaut sind C3, C0, C1, C2 und C4; offen ist als Nächstes C5.
 
 - [x] **C3 Erfassung („früh materialisieren")**:
       `homeassistant_api: true` im Add-on-Manifest (lesend, begründet in
@@ -480,15 +480,65 @@
       Gegenprobe ohne Adjustierung), dazu Collider-Öffnung, Tor gegen den
       semantischen Umweg, Grant-Klammer (C6) und Determinismus.
       Doku: [docs/kausalmodell.md](./docs/kausalmodell.md)
-- [ ] **C4 Schätzung + Refutation** (SPEC §13.1/13.2) — *als Nächstes*: Stratifikation,
-      Regression mit Adjustierung, IPW, DiD, ITS; Placebo, Random Common
-      Cause, Subset-Stabilität, Negativkontrolle, E-Value.
-      `ow:CausalStudy` mit vollständiger Reproduktions-Signatur
-      (Invariante C7), Ergebnis-UI mit DAG, CI und Refutations-Badge.
-      Abnahme: bekannter Effekt aus synthetischen Daten wird korrekt
-      geschätzt; ein konfundierter Fall wird als solcher erkannt; ein
-      durchgefallener Effekt erscheint **nicht** als Effekt (Invariante C5)
-- [ ] **C5 Open-Data-Connector** `rest-timeseries` (SPEC §10/§11): Wetter
+- [x] **C4 Schätzung + Refutation** (SPEC §13.1/13.2): Hier entsteht die
+      erste **Zahl** — und nur unter Bedingungen. Der Tier-1-Kern bleibt
+      pur (`causal/{numeric,panel,estimate,refute,study}.ts`, per Test
+      erzwungen) und rechnet damit in allen drei Runtimes:
+      - **Fünf Schätzer**: Stratifikation, Regression mit Adjustierung,
+        IPW (logistische Propensity, Hájek-Gewichtung, Beschneidung bei
+        dünnem Overlap), Difference-in-Differences und Interrupted Time
+        Series. Ohne Vorgabe wählt der Lauf nach einer nachlesbaren Regel.
+      - **Konfidenz aus dem Moving Block Bootstrap**, nie aus der
+        Lehrbuchformel (§15.2): Beobachtungsreihen sind autokorreliert,
+        ein klassischer Standardfehler wäre systematisch zu klein.
+      - **Panel statt Zeitreihen** (`panel.ts`): gröbstes Raster
+        (verfeinern hieße Werte erfinden), listenweiser Ausschluss bei
+        Lücken je Größe gezählt, Zeitversatz der Kante angewandt,
+        Positivität geprüft und berichtet (§15.3).
+      - **Sechs Refutationen**: Placebo (rotiert statt permutiert — eine
+        Permutation zerstörte die Autokorrelation), zufällige gemeinsame
+        Ursache, Teilmengen-Stabilität über zusammenhängende Fenster,
+        Negativkontrolle aus dem DAG und die implizierten bedingten
+        Unabhängigkeiten gegen die Daten (§13.2, Bonferroni) — dazu der
+        E-Wert als Kennzahl, die nie blockiert. „Nicht prüfbar" gilt
+        **nicht** als bestanden.
+      - **Vier Ausgänge, drei ohne Zahl**: `not-identifiable`,
+        `not-estimable` (auch bei Frontdoor/IV — identifiziert, aber in
+        Tier 1 nicht gerechnet, und das wird gesagt statt ersatzweise
+        etwas anderes auszugeben), `refuted`, `passed`.
+      - **Frage und Antwort getrennt**: `ow:Estimand` in `graph/meta`
+        (bleibt), `ow:CausalStudy` in `graph/<u>/inferred/causal/workspace`
+        (bei jedem Lauf vollständig ersetzt, Invariante C4 + Invariante 3).
+        Damit der Replace kein Verlust ist, rechnet ein Lauf **alle**
+        Fragen neu.
+      - **Der Effekt hängt am Reifier der Kante** (§5.3), nur im
+        Inferenz-Graphen; beim Lesen wird er über das Modell gelegt. Erst
+        dadurch greift `minEvidence` aus C2 wirklich. Ohne Kante
+        (Wirkung über mehrere Schritte) trägt ein studieneigener Knoten
+        die Zahl — eine Kante zu erfinden wäre Struktur-Behauptung.
+      - **Signatur erzwungen** (C7): Modell-Revision, Startwert,
+        Softwareversion, Zeitpunkt, Datenfenster, Zeilenzahl und je
+        Eingabe die eingefrorene Erfassungsregel. Geprüft doppelt — im
+        Code und in den Shapes; was durchfällt, wird nicht geschrieben,
+        sondern gemeldet. Schärfste Regel: eine Effektstärke ohne
+        `ow:refutationPassed true` ist ein SHACL-**Verstoß** (C5).
+      - **Scope-partitioniert** (C6): Beobachtungen sind privat, also
+        bleibt der öffentliche Kausal-Inferenz-Graph leer; ein verengter
+        Zugang sieht an einer Kante keinen Effekt.
+      - 4 Klassen und 18 Eigenschaften neu im `ow:`-Namensraum, alles
+        Übrige aus PROV und schema.org (Invariante 8/C8).
+      - UI auf `/graph/causal`: Frage stellen, alle Fragen rechnen,
+        Ergebnis mit DAG, Effekt, Konfidenzintervall, Refutations-Badges
+        und Signatur — Fragen und Ergebnisse stehen IM Modell, nie
+        daneben (Invariante C1).
+      Abnahme: `tests/graph/causal-estimation.test.ts` (bekannter Effekt
+      aus synthetischen Daten korrekt geschätzt, mit und ohne Adjustierung
+      nachweislich verschieden; „nicht identifizierbar" mit Namen der
+      fehlenden Störgröße; durchgefallener Effekt erscheint weder in der
+      Rückgabe noch im Graphen; vollständiger Replace; Panel-Regeln; DiD
+      und ITS; C6-Negativtests; C7-Signatur; Reinheit des Kerns).
+      Doku: [docs/kausalmodell.md](./docs/kausalmodell.md)
+- [ ] **C5 Open-Data-Connector** `rest-timeseries` (SPEC §10/§11) — *als Nächstes*: Wetter
       (DWD/Bright Sky), Strompreis, Sonnenstand, Feiertage — die
       Confounder der Hausdomäne.
       Abnahme: dieselbe Frage mit und ohne Adjustierung liefert

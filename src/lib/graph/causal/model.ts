@@ -354,15 +354,85 @@ async function readRevisions(handle: GraphHandle, graph: string): Promise<Causal
         .sort((a, b) => b.revision - a.revision || (b.at ?? '').localeCompare(a.at ?? ''));
 }
 
+/**
+ * Legt die Ergebnisse der Studien (C4) über die Kanten: Belegstand und
+ * Effekt kommen aus `graph/<u>/inferred/causal/workspace` und werden hier
+ * NUR gelesen. Die Annahme bleibt frei von Ergebnissen (Invariante C4) —
+ * und trotzdem sieht man an der Kante, was aus ihr geworden ist.
+ *
+ * Der Träger ist derselbe Reifier wie im Modell, nur in einem anderen
+ * Named Graph. Deshalb genügt der Abgleich über die Kante selbst; eine
+ * zweite Zuordnungstabelle braucht es nicht (§5.3).
+ */
+async function overlayStudies(
+    handle: GraphHandle,
+    edges: CausalEdgeView[],
+    inferredGraph: string,
+): Promise<void> {
+    if (edges.length === 0) return;
+    const existing = (await handle.store.graphs()).map(g => g.value);
+    if (!existing.includes(inferredGraph)) return;
+    const rows = await selectRows(handle, `${SPARQL_PREFIXES}
+        SELECT ?from ?to ?evidence ?effect ?ciLow ?ciHigh ?error ?unit ?study WHERE {
+            GRAPH ${iriRef(inferredGraph)} {
+                ?reifier <${RDF.reifies}> <<( ?from <${RO.causallyUpstreamOf}> ?to )>> .
+                ?reifier <${PROV.wasGeneratedBy}> ?study .
+                OPTIONAL { ?reifier <${OW.evidenceLevel}> ?evidence }
+                OPTIONAL { ?reifier <${OW.effectSize}> ?effect }
+                OPTIONAL { ?reifier <${OW.ciLow}> ?ciLow }
+                OPTIONAL { ?reifier <${OW.ciHigh}> ?ciHigh }
+                OPTIONAL { ?reifier <${OW.standardError}> ?error }
+                OPTIONAL { ?reifier <${SCHEMA.unitText}> ?unit }
+            }
+        } ORDER BY ?from ?to`, [inferredGraph]);
+    const number = (value?: string) => {
+        if (value === undefined) return undefined;
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : undefined;
+    };
+    for (const row of rows) {
+        const edge = edges.find(candidate =>
+            candidate.from === row.from.value && candidate.to === row.to.value);
+        if (!edge) continue;
+        const evidence = row.evidence?.value;
+        if (evidence && (EVIDENCE_LEVELS as readonly string[]).includes(evidence)) {
+            edge.studyEvidence = evidence as EvidenceLevel;
+        }
+        const value = number(row.effect?.value);
+        const ciLow = number(row.ciLow?.value);
+        const ciHigh = number(row.ciHigh?.value);
+        if (value === undefined || ciLow === undefined || ciHigh === undefined) continue;
+        const error = number(row.error?.value);
+        edge.effect = {
+            value,
+            ciLow,
+            ciHigh,
+            ...(error !== undefined ? { standardError: error } : {}),
+            ...(row.unit ? { unit: row.unit.value } : {}),
+            study: row.study.value,
+        };
+    }
+}
+
 export interface ListOptions {
     /** Verengung durch den Grant (§17.3) — kann nur wegnehmen. */
     allowedGraphs?: readonly string[];
+}
+
+export interface ReadModelOptions {
+    /**
+     * Ergebnisse der Studien mitlesen (Default: ja). Aus ist es dort, wo
+     * der Aufrufer den Inferenz-Graphen nicht sehen darf — ein Effekt
+     * daraus wäre ein Inferenz-Leak (Invariante C6).
+     */
+    withStudies?: boolean;
 }
 
 /** Ein Modell samt Variablen und Kanten; `null`, wenn es den Knoten nicht gibt. */
 export async function readCausalModel(
     handle: GraphHandle,
     ref: CausalGraphRef,
+    options: ReadModelOptions = {},
 ): Promise<CausalModelView | null> {
     const rows = await selectRows(handle, `${SPARQL_PREFIXES}
         SELECT ?model ?name ?description ?created ?modified ?revision WHERE {
@@ -379,6 +449,9 @@ export async function readCausalModel(
     if (!row) return null;
     const modelIri = row.model.value;
     const edges = await readEdges(handle, ref.graph);
+    if (options.withStudies !== false) {
+        await overlayStudies(handle, edges, handle.iri.inferredGraph('causal/workspace'));
+    }
     return {
         id: ref.modelId,
         iri: modelIri,
@@ -402,9 +475,14 @@ export async function listCausalModels(
     const allowed = options.allowedGraphs ? new Set(options.allowedGraphs) : null;
     const refs = causalGraphsOf(handle.iri, existing)
         .filter(ref => !allowed || allowed.has(ref.graph));
+    // Ergebnisse nur für den, der den Inferenz-Graphen ohnehin lesen darf
+    // (Invariante C6): Ein Effekt ist eine Zahl, in der Beobachtungen
+    // stecken, und ein verengter Zugang bekommt sie nicht über die
+    // Hintertür einer Modellansicht.
+    const withStudies = !allowed || allowed.has(handle.iri.inferredGraph('causal/workspace'));
     const models: CausalModelView[] = [];
     for (const ref of refs) {
-        const model = await readCausalModel(handle, ref);
+        const model = await readCausalModel(handle, ref, { withStudies });
         if (model) models.push(model);
     }
     return models;

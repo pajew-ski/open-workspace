@@ -4,9 +4,9 @@
 
 ## Hier weitermachen (Einstieg für neue Sessions)
 
-> **Neu seit 2026-08-13 — Kausal-Layer, C3, C0, C1 und C2 gebaut.** Neben
-> dem Graph-Kern gilt [CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md)
-> (verbindlich für C0–C5). Umgesetzt sind vier Meilensteine:
+> **Neu seit 2026-08-13 — Kausal-Layer, C3, C0, C1, C2 und C4 gebaut.**
+> Neben dem Graph-Kern gilt [CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md)
+> (verbindlich für C0–C5). Umgesetzt sind fünf Meilensteine:
 >
 > - **C3, die Erfassung** — zuerst, weil als einzige zeitkritisch: Home
 >   Assistant verwirft vollständige Zustandswechsel nach
@@ -71,18 +71,42 @@
 >   Retrieval-Profilen und im Graph-Explorer („Kausaler Pfad", ersetzt
 >   das Bild durch die Kette). Details:
 >   [docs/kausalmodell.md](./docs/kausalmodell.md).
+> - **C4, die Schätzung mit ihrer Refutation** — hier entsteht die erste
+>   **Zahl** dieses Layers, und nur unter Bedingungen. Der Tier-1-Kern
+>   bleibt pur (`causal/{numeric,panel,estimate,refute,study}.ts`): fünf
+>   Schätzer (Stratifikation, Regression mit Adjustierung, IPW, DiD, ITS),
+>   Konfidenz aus dem **Moving Block Bootstrap** statt aus der
+>   Lehrbuchformel (Beobachtungsreihen sind autokorreliert, §15.2), das
+>   Panel mit gröbstem Raster, listenweisem Ausschluss, angewandtem
+>   Zeitversatz und geprüfter Positivität. Danach **sechs Refutationen**:
+>   Placebo (rotiert, nicht permutiert), zufällige gemeinsame Ursache,
+>   Teilmengen-Stabilität, Negativkontrolle und die implizierten
+>   Unabhängigkeiten gegen die Daten (§13.2) — dazu der E-Wert als
+>   Kennzahl, die nie blockiert. „Nicht prüfbar" gilt **nicht** als
+>   bestanden. Vier Ausgänge, drei davon ohne Zahl; ein durchgefallener
+>   Effekt erscheint in **keiner** Form als Effekt (Invariante C5, auch
+>   als SHACL-Shape). Die **Frage** (`ow:Estimand`) bleibt in `graph/meta`,
+>   die **Antwort** (`ow:CausalStudy`) liegt in
+>   `graph/<u>/inferred/causal/workspace` und wird bei jedem Lauf
+>   vollständig ersetzt — deshalb rechnet ein Lauf immer alle Fragen. Der
+>   Effekt hängt am selben Reifier wie die Kante, nur im Inferenz-Graphen,
+>   und wird beim Lesen darübergelegt; erst dadurch greift `minEvidence`
+>   aus C2 wirklich. Signatur (C7) erzwungen, Scope-Partitionierung (C6)
+>   mit Negativtest. Details:
+>   [docs/kausalmodell.md](./docs/kausalmodell.md).
 >
-> **Nicht gebaut** und deshalb nirgends in der UI: Schätzung, Refutation,
-> Hypothesen-Erzeugung. Kein Effekt, keine Zahl, kein
-> Konfidenzintervall — Identifikation und Retrieval nennen Mengen, Wege
-> und fehlende Größen, mehr nicht.
+> **Nicht gebaut** und deshalb nirgends in der UI: Hypothesen-Erzeugung
+> (C6), Frontdoor- und IV-**Schätzer** (identifiziert, aber nicht
+> gerechnet — die Studie sagt es), Struktur-Lernen und randomisierte
+> Eingriffe. Open-Data-Confounder gibt es noch nicht, und genau deshalb
+> endet manche Frage bei „nicht identifizierbar".
 >
-> **Nächster Meilenstein: C4** (Schätzung + Refutation, SPEC §13.1/13.2 —
-> erst hier entstehen Zahlen, und sie brauchen die Identifikation aus C1
-> und die Refutation aus demselben Meilenstein), danach C5 → C6.
-> Reihenfolge und Begründung in CAUSAL_LAYER_SPEC §18, Arbeitsmodus in
-> §19, offener Stand mit Abnahmen in TODO.md unter „Kausal-Layer". C7 und
-> C8 nur nach ausdrücklicher Freigabe.
+> **Nächster Meilenstein: C5** (Open-Data-Connector `rest-timeseries`,
+> SPEC §10/§11 — Wetter, Strompreis, Sonnenstand, Feiertage: die
+> Störgrößen der Hausdomäne, und damit die Lücke, die C4 sichtbar macht),
+> danach C6. Reihenfolge und Begründung in CAUSAL_LAYER_SPEC §18,
+> Arbeitsmodus in §19, offener Stand mit Abnahmen in TODO.md unter
+> „Kausal-Layer". C7 und C8 nur nach ausdrücklicher Freigabe.
 
 **Stand 2026-08-10 (12. Ausbaustufe, Graph Core M0–M14 inkl. §12.4 und
 §18 — der Vollausbau der Spec ist damit abgeschlossen)**: Der
@@ -630,7 +654,7 @@ und backend-unabhängig** — Details in [docs/ai-platform.md](./docs/ai-platfor
 - **UI**: AI-Hub (`/ai`), Skills (`/skills`), MCP-Verwaltung in `/tools`,
   A2A-Discovery in `/agents`, ModelPicker in beiden Chat-Oberflächen.
 
-Build, Typecheck, Lint (0 Errors), 633 Unit-Tests (plus der Live-Test
+Build, Typecheck, Lint (0 Errors), 679 Unit-Tests (plus der Live-Test
 gegen Wikidata, der ohne `OW_FEDERATION_LIVE=1` sichtbar übersprungen
 wird) und das **blockierende E2E-Gate** (`e2e/mobile-navigation`,
 `e2e/mobile-ux`, `e2e/a11y` inkl. der Seiten `/ai`, `/skills`, `/tools`,
@@ -673,10 +697,14 @@ Graph-Bürger).
 Arbeitsmodus). C3 (Erfassung), C0 (Kausalmodell als Graph-Bürger), C1
 (Identifikation: Azyklizität, D-Separation, Backdoor/Frontdoor, minimale
 Adjustment Sets, Instrumente — reine Graphalgorithmik, läuft in allen drei
-Runtimes) und C2 (Causal Path Tracing im Retrieval: dieselbe Pipeline
-folgt dem DAG statt der semantischen Nachbarschaft, `explain` trägt den
-Weg) sind gebaut; **als Nächstes C4** (Schätzung + Refutation), danach
-C5, C6 in genau dieser Reihenfolge (Begründung in
+Runtimes), C2 (Causal Path Tracing im Retrieval: dieselbe Pipeline folgt
+dem DAG statt der semantischen Nachbarschaft, `explain` trägt den Weg) und
+C4 (Schätzung + Refutation: fünf Tier-1-Schätzer, Konfidenz aus dem
+Moving Block Bootstrap, sechs Falsifikationsversuche, `ow:CausalStudy` mit
+erzwungener Reproduktions-Signatur — ein Effekt ohne bestandene Refutation
+wird in keiner Form ausgegeben) sind gebaut; **als Nächstes C5**
+(Open-Data-Connector `rest-timeseries` — die Störgrößen der Hausdomäne),
+danach C6 in genau dieser Reihenfolge (Begründung in
 §18). Der offene Stand steht
 abhakbar in [TODO.md](./TODO.md) unter „Kausal-Layer" — er ist die eine
 Quelle dafür, was noch fehlt.
