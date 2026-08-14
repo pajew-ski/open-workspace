@@ -119,7 +119,7 @@
 >   [docs/kausalmodell.md](./docs/kausalmodell.md).
 >
 > - **Die Widersprüche der Spec sind entschieden** (14.08.2026, alle
->   sieben in
+>   acht in
 >   [docs/spec-widersprueche.md](./docs/spec-widersprueche.md); wo die
 >   Entscheidung den Text betrifft, ist sie in die Spec eingearbeitet).
 >   Drei brauchten Code: **`solar-position`** — eine berechnete Größe IST
@@ -135,7 +135,9 @@
 >   gesagt hat — behauptet und persistiert, weil ein Lauf ein Ereignis ist
 >   und kein abgeleiteter Zustand. Der Effekt eines Eintrags hängt NIE am
 >   Reifier der Kante, eingetragen wird nur eine Änderung, und beantwortet
->   wird eine Frage weiterhin nur aus dem Inferenz-Graphen.
+>   wird eine Frage weiterhin nur aus dem Inferenz-Graphen. Ein Eintrag
+>   lässt sich verwerfen (ein Lauf auf falschen Daten ist keine
+>   Geschichte), aber nie ändern.
 >
 > **Nicht gebaut** und deshalb nirgends in der UI: Hypothesen-Erzeugung
 > (C6), Frontdoor- und IV-**Schätzer** (identifiziert, aber nicht
@@ -696,7 +698,7 @@ und backend-unabhängig** — Details in [docs/ai-platform.md](./docs/ai-platfor
 - **UI**: AI-Hub (`/ai`), Skills (`/skills`), MCP-Verwaltung in `/tools`,
   A2A-Discovery in `/agents`, ModelPicker in beiden Chat-Oberflächen.
 
-Build, Typecheck, Lint (0 Errors), 717 Unit-Tests (plus der Live-Test
+Build, Typecheck, Lint (0 Errors), 719 Unit-Tests (plus der Live-Test
 gegen Wikidata, der ohne `OW_FEDERATION_LIVE=1` sichtbar übersprungen
 wird) und das **blockierende E2E-Gate** (`e2e/mobile-navigation`,
 `e2e/mobile-ux`, `e2e/a11y` inkl. der Seiten `/ai`, `/skills`, `/tools`,

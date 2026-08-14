@@ -595,6 +595,12 @@ Drei Regeln:
 3. **Beantwortet wird eine Frage weiterhin nur aus dem Inferenz-Graphen.**
    Die Chronik zeigt, was war — sie sagt nie, was gilt.
 
+**Verwerfen ja, ändern nein.** Ein Lauf auf falsch erfassten Daten ist
+keine Geschichte, sondern Störung — er lässt sich einzeln und vollständig
+verwerfen (`DELETE /api/graph/causal/archive/<id>`, Knopf an jedem
+Eintrag). Einen Eintrag zu **ändern** gibt es nicht: Dann stünde in der
+Chronik etwas, das so nie gerechnet wurde.
+
 Auf `/graph/causal` steht sie als „Chronik" an der jeweiligen Frage.
 Abnahme: `tests/graph/causal-archive.test.ts`.
 
@@ -732,8 +738,8 @@ wer zu Hause war, ob das Fenster offen stand, wie viele Gäste da waren.
 ## Abweichungen von der Spec, zur Entscheidung vorgelegt
 
 §19 verbietet einer Session, die Spec neu zu verhandeln — sie hält
-Widersprüche fest und legt sie vor. Alle sieben, die beim Bauen von C4 und
-C5 auffielen, sind am 14.08.2026 **entschieden** worden und stehen mit
+Widersprüche fest und legt sie vor. Alle acht, die beim Bauen von C3, C4
+und C5 auffielen, sind am 14.08.2026 **entschieden** worden und stehen mit
 Auflösung, Begründung und den Kosten der Gegenrichtung in
 [docs/spec-widersprueche.md](./spec-widersprueche.md); wo die Entscheidung
 den Text der Spec betrifft, ist sie dort eingearbeitet. Die drei aus C4

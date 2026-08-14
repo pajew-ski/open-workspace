@@ -6,7 +6,7 @@ fest und legt ihn vor. Diese Datei ist dieser Ort.
 
 **Wie sie zu lesen ist**: Jeder Eintrag nennt die Stelle, den
 Widerspruch, wie er beim Bauen aufgelöst wurde und was es kosten würde,
-ihn anders aufzulösen. Alle sieben Einträge sind am **14.08.2026**
+ihn anders aufzulösen. Alle acht Einträge sind am **14.08.2026**
 entschieden worden; wo die Entscheidung den Text der Spec betrifft, ist
 sie dort eingearbeitet. Wer beim Bauen auf einen neuen stößt, trägt ihn
 hier ein.
@@ -20,6 +20,7 @@ hier ein.
 | 5 | §10 `rest-timeseries` „materialize" gegen Invariante C3 | C5 | entschieden, Spec präzisiert |
 | 6 | §16 C5-Abnahme liest sich wie zwei gleichrangige Ergebnisse | C5 | entschieden, umgesetzt |
 | 7 | §10 nennt vier Connector-Arten, §16 verlangt für C5 eine | C5 | entschieden, **`csv-observations` gebaut** |
+| 8 | §5.2 `ow:observedBy` gegen Invariante 8 | C3/C5 | entschieden, Spec angepasst |
 
 ---
 
@@ -91,6 +92,14 @@ inferiert (Invariante 3 bleibt unberührt).
    identische Läufe sind keine Historie, sondern Rauschen.
 3. Beantwortet wird eine Frage weiterhin **nur** aus dem Inferenz-Graphen.
    Die Chronik zeigt, was war — sie sagt nie, was gilt.
+
+**Verwerfen ja, ändern nein.** Die Chronik hält fest, was ein Lauf gesagt
+hat — nicht, dass er hätte stattfinden sollen. Ein Lauf auf falsch
+erfassten Daten oder auf einem Modell im Bau ist keine Geschichte, sondern
+Störung, und wer sie nicht loswird, hört auf, in die Chronik zu schauen.
+Verworfen wird deshalb ein **ganzer** Eintrag, ausdrücklich und einzeln
+(`DELETE /api/graph/causal/archive/<id>`). Einen Eintrag zu ändern gibt es
+nicht: Dann stünde dort etwas, das so nie gerechnet wurde.
 
 Abnahme: `tests/graph/causal-archive.test.ts`.
 
@@ -190,3 +199,27 @@ numerisch, nur 0/1 zweiwertig, alles andere kategorial.
 
 `sparql-endpoint` bleibt, was §10 sagt: existiert bereits als Föderation
 (M11), materialisiert nichts.
+
+## 8. §5.2 — `ow:observedBy` gegen Invariante 8 (C3/C5)
+
+**Die Stelle.** §5.2 beschrieb `ow:Variable` als „verweist per
+`ow:observedBy` auf die Quelle".
+
+**Der Widerspruch.** Ein eigener Term für „diese Größe wird von jener
+Quelle beobachtet" ist genau das, was Invariante 8 verbietet, solange ein
+Standard ihn trägt — und SOSA trägt ihn: `sosa:observes` verbindet einen
+Sensor mit der beobachteten Größe. Aufgefallen ist es erst beim vierten
+Quellentyp (C5), weil dort dieselbe Größe aus zwei Quellen kommen kann
+(Außentemperatur vom DWD **und** vom Zigbee-Sensor) und die Richtung
+plötzlich zählt.
+
+**Entschieden: `sosa:observes`, und zwar vom Sensor auf die Variable.**
+Die Gegenrichtung wäre beim Föderieren falsch herum lesbar: SOSA sagt
+„der Sensor beobachtet X", nicht „X wird beobachtet von". Der
+Quellschlüssel selbst (HA-`entity_id`, `<quelle>#<reihe>`) steht als
+Literal in `ow:observationSource` an der Variablen — er ist eine
+Zeichenkette, kein Knoten, und dafür gibt es keinen Standard-Term.
+
+**Was die Gegenrichtung gekostet hätte.** Einen 127. eigenen Term, der
+dasselbe sagt wie ein W3C-Standard — und einen Export, den ein fremder
+SOSA-Client nicht mehr versteht.

@@ -357,7 +357,7 @@
 > zeitkritisch war: Home Assistant verwirft Zustandswechsel nach
 > `purge_keep_days`, jeder Tag ohne Erfassung war unwiederbringlich.
 > Gebaut sind C3, C0, C1, C2, C4 und C5; offen ist als Nächstes C6.
-> Alle sieben Widersprüche, die beim Bauen von C4 und C5 auffielen, sind
+> Alle acht Widersprüche, die beim Bauen von C3, C4 und C5 auffielen, sind
 > am 14.08.2026 **entschieden** und in
 > [docs/spec-widersprueche.md](./docs/spec-widersprueche.md)
 > festgehalten; wo die Entscheidung den Text betrifft, ist sie in die
@@ -568,9 +568,9 @@
         Sky), Strompreis (EPEX Spot über aWATTar), Einstrahlung
         (Open-Meteo), Feiertage (Nager.Date) — dazu `custom` für eine
         eigene JSON-/CSV-API ohne neuen Code. „Sonnenstand" aus §10
-        liefert der Katalog als **Einstrahlung**: Azimut/Elevation sind
-        eine Rechnung, kein Abruf, und ein lokal gerechneter Wert wäre
-        eine zweite Pipeline neben dem Connector-Vertrag
+        liefert der Katalog als **Einstrahlung** — den atmosphärischen
+        Teil; den geometrischen rechnet seit der Entscheidung vom
+        14.08.2026 der Connector `solar-position`
         (docs/spec-widersprueche.md, Eintrag 4)
       - **Die Erfassung ist quellenagnostisch geworden**
         (`observations/sources.ts`): Die Quellart steht an der Größe und
@@ -624,7 +624,12 @@
         abgeleiteter Zustand. Der Effekt eines Eintrags hängt NIE am
         Reifier der Kante, eingetragen wird nur eine Änderung (Urteil,
         Modell-Revision oder Effekt außerhalb des letzten Intervalls), und
-        beantwortet wird eine Frage weiterhin nur aus dem Inferenz-Graphen
+        beantwortet wird eine Frage weiterhin nur aus dem Inferenz-Graphen.
+        Ein Eintrag lässt sich **verwerfen** (`DELETE
+        /api/graph/causal/archive/<id>`, Knopf in der Chronik): Ein Lauf
+        auf falsch erfassten Daten ist keine Geschichte, sondern Störung —
+        wer ihn nicht loswird, hört auf hinzuschauen. Geändert wird ein
+        Eintrag nie, sonst stünde dort etwas, das so nie gerechnet wurde
       - Ohne Code entschieden: getrennte Terme für Identifikation und
         Verfahren (Eintrag 1), `schema:unitText` statt QUDT (Eintrag 2),
         „materialize" heißt Angebotsseite (Eintrag 5), der rohe
@@ -639,7 +644,11 @@
       Provenienz nach `causal-hypotheses`, symbolische Filter
       (Azyklizität, SHACL, temporale Zulässigkeit, Topologie,
       Identifizierbarkeit), Vergleich der drei Strukturquellen,
-      Widerspruchs-UI.
+      Widerspruchs-UI. Dazu gehört die dritte Strukturquelle, die §10
+      nennt und die seit M11 bereitsteht: **Wikidata über die Föderation**
+      als Lieferant von Confounder-Kandidaten und Geräteklassen — ohne
+      Import, als Vorschlag, der dieselben Filter durchläuft wie jeder
+      andere.
       Abnahme: keine Hypothese erreicht ohne Filter den Studien-Pfad; ein
       temporal unmöglicher Vorschlag wird automatisch verworfen
 - [ ] *Opt-in, nicht ohne ausdrückliche Freigabe*: **C7 Experimente**
@@ -651,6 +660,51 @@
       (`recorder/statistics_during_period`) — die REST-API kennt sie nicht.
       Ändert nichts an der Dringlichkeit der Erfassung: die Ursachenseite
       steht in den Statistics ohnehin nicht
+
+### Nacharbeiten aus C5 (kein Meilenstein, einzeln erledigbar)
+
+> Nichts davon blockiert C6. Es sind die Kanten, die beim Bauen von C5 und
+> beim Auflösen der Widersprüche sichtbar geworden sind — in Reihenfolge
+> ihres Nutzens.
+
+- [ ] **Weitere Vorlagen aus dem §10-Katalog**: SMARD/ENTSO-E
+      (Erzeugungsmix, Netzlast), UBA Luftdaten / Sensor.Community / OpenAQ
+      (Außenluftqualität als Confounder für Lüftungsfragen), Destatis
+      GENESIS / Eurostat (Vergleichsgruppen), GTFS/DELFI (Mobilität und
+      Anwesenheit). Alle vier gehen heute schon als `custom`-Abbildung —
+      was fehlt, ist die Vorlage mit ihren Parametern und der Angabe, wozu
+      die Quelle im Modell taugt
+- [ ] **Aufbewahrung der Chronik**: Sie wächst nur bei Änderung, aber
+      unbegrenzt. Eine Regel (Höchstzahl je Frage oder Alter) fehlt —
+      solange sie klein bleibt, ist das kein Problem, aber es wird eines,
+      wenn eine Frage jahrelang läuft
+- [ ] **Chronik-Vergleich**: zwei Einträge nebeneinander, mit der
+      Differenz und ihrer wahrscheinlichen Ursache (andere Revision,
+      anderes Datenfenster, andere Adjustierung). Heute steht die Liste
+      da, den Vergleich macht der Mensch im Kopf
+- [ ] **Einheiten für CSV-Spalten**: Eine Datei sagt nicht, ob eine Spalte
+      Kilogramm oder Kilowattstunden trägt. Heute bleibt die Einheit leer;
+      eine Angabe je Spalte in der Connector-Konfiguration wäre die
+      ehrliche Ergänzung (raten wäre es nicht)
+- [ ] **Formular statt JSON für eigene Quellen**: Die `custom`-Abbildung
+      des `rest-timeseries`-Connectors ist im UI ein Textfeld mit JSON.
+      Für den Fall „eine API, die dem Katalog fehlt" ist das zumutbar,
+      schön ist es nicht
+- [ ] **Live-Test gegen die echten Quellen**, opt-in wie
+      `OW_FEDERATION_LIVE=1` bei Wikidata: Bright Sky, aWATTar,
+      Open-Meteo und Nager.Date antworten heute in den Tests nur als
+      Stub. Ein Vertragsbruch der Anbieter (umbenanntes Feld, geänderte
+      Struktur) fiele erst im Betrieb auf
+- [ ] **Erfassung in `local`**: `solar-position` und `csv-observations`
+      brauchen weder Netz noch Serverprozess und wären damit die einzigen
+      Quellarten, die im Browser vollständig liefen. Was fehlt, ist der
+      Beobachtungs-Speicher über OPFS und ein Zeitgeber — hängt an der
+      großen `local`-Baustelle (siehe unten)
+- [ ] **Sonnenstand: abgeleitete Zeitpunkte** (Sonnenauf- und -untergang,
+      Tageslänge) als eigene Reihen. Heute gibt es Höhe, Azimut,
+      Tag/Nacht und die extraterrestrische Einstrahlung; Zeitpunkte
+      wären eine Nullstellensuche über dieselbe Funktion. Nur bauen, wenn
+      eine Frage sie braucht
 
 ## Fundament (fertig)
 

@@ -61,9 +61,19 @@ export function archiveEntryIri(iri: IriFactory, estimandId: string, generatedAt
     return iri.entity('study-record', `${estimandId}-${stamp}`);
 }
 
+/** `…/study-record/<id>` → `<id>`; `null`, wenn es keiner ist. */
+export function archiveEntryId(iri: IriFactory, value: string): string | null {
+    const prefix = iri.entity('study-record', '');
+    if (!value.startsWith(prefix)) return null;
+    const rest = value.slice(prefix.length);
+    return rest === '' ? null : decodeURIComponent(rest);
+}
+
 /** Ein Eintrag der Chronik, so wie er im Graphen steht. */
 export interface ArchiveEntryView {
     iri: string;
+    /** Stabile ID des Eintrags — die Adresse zum Verwerfen. */
+    id: string;
     estimandId: string;
     name: string;
     verdict: StudyVerdict;
@@ -180,6 +190,7 @@ export async function readCausalArchive(
 
         entries.push({
             iri: subject,
+            id: archiveEntryId(handle.iri, subject) ?? subject,
             estimandId,
             name: valueOf(subject, SCHEMA.name) ?? '',
             verdict: ((STUDY_VERDICTS as readonly string[]).includes(verdictRaw)
@@ -211,4 +222,43 @@ export async function latestArchiveEntry(
     estimandId: string,
 ): Promise<ArchiveEntryView | null> {
     return (await readCausalArchive(handle, { estimandId, limit: 1 }))[0] ?? null;
+}
+
+/**
+ * Verwirft einen Eintrag.
+ *
+ * **Warum das kein Widerspruch zur Chronik ist.** Sie hält fest, was ein
+ * Lauf gesagt hat — nicht, dass der Lauf hätte stattfinden sollen. Ein
+ * Lauf auf falsch erfassten Daten, ein Test, ein Modell im Bau: Solche
+ * Einträge sind keine Geschichte, sondern Störung, und wer sie nicht
+ * entfernen kann, hört auf, in die Chronik zu schauen.
+ *
+ * Was es NICHT gibt, ist ein stilles Überschreiben: Verworfen wird immer
+ * ein ganzer Eintrag samt seinen Teilen, ausdrücklich und einzeln. Ein
+ * Eintrag zu **ändern** wäre etwas anderes — dann stünde in der Chronik
+ * etwas, das so nie gerechnet wurde.
+ */
+export async function deleteArchiveEntry(handle: GraphHandle, entryIri: string): Promise<boolean> {
+    const graph = causalArchiveGraph(handle.iri);
+    const existing = (await handle.store.graphs()).map(g => g.value);
+    if (!existing.includes(graph)) return false;
+
+    const quads: Quad[] = [];
+    for await (const quad of handle.store.dump(namedNode(graph))) quads.push(quad);
+
+    // Zum Eintrag gehört sein Knoten und alles, was unter seiner Adresse
+    // hängt: Eingaben, Refutationen, Adjustierung, Kontrast, Effekt. Die
+    // IRIs sind deshalb Präfixe des Eintrags — und genau darum ist das
+    // Aufräumen hier vollständig, ohne dass jemand eine Teileliste pflegt.
+    const belongsToEntry = (quad: Quad): boolean =>
+        quad.subject.termType === 'NamedNode'
+        && (quad.subject.value === entryIri || quad.subject.value.startsWith(`${entryIri}/`));
+
+    const remaining = quads.filter(quad => !belongsToEntry(quad));
+    if (remaining.length === quads.length) return false;
+
+    await handle.store.transaction(async tx => {
+        await tx.load(remaining, namedNode(graph), { replace: true });
+    });
+    return true;
 }

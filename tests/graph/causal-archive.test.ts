@@ -39,6 +39,7 @@ import { createRandom, normalDraw } from '@/lib/graph/causal/numeric';
 import type { Observation } from '@/lib/graph/observations/types';
 import {
     causalArchiveGraph,
+    deleteArchiveEntry,
     hasChanged,
     readCausalArchive,
     type ArchiveEntryView,
@@ -216,6 +217,56 @@ describe('Die Chronik hält fest, was wann gesagt wurde', () => {
         expect(edge?.studyEvidence).toBe('refuted-clean');
     });
 
+    it('verwirft einen Eintrag vollständig — samt Effekt, Eingaben und Refutationen', async () => {
+        const { store, handle, run } = await buildWorld();
+        await run('2026-08-14T10:00:00.000Z');
+        const [entry] = await readCausalArchive(handle);
+        expect(entry).toBeDefined();
+
+        const before = await dump(store, causalArchiveGraph(iri));
+        expect(before.length).toBeGreaterThan(10);
+
+        expect(await deleteArchiveEntry(handle, entry.iri)).toBe(true);
+        expect(await readCausalArchive(handle)).toEqual([]);
+        // Nichts bleibt zurück: Die Teile eines Eintrags hängen unter
+        // seiner Adresse, deshalb geht der ganze Baum mit.
+        const after = await dump(store, causalArchiveGraph(iri));
+        expect(after.some(quad => quad.subject.value.startsWith(entry.iri))).toBe(false);
+        expect(after.some(quad => quad.predicate.value === OW.effectSize)).toBe(false);
+
+        // Ein zweites Verwerfen ist kein Fehler, sondern ein „nichts da".
+        expect(await deleteArchiveEntry(handle, entry.iri)).toBe(false);
+
+        // Und der nächste Lauf hält wieder fest, was sich ändert — die
+        // Chronik ist danach nicht kaputt, nur leer.
+        const again = await run('2026-08-17T10:00:00.000Z');
+        expect(again.archived).toEqual(['frage']);
+        expect(await readCausalArchive(handle)).toHaveLength(1);
+    });
+
+    it('lässt die Einträge anderer Fragen beim Verwerfen unberührt', async () => {
+        const { handle, run } = await buildWorld();
+        await run('2026-08-14T10:00:00.000Z');
+        await createEstimand(handle, {
+            id: 'zweite-frage',
+            name: 'Wirkung von Z auf Y',
+            modelId: 'wohnung',
+            treatment: variableIri('z'),
+            outcome: variableIri('y'),
+            estimator: 'regression',
+            seed: 43,
+        });
+        await run('2026-08-18T10:00:00.000Z');
+        expect(await readCausalArchive(handle)).toHaveLength(2);
+
+        const target = (await readCausalArchive(handle, { estimandId: 'frage' }))[0];
+        expect(await deleteArchiveEntry(handle, target.iri)).toBe(true);
+        const rest = await readCausalArchive(handle);
+        expect(rest).toHaveLength(1);
+        expect(rest[0].estimandId).toBe('zweite-frage');
+        expect(rest[0].effect).toBeDefined();
+    });
+
     it('überlebt den Neustart — ein Ereignis lässt sich nicht neu rechnen', async () => {
         const { store, run } = await buildWorld();
         await run('2026-08-14T10:00:00.000Z');
@@ -238,6 +289,7 @@ describe('Die Chronik hält fest, was wann gesagt wurde', () => {
 describe('Die Regel, wann ein Eintrag entsteht', () => {
     const entry = (over: Partial<ArchiveEntryView> = {}): ArchiveEntryView => ({
         iri: 'urn:x',
+        id: 'frage-20260814100000',
         estimandId: 'frage',
         name: 'Frage',
         verdict: 'passed',

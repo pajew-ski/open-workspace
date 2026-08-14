@@ -222,9 +222,13 @@ Not-Aus und vollständigem `prov`-Protokoll (§13.3).
 
 ```
 ow:CausalModel      ein DAG, versioniert, einem Kontext zugeordnet (Wohnung, Projekt, …)
-ow:Variable         eine Modellvariable; verweist per ow:observedBy auf die Quelle
-                    (HA-Entity, Open-Data-Reihe, Task-Aggregat) und trägt Einheit,
-                    Skalenniveau, Aggregationsregel, erlaubte Lags
+ow:Variable         eine Modellvariable; trägt Einheit, Skalenniveau,
+                    Aggregationsregel, erlaubte Lags und den Quellschlüssel
+                    (ow:observationSource). Die Verbindung zur Quelle macht
+                    sosa:observes vom Sensor auf die Variable — fremdes
+                    Vokabular vor eigenem (entschieden am 2026-08-14,
+                    docs/spec-widersprueche.md Eintrag 8; die erste Fassung
+                    nannte ein eigenes ow:observedBy in Gegenrichtung)
 ow:CausalStudy      ein Lauf: Modell + Datenfenster + Estimand + Verfahren + Ergebnis
 ow:Estimand         was geschätzt werden soll
 ow:AdjustmentSet    die Menge, über die adjustiert wird (aus dem DAG berechnet)
