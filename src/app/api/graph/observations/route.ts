@@ -12,7 +12,7 @@ import { getRequestGraph } from '@/lib/graph/server/context';
 import { createVariable, listVariables } from '@/lib/graph/observations/variables';
 import { findCandidate, listCaptureCandidates } from '@/lib/graph/observations/candidates';
 import { captureScheduleStatus } from '@/lib/graph/observations/schedule.server';
-import { variableIdFor } from '@/lib/graph/connectors/home-assistant/structure';
+import { variableIdFor } from '@/lib/graph/observations/naming';
 import { ALLOWED_AGGREGATIONS } from '@/lib/graph/observations/types';
 
 const createSchema = z.object({
@@ -23,6 +23,16 @@ const createSchema = z.object({
     intervalSeconds: z.number().int().min(10).max(86_400).default(300),
     retentionDays: z.number().int().min(0).max(36_500).default(0),
 }).strict();
+
+/**
+ * Quellarten, für die es eine Erfassung gibt (`observations/sources.ts`).
+ * Eine Quelle ohne Erfassung wird gar nicht erst aufgenommen: Sonst
+ * stünde im Graphen eine Größe, die bei jedem Lauf scheitert
+ * (Invariante 10 — keine Attrappen).
+ */
+const CAPTURABLE_SOURCE_KINDS: ReadonlySet<string> = new Set([
+    'home-assistant', 'rest-timeseries', 'csv-observations', 'solar-position',
+]);
 
 /** Sinnvolle Verdichtung je Skalenniveau, wenn der Aufrufer keine nennt. */
 function defaultAggregation(kind: 'numeric' | 'binary' | 'categorical'): 'last' | 'mean' {
@@ -74,15 +84,25 @@ export async function POST(request: Request): Promise<Response> {
             return NextResponse.json(
                 {
                     error: `Die Quelle "${parsed.source}" ist im Graphen nicht bekannt.`,
-                    details: 'Synchronisiere zuerst den Home-Assistant-Connector unter Graph → Quellen.',
+                    details: 'Synchronisiere zuerst die passende Quelle unter Graph → Quellen '
+                        + '(Home Assistant oder eine offene Zeitreihe).',
                 },
                 { status: 404 },
+            );
+        }
+        if (!CAPTURABLE_SOURCE_KINDS.has(candidate.sourceKind)) {
+            return NextResponse.json(
+                {
+                    error: `Für die Quellart "${candidate.sourceKind}" gibt es keine Erfassung.`,
+                    details: `Erfassbar sind: ${[...CAPTURABLE_SOURCE_KINDS].join(', ')}.`,
+                },
+                { status: 422 },
             );
         }
         const variable = await createVariable(handle, {
             id: variableIdFor(parsed.source),
             name: parsed.name ?? candidate.name,
-            sourceKind: 'home-assistant',
+            sourceKind: candidate.sourceKind,
             source: candidate.source,
             kind: candidate.kind,
             aggregation: parsed.aggregation ?? defaultAggregation(candidate.kind),

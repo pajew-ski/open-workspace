@@ -125,6 +125,16 @@
     overflow-wrap: anywhere;
 }
 
+/* Rolle einer offenen Störgröße im Kausalmodell (C5) — ein Satz, der
+   erklärt, wozu man sie überhaupt erfassen würde. */
+.candidateNote {
+    display: block;
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+    line-height: var(--leading-normal);
+    overflow-wrap: anywhere;
+}
+
 .badges {
     display: flex;
     flex-wrap: wrap;

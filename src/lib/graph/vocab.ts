@@ -54,6 +54,15 @@ export const PREFIXES = {
      */
     sosa: 'http://www.w3.org/ns/sosa/',
     /**
+     * Semantic Sensor Network (W3C/OGC), der Oberbau von SOSA. Gebraucht
+     * für genau eine Aussage (C5): `ssn:implements` verbindet ein System
+     * mit dem **Verfahren**, das es ausführt. Eine gerechnete Reihe —
+     * Sonnenstand aus Ort und Zeit — ist in SOSA ein zulässiger Sensor,
+     * aber sie muss als gerechnet erkennbar bleiben, sonst sähe sie aus
+     * wie eine Messung.
+     */
+    ssn: 'http://www.w3.org/ns/ssn/',
+    /**
      * OBO Relations Ontology (CAUSAL_LAYER_SPEC Invariante C8). Trägt die
      * kausale Kante selbst: `RO_0002411 causally upstream of` ist eine
      * OWL-Objekteigenschaft mit definierter Semantik — Ursache geht der
@@ -224,6 +233,15 @@ export const OW = {
     refutationMethod: ow('refutationMethod'),
     refutationVerdict: ow('refutationVerdict'),
     refutationPassed: ow('refutationPassed'),
+    // Was die Adjustierung geändert hat (CAUSAL_LAYER_SPEC §10, C5).
+    // Bewusst EIGENE Terme statt ow:effectSize/ow:ciLow: Der rohe
+    // Zusammenhang ist keine Wirkung, er hat keine bestandene Refutation
+    // und darf deshalb auch nicht wie ein Effekt aussehen (Invariante C5).
+    ConfoundingContrast: ow('ConfoundingContrast'),
+    crudeAssociation: ow('crudeAssociation'),
+    crudeCiLow: ow('crudeCiLow'),
+    crudeCiHigh: ow('crudeCiHigh'),
+    confoundingShift: ow('confoundingShift'),
 } as const;
 
 export type OwTerm = (typeof OW)[keyof typeof OW];
@@ -285,6 +303,15 @@ export const SCHEMA = {
     /** Ort einer Messquelle: Home-Assistant-Bereich und -Etage. */
     Place: schemaOrg('Place'),
     containedInPlace: schemaOrg('containedInPlace'),
+    /** Koordinaten eines Ortes — bei Open-Data-Quellen der Abrufpunkt (C5). */
+    latitude: schemaOrg('latitude'),
+    longitude: schemaOrg('longitude'),
+    /**
+     * Quellen- und Lizenzhinweis, wörtlich (C5). Wer eine Zahl aus einer
+     * Studie zitiert, zitiert die offene Quelle mit — der Hinweis gehört
+     * deshalb in den Graphen und nicht in eine Fußnote der UI.
+     */
+    creditText: schemaOrg('creditText'),
     /** Grobe Einordnung einer Quelle (HA-Domain: sensor, light, climate, …). */
     category: schemaOrg('category'),
     /** Maßeinheit als Text, quelltreu aus `unit_of_measurement`. */
@@ -317,12 +344,19 @@ export const SCHEMA = {
  */
 export const SOSA = {
     Platform: `${PREFIXES.sosa}Platform`,
+    /** Verfahren hinter einer gerechneten Reihe (C5). */
+    Procedure: `${PREFIXES.sosa}Procedure`,
     Sensor: `${PREFIXES.sosa}Sensor`,
     Actuator: `${PREFIXES.sosa}Actuator`,
     ObservableProperty: `${PREFIXES.sosa}ObservableProperty`,
     hosts: `${PREFIXES.sosa}hosts`,
     isHostedBy: `${PREFIXES.sosa}isHostedBy`,
     observes: `${PREFIXES.sosa}observes`,
+} as const;
+
+/** SSN — nur das, was SOSA nicht selbst trägt (C5). */
+export const SSN = {
+    implements: `${PREFIXES.ssn}implements`,
 } as const;
 
 /**
@@ -375,6 +409,8 @@ export const OWL = {
 
 export const DCTERMS = {
     identifier: `${PREFIXES.dcterms}identifier`,
+    /** Herkunft einer Quelle, wenn sie keine URL ist (Dateipfad, C5). */
+    source: `${PREFIXES.dcterms}source`,
     created: `${PREFIXES.dcterms}created`,
     modified: `${PREFIXES.dcterms}modified`,
 } as const;

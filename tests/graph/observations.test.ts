@@ -423,7 +423,11 @@ describe('Erfassungslauf', () => {
 
         const report = await captureObservations(handle, { files, root: ROOT, now: () => new Date(NOW) });
         expect(report.results[0].status).toBe('failed');
-        expect(report.message).toContain('Keine Home-Assistant-Verbindung');
+        // Seit C5 trifft ein fehlender Zugang genau die Größen SEINER
+        // Quellart — deshalb steht die Begründung am Ergebnis der Größe
+        // und nicht mehr pauschal am Lauf.
+        expect(report.results[0].message).toContain('Keine Home-Assistant-Verbindung');
+        expect(report.message).toContain('1 fehlgeschlagen');
     });
 });
 

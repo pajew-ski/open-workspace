@@ -283,7 +283,8 @@
 }
 
 .field input,
-.field select {
+.field select,
+.field textarea {
     min-height: var(--touch-target);
     padding: 8px 10px;
     border: 1px solid var(--color-border);
@@ -296,9 +297,18 @@
 }
 
 .field input:focus-visible,
-.field select:focus-visible {
+.field select:focus-visible,
+.field textarea:focus-visible {
     outline: 2px solid var(--color-primary);
     outline-offset: 1px;
+}
+
+.field textarea {
+    /* Eigene Abbildung einer offenen Quelle (C5): JSON braucht Platz und
+       eine feste Laufweite, sonst ist die Struktur nicht lesbar. */
+    resize: vertical;
+    min-height: 140px;
+    font-family: var(--font-mono, ui-monospace, monospace);
 }
 
 .dialogButtons {

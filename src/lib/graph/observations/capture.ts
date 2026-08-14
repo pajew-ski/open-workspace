@@ -33,29 +33,21 @@
  */
 
 import type { FileSystemLike } from '@/lib/platform/runtime/types';
-import { createGuardedFetch } from '../connectors/http';
-import { clientFor, type HomeAssistantConfig } from '../connectors/home-assistant';
 import type { HomeAssistantClient } from '../connectors/home-assistant/api';
-import { parseState } from '../connectors/home-assistant/structure';
-import { getConnector, listConnectors } from '../connectors/registry';
-import { getConnectorKind } from '../connectors/catalog';
 import { ObservationStore } from './store';
-import { resample, type RawPoint } from './resample';
+import { resample } from './resample';
+import { MAX_RAW_POINTS, SourceRegistry } from './sources';
 import { listVariables, saveVariable, type GraphHandle } from './variables';
 import type { CaptureResult, VariableView } from './types';
-
-/** Zeitscheibe eines Abrufs. Größer heißt weniger Anfragen, aber fettere Antworten. */
-const SLICE_HOURS = 24;
 
 /**
  * Wie weit ein Backfill zurückgreift. 14 Tage decken den üblichen
  * Recorder-Horizont (10 Tage) mit Reserve ab; alles Ältere ist über die
- * REST-Historie ohnehin nicht mehr zu holen.
+ * REST-Historie ohnehin nicht mehr zu holen. Offene Quellen halten ihre
+ * Archive länger vor — dort ist das Fenster eine Höflichkeit, keine
+ * Grenze, und über `backfillDays` frei wählbar.
  */
 export const DEFAULT_BACKFILL_DAYS = 14;
-
-/** Höchstzahl Rohpunkte je Größe und Lauf — Schutz vor Ausreißer-Sensoren. */
-const MAX_RAW_POINTS = 200_000;
 
 export interface CaptureOptions {
     files: FileSystemLike;
@@ -83,72 +75,11 @@ function isoOf(ms: number): string {
     return new Date(ms).toISOString();
 }
 
-/**
- * Sucht den `home-assistant`-Connector der Installation. Ohne ihn gibt es
- * keinen Zugang — und das ist ein ehrlicher Fehler, keine leere Erfassung.
- */
-async function resolveHomeAssistantClient(
-    handle: GraphHandle,
-    options: CaptureOptions,
-): Promise<HomeAssistantClient> {
-    if (options.clientOverride) return options.clientOverride;
-    const connectors = await listConnectors(handle);
-    const entry = connectors.find(connector => connector.kind === 'home-assistant');
-    if (!entry) {
-        throw new Error(
-            'Keine Home-Assistant-Verbindung eingerichtet. Lege unter Graph → Quellen einen ' +
-            'Connector der Art "home-assistant" an.',
-        );
-    }
-    const view = await getConnector(handle, entry.id);
-    const impl = getConnectorKind('home-assistant');
-    if (!view || !impl) throw new Error('Die Home-Assistant-Verbindung ist nicht lesbar.');
-    const config = impl.configFromLocator(view.locator) as HomeAssistantConfig;
-    const fetchImpl = createGuardedFetch({ fetchImpl: options.fetchImpl, signal: options.signal });
-    return clientFor(config, { fetch: fetchImpl });
-}
-
-/**
- * Holt Rohpunkte einer Entität in Zeitscheiben. Die Scheiben halten die
- * Antwortgröße beherrschbar; ohne sie wäre ein Backfill über zwei Wochen
- * bei einem sekündlich wechselnden Sensor ein einziger, riesiger Abruf.
- */
-async function fetchRawPoints(
-    client: HomeAssistantClient,
-    entityId: string,
-    kind: VariableView['kind'],
-    fromMs: number,
-    toMs: number,
-): Promise<{ points: RawPoint[]; truncated: boolean }> {
-    const points: RawPoint[] = [];
-    const sliceMs = SLICE_HOURS * 3600_000;
-    let truncated = false;
-    for (let start = fromMs; start < toMs; start += sliceMs) {
-        const end = Math.min(start + sliceMs, toMs);
-        const history = await client.history([entityId], isoOf(start), isoOf(end));
-        for (const point of history) {
-            if (point.entityId !== entityId) continue;
-            const parsed = parseState(point.state, kind);
-            points.push({
-                t: point.t,
-                value: parsed.value,
-                ...(parsed.gap ? { gap: parsed.gap } : {}),
-            });
-            if (points.length >= MAX_RAW_POINTS) {
-                truncated = true;
-                break;
-            }
-        }
-        if (truncated) break;
-    }
-    return { points, truncated };
-}
-
 /** Erfasst genau eine Größe. Wirft nie — Fehler stehen im Ergebnis. */
 async function captureVariable(
     handle: GraphHandle,
     variable: VariableView,
-    client: HomeAssistantClient,
+    sources: SourceRegistry,
     observations: ObservationStore,
     options: CaptureOptions,
 ): Promise<CaptureResult> {
@@ -173,7 +104,10 @@ async function captureVariable(
     const fromMs = hasWatermark ? watermark : nowMs - backfillDays * 86_400_000;
 
     try {
-        const { points, truncated } = await fetchRawPoints(client, variable.source, variable.kind, fromMs, nowMs);
+        // Die Quellart wird erst hier aufgelöst: Ein fehlender
+        // Home-Assistant-Zugang darf die Wetterreihen nicht mitreißen.
+        const source = await sources.get(variable.sourceKind);
+        const { points, truncated, note } = await source.fetchRaw(variable, fromMs, nowMs);
         const resampled = resample(points, {
             intervalSeconds: variable.intervalSeconds,
             aggregation: variable.aggregation,
@@ -200,6 +134,7 @@ async function captureVariable(
         if (pruned > 0) summaryParts.push(`${pruned} nach Aufbewahrungsfrist entfernt`);
         if (backfill) summaryParts.push(`Erstbefüllung über ${backfillDays} Tage`);
         if (truncated) summaryParts.push(`bei ${MAX_RAW_POINTS} Rohpunkten gekappt`);
+        if (note) summaryParts.push(note);
         const summary = `${summaryParts.join(', ')}.`;
 
         const next: VariableView = {
@@ -286,31 +221,20 @@ export async function captureObservations(
         userId: handle.iri.userId,
     });
 
-    let client: HomeAssistantClient;
-    try {
-        client = await resolveHomeAssistantClient(handle, options);
-    } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        const finishedAt = now().toISOString();
-        return {
-            results: selected.map(variable => ({
-                variableId: variable.id,
-                status: 'failed' as const,
-                appended: 0,
-                pruned: 0,
-                backfill: false,
-                message,
-            })),
-            startedAt,
-            finishedAt,
-            message: `Erfassung nicht möglich: ${message}`,
-        };
-    }
+    // Quellen werden bei Bedarf aufgelöst und je Art höchstens einmal.
+    // Scheitert eine Art, scheitert genau das, was sie braucht — seit C5
+    // laufen Größen verschiedener Herkunft nebeneinander.
+    const sources = new SourceRegistry(handle, {
+        files: options.files,
+        ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
+        ...(options.signal ? { signal: options.signal } : {}),
+        ...(options.clientOverride ? { homeAssistantClient: options.clientOverride } : {}),
+    });
 
     const results: CaptureResult[] = [];
     for (const variable of selected) {
         if (options.signal?.aborted) break;
-        results.push(await captureVariable(handle, variable, client, observations, options));
+        results.push(await captureVariable(handle, variable, sources, observations, options));
     }
 
     const appended = results.reduce((sum, result) => sum + result.appended, 0);

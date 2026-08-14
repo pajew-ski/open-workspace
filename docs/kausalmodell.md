@@ -453,6 +453,157 @@ Grund an einer Kante keinen Effekt.
 
 Abnahme: `tests/graph/causal-estimation.test.ts`.
 
+## Störgrößen aus offenen Quellen (C5)
+
+C4 macht eine Lücke sichtbar: Der häufigste Grund für „nicht
+identifizierbar" ist keine fehlende Methode, sondern eine fehlende
+**Störgröße**. In der Hausdomäne sind die wichtigsten davon öffentlich,
+kostenlos und maschinenlesbar. C5 holt sie — über den EINEN
+Connector-Vertrag, ohne zweite Pipeline.
+
+### Der Connector `rest-timeseries`
+
+Er materialisiert die **Angebotsseite** einer offenen API und nie einen
+Messwert (Invariante C3): welche Größen sie liefert, in welcher Einheit,
+an welchem Ort, mit welchem Skalenniveau — als SOSA-Struktur im
+Import-Graphen, genau wie beim `home-assistant`-Connector. Die Werte holt
+danach die Erfassung (siehe
+[docs/beobachtungen.md](./beobachtungen.md)). Dass „materialize" für
+diesen Connector die Struktur meint und nicht die Reihe, ist als
+Widerspruch festgehalten: [Eintrag 5](./spec-widersprueche.md).
+
+Die Revision folgt der Struktur, nicht dem Wert: Ändern sich die Zahlen,
+ist der Lauf ein No-Op. Eine beschriebene, aber nicht gelieferte Größe
+wird quarantäniert statt behauptet.
+
+### Der Katalog
+
+| Vorlage | Liefert | Rolle |
+|---|---|---|
+| **Wetter (DWD über Bright Sky)** | Temperatur, Wind, Niederschlag, Luftfeuchte, Bewölkung, Globalstrahlung, Sonnenscheindauer, Luftdruck | *Der* Confounder der Hausdomäne: Außentemperatur treibt Heizverhalten **und** Innentemperatur |
+| **Strompreis (EPEX Spot über aWATTar)** | Börsenstrompreis, stündlich, in ct/kWh | Preissignal — Treatment oder Outcome, je nach Frage |
+| **Einstrahlung (Open-Meteo Archiv)** | Global- und Direktstrahlung, Lufttemperatur | Störgröße für PV-Ertrag, Verschattung, Innentemperatur; die Alternative außerhalb Deutschlands |
+| **Feiertage (Nager.Date)** | zweiwertige Reihe, 1 an Feiertagen | Anwesenheits-Confounder, und exogen: kein Zustand des Hauses wirkt auf den Kalender zurück |
+| **Eigene Quelle** | beliebige JSON-/CSV-API | dieselbe Abbildung, direkt als JSON |
+
+Dazu zwei Quellen, die nicht aus dem Netz kommen:
+
+| Connector | Liefert | Rolle |
+|---|---|---|
+| **`solar-position`** (gerechnet) | Sonnenhöhe, Azimut, Tag/Nacht, extraterrestrische Einstrahlung | Exogen und lückenlos — die geometrische Hälfte der Einstrahlung, während das Wetter die atmosphärische liefert |
+| **`csv-observations`** (Datei) | beliebige Spalten einer CSV-Datei | Eigene Messungen, Self-Tracking-Exporte, alles ohne API |
+
+### Eine berechnete Größe ist eine Beobachtung
+
+§10 nennt den Sonnenstand als Störgröße, aber es gibt dafür keine offene
+Zeitreihen-API — und es braucht auch keine: Azimut und Elevation sind eine
+Funktion von Ort und Zeit. Entschieden am 14.08.2026
+([Eintrag 4](./spec-widersprueche.md)): Eine gerechnete Reihe ist eine
+Beobachtung, und zwar eine **verlässlichere** als eine gemessene — exakt,
+lückenlos, ohne Ausfall.
+
+Zwei Dinge halten sie ehrlich:
+
+- Sie läuft über **denselben Connector-Vertrag** wie alles Externe. Keine
+  zweite Erfassungspipeline (Invariante 5), dieselbe Kandidatenliste,
+  derselbe Beobachtungs-Speicher.
+- Das **Verfahren steht im Graphen**: `ssn:implements` →
+  `sosa:Procedure`. SOSA lässt das ausdrücklich zu (ein Sensor ist dort
+  alles, was eine Beobachtung ausführt), und wer eine Reihe adjustiert,
+  sieht damit, dass sie aus Ort und Zeit entstand und nicht aus einem
+  Gerät.
+
+Bewusst nicht gerechnet: Refraktion und Parallaxe (für eine Störgröße ohne
+Belang) und jedes Atmosphärenmodell — was von der Einstrahlung ankommt,
+sagt das Wetter.
+
+### Drei Formen, in denen offene Kataloge liefern
+
+Die Abbildung (`connectors/rest-timeseries/mapping.ts`) ist rein und
+deklarativ. Sie kennt drei Formen, und damit ist der Katalog abgedeckt:
+
+- `points` — eine Liste von Datensätzen mit Zeitstempel (Bright Sky, aWATTar)
+- `columns` — parallele Arrays, ein Zeitarray und je Größe eines (Open-Meteo)
+- `intervals` — Zeitspannen mit einem Wert innen und einem **außen**
+  (Feiertage). Ohne den Wert außerhalb entstünde eine Reihe, die nur aus
+  Einsen besteht — als Störgröße wertlos.
+
+Dazu Zeitfenster-Zerlegung, Einheiten-Umrechnung (€/MWh → ct/kWh),
+Filter auf Datensatz-Ebene (Feiertage eines Bundeslandes), Drosselung je
+Host und ein Zwischenspeicher: Bright Sky liefert acht Größen in einem
+Dokument, und die Erfassung holt es genau einmal.
+
+### Was die Adjustierung ändert — der Kontrast
+
+Eine Störgröße einzubinden ist erst dann etwas wert, wenn man sieht, was
+sie ändert. Ein Lauf mit Adjustierung rechnet deshalb dieselbe Frage ein
+zweites Mal **ohne** sie — auf demselben Panel, mit demselben Verfahren,
+mit demselben Startwert. Nur so ist die Differenz der Adjustierung
+zuzuschreiben und nicht einer anderen Datenlage.
+
+```turtle
+# in graph/<u>/inferred/causal/workspace
+<…/study/heizen-auf-innentemperatur/confounding>
+    a ow:ConfoundingContrast ;
+    ow:crudeAssociation "-1.43"^^xsd:decimal ;   # roher Zusammenhang
+    ow:crudeCiLow  "-1.91"^^xsd:decimal ;
+    ow:crudeCiHigh "-0.98"^^xsd:decimal ;
+    ow:confoundingShift "3.44"^^xsd:decimal ;    # adjustiert − roh
+    schema:description "Ohne Adjustierung ergibt dieselbe Frage …"@de .
+```
+
+**Der rohe Wert ist kein Effekt.** Er trägt bewusst weder
+`ow:effectSize` noch `ow:refutationPassed` — dieser Term zieht per SHACL
+die bestandene Refutation nach sich (Invariante C5), und die hat ein
+Zusammenhang nicht. In der Oberfläche heißt er „ohne Adjustierung", nie
+„Effekt". Warum die Abnahme wörtlich gelesen das Gegenteil verlangte:
+[Eintrag 6](./spec-widersprueche.md).
+
+Das typische Bild in der Hausdomäne: Geheizt wird, wenn es kalt ist, und
+kalt heißt niedrige Innentemperatur. Ohne die Außentemperatur sieht
+Heizen deshalb wirkungslos oder schädlich aus; mit ihr steht die wahre
+Wirkung da. Genau dieser Fall ist die Abnahme
+(`tests/graph/open-data.test.ts`), von der Quelle bis zur Zahl.
+
+## Die Chronik: was dieselbe Frage früher sagte
+
+Der Inferenz-Graph trägt immer nur den **aktuellen** Stand: Er wird bei
+jedem Lauf vollständig ersetzt (Invariante C4) und nie persistiert
+(§8.1). Damit gab es keine Historie — „Was sagte dieselbe Frage vor drei
+Monaten?" war nicht beantwortbar. Entschieden am 14.08.2026
+([Eintrag 3](./spec-widersprueche.md)): Ein Lauf hält jede **Änderung**
+seines Ergebnisses in `graph/<u>/causal-archive` fest.
+
+**Warum das keine Invariante bricht.** Der Inferenz-Graph behauptet: *So
+ist es nach heutiger Datenlage.* Die Chronik behauptet: *Am 14.08.2026
+lief diese Frage auf Revision 7 und sagte das hier.* Das ist ein
+Ereignis, kein abgeleiteter Zustand — eine `prov:Activity`, die
+stattgefunden hat. Ereignisse werden behauptet, nicht inferiert; deshalb
+liegt die Chronik in einem behaupteten, persistierten Graphen
+(asserted ≠ inferred bleibt unberührt).
+
+Drei Regeln:
+
+1. **Der Effekt hängt nie am Reifier der Kante**, sondern an einem
+   studieneigenen Knoten. Sonst lägen alte Läufe über der aktuellen
+   Annahme, und `minEvidence` (C2), Adjustierung und Modellansicht
+   wüssten nicht mehr, welcher gilt.
+2. **Eingetragen wird nur, was sich geändert hat**: der erste Lauf einer
+   Frage, danach ein anderes Urteil, eine andere Modell-Revision oder ein
+   Effekt außerhalb des zuletzt festgehaltenen Intervalls. Zwanzig
+   identische Läufe sind keine Historie, sondern Rauschen.
+3. **Beantwortet wird eine Frage weiterhin nur aus dem Inferenz-Graphen.**
+   Die Chronik zeigt, was war — sie sagt nie, was gilt.
+
+**Verwerfen ja, ändern nein.** Ein Lauf auf falsch erfassten Daten ist
+keine Geschichte, sondern Störung — er lässt sich einzeln und vollständig
+verwerfen (`DELETE /api/graph/causal/archive/<id>`, Knopf an jedem
+Eintrag). Einen Eintrag zu **ändern** gibt es nicht: Dann stünde in der
+Chronik etwas, das so nie gerechnet wurde.
+
+Auf `/graph/causal` steht sie als „Chronik" an der jeweiligen Frage.
+Abnahme: `tests/graph/causal-archive.test.ts`.
+
 ## Revisionen: woran sich eine Studie später beruft
 
 Jede Änderung am Modell schreibt eine `prov:Activity` **in den
@@ -571,7 +722,6 @@ SELECT ?ursacheName ?klasse ?evidenz ?versatz WHERE {
 
 | | Was fehlt | Meilenstein |
 |---|---|---|
-| Confounder | Wetter, Strompreis, Sonnenstand, Feiertage als Open-Data-Reihen | C5 |
 | Hypothesen-Erzeugung | LLM-Vorschläge mit Provenienz und symbolischen Filtern | C6 |
 | Frontdoor- und IV-Schätzer | identifiziert (C1), aber nicht gerechnet — die Studie sagt es | C8 (Sidecar) |
 | Struktur-Lernen, CATE, formale Sensitivität | Python-Sidecar, `causalTier: full` | C8, nur nach Freigabe |
@@ -580,16 +730,20 @@ SELECT ?ursacheName ?klasse ?evidenz ?versatz WHERE {
 Der Hypothesen-Graph existiert bereits als Ort, aber bis C6 schreibt
 niemand automatisch hinein: Was dort steht, hat ein Mensch geschrieben.
 
-Der häufigste Grund für `not-identifiable` ist eine fehlende Störgröße —
-und die wichtigsten der Hausdomäne sind offen verfügbar. Genau diese Lücke
-schließt C5.
+Der häufigste Grund für `not-identifiable` bleibt eine fehlende
+Störgröße. Die wichtigsten der Hausdomäne sind seit C5 offen verfügbar
+(siehe unten) — was fehlt, ist alles, wofür es keine offene Quelle gibt:
+wer zu Hause war, ob das Fenster offen stand, wie viele Gäste da waren.
 
 ## Abweichungen von der Spec, zur Entscheidung vorgelegt
 
-§19 verbietet einer Session, die Spec neu zu verhandeln. Drei Stellen in
-§5 ließen sich beim Bauen von C4 nicht wörtlich umsetzen; sie sind hier
-festgehalten, damit darüber entschieden werden kann — geändert wurde an
-der Spec nichts.
+§19 verbietet einer Session, die Spec neu zu verhandeln — sie hält
+Widersprüche fest und legt sie vor. Alle acht, die beim Bauen von C3, C4
+und C5 auffielen, sind am 14.08.2026 **entschieden** worden und stehen mit
+Auflösung, Begründung und den Kosten der Gegenrichtung in
+[docs/spec-widersprueche.md](./spec-widersprueche.md); wo die Entscheidung
+den Text der Spec betrifft, ist sie dort eingearbeitet. Die drei aus C4
+sind hier zusätzlich ausformuliert.
 
 1. **`ow:Estimand` und die Identifikationsstrategie (§5.2).** Die Spec
    nennt als Wertebereich `backdoor | frontdoor | iv | did | its | none`.
@@ -607,12 +761,8 @@ der Spec nichts.
    keine QUDT-IRI vorliegt. Ein eigener Term wäre eine zweite Schreibweise
    für dasselbe (Invariante 8). Eine QUDT-Abbildung bleibt möglich — sie
    gehört dann an die Variable, nicht an den Effekt.
-3. **Ergebnisse sind flüchtig (C4 + §8.1).** Studien liegen im
-   Inferenz-Graphen, werden bei jedem Lauf vollständig ersetzt (C4) und
-   nie persistiert (§8.1) — nach einem Neustart sind sie fort, bis
-   jemand rechnet. Das ist mit C7 vereinbar (reproduzierbar heißt
-   herstellbar, nicht aufbewahrt), heißt aber auch: Es gibt **keine
-   Historie** von Effekten über Modell-Revisionen hinweg. Wer „was sagte
-   dieselbe Frage vor drei Monaten?" beantworten will, braucht einen
-   dauerhaften Ort für abgeschlossene Studien — das wäre eine Erweiterung
-   der Spec, keine Auslegung, und ist deshalb nicht gebaut.
+3. **Ergebnisse waren flüchtig (C4 + §8.1)** — behoben. Studien liegen
+   weiterhin im Inferenz-Graphen, werden bei jedem Lauf ersetzt und nie
+   persistiert; die **Chronik** (siehe oben) hält daneben fest, was eine
+   Frage wann gesagt hat. Sie ist behauptet statt inferiert, weil ein
+   Lauf ein Ereignis ist und kein abgeleiteter Zustand.

@@ -959,3 +959,53 @@ ow:refutationPassed a owl:DatatypeProperty ;
     rdfs:label "Refutation bestanden"@de, "refutation passed"@en ;
     rdfs:comment "Zusammenfassung aller blockierenden Versuche als Annotation am Reifier der kausalen Kante: true nur, wenn jeder von ihnen bestanden hat. Sie steht neben ow:effectSize, damit eine zitierte kausale Aussage ihren Falsifikationsstatus mitträgt und nicht in einer Nebentabelle nachgeschlagen werden muss (§5.3)."@de ;
     rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+#################################################################
+# Was die Adjustierung geändert hat (CAUSAL_LAYER_SPEC §10, C5)
+#
+# Der Meilenstein C5 bringt die Störgrößen aus offenen Quellen, und
+# sein Nachweis ist eine Differenz: dieselbe Frage, dieselben Zeilen,
+# dasselbe Verfahren — einmal ohne und einmal mit Adjustierung.
+# Damit diese Differenz zitierfähig ist, braucht sie eigene Terme.
+#
+# Warum NICHT ow:effectSize für den rohen Wert: Er ist keine Wirkung,
+# sondern der Zusammenhang, den man sähe, wenn man die Störgröße
+# ignorierte. Er hat keine bestandene Refutation und dürfte deshalb
+# gar nicht wie ein Effekt aussehen (Invariante C5, SHACL-Shape auf
+# ow:effectSize). Eine gemeinsame Terminologie für Wirkung und
+# Zusammenhang wäre genau die Verwechslung, gegen die dieser Layer
+# gebaut ist.
+#################################################################
+
+ow:ConfoundingContrast a owl:Class ;
+    rdfs:label "Adjustierungs-Kontrast"@de, "adjustment contrast"@en ;
+    rdfs:comment "Der Vergleich zwischen roher und adjustierter Rechnung einer Studie: was sich ändert, wenn über die Störgrößen adjustiert wird. Gerechnet auf demselben Panel, mit demselben Verfahren und demselben Startwert — nur dann ist die Differenz der Adjustierung zuzuschreiben und nicht der Datenlage. Kein Standard-Vokabular kennt diesen Vergleich; schema:compares beschreibt Vergleichsseiten von Produkten, nicht zwei Rechnungen derselben Frage."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:crudeAssociation a owl:DatatypeProperty ;
+    rdfs:domain ow:ConfoundingContrast ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "roher Zusammenhang"@de, "crude association"@en ;
+    rdfs:comment "Der Wert ohne Adjustierung — ausdrücklich KEIN Effekt. Er steht für das, was eine Korrelationsliste ausgäbe, und ist damit die Vergleichsgröße, an der die Wirkung einer Störgröße sichtbar wird. Er trägt bewusst weder ow:effectSize noch ow:refutationPassed: Eine Zahl ohne bestandene Refutation ist in diesem Layer kein Effekt (Invariante C5), und die Oberfläche nennt sie nie so (§17)."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:crudeCiLow a owl:DatatypeProperty ;
+    rdfs:domain ow:ConfoundingContrast ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "untere Intervallgrenze (roh)"@de, "crude confidence interval lower bound"@en ;
+    rdfs:comment "Untere Grenze des Konfidenzintervalls des rohen Zusammenhangs, aus demselben Block-Bootstrap wie der adjustierte Wert. Eigener Term statt ow:ciLow, weil dieser laut seiner Definition nie ohne ow:effectSize auftritt — und der rohe Wert ist keiner."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:crudeCiHigh a owl:DatatypeProperty ;
+    rdfs:domain ow:ConfoundingContrast ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "obere Intervallgrenze (roh)"@de, "crude confidence interval upper bound"@en ;
+    rdfs:comment "Obere Grenze des Konfidenzintervalls des rohen Zusammenhangs. Sie steht nie ohne ow:crudeCiLow: Eine Punktschätzung ohne Intervall ist auch dann keine Ausgabe, wenn sie nur als Vergleichsgröße dient."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:confoundingShift a owl:DatatypeProperty ;
+    rdfs:domain ow:ConfoundingContrast ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "Verschiebung durch Adjustierung"@de, "confounding shift"@en ;
+    rdfs:comment "Adjustierter Wert minus rohem Wert. Der Betrag ist der Anteil des rohen Zusammenhangs, der auf die Störgrößen zurückgeht und nicht auf die Behandlung — die Antwort auf die Frage, was das Einbinden einer offenen Quelle gebracht hat. Er wird gespeichert und nicht beim Lesen gerechnet, damit eine zitierte Studie ihn auch dann trägt, wenn die Rohdaten längst außerhalb der Aufbewahrungsfrist liegen."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .

@@ -20,6 +20,7 @@ import { REFUTATION_LABEL, type RefutationMethod, type RefutationVerdict } from 
 import { ESTIMATOR_CHOICES, STUDY_VERDICT_LABEL, type StudyVerdict } from '@/lib/graph/causal/study';
 import type { EstimandView } from '@/lib/graph/causal/estimand';
 import type { StudyView } from '@/lib/graph/causal/study-graph';
+import type { ArchiveEntryView } from '@/lib/graph/causal/archive';
 import type { DagPath } from '@/lib/graph/causal/dsep';
 import styles from './page.module.css';
 
@@ -73,6 +74,8 @@ interface CausalResponse {
     observedVariables: ObservedVariable[];
     estimands: EstimandView[];
     studies: StudyView[];
+    /** Chronik: was dieselbe Frage früher gesagt hat (Widerspruch 3). */
+    archive: ArchiveEntryView[];
     causalTier: 'none' | 'graph' | 'full';
     validation: { conforms: boolean; graphs: string[]; results: ValidationResult[] };
 }
@@ -628,15 +631,20 @@ interface StudiesProps {
     model: CausalModelView;
     estimands: readonly EstimandView[];
     studies: readonly StudyView[];
+    archive: readonly ArchiveEntryView[];
     busy: boolean;
     onAsk(input: Record<string, unknown>): Promise<void>;
     onRemove(estimandId: string): Promise<void>;
+    onDiscardArchive(entryId: string): Promise<void>;
 }
 
-function StudyCard({ model, estimand, study }: {
+function StudyCard({ model, estimand, study, history, busy, onDiscardArchive }: {
     model: CausalModelView;
     estimand: EstimandView;
     study?: StudyView;
+    history: readonly ArchiveEntryView[];
+    busy: boolean;
+    onDiscardArchive(entryId: string): Promise<void>;
 }) {
     const verdict = study?.verdict;
     return (
@@ -685,6 +693,31 @@ function StudyCard({ model, estimand, study }: {
                 </p>
             )}
 
+            {/*
+              * Was die Adjustierung geändert hat (C5). Der rohe Wert heißt hier
+              * bewusst „Zusammenhang" und nie „Effekt": Er ist die Zahl, die
+              * ohne Störgröße herauskäme, und genau deshalb steht sie da —
+              * nicht als zweites Ergebnis, sondern als Beleg dafür, was das
+              * Einbinden der Quelle gebracht hat.
+              */}
+            {study?.contrast && (
+                <div className={styles.contrast}>
+                    <p className={styles.contrastHead}>
+                        Ohne Adjustierung:{' '}
+                        <strong>
+                            {study.contrast.crude !== undefined
+                                ? `${num(study.contrast.crude)}${study.effect?.unit ? ` ${study.effect.unit}` : ''}`
+                                : 'nicht zu rechnen'}
+                        </strong>
+                        {study.contrast.crudeCiLow !== undefined && study.contrast.crudeCiHigh !== undefined
+                            && ` [${num(study.contrast.crudeCiLow)}; ${num(study.contrast.crudeCiHigh)}]`}
+                        {study.contrast.shift !== undefined
+                            && ` · Verschiebung durch Adjustierung ${num(study.contrast.shift)}`}
+                    </p>
+                    <p className={styles.contrastText}>{study.contrast.explanation}</p>
+                </div>
+            )}
+
             {study && study.refutations.length > 0 && (
                 <ul className={styles.refutationList}>
                     {study.refutations.map(refutation => (
@@ -703,6 +736,56 @@ function StudyCard({ model, estimand, study }: {
                         </li>
                     ))}
                 </ul>
+            )}
+
+            {/*
+              * Die Chronik (docs/spec-widersprueche.md, Eintrag 3): Der
+              * Inferenz-Graph trägt immer nur den aktuellen Stand, und er
+              * wird bei jedem Lauf ersetzt. Was eine Frage FRÜHER gesagt
+              * hat, stünde damit nirgends — deshalb hält ein Lauf jede
+              * Änderung fest, und nur die.
+              */}
+            {history.length > 0 && (
+                <details className={styles.template}>
+                    <summary>Chronik ({history.length} {history.length === 1 ? 'Eintrag' : 'Einträge'})</summary>
+                    <ul className={styles.edgeList}>
+                        {history.map(entry => (
+                            <li key={entry.iri} className={styles.edgeRow}>
+                                <span className={styles.edgeText}>
+                                    {entry.effect
+                                        ? `${num(entry.effect.value)}${entry.effect.unit ? ` ${entry.effect.unit}` : ''} `
+                                            + `[${num(entry.effect.ciLow)}; ${num(entry.effect.ciHigh)}]`
+                                        : STUDY_VERDICT_LABEL[entry.verdict]}
+                                </span>
+                                <span className={styles.badges}>
+                                    <span className={styles.badge}>Rev. {entry.modelRevision}</span>
+                                    {entry.generatedAt && (
+                                        <span className={styles.badge}>
+                                            {new Date(entry.generatedAt).toLocaleDateString('de-DE')}
+                                        </span>
+                                    )}
+                                    {entry.softwareVersion && (
+                                        <span className={styles.badge}>v{entry.softwareVersion}</span>
+                                    )}
+                                    <button
+                                        type="button"
+                                        className={styles.discard}
+                                        onClick={() => { void onDiscardArchive(entry.id); }}
+                                        disabled={busy}
+                                        title="Eintrag verwerfen — ein Lauf auf falschen Daten ist keine Geschichte"
+                                    >
+                                        <Trash2 size={14} aria-hidden="true" />
+                                        <span className={styles.visuallyHidden}>
+                                            Chronik-Eintrag vom {entry.generatedAt
+                                                ? new Date(entry.generatedAt).toLocaleDateString('de-DE')
+                                                : 'unbekannten Datum'} verwerfen
+                                        </span>
+                                    </button>
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                </details>
             )}
 
             {study && (
@@ -725,7 +808,9 @@ function StudyCard({ model, estimand, study }: {
  * (Invariante C1). Wer die Struktur darüber ändert, sieht sofort, dass
  * das Ergebnis darunter zu einer anderen Revision gehört.
  */
-function StudiesPanel({ model, estimands, studies, busy, onAsk, onRemove }: StudiesProps) {
+function StudiesPanel({
+    model, estimands, studies, archive, busy, onAsk, onRemove, onDiscardArchive,
+}: StudiesProps) {
     const [treatment, setTreatment] = useState('');
     const [outcome, setOutcome] = useState('');
     const [estimator, setEstimator] = useState<string>('auto');
@@ -770,7 +855,14 @@ function StudiesPanel({ model, estimands, studies, busy, onAsk, onRemove }: Stud
                 <ul className={styles.studyList}>
                     {estimands.map(estimand => (
                         <li key={estimand.id}>
-                            <StudyCard model={model} estimand={estimand} study={byId.get(estimand.id)} />
+                            <StudyCard
+                                model={model}
+                                estimand={estimand}
+                                study={byId.get(estimand.id)}
+                                history={archive.filter(entry => entry.estimandId === estimand.id)}
+                                busy={busy}
+                                onDiscardArchive={onDiscardArchive}
+                            />
                             <Button variant="ghost" disabled={busy} onClick={() => onRemove(estimand.id)}>
                                 <Trash2 size={16} aria-hidden="true" />
                                 <span className={styles.visuallyHidden}>Frage {estimand.name} </span>
@@ -886,10 +978,12 @@ interface ModelCardProps {
     observedVariables: readonly ObservedVariable[];
     estimands: readonly EstimandView[];
     studies: readonly StudyView[];
+    archive: readonly ArchiveEntryView[];
     busy: boolean;
     onOperation(operation: Record<string, unknown>): Promise<void>;
     onAsk(input: Record<string, unknown>): Promise<void>;
     onRemoveEstimand(estimandId: string): Promise<void>;
+    onDiscardArchive(entryId: string): Promise<void>;
     onCopy(): void;
     onRemove(): void;
 }
@@ -905,10 +999,12 @@ function ModelCard({
     observedVariables,
     estimands,
     studies,
+    archive,
     busy,
     onOperation,
     onAsk,
     onRemoveEstimand,
+    onDiscardArchive,
     onCopy,
     onRemove,
 }: ModelCardProps) {
@@ -1027,9 +1123,11 @@ function ModelCard({
                 model={model}
                 estimands={estimands}
                 studies={studies}
+                archive={archive}
                 busy={busy}
                 onAsk={onAsk}
                 onRemove={onRemoveEstimand}
+                onDiscardArchive={onDiscardArchive}
             />
 
             {model.revisions.length > 0 && (
@@ -1150,6 +1248,27 @@ export default function GraphCausalPage() {
             toast.success('Frage angelegt. Sie wird beim nächsten Lauf gerechnet.');
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Frage konnte nicht angelegt werden.');
+        } finally {
+            setBusy(false);
+            invalidate();
+        }
+    };
+
+    /**
+     * Einen Chronik-Eintrag verwerfen. Die Chronik hält fest, was ein Lauf
+     * gesagt hat — nicht, dass er hätte stattfinden sollen: Ein Lauf auf
+     * falsch erfassten Daten ist keine Geschichte, sondern Störung.
+     */
+    const discardArchiveEntry = async (entryId: string) => {
+        setBusy(true);
+        try {
+            const result = await fetchJson<{ message: string }>(
+                `/api/graph/causal/archive/${encodeURIComponent(entryId)}`,
+                { method: 'DELETE' },
+            );
+            toast.success(result.message);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Eintrag konnte nicht verworfen werden.');
         } finally {
             setBusy(false);
             invalidate();
@@ -1365,10 +1484,12 @@ export default function GraphCausalPage() {
                                     observedVariables={data?.observedVariables ?? []}
                                     estimands={estimands.filter(estimand => estimand.modelId === model.id)}
                                     studies={studies}
+                                    archive={data?.archive ?? []}
                                     busy={busy}
                                     onOperation={operation => runOperation(model.id, operation)}
                                     onAsk={askQuestion}
                                     onRemoveEstimand={removeQuestion}
+                                    onDiscardArchive={discardArchiveEntry}
                                     onCopy={() => handleCopy(model)}
                                     onRemove={() => setRemoving(model)}
                                 />

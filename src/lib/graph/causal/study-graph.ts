@@ -31,6 +31,7 @@ import type { Observation } from '../observations/types';
 import { factory, literal, namedNode, typedLiteral } from '../rdf';
 import { validateQuads, type ShaclResult } from '../reasoning/shacl';
 import { DCTERMS, OW, PROV, RDF, RO, SCHEMA } from '../vocab';
+import { archiveQuads, causalArchiveGraph, hasChanged, latestArchiveEntry } from './archive';
 import { causalEdgeReifier, readCausalModel, type GraphHandle } from './model';
 import { listEstimands, type EstimandView } from './estimand';
 import { ESTIMATORS, type EstimatorId } from './estimate';
@@ -85,6 +86,19 @@ export interface StudyWriteContext {
     generatedAt: string;
     softwareVersion: string;
     actor?: string;
+    /**
+     * Abweichende IRI des Studien-Knotens. Gebraucht von der Chronik
+     * (`archive.ts`): Dort steht **jeder** Lauf unter eigener Adresse,
+     * während der Inferenz-Graph immer nur den aktuellen trägt.
+     */
+    subjectIri?: string;
+    /**
+     * Hängt der Effekt am Reifier der Kante (§5.3)? Für den aktuellen
+     * Stand ja — nur so legt sich die Zahl beim Lesen über das Modell.
+     * Für die Chronik **nein**: Sonst überlagerten drei Jahre alter Läufe
+     * dieselbe Kante, und welcher gälte, wüsste niemand.
+     */
+    attachEffectToEdge?: boolean;
 }
 
 function slug(value: string): string {
@@ -125,7 +139,7 @@ export function secondsToIsoDuration(seconds: number): string {
 export function studyQuads(iri: IriFactory, context: StudyWriteContext): Quad[] {
     const { result, model, estimand, generatedAt, softwareVersion } = context;
     const graph = namedNode(context.graph);
-    const study = namedNode(studyIri(iri, estimand.id));
+    const study = namedNode(context.subjectIri ?? studyIri(iri, estimand.id));
     const quads: Quad[] = [
         factory.quad(study, namedNode(RDF.type), namedNode(OW.CausalStudy), graph),
         factory.quad(study, namedNode(DCTERMS.identifier), literal(estimand.id), graph),
@@ -243,6 +257,40 @@ export function studyQuads(iri: IriFactory, context: StudyWriteContext): Quad[] 
         }
     }
 
+    // Was die Adjustierung geändert hat (C5). Der rohe Wert steht hier
+    // bewusst unter eigenen Termen: Er ist ein Zusammenhang, kein Effekt,
+    // und dürfte weder ow:effectSize noch ow:refutationPassed tragen
+    // (Invariante C5).
+    if (result.contrast) {
+        const { contrast } = result;
+        const node = namedNode(`${study.value}/confounding`);
+        quads.push(
+            factory.quad(node, namedNode(RDF.type), namedNode(OW.ConfoundingContrast), graph),
+            factory.quad(study, namedNode(SCHEMA.hasPart), node, graph),
+            factory.quad(node, namedNode(SCHEMA.description), literal(contrast.explanation, 'de'), graph),
+        );
+        // Worüber adjustiert wurde, steht bereits an der ow:AdjustmentSet
+        // derselben Studie. Es hier zu wiederholen hieße, dieselbe Aussage
+        // an zwei Stellen zu führen — und irgendwann widersprächen sie sich.
+        if (contrast.crude !== undefined) {
+            quads.push(factory.quad(node, namedNode(OW.crudeAssociation), typedLiteral.decimal(contrast.crude), graph));
+        }
+        if (contrast.crudeCiLow !== undefined && contrast.crudeCiHigh !== undefined) {
+            quads.push(
+                factory.quad(node, namedNode(OW.crudeCiLow), typedLiteral.decimal(contrast.crudeCiLow), graph),
+                factory.quad(node, namedNode(OW.crudeCiHigh), typedLiteral.decimal(contrast.crudeCiHigh), graph),
+            );
+        }
+        if (contrast.shift !== undefined) {
+            quads.push(factory.quad(
+                node,
+                namedNode(OW.confoundingShift),
+                typedLiteral.decimal(contrast.shift),
+                graph,
+            ));
+        }
+    }
+
     for (const refutation of result.refutations) {
         const node = namedNode(`${study.value}/refutation/${refutation.method}`);
         quads.push(
@@ -271,8 +319,10 @@ function effectQuads(
     graph: ReturnType<typeof namedNode>,
 ): Quad[] {
     const { result, model } = context;
-    const edge = model.edges.find(candidate =>
-        candidate.from === result.spec.treatment && candidate.to === result.spec.outcome);
+    const edge = context.attachEffectToEdge === false
+        ? undefined
+        : model.edges.find(candidate =>
+            candidate.from === result.spec.treatment && candidate.to === result.spec.outcome);
     // Steht die Kante im Modell, hängt der Effekt an ihrem Reifier — genau
     // wie §5.3 es vorsieht, nur im Inferenz-Graphen statt im Modell.
     // Fragt jemand nach einer Wirkung über mehrere Schritte, gibt es keine
@@ -346,6 +396,17 @@ export interface StudyEffectView {
     unit?: string;
 }
 
+/** Der Adjustierungs-Kontrast, so wie er im Graphen steht (C5). */
+export interface StudyContrastView {
+    adjustedFor: string[];
+    /** Roher Zusammenhang — nie als Effekt zu lesen (Invariante C5). */
+    crude?: number;
+    crudeCiLow?: number;
+    crudeCiHigh?: number;
+    shift?: number;
+    explanation: string;
+}
+
 export interface StudyView {
     iri: string;
     estimandId: string;
@@ -369,6 +430,8 @@ export interface StudyView {
     refutations: StudyRefutationView[];
     inputs: StudyInputView[];
     effect?: StudyEffectView;
+    /** Was die Adjustierung geändert hat (C5), falls adjustiert wurde. */
+    contrast?: StudyContrastView;
 }
 
 async function dumpGraph(handle: GraphHandle, graph: string): Promise<Quad[]> {
@@ -422,9 +485,29 @@ export async function readCausalStudies(
         const refutations: StudyRefutationView[] = [];
         const inputs: StudyInputView[] = [];
         let adjustedFor: string[] = [];
+        let contrast: StudyContrastView | undefined;
         for (const part of parts) {
             const types = valuesOf(part, RDF.type);
-            if (types.includes(OW.Refutation)) {
+            if (types.includes(OW.ConfoundingContrast)) {
+                contrast = {
+                    // Die Adjustierungsmenge steht an der Studie, nicht am
+                    // Kontrast — sie wird unten nachgetragen.
+                    adjustedFor: [],
+                    ...(numberOf(valueOf(part, OW.crudeAssociation)) !== undefined
+                        ? { crude: numberOf(valueOf(part, OW.crudeAssociation)) as number }
+                        : {}),
+                    ...(numberOf(valueOf(part, OW.crudeCiLow)) !== undefined
+                        ? { crudeCiLow: numberOf(valueOf(part, OW.crudeCiLow)) as number }
+                        : {}),
+                    ...(numberOf(valueOf(part, OW.crudeCiHigh)) !== undefined
+                        ? { crudeCiHigh: numberOf(valueOf(part, OW.crudeCiHigh)) as number }
+                        : {}),
+                    ...(numberOf(valueOf(part, OW.confoundingShift)) !== undefined
+                        ? { shift: numberOf(valueOf(part, OW.confoundingShift)) as number }
+                        : {}),
+                    explanation: valueOf(part, SCHEMA.description) ?? '',
+                };
+            } else if (types.includes(OW.Refutation)) {
                 const method = valueOf(part, OW.refutationMethod) ?? '';
                 const verdict = valueOf(part, OW.refutationVerdict) ?? 'inconclusive';
                 if (!(REFUTATION_METHODS as readonly string[]).includes(method)) continue;
@@ -521,6 +604,7 @@ export async function readCausalStudies(
             refutations,
             inputs,
             ...(effect ? { effect } : {}),
+            ...(contrast ? { contrast: { ...contrast, adjustedFor } } : {}),
         });
     }
     return studies.sort((a, b) => a.name.localeCompare(b.name, 'de'));
@@ -543,6 +627,8 @@ export interface StudyRunOptions {
 export interface StudyRunSummary {
     scope: CausalScopeId;
     graph: string;
+    /** Fragen, deren Ergebnis sich geändert hat und in die Chronik ging. */
+    archived: string[];
     generatedAt: string;
     durationMs: number;
     /** Ergebnisse in der Reihenfolge der Fragen. */
@@ -600,6 +686,9 @@ export async function runCausalStudies(
     const skipped: StudyRunSummary['skipped'] = [];
     const rejected: StudyRunSummary['rejected'] = [];
     const quads: Quad[] = [];
+    // Kandidaten für die Chronik: alles, was geschrieben wurde. Was die
+    // Signaturprüfung nicht bestanden hat, wird auch nicht festgehalten.
+    const archivable: Array<{ result: StudyResult; model: CausalModelView; estimand: EstimandView }> = [];
 
     const shapes = await dumpGraph(handle, handle.iri.sharedGraph('shapes'));
 
@@ -691,10 +780,36 @@ export async function runCausalStudies(
             }
         }
         quads.push(...studyQuadList);
+        archivable.push({ result, model, estimand });
+    }
+
+    // Die Chronik VOR dem Replace bestimmen: Verglichen wird mit dem
+    // jüngsten festgehaltenen Eintrag, nicht mit dem Inferenz-Graphen —
+    // der ist gleich weg.
+    const archiveGraph = causalArchiveGraph(handle.iri);
+    const archived: string[] = [];
+    const archiveQuadList: Quad[] = [];
+    for (const entry of archivable) {
+        const previous = await latestArchiveEntry(handle, entry.estimand.id);
+        if (!hasChanged(previous, entry.result)) continue;
+        archived.push(entry.estimand.id);
+        archiveQuadList.push(...archiveQuads(handle.iri, {
+            result: entry.result,
+            model: entry.model,
+            estimand: entry.estimand,
+            generatedAt,
+            softwareVersion: options.softwareVersion,
+            ...(options.actor ? { actor: options.actor } : {}),
+        }));
     }
 
     await handle.store.transaction(async tx => {
         await tx.load(quads, namedNode(graph), { replace: true });
+        // Die Chronik wird ANGEHÄNGT, nie ersetzt: Sie hält fest, was war,
+        // und was war, ändert sich nicht mehr.
+        if (archiveQuadList.length > 0) {
+            await tx.load(archiveQuadList, namedNode(archiveGraph));
+        }
     });
 
     return {
@@ -705,5 +820,6 @@ export async function runCausalStudies(
         results,
         skipped,
         rejected,
+        archived,
     };
 }
