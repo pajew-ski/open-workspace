@@ -24,13 +24,15 @@
  * eigene Quelle braucht keinen neuen Code — sie ist eine eigene
  * Abbildung (`custom`).
  *
- * **Ehrliche Grenze bei „Sonnenstand"**: §10 nennt Azimut und Elevation.
- * Beides ist eine Rechnung aus Ort und Zeit, kein Abruf — es gibt dafür
- * keine offene Zeitreihen-API, und ein lokal gerechneter Wert wäre keine
- * Quelle, sondern eine zweite Pipeline neben dem Connector-Vertrag
- * (Invariante 5). Geliefert wird stattdessen die **Einstrahlung**, also
- * die Größe, über die der Sonnenstand kausal überhaupt erst wirkt.
- * Festgehalten in docs/spec-widersprueche.md.
+ * **Zum „Sonnenstand" aus §10**: Azimut und Elevation sind eine Rechnung
+ * aus Ort und Zeit, kein Abruf — für diesen Katalog gibt es sie deshalb
+ * nicht. Er liefert die **Einstrahlung**, also die Größe, über die der
+ * Sonnenstand kausal wirkt, und zwar ihren atmosphärischen Teil
+ * (Bewölkung, Trübung). Der geometrische Teil kommt vom Connector
+ * `solar-position`, der rechnet statt abzurufen — entschieden am
+ * 2026-08-14: eine berechnete Größe IST eine Beobachtung
+ * (docs/spec-widersprueche.md, Eintrag 4). Beide zusammen ergeben das
+ * vollständige Bild.
  */
 
 import type { RestSourceMapping } from './mapping';

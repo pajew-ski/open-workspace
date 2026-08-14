@@ -427,6 +427,36 @@
     overflow-wrap: anywhere;
 }
 
+/*
+ * „Eintrag verwerfen" in der Chronik. Bewusst klein und unaufdringlich:
+ * Der Regelfall ist, dass ein Eintrag stehen bleibt — verworfen wird ein
+ * Lauf auf falschen Daten, nicht ein unliebsames Ergebnis.
+ */
+.discard {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    min-height: 24px;
+    padding: 2px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+}
+
+.discard:hover:not(:disabled),
+.discard:focus-visible {
+    color: var(--color-error-text, var(--color-text-primary));
+    background: var(--color-surface-sunken);
+}
+
+.discard:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
 .visuallyHidden {
     position: absolute;
     width: 1px;

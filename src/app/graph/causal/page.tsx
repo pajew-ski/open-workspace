@@ -635,13 +635,16 @@ interface StudiesProps {
     busy: boolean;
     onAsk(input: Record<string, unknown>): Promise<void>;
     onRemove(estimandId: string): Promise<void>;
+    onDiscardArchive(entryId: string): Promise<void>;
 }
 
-function StudyCard({ model, estimand, study, history }: {
+function StudyCard({ model, estimand, study, history, busy, onDiscardArchive }: {
     model: CausalModelView;
     estimand: EstimandView;
     study?: StudyView;
     history: readonly ArchiveEntryView[];
+    busy: boolean;
+    onDiscardArchive(entryId: string): Promise<void>;
 }) {
     const verdict = study?.verdict;
     return (
@@ -764,6 +767,20 @@ function StudyCard({ model, estimand, study, history }: {
                                     {entry.softwareVersion && (
                                         <span className={styles.badge}>v{entry.softwareVersion}</span>
                                     )}
+                                    <button
+                                        type="button"
+                                        className={styles.discard}
+                                        onClick={() => { void onDiscardArchive(entry.id); }}
+                                        disabled={busy}
+                                        title="Eintrag verwerfen — ein Lauf auf falschen Daten ist keine Geschichte"
+                                    >
+                                        <Trash2 size={14} aria-hidden="true" />
+                                        <span className={styles.visuallyHidden}>
+                                            Chronik-Eintrag vom {entry.generatedAt
+                                                ? new Date(entry.generatedAt).toLocaleDateString('de-DE')
+                                                : 'unbekannten Datum'} verwerfen
+                                        </span>
+                                    </button>
                                 </span>
                             </li>
                         ))}
@@ -791,7 +808,9 @@ function StudyCard({ model, estimand, study, history }: {
  * (Invariante C1). Wer die Struktur darüber ändert, sieht sofort, dass
  * das Ergebnis darunter zu einer anderen Revision gehört.
  */
-function StudiesPanel({ model, estimands, studies, archive, busy, onAsk, onRemove }: StudiesProps) {
+function StudiesPanel({
+    model, estimands, studies, archive, busy, onAsk, onRemove, onDiscardArchive,
+}: StudiesProps) {
     const [treatment, setTreatment] = useState('');
     const [outcome, setOutcome] = useState('');
     const [estimator, setEstimator] = useState<string>('auto');
@@ -841,6 +860,8 @@ function StudiesPanel({ model, estimands, studies, archive, busy, onAsk, onRemov
                                 estimand={estimand}
                                 study={byId.get(estimand.id)}
                                 history={archive.filter(entry => entry.estimandId === estimand.id)}
+                                busy={busy}
+                                onDiscardArchive={onDiscardArchive}
                             />
                             <Button variant="ghost" disabled={busy} onClick={() => onRemove(estimand.id)}>
                                 <Trash2 size={16} aria-hidden="true" />
@@ -962,6 +983,7 @@ interface ModelCardProps {
     onOperation(operation: Record<string, unknown>): Promise<void>;
     onAsk(input: Record<string, unknown>): Promise<void>;
     onRemoveEstimand(estimandId: string): Promise<void>;
+    onDiscardArchive(entryId: string): Promise<void>;
     onCopy(): void;
     onRemove(): void;
 }
@@ -982,6 +1004,7 @@ function ModelCard({
     onOperation,
     onAsk,
     onRemoveEstimand,
+    onDiscardArchive,
     onCopy,
     onRemove,
 }: ModelCardProps) {
@@ -1104,6 +1127,7 @@ function ModelCard({
                 busy={busy}
                 onAsk={onAsk}
                 onRemove={onRemoveEstimand}
+                onDiscardArchive={onDiscardArchive}
             />
 
             {model.revisions.length > 0 && (
@@ -1224,6 +1248,27 @@ export default function GraphCausalPage() {
             toast.success('Frage angelegt. Sie wird beim nächsten Lauf gerechnet.');
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Frage konnte nicht angelegt werden.');
+        } finally {
+            setBusy(false);
+            invalidate();
+        }
+    };
+
+    /**
+     * Einen Chronik-Eintrag verwerfen. Die Chronik hält fest, was ein Lauf
+     * gesagt hat — nicht, dass er hätte stattfinden sollen: Ein Lauf auf
+     * falsch erfassten Daten ist keine Geschichte, sondern Störung.
+     */
+    const discardArchiveEntry = async (entryId: string) => {
+        setBusy(true);
+        try {
+            const result = await fetchJson<{ message: string }>(
+                `/api/graph/causal/archive/${encodeURIComponent(entryId)}`,
+                { method: 'DELETE' },
+            );
+            toast.success(result.message);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Eintrag konnte nicht verworfen werden.');
         } finally {
             setBusy(false);
             invalidate();
@@ -1444,6 +1489,7 @@ export default function GraphCausalPage() {
                                     onOperation={operation => runOperation(model.id, operation)}
                                     onAsk={askQuestion}
                                     onRemoveEstimand={removeQuestion}
+                                    onDiscardArchive={discardArchiveEntry}
                                     onCopy={() => handleCopy(model)}
                                     onRemove={() => setRemoving(model)}
                                 />
