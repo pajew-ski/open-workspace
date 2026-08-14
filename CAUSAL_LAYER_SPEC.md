@@ -385,13 +385,24 @@ bevor sie überhaupt geschätzt wird:
 2. SHACL-Shapes für kausale Kanten (Typverträglichkeit, Einheiten, Lag-Plausibilität)
 3. **Temporale Zulässigkeit** — die Ursache muss der Wirkung vorausgehen. Mit
    HA-Zeitstempeln ist das maschinell entscheidbar und eliminiert einen
-   erheblichen Teil des LLM-Rauschens ohne eine einzige Schätzung
+   erheblichen Teil des LLM-Rauschens ohne eine einzige Schätzung.
+   *Präzisiert am 14.08.2026 (docs/spec-widersprueche.md, Eintrag 11):
+   Aus Zeitstempeln allein entscheidbar sind das **Vorzeichen des
+   Zeitversatzes** und die **Abdeckung** (beginnt die Erfassung der
+   Ursache erst nach dem Ende der Wirkung, kann keine erfasste Ursache
+   einer erfassten Wirkung vorausgehen). Die Richtung der Wirkung aus
+   Korrelationen zu erschließen wäre Struktur-Lernen und gehört zu C8.*
 4. **Topologische Plausibilität** — ein Gerät in Raum B beeinflusst die
    Temperatur in Raum A nicht ohne Pfad. Die Device Registry ist hier ein
    echter Prior
 5. Identifizierbarkeit — ist der Effekt aus den vorhandenen Variablen
    überhaupt schätzbar? Wenn nein: sagen, welche Variable fehlen würde. Das ist
-   eine **konstruktive** Antwort und in der Praxis oft die nützlichste
+   eine **konstruktive** Antwort und in der Praxis oft die nützlichste.
+   *Präzisiert am 14.08.2026 (Eintrag 10): Dieser Filter **verwirft
+   nicht**. Er hängt an der Datenlage, nicht an der Struktur, und eine
+   Ablehnung ließe die Daten über die Annahme entscheiden — gegen
+   Invariante C1. Er erzeugt das Urteil `open`; die vier harten Filter
+   darüber erzeugen `rejected`.*
 
 **Die Daten entscheiden.** Was die Filter überlebt, wird geschätzt und
 refutiert. Zusätzlich, und das ist die schärfste Klinge: Der DAG impliziert
@@ -406,6 +417,16 @@ heißt hohe Konfidenz. **Widerspruch ist der interessante Fall** und wird dem
 Menschen vorgelegt: „Die Daten zeigen einen Pfad, den weder deine Topologie
 noch die Literatur kennt." Das ist der Moment, in dem so ein System etwas
 sagt, was niemand vorher wusste.
+
+> *Präzisiert am 14.08.2026 (docs/spec-widersprueche.md, Eintrag 9):
+> Struktur-Lernen aus Daten gehört nach §16 zu **C8** und darf nach §19
+> ohne Freigabe nicht angefangen werden — C6 kann diese dritte Quelle
+> nicht liefern. Gebaut sind stattdessen `llm`, `topology` und
+> `wikidata` (§10, über die Föderation aus M11, ohne Import). Das
+> Struktur-Lernen wird im Vergleich als **fehlende Quelle** geführt: Die
+> Kantenklasse `learned` bleibt leer, und eine Übereinstimmung sagt dann
+> etwas über zwei Quellen aus, nicht über drei. Eine erfundene dritte
+> Stimme wäre schlechter als zwei ehrliche.*
 
 ---
 
@@ -701,7 +722,7 @@ Im Arbeitsmodus der Spec: ein Meilenstein, eine Session, ein Branch, ein PR.
 | **C3** ✅ | Observation Store + `home-assistant`-Connector (Registry → Struktur, History → Reihen) + `homeassistant_api` im Add-on. **Gebaut** — Abnahme in `tests/graph/observations.test.ts` und `tests/graph/home-assistant.test.ts`, Doku in `docs/beobachtungen.md`. Offen geblieben und einzeln notiert: Automations-Traces als Interventionslog, LTS-Backfill über die WebSocket-API | Zwei Läufe erzeugen keine Dublette (Wasserzeichen); kein Messwert landet im Store; Lücken werden erfasst statt fortgeschrieben; ein Fehler bei einer Größe lässt die anderen laufen |
 | **C4** | Schätzung + Refutation Tier 1, `ow:CausalStudy` mit vollständiger Reproduktions-Signatur, Ergebnis-UI mit DAG, CI und Refutations-Badge | Ein bekannter Effekt aus synthetischen Daten wird korrekt geschätzt; ein konfundierter Fall wird als solcher erkannt; ein durchgefallener Effekt erscheint **nicht** als Effekt |
 | **C5** ✅ | Open-Data-Connector `rest-timeseries` + Confounder-Katalog (Wetter, Preis, Sonnenstand, Feiertag), dazu `csv-observations` und `solar-position`. **Gebaut** — Abnahme in `tests/graph/open-data.test.ts`, Doku in `docs/kausalmodell.md` | Dieselbe Frage mit und ohne Adjustierung liefert nachweislich unterschiedliche Ergebnisse, und die Differenz wird erklärt |
-| **C6** | Neurosymbolische Schleife: LLM-Hypothesen mit Provenienz, symbolische Filter, Vergleich der drei Strukturquellen, Widerspruchs-UI | Keine Hypothese erreicht ohne Filter den Studien-Pfad; ein temporal unmöglicher Vorschlag wird automatisch verworfen |
+| **C6** ✅ | Neurosymbolische Schleife: LLM-Hypothesen mit Provenienz, symbolische Filter, Vergleich der drei Strukturquellen, Widerspruchs-UI. **Gebaut** — Abnahme in `tests/graph/causal-hypotheses.test.ts`, Doku in `docs/kausalmodell.md`. Die dritte Strukturquelle ist `wikidata` statt Struktur-Lernen (gehört zu C8, §19) — die fehlende Quelle wird im Vergleich benannt, nicht erfunden (docs/spec-widersprueche.md, Eintrag 9) | Keine Hypothese erreicht ohne Filter den Studien-Pfad; ein temporal unmöglicher Vorschlag wird automatisch verworfen |
 | **C7** | *Optional, eigene Entscheidung*: Experimente (§13.3) mit allen Leitplanken | Nur freigegebene Entitäten; Not-Aus getestet; vollständiges `prov`-Protokoll; Grenzverletzung bricht ab |
 | **C8** | *Optional*: Tier-2-Sidecar, Struktur-Lernen, Föderation von Kausalmodellen | `capabilities.causalTier` steuert die UI ehrlich; ohne Sidecar ist nichts sichtbar, was ihn braucht |
 
@@ -723,9 +744,9 @@ Im Arbeitsmodus der Spec: ein Meilenstein, eine Session, ein Branch, ein PR.
 
 ## 18. Reihenfolge
 
-**C3 → C0 → C1 → C2 → C4 → C5**, danach optional C6, und C7/C8 nur nach
-eigener Entscheidung. **C3, C0, C1, C2, C4 und C5 sind gebaut; als
-Nächstes steht C6.**
+**C3 → C0 → C1 → C2 → C4 → C5 → C6**, und C7/C8 nur nach eigener
+Entscheidung. **C3, C0, C1, C2, C4, C5 und C6 sind gebaut. Damit ist der
+verbindliche Teil dieser Spec vollständig; was bleibt, ist opt-in.**
 
 > **Korrektur gegenüber der ersten Fassung dieses Dokuments.** Dort stand
 > „C2 zuerst", weil kausal geerdetes Retrieval ohne Daten einzahlt. Das ist
@@ -755,10 +776,18 @@ Begründung der einzelnen Schritte:
 - **C5 schließt die Lücke**, die C4 sichtbar macht: Der häufigste Grund für
   „nicht identifizierbar" ist eine fehlende Störvariable, und die
   wichtigsten der Hausdomäne sind offen verfügbar (§11).
+- **C6 ganz zuletzt, und genau deshalb tragfähig**: Erst jetzt gibt es
+  alles, was ein Vorschlag durchlaufen muss, bevor er etwas wert ist — den
+  DAG (C0), die Azyklizitäts- und Identifikationsprüfung (C1), die
+  Erfassung samt Zeitstempeln für die temporale Zulässigkeit (C3) und die
+  Geräte-Topologie als Prior (C3/C5). Dieselben Vorschläge am Anfang
+  hätten ungeprüft im Graphen gelegen.
 
 Der umgekehrte Weg — zuerst LLM-Extraktion großer Kausalgraphen aus Text, wie
 die Vorlage vorschlägt — erzeugt schnell viel Struktur, die niemand prüfen
 kann, und genau dafür hat dieses Repo mit Invariante 10 bereits eine Haltung.
+Dass C6 am Ende steht und nicht am Anfang, ist die praktische Fassung
+dieser Haltung.
 
 ---
 

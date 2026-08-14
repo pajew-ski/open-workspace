@@ -347,21 +347,23 @@
       „Aussagen" beschriftet, und ein eigener Abschnitt nennt sichtbare vs.
       vorhandene Knoten und Kanten; jeder Filter zeigt seine Anzahl
 
-## Kausal-Layer (CAUSAL_LAYER_SPEC, C0–C5 verbindlich)
+## Kausal-Layer (CAUSAL_LAYER_SPEC, C0–C6 verbindlich — vollständig)
 
 > Die Spec steht in [CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md) und ist für
-> **C0–C5 verbindlich**; C7 (Experimente) und C8 (Sidecar) bleiben opt-in.
+> **C0–C6 verbindlich**; C7 (Experimente) und C8 (Sidecar) bleiben opt-in.
 > Arbeitsmodus: ein Meilenstein = eine Session = ein Branch = ein PR (§19).
 > **Die Liste ist in Baureihenfolge** — der oberste offene Punkt ist der
 > nächste. C3 steht zuerst und ist erledigt, weil er als einziger
 > zeitkritisch war: Home Assistant verwirft Zustandswechsel nach
 > `purge_keep_days`, jeder Tag ohne Erfassung war unwiederbringlich.
-> Gebaut sind C3, C0, C1, C2, C4 und C5; offen ist als Nächstes C6.
-> Alle acht Widersprüche, die beim Bauen von C3, C4 und C5 auffielen, sind
-> am 14.08.2026 **entschieden** und in
+> **Gebaut sind C3, C0, C1, C2, C4, C5 und C6 — der verbindliche Teil
+> dieser Spec ist damit vollständig.** Offen sind nur noch die beiden
+> Opt-in-Meilensteine und die einzeln erledigbaren Nacharbeiten darunter.
+> Alle elf Widersprüche, die beim Bauen auffielen, sind in
 > [docs/spec-widersprueche.md](./docs/spec-widersprueche.md)
-> festgehalten; wo die Entscheidung den Text betrifft, ist sie in die
-> Spec eingearbeitet.
+> **entschieden** festgehalten (1–8 aus C3/C4/C5 am 14.08.2026, 9–11 aus
+> C6); wo die Entscheidung den Text betrifft, ist sie in die Spec
+> eingearbeitet. Kein Eintrag steht offen.
 
 - [x] **C3 Erfassung („früh materialisieren")**:
       `homeassistant_api: true` im Add-on-Manifest (lesend, begründet in
@@ -640,17 +642,91 @@
       `tests/graph/open-data.test.ts` (bekannte Sonnenstände, Nacht ohne
       Rest-Einstrahlung, Verfahren im Graphen, lückenlose Erfassung;
       Skalenniveau aus dem Bestand, Kopfzeile als Wahrheit, Pfad-Politik)
-- [ ] **C6 Neurosymbolische Schleife** (SPEC §8): LLM-Hypothesen mit
-      Provenienz nach `causal-hypotheses`, symbolische Filter
-      (Azyklizität, SHACL, temporale Zulässigkeit, Topologie,
-      Identifizierbarkeit), Vergleich der drei Strukturquellen,
-      Widerspruchs-UI. Dazu gehört die dritte Strukturquelle, die §10
-      nennt und die seit M11 bereitsteht: **Wikidata über die Föderation**
-      als Lieferant von Confounder-Kandidaten und Geräteklassen — ohne
-      Import, als Vorschlag, der dieselben Filter durchläuft wie jeder
-      andere.
-      Abnahme: keine Hypothese erreicht ohne Filter den Studien-Pfad; ein
-      temporal unmöglicher Vorschlag wird automatisch verworfen
+- [x] **C6 Neurosymbolische Schleife** (SPEC §8): „Das LLM schlägt vor,
+      die Symbolik richtet, die Daten entscheiden" — und die Trennung ist
+      an den Named Graphs ablesbar. Vorschläge gehen ausschließlich nach
+      `graph/<u>/causal-hypotheses`, gesetzte Struktur bleibt im
+      Modell-Graphen, und dazwischen liegt genau EIN Weg, der prüft.
+      - **Drei Quellen, je mit eigener Herkunft** (`propose.ts`, pur):
+        `llm` (Kandidatenkanten und vor allem **Störgrößen** aus Namen,
+        Einheiten, Orten, Quellarten — Kantenklasse `hypothesis`),
+        `topology` (Aktor → Sensor am selben Gerät oder im selben Bereich
+        aus der Registry, deterministisch, ohne Netz — `structural`) und
+        `wikidata` (P828/P1542 zwischen den **Größenarten**, über die
+        Föderation aus M11, ohne Import — `hypothesis`). Die Klasse hängt
+        an der Quelle und ist nicht wählbar, sonst könnte ein Vorschlag
+        sich als Struktur ausgeben (Invariante C2). Wikidata zu **lesen**
+        ist die Gegenprobe zu C0, wo P828/P1542 als eigenes Kantenvokabular
+        geprüft und verworfen wurden
+      - **Herkunft ist Pflicht**: `prov:wasAttributedTo` auf einen
+        `prov:SoftwareAgent` je Modell und Quelle, mit dem benutzten
+        Sprachmodell (`schema:name`) und der Prompt-Version
+        (`schema:softwareVersion`) — §8 wörtlich. Ein Vorschlag ohne
+        Agenten fällt durch die Shapes. **Ein Reifier je Quelle, nicht je
+        Kante**: Zwei Quellen auf demselben Triple sind zwei benannte
+        Reifier (RDF 1.2, §5.3), und daraus entsteht der Quellenvergleich
+        ohne Nebentabelle
+      - **Die Filter in der Reihenfolge aus §8** (`filters.ts`, **pur** wie
+        der übrige Tier-1-Kern, per Test erzwungen): `cycle` (mit dem Kreis
+        im Klartext), `shacl` (im Schreibpfad, weil es die Shapes braucht),
+        `temporal`, `topology` — und als fünfter die Identifizierbarkeit,
+        die **nicht verwirft**, sondern das Urteil `open` samt fehlender
+        Größe erzeugt. Der erste, der greift, entscheidet
+      - **Der eine Weg ins Modell**: Übernehmen prüft das Urteil
+        **serverseitig** — eine Regel, die nur im Client steht, ist keine.
+        Eine noch nicht modellierte Störgröße wird dabei mit aufgenommen
+        (§8 hält Confounder-Vorschläge für den wertvolleren Teil), jeder
+        Schritt schreibt eine Revision. Der Vorschlag bleibt danach stehen
+        und ist als „übernommen" markiert — löschen hieße Herkunft
+        verlieren
+      - **Ein Lauf ersetzt seine eigene Quelle** (§6.2-Muster): Wer nur das
+        Sprachmodell laufen lässt, verliert die topologischen Vorschläge
+        nicht. Eine Quelle, die ausfällt, legt die anderen nicht still
+        (Fehlerisolation wie C5); unbrauchbare LLM-Antworten landen einzeln
+        in der Quarantäne wie bei jedem Connector. Vorschläge sind
+        behauptet und persistiert — ein Sprachmodell-Aufruf wird nicht
+        zweimal bezahlt
+      - **Der Quellenvergleich** (`compare.ts`) liest, was ohnehin im
+        Graphen steht; Widersprüche stehen oben, weil §8 sie „den
+        interessanten Fall" nennt. Das gesetzte Modell zählt als vierte
+        Stimme. Die **fehlende** Quelle wird benannt statt erfunden
+      - Nebenbefund behoben: `sosa:observes` zeigt seit Widerspruch 8 vom
+        Sensor auf die Variable, wurde beim Lesen aber unter den Quads MIT
+        der Variablen als Subjekt gesucht — wo sie nie stehen kann. Weil
+        der Schreibpfad die Quads aus dem Lesemodell neu baut, verlor jedes
+        `saveVariable` die Kante zur Messquelle still, und mit ihr Ort,
+        Gerät und Größenart
+      Abnahme: `tests/graph/causal-hypotheses.test.ts` — die beiden
+      geforderten Sätze je als eigener Test: ein verworfener Vorschlag
+      wird beim Übernehmen abgelehnt (der Studien-Pfad bleibt ihm
+      verschlossen), und ein temporal unmöglicher Vorschlag (Ursache erst
+      ab Mai erfasst, Wirkung nur bis Februar) wird im Lauf selbst
+      verworfen. Dazu: die vier harten Filter einzeln, die konstruktive
+      Antwort bei fehlender Störgröße, Purität der Filter, Quarantäne
+      erfundener Größen, Fehlerisolation zwischen Quellen, Wikidata über
+      einen Stub-Endpoint, Übereinstimmung und Widerspruch im Vergleich,
+      die Shapes und die Persistenz. Doku:
+      [docs/kausalmodell.md](./docs/kausalmodell.md)
+- [x] **Drei weitere Widersprüche der Spec entschieden** (C6,
+      [docs/spec-widersprueche.md](./docs/spec-widersprueche.md),
+      Einträge 9–11; in die Spec eingearbeitet):
+      - **§8 verlangt drei Strukturquellen, eine davon ist C8** (9):
+        Struktur-Lernen aus Daten steht in §16 unter C8 und darf nach §19
+        ohne Freigabe nicht angefangen werden. Gebaut sind `llm`,
+        `topology` und `wikidata`; die fehlende Quelle wird im Vergleich
+        **benannt**, `learned` bleibt leer. Eine erfundene dritte Stimme
+        wäre schlechter als zwei ehrliche
+      - **Identifizierbarkeit als Filter widerspricht Invariante C1** (10):
+        Sie hängt an der Datenlage, nicht an der Struktur — eine Ablehnung
+        ließe die Daten über die Annahme entscheiden. Sie erzeugt deshalb
+        das Urteil `open` statt `rejected`; die Abnahme bleibt erfüllt,
+        weil C4 für einen nicht identifizierbaren Effekt ohnehin
+        `not-identifiable` zurückgibt statt einer Zahl
+      - **„Temporal maschinell entscheidbar" — wie weit?** (11): Aus
+        Zeitstempeln allein folgen das Vorzeichen des Zeitversatzes und die
+        Abdeckung, nicht die Richtung der Wirkung. Die aus Korrelationen zu
+        erschließen wäre Struktur-Lernen (C8) — und bei zwei Größen mit
+        gemeinsamer Ursache schlicht falsch
 - [ ] *Opt-in, nicht ohne ausdrückliche Freigabe*: **C7 Experimente**
       (randomisierte Automationen, SPEC §13.3 samt Leitplanken C10) und
       **C8 Tier-2-Sidecar** (DoWhy/EconML/causal-learn, Struktur-Lernen,
@@ -661,11 +737,32 @@
       Ändert nichts an der Dringlichkeit der Erfassung: die Ursachenseite
       steht in den Statistics ohnehin nicht
 
-### Nacharbeiten aus C5 (kein Meilenstein, einzeln erledigbar)
+### Nacharbeiten aus C5 und C6 (kein Meilenstein, einzeln erledigbar)
 
-> Nichts davon blockiert C6. Es sind die Kanten, die beim Bauen von C5 und
-> beim Auflösen der Widersprüche sichtbar geworden sind — in Reihenfolge
-> ihres Nutzens.
+> Nichts davon blockiert etwas. Es sind die Kanten, die beim Bauen von C5
+> und C6 und beim Auflösen der Widersprüche sichtbar geworden sind — in
+> Reihenfolge ihres Nutzens.
+
+- [ ] **Der Vorschlagslauf sieht keine Dokumente.** §8 nennt als Quellen
+      für das Sprachmodell „Dokumente, HA-Entitätsnamen, Automations-YAML,
+      Chats und importierte Quellen". Im Prompt stehen bisher nur die
+      Größen samt Einheit, Ort und Quellart. Der nächstliegende Schritt ist
+      das **Automations-YAML**: Es sagt, was heute schon wen schaltet, und
+      das ist ein Prior in derselben Qualität wie die Geräte-Topologie —
+      dafür braucht es allerdings die HA-Config-API, die der Connector
+      heute nicht liest. Dokumente und Chats liegen bereits im Graphen und
+      wären über das Retrieval (M8) erreichbar; was fehlt, ist die
+      Entscheidung, wie viel Kontext ein Vorschlagslauf kosten darf
+- [ ] **Vorschläge je Quelle einzeln anstoßen.** Der Lauf ersetzt je
+      Quelle, die Oberfläche bietet aber nur „alle drei". Wer nur die
+      Topologie neu ableiten will (nach einem Umzug eines Geräts), zahlt
+      heute einen Sprachmodell-Aufruf mit. Die Route kann es bereits
+      (`sources` im Body) — es fehlt die Auswahl im UI
+- [ ] **Wikidata trifft selten.** Gefragt wird über die `device_class` als
+      englisches Label; wo Home Assistant keine setzt, gibt es keinen
+      Suchbegriff, und geraten wird nichts. Eine gepflegte Abbildung
+      `device_class` → Wikidata-Q-ID wäre der ehrliche Weg — sie gehört
+      dann in den Graphen und nicht in eine Konstante im Code
 
 - [ ] **Weitere Vorlagen aus dem §10-Katalog**: SMARD/ENTSO-E
       (Erzeugungsmix, Netzlast), UBA Luftdaten / Sensor.Community / OpenAQ

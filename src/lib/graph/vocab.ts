@@ -242,6 +242,16 @@ export const OW = {
     crudeCiLow: ow('crudeCiLow'),
     crudeCiHigh: ow('crudeCiHigh'),
     confoundingShift: ow('confoundingShift'),
+    // Die neurosymbolische Schleife (CAUSAL_LAYER_SPEC §8, C6). Der
+    // Vorschlag selbst braucht KEINEN eigenen Term: Er ist dieselbe
+    // kausale Kante wie im Modell (obo:RO_0002411), nur im Graphen
+    // `causal-hypotheses` und mit ow:edgeClass "hypothesis". Wer ihn
+    // vorgeschlagen hat, sagt prov:wasAttributedTo auf einen
+    // prov:SoftwareAgent, wann prov:generatedAtTime, warum
+    // schema:description, für welches Modell schema:isPartOf. Eigen ist
+    // nur das Urteil der Filter — und das hat kein Standard-Vokabular.
+    hypothesisVerdict: ow('hypothesisVerdict'),
+    filterRejectedBy: ow('filterRejectedBy'),
 } as const;
 
 export type OwTerm = (typeof OW)[keyof typeof OW];
