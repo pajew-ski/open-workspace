@@ -352,18 +352,23 @@
 > Die Spec steht in [CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md) und ist für
 > **C0–C6 verbindlich**; C7 (Experimente) und C8 (Sidecar) bleiben opt-in.
 > Arbeitsmodus: ein Meilenstein = eine Session = ein Branch = ein PR (§19).
-> **Die Liste ist in Baureihenfolge** — der oberste offene Punkt ist der
-> nächste. C3 steht zuerst und ist erledigt, weil er als einziger
+> **Die Liste ist in Baureihenfolge** — der nächste ist der oberste offene
+> Punkt, **den eine Session ohne Freigabe beginnen darf**: Die
+> Opt-in-Zeile (C7/C8) wird übersprungen, nicht abgehakt und nicht
+> angefangen (§19 sagt das seit dem Rückgriff auf die Statistik selbst,
+> [docs/spec-widersprueche.md](./docs/spec-widersprueche.md) Eintrag 12).
+> C3 steht zuerst und ist erledigt, weil er als einziger
 > zeitkritisch war: Home Assistant verwirft Zustandswechsel nach
 > `purge_keep_days`, jeder Tag ohne Erfassung war unwiederbringlich.
 > **Gebaut sind C3, C0, C1, C2, C4, C5 und C6 — der verbindliche Teil
-> dieser Spec ist damit vollständig.** Offen sind nur noch die beiden
-> Opt-in-Meilensteine und die einzeln erledigbaren Nacharbeiten darunter.
-> Alle elf Widersprüche, die beim Bauen auffielen, sind in
+> dieser Spec ist damit vollständig**, dazu der aus C3 offen gebliebene
+> **Backfill aus den Long-Term-Statistics**. Offen sind nur noch die
+> beiden Opt-in-Meilensteine und die einzeln erledigbaren Nacharbeiten
+> darunter. Alle dreizehn Widersprüche, die beim Bauen auffielen, sind in
 > [docs/spec-widersprueche.md](./docs/spec-widersprueche.md)
 > **entschieden** festgehalten (1–8 aus C3/C4/C5 am 14.08.2026, 9–11 aus
-> C6); wo die Entscheidung den Text betrifft, ist sie in die Spec
-> eingearbeitet. Kein Eintrag steht offen.
+> C6, 12–13 aus dem Statistik-Rückgriff); wo die Entscheidung den Text
+> betrifft, ist sie in die Spec eingearbeitet. Kein Eintrag steht offen.
 
 - [x] **C3 Erfassung („früh materialisieren")**:
       `homeassistant_api: true` im Add-on-Manifest (lesend, begründet in
@@ -731,17 +736,54 @@
       (randomisierte Automationen, SPEC §13.3 samt Leitplanken C10) und
       **C8 Tier-2-Sidecar** (DoWhy/EconML/causal-learn, Struktur-Lernen,
       Föderation von Kausalmodellen)
-- [ ] Backfill aus den Long-Term-Statistics (stündliche Aggregate,
-      unbegrenzt aufbewahrt). Braucht die WebSocket-API
-      (`recorder/statistics_during_period`) — die REST-API kennt sie nicht.
-      Ändert nichts an der Dringlichkeit der Erfassung: die Ursachenseite
-      steht in den Statistics ohnehin nicht
+- [x] **Backfill aus den Long-Term-Statistics** (stündliche Aggregate,
+      unbegrenzt aufbewahrt; offen geblieben aus C3): Der Bestand wächst
+      nach hinten — über die **WebSocket-API**
+      (`recorder/statistics_during_period`), die die REST-API nicht kennt.
+      Der Kanal ist so schmal wie möglich (öffnen, anmelden, ein Kommando,
+      schließen — kein Abonnement, keine Wiederverbindung) und läuft unter
+      derselben SSRF-Politik wie der HTTP-Abruf: nur ws(s), keine privaten
+      Ziele ohne `ALLOW_LOCAL_TOOL_URLS=1`. Als **einmalige, angeforderte
+      Handlung** je Größe (`POST /api/graph/observations/<id>/backfill`,
+      Knopf „Aus Statistik nachfüllen"), nicht als zweiter Erfassungslauf:
+      Vor dem Bestand entsteht nichts Neues mehr. Die Regeln, jede gegen
+      eine bestimmte stille Unwahrheit: **ein Aggregat je Stunde bleibt
+      ein Punkt je Stunde** (Verfeinern erfände elf von zwölf Messungen und
+      bliese jede Fallzahl auf), **ein Tag mit Messpunkten wird nie
+      angefasst** (der feine Bestand hat Vorrang, keine Datei mischt
+      beides), das Fenster endet dort, **wo die Erfassung noch selbst
+      hinkommt**, **nur numerische Größen** (die Ursachenseite steht in der
+      Statistik nicht — deshalb ändert der Rückgriff nichts an der
+      Dringlichkeit der Erfassung), **Summen abgelehnt** (das Feld `sum`
+      ist ein fortlaufender Zählerstand, keine Intervallsumme), und das
+      Feld folgt der Verdichtung der Größe statt ersatzweise ein anderes zu
+      nehmen. Die nachgefüllte Strecke wird **benannt** statt verschwiegen:
+      drei neue `ow:`-Terme (`aggregatedFrom`, `aggregatedThrough`,
+      `aggregateInterval`) plus eigener `prov:Activity`-Knoten, damit der
+      nächste Erfassungslauf sie nicht überschreibt. Abnahme:
+      `tests/graph/observations-backfill.test.ts` (Protokoll samt
+      abgewiesenem Token, Zeitstempel in drei Schreibweisen, Feldwahl,
+      Speicher füllt nur leere Tage, Fenstergrenze, Idempotenz, kein
+      Messwert im Graphen, ws-Politik). Doku:
+      [docs/beobachtungen.md](./docs/beobachtungen.md)
 
 ### Nacharbeiten aus C5 und C6 (kein Meilenstein, einzeln erledigbar)
 
 > Nichts davon blockiert etwas. Es sind die Kanten, die beim Bauen von C5
 > und C6 und beim Auflösen der Widersprüche sichtbar geworden sind — in
 > Reihenfolge ihres Nutzens.
+
+- [ ] **Studien auf grobem Raster rechnen lassen.** Das Panel liest einen
+      Wert nur so lange, wie das Raster SEINER Reihe reicht — eine Größe im
+      Fünf-Minuten-Raster trägt in der aus Stundenaggregaten nachgefüllten
+      Strecke deshalb nur die vollen Stunden bei, der Rest fällt als Lücke
+      heraus. Das ist die konservative Seite (verlieren statt erfinden),
+      kostet aber elf von zwölf Zeilen. Der ehrliche Ausbau wäre ein Raster
+      an der Frage (`ow:Estimand`), das `PanelOptions.intervalSeconds`
+      füllt — dann rechnet eine Frage über die alte Strecke bewusst
+      stündlich. Was es NICHT sein darf: den Stundenwert im Panel
+      fortschreiben; das bläht die Fallzahl auf und macht die Intervalle
+      schmal, ohne dass etwas dazugekommen wäre
 
 - [ ] **Der Vorschlagslauf sieht keine Dokumente.** §8 nennt als Quellen
       für das Sprachmodell „Dokumente, HA-Entitätsnamen, Automations-YAML,

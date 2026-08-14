@@ -80,14 +80,13 @@ function isoOf(ms: number): string {
 // --- Home Assistant ------------------------------------------------------
 
 /**
- * Sucht den `home-assistant`-Connector der Installation. Ohne ihn gibt es
- * keinen Zugang — und das ist ein ehrlicher Fehler, keine leere Erfassung.
+ * Sucht die Konfiguration des `home-assistant`-Connectors. Ohne ihn gibt
+ * es keinen Zugang — und das ist ein ehrlicher Fehler, keine leere
+ * Erfassung. Getrennt vom Client, weil der Rückgriff auf die
+ * Long-Term-Statistics (`backfill.ts`) denselben Zugang über einen
+ * anderen Kanal braucht: WebSocket statt REST.
  */
-async function resolveHomeAssistantClient(
-    handle: GraphHandle,
-    options: SourceOptions,
-): Promise<HomeAssistantClient> {
-    if (options.homeAssistantClient) return options.homeAssistantClient;
+export async function resolveHomeAssistantConfig(handle: GraphHandle): Promise<HomeAssistantConfig> {
     const connectors = await listConnectors(handle);
     const entry = connectors.find(connector => connector.kind === 'home-assistant');
     if (!entry) {
@@ -99,7 +98,15 @@ async function resolveHomeAssistantClient(
     const view = await getConnector(handle, entry.id);
     const impl = getConnectorKind('home-assistant');
     if (!view || !impl) throw new Error('Die Home-Assistant-Verbindung ist nicht lesbar.');
-    const config = impl.configFromLocator(view.locator) as HomeAssistantConfig;
+    return impl.configFromLocator(view.locator) as HomeAssistantConfig;
+}
+
+async function resolveHomeAssistantClient(
+    handle: GraphHandle,
+    options: SourceOptions,
+): Promise<HomeAssistantClient> {
+    if (options.homeAssistantClient) return options.homeAssistantClient;
+    const config = await resolveHomeAssistantConfig(handle);
     const fetchImpl = createGuardedFetch({ fetchImpl: options.fetchImpl, signal: options.signal });
     return clientFor(config, { fetch: fetchImpl });
 }

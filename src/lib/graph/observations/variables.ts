@@ -54,6 +54,16 @@ export function captureRunIri(iri: IriFactory, id: string): string {
     return iri.entity('activity', `capture-${id}`);
 }
 
+/**
+ * Der Rückgriff auf die Long-Term-Statistics ist ein eigener Lauf mit
+ * eigenem Knoten — sonst überschriebe ihn der nächste Erfassungslauf
+ * zehn Minuten später, und niemand wüsste mehr, woher die alte Hälfte
+ * des Bestands kommt.
+ */
+export function backfillRunIri(iri: IriFactory, id: string): string {
+    return iri.entity('activity', `backfill-${id}`);
+}
+
 function variableIdFromIri(iri: IriFactory, value: string): string | null {
     const prefix = variableIriFor(iri, '');
     if (!value.startsWith(prefix)) return null;
@@ -120,6 +130,16 @@ function viewFromQuads(handle: GraphHandle, variableIri: string, quads: Quad[]):
     const runValue = (predicate: string) => run.find(q => q.predicate.value === predicate)?.object.value;
     const runAt = runValue(PROV.generatedAtTime);
 
+    const backfillIri = backfillRunIri(handle.iri, id);
+    const backfillRun = quads.filter(q => q.subject.termType === 'NamedNode' && q.subject.value === backfillIri);
+    const backfillValue = (predicate: string) =>
+        backfillRun.find(q => q.predicate.value === predicate)?.object.value;
+    const aggregatedFrom = value(OW.aggregatedFrom);
+    const aggregatedThrough = value(OW.aggregatedThrough);
+    const aggregateIntervalRaw = value(OW.aggregateInterval);
+    const backfillAt = backfillValue(PROV.generatedAtTime);
+    const backfillSummary = backfillValue(SCHEMA.description);
+
     const status: CaptureStatus = {
         state: (CAPTURE_STATES.has(stateRaw) ? stateRaw : 'idle') as CaptureState,
         capturedFrom: value(OW.capturedFrom),
@@ -131,6 +151,17 @@ function viewFromQuads(handle: GraphHandle, variableIri: string, quads: Quad[]):
                     at: runAt,
                     summary: runValue(SCHEMA.description) ?? '',
                     errors: run.filter(q => q.predicate.value === SCHEMA.error).map(q => q.object.value).sort(),
+                },
+            }
+            : {}),
+        ...(aggregatedFrom && aggregatedThrough
+            ? {
+                aggregate: {
+                    from: aggregatedFrom,
+                    through: aggregatedThrough,
+                    intervalSeconds: (aggregateIntervalRaw ? durationToSeconds(aggregateIntervalRaw) : null) ?? 3600,
+                    ...(backfillAt ? { at: backfillAt } : {}),
+                    ...(backfillSummary ? { summary: backfillSummary } : {}),
                 },
             }
             : {}),
@@ -224,6 +255,30 @@ function variableQuads(handle: GraphHandle, view: VariableView, graph: Quad['gra
     if (view.status.capturedThrough) {
         quads.push(factory.quad(subject, namedNode(OW.capturedThrough), typedLiteral.dateTime(view.status.capturedThrough), graph));
     }
+    if (view.status.aggregate) {
+        const { aggregate } = view.status;
+        quads.push(
+            factory.quad(subject, namedNode(OW.aggregatedFrom), typedLiteral.dateTime(aggregate.from), graph),
+            factory.quad(subject, namedNode(OW.aggregatedThrough), typedLiteral.dateTime(aggregate.through), graph),
+            factory.quad(
+                subject,
+                namedNode(OW.aggregateInterval),
+                typedLiteral.duration(secondsToDuration(aggregate.intervalSeconds)),
+                graph,
+            ),
+        );
+        if (aggregate.at) {
+            const run = namedNode(backfillRunIri(handle.iri, view.id));
+            quads.push(
+                factory.quad(run, namedNode(RDF.type), namedNode(PROV.Activity), graph),
+                factory.quad(run, namedNode(PROV.wasAttributedTo), subject, graph),
+                factory.quad(run, namedNode(PROV.generatedAtTime), typedLiteral.dateTime(aggregate.at), graph),
+            );
+            if (aggregate.summary) {
+                quads.push(factory.quad(run, namedNode(SCHEMA.description), literal(aggregate.summary, 'de'), graph));
+            }
+        }
+    }
     if (view.status.lastRun) {
         const run = namedNode(captureRunIri(handle.iri, view.id));
         quads.push(
@@ -253,8 +308,10 @@ async function replaceVariableNodes(handle: GraphHandle, id: string, view: Varia
     const metaGraph = namedNode(handle.iri.sharedGraph('meta'));
     const variableIri = variableIriFor(handle.iri, id);
     const runIri = captureRunIri(handle.iri, id);
+    const backfillIri = backfillRunIri(handle.iri, id);
     const remaining = (await readMeta(handle)).filter(q => {
-        if (q.subject.termType === 'NamedNode' && (q.subject.value === variableIri || q.subject.value === runIri)) {
+        if (q.subject.termType === 'NamedNode'
+            && (q.subject.value === variableIri || q.subject.value === runIri || q.subject.value === backfillIri)) {
             return false;
         }
         // Die sosa:observes-Kante hat den Sensor als Subjekt und muss beim
