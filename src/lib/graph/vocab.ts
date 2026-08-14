@@ -197,6 +197,33 @@ export const OW = {
     edgeClass: ow('edgeClass'),
     temporalLag: ow('temporalLag'),
     evidenceLevel: ow('evidenceLevel'),
+    // Schätzung und Refutation (CAUSAL_LAYER_SPEC §5.2/§13, C4). Was hier
+    // entsteht, lebt ausschließlich in graph/<u>/inferred/causal/<scope>
+    // (Invariante C4) — bis auf den Estimand, der die FRAGE ist und
+    // deshalb wie ein Retrieval-Profil in graph/meta steht. Die Zahlen
+    // hängen als Annotation am selben Reifier wie die Kante, nur in einem
+    // anderen Named Graph: So bleibt die Annahme frei von Ergebnissen.
+    CausalStudy: ow('CausalStudy'),
+    Estimand: ow('Estimand'),
+    AdjustmentSet: ow('AdjustmentSet'),
+    Refutation: ow('Refutation'),
+    treatment: ow('treatment'),
+    outcome: ow('outcome'),
+    controlOutcome: ow('controlOutcome'),
+    interventionAt: ow('interventionAt'),
+    identificationStrategy: ow('identificationStrategy'),
+    estimator: ow('estimator'),
+    adjustedFor: ow('adjustedFor'),
+    modelRevision: ow('modelRevision'),
+    seed: ow('seed'),
+    studyVerdict: ow('studyVerdict'),
+    effectSize: ow('effectSize'),
+    standardError: ow('standardError'),
+    ciLow: ow('ciLow'),
+    ciHigh: ow('ciHigh'),
+    refutationMethod: ow('refutationMethod'),
+    refutationVerdict: ow('refutationVerdict'),
+    refutationPassed: ow('refutationPassed'),
 } as const;
 
 export type OwTerm = (typeof OW)[keyof typeof OW];
@@ -268,6 +295,17 @@ export const SCHEMA = {
      * diese Zahl (Invariante C7), und `schema:version` sagt das bereits.
      */
     version: schemaOrg('version'),
+    /**
+     * Studien-Signatur (C7, C4). Fremdes Vokabular vor eigenem
+     * (Invariante 8): Für Kennzahl, Rolle, Zeitraum und Umfang eines
+     * Datensatzes gibt es schema.org-Terme, und ein eigener wäre nur eine
+     * zweite Schreibweise desselben.
+     */
+    value: schemaOrg('value'),
+    roleName: schemaOrg('roleName'),
+    /** Zeitraum, für den ein Inhalt gilt — hier: das Fenster der Studie. */
+    temporalCoverage: schemaOrg('temporalCoverage'),
+    numberOfItems: schemaOrg('numberOfItems'),
 } as const;
 
 /**
@@ -353,6 +391,8 @@ export const PROV = {
     /** Abschluss-Zeitpunkt (completedAt einer Aufgabe — schema:endTime trägt bereits die Fälligkeit, SPEC §4.2). */
     endedAtTime: `${PREFIXES.prov}endedAtTime`,
     Activity: `${PREFIXES.prov}Activity`,
+    /** Was in einen Lauf eingegangen ist — die eingefrorene Eingabe (C7). */
+    Entity: `${PREFIXES.prov}Entity`,
     SoftwareAgent: `${PREFIXES.prov}SoftwareAgent`,
 } as const;
 

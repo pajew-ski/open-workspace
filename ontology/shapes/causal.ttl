@@ -5,6 +5,7 @@
 @prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix schema:  <https://schema.org/> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix prov:    <http://www.w3.org/ns/prov#> .
 @prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
 
 #################################################################
@@ -163,4 +164,185 @@ owsh:NoLayoutOnCausalModel a sh:NodeShape ;
         sh:maxCount 0 ;
         sh:severity sh:Violation ;
         sh:message "Farbwert am Kausalmodell — Präsentation gehört nach graph/<u>/presentation (Invariante 2)."@de ;
+    ] .
+
+#################################################################
+# Studien, Zielgrößen und Falsifikationsversuche (§5.2/§13, C4)
+#
+# Diese Shapes sind kein Bericht, sondern ein Tor: Der Schreibpfad
+# einer Studie validiert gegen sie, BEVOR er schreibt, und lehnt ab,
+# was durchfällt (Invariante C7: „Ohne diese Angaben wird nicht
+# geschrieben"). Das ist die einzige Stelle im Kausal-Layer, an der
+# SHACL blockiert, ohne dass es um einen Altbestand ginge — eine
+# unvollständige Studie soll gar nicht erst entstehen, weil sie
+# hinterher niemand mehr rekonstruieren könnte.
+#
+# Die schärfste Regel steht bei ow:effectSize: Eine Effektstärke
+# ohne bestandene Refutation ist ein Verstoß, nicht ein Mangel. Das
+# ist Invariante C5, in SHACL geschrieben.
+#################################################################
+
+owsh:EstimandShape a sh:NodeShape ;
+    sh:targetClass ow:Estimand ;
+    sh:name "Zielgröße"@de ;
+    sh:property [
+        sh:path dcterms:identifier ;
+        sh:minCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Eine Zielgröße braucht ihre stabile Kennung (dcterms:identifier)."@de ;
+    ] ;
+    sh:property [
+        sh:path ow:treatment ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:nodeKind sh:IRI ;
+        sh:severity sh:Violation ;
+        sh:message "Eine Zielgröße braucht genau eine Behandlung (ow:treatment) als IRI."@de ;
+    ] ;
+    sh:property [
+        sh:path ow:outcome ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:nodeKind sh:IRI ;
+        sh:severity sh:Violation ;
+        sh:message "Eine Zielgröße braucht genau eine Wirkung (ow:outcome) als IRI."@de ;
+    ] ;
+    sh:property [
+        sh:path ow:seed ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer ;
+        sh:severity sh:Violation ;
+        sh:message "Ohne gesetzten Startwert (ow:seed) wäre kein Lauf reproduzierbar (Invariante C7)."@de ;
+    ] .
+
+owsh:CausalStudyShape a sh:NodeShape ;
+    sh:targetClass ow:CausalStudy ;
+    sh:name "Kausalstudie"@de ;
+    sh:property [
+        sh:path ow:studyVerdict ;
+        sh:in ( "not-identifiable" "not-estimable" "refuted" "passed" ) ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Eine Studie braucht genau ein Urteil: 'not-identifiable', 'not-estimable', 'refuted' oder 'passed'."@de ;
+    ] ;
+    sh:property [
+        sh:path ow:modelRevision ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer ;
+        sh:severity sh:Violation ;
+        sh:message "Eine Studie muss die Revision des Modells nennen, auf das sie sich beruft — sonst gehört die Zahl zu keiner Annahme (Invariante C7)."@de ;
+    ] ;
+    sh:property [
+        sh:path ow:seed ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer ;
+        sh:severity sh:Violation ;
+        sh:message "Eine Studie muss ihren gesetzten Startwert (ow:seed) nennen (Invariante C7)."@de ;
+    ] ;
+    sh:property [
+        sh:path schema:softwareVersion ;
+        sh:minCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Eine Studie muss die Softwareversion nennen, mit der sie gerechnet wurde (Invariante C7)."@de ;
+    ] ;
+    sh:property [
+        sh:path prov:generatedAtTime ;
+        sh:minCount 1 ;
+        sh:datatype xsd:dateTime ;
+        sh:severity sh:Violation ;
+        sh:message "Eine Studie braucht ihren Zeitpunkt (prov:generatedAtTime)."@de ;
+    ] ;
+    sh:property [
+        sh:path ow:treatment ;
+        sh:minCount 1 ;
+        sh:nodeKind sh:IRI ;
+        sh:severity sh:Violation ;
+        sh:message "Eine Studie muss die Behandlung nennen, deren Wirkung sie untersucht hat."@de ;
+    ] ;
+    sh:property [
+        sh:path ow:outcome ;
+        sh:minCount 1 ;
+        sh:nodeKind sh:IRI ;
+        sh:severity sh:Violation ;
+        sh:message "Eine Studie muss die Wirkung nennen, die sie untersucht hat."@de ;
+    ] .
+
+owsh:RefutationShape a sh:NodeShape ;
+    sh:targetClass ow:Refutation ;
+    sh:name "Falsifikationsversuch"@de ;
+    sh:property [
+        sh:path ow:refutationMethod ;
+        sh:in ( "placebo" "random-common-cause" "subset" "negative-control" "implied-independence" "e-value" ) ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Ein Falsifikationsversuch muss sein Verfahren nennen (ow:refutationMethod)."@de ;
+    ] ;
+    sh:property [
+        sh:path ow:refutationVerdict ;
+        sh:in ( "passed" "failed" "inconclusive" "informative" ) ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Ein Falsifikationsversuch muss sein Verdikt nennen: 'passed', 'failed', 'inconclusive' oder 'informative'."@de ;
+    ] .
+
+owsh:AdjustmentSetShape a sh:NodeShape ;
+    sh:targetClass ow:AdjustmentSet ;
+    sh:name "Adjustierungsmenge"@de ;
+    sh:property [
+        sh:path ow:adjustedFor ;
+        sh:nodeKind sh:IRI ;
+        sh:severity sh:Violation ;
+        sh:message "Adjustiert wird über Variablen, also über IRIs — ein Literal ist keine Störgröße."@de ;
+    ] .
+
+#################################################################
+# Invariante C5 als Shape: ein Effekt ohne bestandene Refutation
+# ist ein Verstoß, kein Mangel.
+#################################################################
+
+owsh:CausalEffectShape a sh:NodeShape ;
+    sh:targetSubjectsOf ow:effectSize ;
+    sh:name "Geschätzter Effekt"@de ;
+    sh:property [
+        sh:path ow:effectSize ;
+        sh:datatype xsd:decimal ;
+        sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Eine Effektstärke ist genau eine Dezimalzahl."@de ;
+    ] ;
+    sh:property [
+        sh:path ow:ciLow ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:decimal ;
+        sh:severity sh:Violation ;
+        sh:message "Ein Effekt ohne Konfidenzintervall ist Scheinpräzision — ow:ciLow fehlt."@de ;
+    ] ;
+    sh:property [
+        sh:path ow:ciHigh ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:decimal ;
+        sh:severity sh:Violation ;
+        sh:message "Ein Effekt ohne Konfidenzintervall ist Scheinpräzision — ow:ciHigh fehlt."@de ;
+    ] ;
+    sh:property [
+        sh:path ow:refutationPassed ;
+        sh:minCount 1 ;
+        sh:hasValue true ;
+        sh:severity sh:Violation ;
+        sh:message "Ein Effekt ohne bestandene Refutation existiert nicht (Invariante C5): ow:refutationPassed muss vorhanden und true sein."@de ;
+    ] ;
+    sh:property [
+        sh:path prov:wasGeneratedBy ;
+        sh:minCount 1 ;
+        sh:nodeKind sh:IRI ;
+        sh:severity sh:Violation ;
+        sh:message "Ein Effekt muss auf die Studie zeigen, aus der er stammt (prov:wasGeneratedBy)."@de ;
     ] .
