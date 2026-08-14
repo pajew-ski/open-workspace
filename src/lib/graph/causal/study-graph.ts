@@ -243,6 +243,40 @@ export function studyQuads(iri: IriFactory, context: StudyWriteContext): Quad[] 
         }
     }
 
+    // Was die Adjustierung geändert hat (C5). Der rohe Wert steht hier
+    // bewusst unter eigenen Termen: Er ist ein Zusammenhang, kein Effekt,
+    // und dürfte weder ow:effectSize noch ow:refutationPassed tragen
+    // (Invariante C5).
+    if (result.contrast) {
+        const { contrast } = result;
+        const node = namedNode(`${study.value}/confounding`);
+        quads.push(
+            factory.quad(node, namedNode(RDF.type), namedNode(OW.ConfoundingContrast), graph),
+            factory.quad(study, namedNode(SCHEMA.hasPart), node, graph),
+            factory.quad(node, namedNode(SCHEMA.description), literal(contrast.explanation, 'de'), graph),
+        );
+        // Worüber adjustiert wurde, steht bereits an der ow:AdjustmentSet
+        // derselben Studie. Es hier zu wiederholen hieße, dieselbe Aussage
+        // an zwei Stellen zu führen — und irgendwann widersprächen sie sich.
+        if (contrast.crude !== undefined) {
+            quads.push(factory.quad(node, namedNode(OW.crudeAssociation), typedLiteral.decimal(contrast.crude), graph));
+        }
+        if (contrast.crudeCiLow !== undefined && contrast.crudeCiHigh !== undefined) {
+            quads.push(
+                factory.quad(node, namedNode(OW.crudeCiLow), typedLiteral.decimal(contrast.crudeCiLow), graph),
+                factory.quad(node, namedNode(OW.crudeCiHigh), typedLiteral.decimal(contrast.crudeCiHigh), graph),
+            );
+        }
+        if (contrast.shift !== undefined) {
+            quads.push(factory.quad(
+                node,
+                namedNode(OW.confoundingShift),
+                typedLiteral.decimal(contrast.shift),
+                graph,
+            ));
+        }
+    }
+
     for (const refutation of result.refutations) {
         const node = namedNode(`${study.value}/refutation/${refutation.method}`);
         quads.push(
@@ -346,6 +380,17 @@ export interface StudyEffectView {
     unit?: string;
 }
 
+/** Der Adjustierungs-Kontrast, so wie er im Graphen steht (C5). */
+export interface StudyContrastView {
+    adjustedFor: string[];
+    /** Roher Zusammenhang — nie als Effekt zu lesen (Invariante C5). */
+    crude?: number;
+    crudeCiLow?: number;
+    crudeCiHigh?: number;
+    shift?: number;
+    explanation: string;
+}
+
 export interface StudyView {
     iri: string;
     estimandId: string;
@@ -369,6 +414,8 @@ export interface StudyView {
     refutations: StudyRefutationView[];
     inputs: StudyInputView[];
     effect?: StudyEffectView;
+    /** Was die Adjustierung geändert hat (C5), falls adjustiert wurde. */
+    contrast?: StudyContrastView;
 }
 
 async function dumpGraph(handle: GraphHandle, graph: string): Promise<Quad[]> {
@@ -422,9 +469,29 @@ export async function readCausalStudies(
         const refutations: StudyRefutationView[] = [];
         const inputs: StudyInputView[] = [];
         let adjustedFor: string[] = [];
+        let contrast: StudyContrastView | undefined;
         for (const part of parts) {
             const types = valuesOf(part, RDF.type);
-            if (types.includes(OW.Refutation)) {
+            if (types.includes(OW.ConfoundingContrast)) {
+                contrast = {
+                    // Die Adjustierungsmenge steht an der Studie, nicht am
+                    // Kontrast — sie wird unten nachgetragen.
+                    adjustedFor: [],
+                    ...(numberOf(valueOf(part, OW.crudeAssociation)) !== undefined
+                        ? { crude: numberOf(valueOf(part, OW.crudeAssociation)) as number }
+                        : {}),
+                    ...(numberOf(valueOf(part, OW.crudeCiLow)) !== undefined
+                        ? { crudeCiLow: numberOf(valueOf(part, OW.crudeCiLow)) as number }
+                        : {}),
+                    ...(numberOf(valueOf(part, OW.crudeCiHigh)) !== undefined
+                        ? { crudeCiHigh: numberOf(valueOf(part, OW.crudeCiHigh)) as number }
+                        : {}),
+                    ...(numberOf(valueOf(part, OW.confoundingShift)) !== undefined
+                        ? { shift: numberOf(valueOf(part, OW.confoundingShift)) as number }
+                        : {}),
+                    explanation: valueOf(part, SCHEMA.description) ?? '',
+                };
+            } else if (types.includes(OW.Refutation)) {
                 const method = valueOf(part, OW.refutationMethod) ?? '';
                 const verdict = valueOf(part, OW.refutationVerdict) ?? 'inconclusive';
                 if (!(REFUTATION_METHODS as readonly string[]).includes(method)) continue;
@@ -521,6 +588,7 @@ export async function readCausalStudies(
             refutations,
             inputs,
             ...(effect ? { effect } : {}),
+            ...(contrast ? { contrast: { ...contrast, adjustedFor } } : {}),
         });
     }
     return studies.sort((a, b) => a.name.localeCompare(b.name, 'de'));

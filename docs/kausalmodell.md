@@ -453,6 +453,91 @@ Grund an einer Kante keinen Effekt.
 
 Abnahme: `tests/graph/causal-estimation.test.ts`.
 
+## Störgrößen aus offenen Quellen (C5)
+
+C4 macht eine Lücke sichtbar: Der häufigste Grund für „nicht
+identifizierbar" ist keine fehlende Methode, sondern eine fehlende
+**Störgröße**. In der Hausdomäne sind die wichtigsten davon öffentlich,
+kostenlos und maschinenlesbar. C5 holt sie — über den EINEN
+Connector-Vertrag, ohne zweite Pipeline.
+
+### Der Connector `rest-timeseries`
+
+Er materialisiert die **Angebotsseite** einer offenen API und nie einen
+Messwert (Invariante C3): welche Größen sie liefert, in welcher Einheit,
+an welchem Ort, mit welchem Skalenniveau — als SOSA-Struktur im
+Import-Graphen, genau wie beim `home-assistant`-Connector. Die Werte holt
+danach die Erfassung (siehe
+[docs/beobachtungen.md](./beobachtungen.md)). Dass „materialize" für
+diesen Connector die Struktur meint und nicht die Reihe, ist als
+Widerspruch festgehalten: [Eintrag 5](./spec-widersprueche.md).
+
+Die Revision folgt der Struktur, nicht dem Wert: Ändern sich die Zahlen,
+ist der Lauf ein No-Op. Eine beschriebene, aber nicht gelieferte Größe
+wird quarantäniert statt behauptet.
+
+### Der Katalog
+
+| Vorlage | Liefert | Rolle |
+|---|---|---|
+| **Wetter (DWD über Bright Sky)** | Temperatur, Wind, Niederschlag, Luftfeuchte, Bewölkung, Globalstrahlung, Sonnenscheindauer, Luftdruck | *Der* Confounder der Hausdomäne: Außentemperatur treibt Heizverhalten **und** Innentemperatur |
+| **Strompreis (EPEX Spot über aWATTar)** | Börsenstrompreis, stündlich, in ct/kWh | Preissignal — Treatment oder Outcome, je nach Frage |
+| **Einstrahlung (Open-Meteo Archiv)** | Global- und Direktstrahlung, Lufttemperatur | Störgröße für PV-Ertrag, Verschattung, Innentemperatur; die Alternative außerhalb Deutschlands |
+| **Feiertage (Nager.Date)** | zweiwertige Reihe, 1 an Feiertagen | Anwesenheits-Confounder, und exogen: kein Zustand des Hauses wirkt auf den Kalender zurück |
+| **Eigene Quelle** | beliebige JSON-/CSV-API | dieselbe Abbildung, direkt als JSON |
+
+„Sonnenstand" aus §10 liefert der Katalog als **Einstrahlung** und nicht
+als Azimut/Elevation — Begründung in
+[Eintrag 4](./spec-widersprueche.md).
+
+### Drei Formen, in denen offene Kataloge liefern
+
+Die Abbildung (`connectors/rest-timeseries/mapping.ts`) ist rein und
+deklarativ. Sie kennt drei Formen, und damit ist der Katalog abgedeckt:
+
+- `points` — eine Liste von Datensätzen mit Zeitstempel (Bright Sky, aWATTar)
+- `columns` — parallele Arrays, ein Zeitarray und je Größe eines (Open-Meteo)
+- `intervals` — Zeitspannen mit einem Wert innen und einem **außen**
+  (Feiertage). Ohne den Wert außerhalb entstünde eine Reihe, die nur aus
+  Einsen besteht — als Störgröße wertlos.
+
+Dazu Zeitfenster-Zerlegung, Einheiten-Umrechnung (€/MWh → ct/kWh),
+Filter auf Datensatz-Ebene (Feiertage eines Bundeslandes), Drosselung je
+Host und ein Zwischenspeicher: Bright Sky liefert acht Größen in einem
+Dokument, und die Erfassung holt es genau einmal.
+
+### Was die Adjustierung ändert — der Kontrast
+
+Eine Störgröße einzubinden ist erst dann etwas wert, wenn man sieht, was
+sie ändert. Ein Lauf mit Adjustierung rechnet deshalb dieselbe Frage ein
+zweites Mal **ohne** sie — auf demselben Panel, mit demselben Verfahren,
+mit demselben Startwert. Nur so ist die Differenz der Adjustierung
+zuzuschreiben und nicht einer anderen Datenlage.
+
+```turtle
+# in graph/<u>/inferred/causal/workspace
+<…/study/heizen-auf-innentemperatur/confounding>
+    a ow:ConfoundingContrast ;
+    ow:crudeAssociation "-1.43"^^xsd:decimal ;   # roher Zusammenhang
+    ow:crudeCiLow  "-1.91"^^xsd:decimal ;
+    ow:crudeCiHigh "-0.98"^^xsd:decimal ;
+    ow:confoundingShift "3.44"^^xsd:decimal ;    # adjustiert − roh
+    schema:description "Ohne Adjustierung ergibt dieselbe Frage …"@de .
+```
+
+**Der rohe Wert ist kein Effekt.** Er trägt bewusst weder
+`ow:effectSize` noch `ow:refutationPassed` — dieser Term zieht per SHACL
+die bestandene Refutation nach sich (Invariante C5), und die hat ein
+Zusammenhang nicht. In der Oberfläche heißt er „ohne Adjustierung", nie
+„Effekt". Warum die Abnahme wörtlich gelesen das Gegenteil verlangte:
+[Eintrag 6](./spec-widersprueche.md).
+
+Das typische Bild in der Hausdomäne: Geheizt wird, wenn es kalt ist, und
+kalt heißt niedrige Innentemperatur. Ohne die Außentemperatur sieht
+Heizen deshalb wirkungslos oder schädlich aus; mit ihr steht die wahre
+Wirkung da. Genau dieser Fall ist die Abnahme
+(`tests/graph/open-data.test.ts`), von der Quelle bis zur Zahl.
+
 ## Revisionen: woran sich eine Studie später beruft
 
 Jede Änderung am Modell schreibt eine `prov:Activity` **in den
@@ -571,7 +656,6 @@ SELECT ?ursacheName ?klasse ?evidenz ?versatz WHERE {
 
 | | Was fehlt | Meilenstein |
 |---|---|---|
-| Confounder | Wetter, Strompreis, Sonnenstand, Feiertage als Open-Data-Reihen | C5 |
 | Hypothesen-Erzeugung | LLM-Vorschläge mit Provenienz und symbolischen Filtern | C6 |
 | Frontdoor- und IV-Schätzer | identifiziert (C1), aber nicht gerechnet — die Studie sagt es | C8 (Sidecar) |
 | Struktur-Lernen, CATE, formale Sensitivität | Python-Sidecar, `causalTier: full` | C8, nur nach Freigabe |
@@ -580,16 +664,18 @@ SELECT ?ursacheName ?klasse ?evidenz ?versatz WHERE {
 Der Hypothesen-Graph existiert bereits als Ort, aber bis C6 schreibt
 niemand automatisch hinein: Was dort steht, hat ein Mensch geschrieben.
 
-Der häufigste Grund für `not-identifiable` ist eine fehlende Störgröße —
-und die wichtigsten der Hausdomäne sind offen verfügbar. Genau diese Lücke
-schließt C5.
+Der häufigste Grund für `not-identifiable` bleibt eine fehlende
+Störgröße. Die wichtigsten der Hausdomäne sind seit C5 offen verfügbar
+(siehe unten) — was fehlt, ist alles, wofür es keine offene Quelle gibt:
+wer zu Hause war, ob das Fenster offen stand, wie viele Gäste da waren.
 
 ## Abweichungen von der Spec, zur Entscheidung vorgelegt
 
-§19 verbietet einer Session, die Spec neu zu verhandeln. Drei Stellen in
-§5 ließen sich beim Bauen von C4 nicht wörtlich umsetzen; sie sind hier
-festgehalten, damit darüber entschieden werden kann — geändert wurde an
-der Spec nichts.
+§19 verbietet einer Session, die Spec neu zu verhandeln. Alle Stellen,
+die sich beim Bauen nicht wörtlich umsetzen ließen, stehen gesammelt in
+[docs/spec-widersprueche.md](./spec-widersprueche.md) — mit Auflösung,
+Stand und dem, was die Gegenrichtung kosten würde. Die drei aus C4 sind
+hier ausformuliert; geändert wurde an der Spec nichts.
 
 1. **`ow:Estimand` und die Identifikationsstrategie (§5.2).** Die Spec
    nennt als Wertebereich `backdoor | frontdoor | iv | did | its | none`.

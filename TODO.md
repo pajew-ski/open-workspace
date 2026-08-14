@@ -356,7 +356,10 @@
 > nächste. C3 steht zuerst und ist erledigt, weil er als einziger
 > zeitkritisch war: Home Assistant verwirft Zustandswechsel nach
 > `purge_keep_days`, jeder Tag ohne Erfassung war unwiederbringlich.
-> Gebaut sind C3, C0, C1, C2 und C4; offen ist als Nächstes C5.
+> Gebaut sind C3, C0, C1, C2, C4 und C5; offen ist als Nächstes C6.
+> Widersprüche der Spec, die beim Bauen auffielen, stehen gesammelt in
+> [docs/spec-widersprueche.md](./docs/spec-widersprueche.md) — mit
+> Auflösung und Stand, aber ohne Änderung an der Spec (§19).
 
 - [x] **C3 Erfassung („früh materialisieren")**:
       `homeassistant_api: true` im Add-on-Manifest (lesend, begründet in
@@ -538,12 +541,67 @@
       Rückgabe noch im Graphen; vollständiger Replace; Panel-Regeln; DiD
       und ITS; C6-Negativtests; C7-Signatur; Reinheit des Kerns).
       Doku: [docs/kausalmodell.md](./docs/kausalmodell.md)
-- [ ] **C5 Open-Data-Connector** `rest-timeseries` (SPEC §10/§11) — *als Nächstes*: Wetter
-      (DWD/Bright Sky), Strompreis, Sonnenstand, Feiertage — die
-      Confounder der Hausdomäne.
-      Abnahme: dieselbe Frage mit und ohne Adjustierung liefert
-      nachweislich unterschiedliche Ergebnisse, und die Differenz wird
-      erklärt
+- [x] **C5 Open-Data-Connector** `rest-timeseries` (SPEC §10/§11): Die
+      Störgrößen der Hausdomäne über den EINEN Connector-Vertrag — kein
+      zweiter Import-Pfad, keine Sonderpipeline.
+      - **Der Connector materialisiert die Angebotsseite, nie den Wert**
+        (Invariante C3): welche Größen die Quelle liefert, in welcher
+        Einheit, an welchem Ort, mit welchem Skalenniveau — als SOSA in
+        den Import-Graphen, genau wie `home-assistant` in C3. Revision
+        folgt der Struktur, nicht der Zahl (andere Werte = No-Op); eine
+        beschriebene, aber nicht gelieferte Größe wird quarantäniert
+        statt behauptet. Dass §10 diesen Connector „materialize" nennt
+        und trotzdem keine Reihe schreiben darf, ist als Widerspruch
+        festgehalten (docs/spec-widersprueche.md, Eintrag 5)
+      - **Die Abbildung ist deklarativ und pur**
+        (`connectors/rest-timeseries/mapping.ts`) und kennt die drei
+        Formen, in denen offene Kataloge liefern: `points`
+        (Datensatzliste), `columns` (parallele Arrays) und `intervals`
+        (Zeitspannen mit einem Wert **außerhalb** — ohne den bestünde
+        eine Feiertagsreihe nur aus Einsen). Dazu Fenster-Zerlegung,
+        Einheiten-Umrechnung, Filter je Datensatz (Bundesland),
+        Drosselung je Host und ein Zwischenspeicher: Bright Sky liefert
+        acht Größen in EINEM Dokument, und die Erfassung holt es einmal
+      - **Confounder-Katalog** als Vorlagen: Wetter (DWD über Bright
+        Sky), Strompreis (EPEX Spot über aWATTar), Einstrahlung
+        (Open-Meteo), Feiertage (Nager.Date) — dazu `custom` für eine
+        eigene JSON-/CSV-API ohne neuen Code. „Sonnenstand" aus §10
+        liefert der Katalog als **Einstrahlung**: Azimut/Elevation sind
+        eine Rechnung, kein Abruf, und ein lokal gerechneter Wert wäre
+        eine zweite Pipeline neben dem Connector-Vertrag
+        (docs/spec-widersprueche.md, Eintrag 4)
+      - **Die Erfassung ist quellenagnostisch geworden**
+        (`observations/sources.ts`): Die Quellart steht an der Größe und
+        wird aus dem Import-Graphen abgeleitet — der Sensor liegt im
+        Graphen genau des Connectors, der ihn materialisiert hat. Eine
+        unerreichbare Quellart legt nur ihre eigenen Größen still; ein
+        fehlender Home-Assistant-Zugang lässt die Wetterreihen laufen
+        (vor C5 riss er den ganzen Lauf mit)
+      - **Der Adjustierungs-Kontrast** ist der Nachweis: Ein Lauf mit
+        Adjustierung rechnet dieselbe Frage ein zweites Mal ohne sie —
+        auf DEMSELBEN Panel, mit demselben Verfahren und demselben
+        Startwert, sonst wäre die Differenz nicht der Adjustierung
+        zuzuschreiben. Der rohe Wert ist ein **Zusammenhang, keine
+        Wirkung**: eigene Terme (`ow:ConfoundingContrast`,
+        `ow:crudeAssociation`, `ow:crudeCiLow/-High`,
+        `ow:confoundingShift`), nie `ow:effectSize` — dieser Term zöge
+        per SHACL die bestandene Refutation nach sich (Invariante C5).
+        Warum die Abnahme wörtlich gelesen zwei gleichrangige Ergebnisse
+        verlangte: docs/spec-widersprueche.md, Eintrag 6
+      - Nebenbefund behoben: Das Formular unter Graph → Quellen zeigte
+        für `home-assistant` die GitHub-Felder und legte stillschweigend
+        eine Supervisor-Verbindung an
+      Abnahme: `tests/graph/open-data.test.ts` — die geforderte
+      Gegenprobe über die ganze Kette (Connector anlegen → Struktur
+      importieren → Störgröße aus der Kandidatenliste aufnehmen → Werte
+      erfassen → rechnen): vorher „nicht identifizierbar, weil die
+      Außentemperatur nicht erfasst wird", nachher die wahre Wirkung
+      **und** daneben der rohe Zusammenhang, der Heizen wirkungslos
+      aussehen lässt, samt Erklärung der Differenz. Dazu: drei
+      Reihenformen, kein Messwert im Store, Revision an der Struktur,
+      Zwischenspeicher, Quarantäne, Fehlerisolation zwischen Quellarten.
+      Doku: [docs/kausalmodell.md](./docs/kausalmodell.md),
+      [docs/beobachtungen.md](./docs/beobachtungen.md)
 - [ ] **C6 Neurosymbolische Schleife** (SPEC §8): LLM-Hypothesen mit
       Provenienz nach `causal-hypotheses`, symbolische Filter
       (Azyklizität, SHACL, temporale Zulässigkeit, Topologie,

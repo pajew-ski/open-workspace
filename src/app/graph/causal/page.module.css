@@ -484,6 +484,33 @@
 }
 
 /* Die Zahl ist groß, das Intervall steht daneben — nie ohne einander. */
+/* Adjustierungs-Kontrast (C5): roher Zusammenhang neben dem adjustierten
+   Wert. Bewusst zurückhaltend gestaltet — er ist ein Beleg, kein zweites
+   Ergebnis, und darf nie wie eine gleichwertige Zahl aussehen. */
+.contrast {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-3);
+    border-left: 3px solid var(--color-border);
+    background: var(--color-surface-sunken);
+    border-radius: var(--radius-md);
+}
+
+.contrastHead {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-primary);
+}
+
+.contrastText {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    line-height: var(--leading-normal);
+    max-width: 75ch;
+}
+
 .effect {
     display: flex;
     flex-wrap: wrap;

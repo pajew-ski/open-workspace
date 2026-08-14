@@ -117,6 +117,45 @@ export interface StudyDataset {
     inputs: StudyDatasetInput[];
 }
 
+/**
+ * Der Kontrast zwischen roher und adjustierter Rechnung (Meilenstein C5).
+ *
+ * **Warum das die Abnahme von C5 ist**: Eine Störgröße aus Open Data
+ * einzubinden, ist erst dann etwas wert, wenn man sieht, was sie ändert.
+ * Deshalb rechnet ein Lauf mit Adjustierung dieselbe Frage ein zweites
+ * Mal ohne sie — auf **demselben Panel**, mit **demselben Verfahren** und
+ * **demselben Startwert**. Nur so ist die Differenz auf die Adjustierung
+ * zurückzuführen und nicht auf eine andere Datenlage oder eine andere
+ * Ziehung.
+ *
+ * **Der rohe Wert ist kein Effekt.** Er ist der Zusammenhang, den man
+ * sähe, wenn man die Störgröße ignorierte — genau die Zahl, die eine
+ * Korrelationsliste ausgibt. Er trägt deshalb weder `ow:effectSize` noch
+ * `ow:refutationPassed` (Invariante C5) und heißt in der Oberfläche nie
+ * „Effekt" (§17: Keine Behauptung von Kausalität, wo nur Assoziation
+ * vorliegt).
+ */
+export interface AdjustmentContrast {
+    /** Größen, über die adjustiert wurde. */
+    adjustedFor: string[];
+    /** Roher Zusammenhang ohne Adjustierung — keine kausale Aussage. */
+    crude?: number;
+    crudeCiLow?: number;
+    crudeCiHigh?: number;
+    /** Der adjustierte Wert (derselbe wie in `rawEstimate`). */
+    adjusted: number;
+    /** adjustiert − roh. Der Betrag ist die herausgerechnete Konfundierung. */
+    shift?: number;
+    /** Anteil der Verschiebung am rohen Wert, falls dieser nicht null ist. */
+    relativeShift?: number;
+    /** Liegt der rohe Wert außerhalb des Intervalls des adjustierten? */
+    outsideInterval?: boolean;
+    /** Warum es keinen rohen Wert gibt — dann ist auch das eine Auskunft. */
+    problem?: string;
+    /** Die Differenz in einem Absatz, deutsch. */
+    explanation: string;
+}
+
 export interface StudyResult {
     spec: StudySpec;
     modelIri: string;
@@ -138,6 +177,11 @@ export interface StudyResult {
     rawEstimate?: EffectEstimate;
     refutations: RefutationResult[];
     positivity?: PositivityReport;
+    /**
+     * Was die Adjustierung geändert hat (C5). Fehlt, wenn nicht
+     * adjustiert wurde oder gar nicht gerechnet werden konnte.
+     */
+    contrast?: AdjustmentContrast;
     dataset?: StudyDataset;
     /** Einheit der Wirkung, quelltreu aus der Erfassung. */
     outcomeUnit?: string;
@@ -305,6 +349,16 @@ export function runStudy(input: StudyInput): StudyResult {
         });
     }
 
+    const contrast = adjustmentContrast({
+        panel,
+        spec: estimateSpec,
+        adjusted: outcome.estimate,
+        seed: spec.seed,
+        label,
+        ...(outcomeUnit ? { unit: outcomeUnit } : {}),
+        ...(input.bootstrapSamples !== undefined ? { samples: input.bootstrapSamples } : {}),
+    });
+
     // Für Negativkontrolle und implizierte Unabhängigkeiten braucht es
     // mehr als die Größen der Frage — deshalb ein zweites, breiteres
     // Panel. Es hat weniger Zeilen (jede zusätzliche Größe bringt ihre
@@ -331,6 +385,7 @@ export function runStudy(input: StudyInput): StudyResult {
         dataset,
         rawEstimate: outcome.estimate,
         ...(positivity ? { positivity } : {}),
+        ...(contrast ? { contrast } : {}),
         ...(outcomeUnit ? { outcomeUnit } : {}),
     };
     if (!passed) {
@@ -348,6 +403,89 @@ export function runStudy(input: StudyInput): StudyResult {
         effect: outcome.estimate,
         reason: `Geschätzt über ${estimator} auf ${panel.rows} Zeilen; alle blockierenden `
             + 'Refutationsversuche bestanden.',
+    };
+}
+
+/** Zahl für einen deutschen Fließtext — deterministisch, ohne Locale-Zufall. */
+export function formatEffectValue(value: number): string {
+    const magnitude = Math.abs(value);
+    const digits = magnitude >= 100 ? 1 : magnitude >= 1 ? 2 : 4;
+    return value.toFixed(digits).replace('.', ',');
+}
+
+interface ContrastInput {
+    panel: Panel;
+    spec: EstimateSpec;
+    adjusted: EffectEstimate;
+    seed: number;
+    label(iri: string): string;
+    unit?: string;
+    samples?: number;
+}
+
+/**
+ * Rechnet dieselbe Frage ohne Adjustierung und beschreibt die Differenz
+ * (C5). Gibt `undefined` zurück, wenn gar nicht adjustiert wurde — dann
+ * gibt es keinen Kontrast, und einen zu behaupten wäre Zierrat.
+ */
+export function adjustmentContrast(input: ContrastInput): AdjustmentContrast | undefined {
+    const adjustedFor = [...input.spec.adjustedFor];
+    if (adjustedFor.length === 0) return undefined;
+
+    const names = adjustedFor.map(iri => input.label(iri));
+    const unit = input.unit ? ` ${input.unit}` : '';
+    const adjusted = input.adjusted.effect;
+
+    // Gleiches Panel, gleiches Verfahren, gleicher Startwert: Nur so ist
+    // die Differenz der Adjustierung zuzuschreiben und nicht der Datenlage.
+    const crudeOutcome = estimateEffect(
+        input.panel,
+        { ...input.spec, adjustedFor: [] },
+        { seed: input.seed, ...(input.samples !== undefined ? { samples: input.samples } : {}) },
+    );
+    if (!crudeOutcome.ok) {
+        return {
+            adjustedFor,
+            adjusted,
+            problem: crudeOutcome.problem,
+            explanation:
+                `Ohne Adjustierung über ${names.join(', ')} lässt sich dieselbe Frage nicht rechnen: `
+                + `${crudeOutcome.problem} Der Vergleich entfällt deshalb — nicht, weil es keinen `
+                + 'Unterschied gäbe.',
+        };
+    }
+
+    const crude = crudeOutcome.estimate.effect;
+    const shift = adjusted - crude;
+    const relativeShift = crude === 0 ? undefined : Math.abs(shift / crude);
+    const outsideInterval = crude < input.adjusted.ciLow || crude > input.adjusted.ciHigh;
+
+    const direction = Math.abs(adjusted) < Math.abs(crude) ? 'überzeichnet' : 'unterzeichnet';
+    const sizeHint = relativeShift === undefined
+        ? ''
+        : ` (${formatEffectValue(relativeShift * 100)} % des rohen Wertes)`;
+    const intervalHint = outsideInterval
+        ? 'Der rohe Wert liegt außerhalb des Konfidenzintervalls des adjustierten — der Unterschied '
+            + 'ist mehr als Rauschen.'
+        : 'Der rohe Wert liegt innerhalb des Konfidenzintervalls des adjustierten; die Störgröße '
+            + 'verschiebt das Ergebnis hier nur wenig.';
+
+    return {
+        adjustedFor,
+        crude,
+        crudeCiLow: crudeOutcome.estimate.ciLow,
+        crudeCiHigh: crudeOutcome.estimate.ciHigh,
+        adjusted,
+        shift,
+        ...(relativeShift !== undefined ? { relativeShift } : {}),
+        outsideInterval,
+        explanation:
+            `Ohne Adjustierung ergibt dieselbe Frage auf denselben Zeilen ${formatEffectValue(crude)}${unit}, `
+            + `mit Adjustierung über ${names.join(', ')} dagegen ${formatEffectValue(adjusted)}${unit}. `
+            + `Die Differenz beträgt ${formatEffectValue(shift)}${unit}${sizeHint}: Genau so viel des rohen `
+            + `Zusammenhangs geht auf ${names.join(', ')} zurück und nicht auf die Behandlung — der rohe `
+            + `Wert ${direction} die Wirkung. ${intervalHint} `
+            + 'Der rohe Wert ist ein Zusammenhang, keine Wirkung, und wird deshalb nirgends als Effekt geführt.',
     };
 }
 
