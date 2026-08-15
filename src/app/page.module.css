@@ -9,7 +9,7 @@
 }
 
 .welcome h2 {
-    color: var(--color-primary);
+    color: var(--color-primary-text);
     margin: 0;
 }
 
@@ -43,7 +43,7 @@
 .statValue {
     font-size: var(--text-2xl);
     font-weight: var(--font-bold);
-    color: var(--color-primary);
+    color: var(--color-primary-text);
 }
 
 .statLabel {

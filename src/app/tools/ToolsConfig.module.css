@@ -17,7 +17,9 @@
 }
 
 .activeTab {
-    color: var(--color-primary);
+    /* Primärfarbe als TEXT nur über das Text-Token — #00674F auf dem
+       dunklen Grund ergibt 2,25:1 (Konvention „Farben als Text"). */
+    color: var(--color-primary-text);
     border-bottom-color: var(--color-primary);
 }
 
@@ -68,4 +70,43 @@
 .emptySub {
     font-size: var(--text-sm);
     color: var(--color-text-tertiary);
+}
+
+/*
+ * Liste der konfigurierten API-Tools. Die drei Klassen wurden im TSX
+ * benutzt, aber nie definiert — die Einträge lagen deshalb unformatiert
+ * untereinander, und die URL trug eine hartkodierte Graustufe (#666), die
+ * im Dark Mode auf 2,7:1 fiel. Jetzt gilt hier dieselbe Token-Skala wie
+ * überall.
+ */
+.toolList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.toolItem {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+}
+
+.toolUrl {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    word-break: break-all;
+}
+
+.toolBadge {
+    flex-shrink: 0;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-sunken);
+    color: var(--color-text-secondary);
+    font-size: var(--text-xs);
+    font-weight: var(--font-medium);
 }

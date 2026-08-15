@@ -176,8 +176,8 @@
 
 .uploadBtn:hover,
 .urlBtn:hover {
-    background: var(--color-surface-hover);
-    color: var(--color-primary);
+    background: var(--color-surface-sunken);
+    color: var(--color-primary-text);
 }
 
 .orDivider {
@@ -248,12 +248,12 @@
 }
 
 .quickAccessItem:hover {
-    background: var(--color-surface-hover);
+    background: var(--color-surface-sunken);
     transform: translateY(-2px);
 }
 
 .quickAccessIcon {
-    color: var(--color-primary);
+    color: var(--color-primary-text);
 }
 
 .quickAccessLabel {

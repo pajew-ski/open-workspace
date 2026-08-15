@@ -6,7 +6,8 @@ import { buildSystemPrompt } from '@/lib/ai/prompt';
 import { runEngineTurn } from '@/lib/ai/engine';
 import { buildServerEngineDeps } from '@/lib/ai/server/deps';
 import { toPromptInfo } from '@/lib/ai/tools.shared';
-import { getRequestGraph } from '@/lib/graph/server/context';
+import { checkChatRateLimit } from '@/lib/ai/server/chat-limits';
+import { currentIdentity, getRequestGraph } from '@/lib/graph/server/context';
 import { readSelfModel } from '@/lib/graph/meta/self-model-query';
 import type { SelfModelView } from '@/lib/graph/meta/self-model-view';
 
@@ -62,6 +63,23 @@ async function currentSelfModel(): Promise<SelfModelView | undefined> {
 
 export async function POST(request: NextRequest) {
     try {
+        // Zuerst das Limit, vor jeder Arbeit: Ein abgelehnter Turn darf
+        // weder ein Modell noch den Store kosten (ANALYSE §5 P2.11).
+        // „Ohne geprüfte Identität ist eine Anfrage anonym, nicht der
+        // Einzelnutzer" (M12/M13) — gilt auch fürs Zählen: nur eine
+        // authentifizierte Identität bekommt ihren eigenen Eimer.
+        const identity = await currentIdentity().catch(() => null);
+        const refusal = checkChatRateLimit(
+            request,
+            identity?.authenticated ? identity.userId : null,
+        );
+        if (refusal) {
+            return NextResponse.json(
+                { error: refusal.error },
+                { status: 429, headers: { 'Retry-After': String(refusal.retryAfterSeconds) } },
+            );
+        }
+
         const body: ChatRequestBody = await request.json();
         const { messages, context, stream = false, providerId, model } = body;
 
