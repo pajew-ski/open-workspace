@@ -35,7 +35,7 @@ import type { Skill } from '@/lib/skills/types';
 import type { Agent } from '@/lib/agents/types';
 import type { Tool } from '@/lib/tools/types';
 import type { AIDefaults, AIProvider, McpServerConfig } from '@/lib/ai/types';
-import { apiToolToEngineTool, makeFinderTool, makeUseSkillTool } from '@/lib/ai/tools.shared';
+import { apiToolToEngineTool, makeCreateTaskTool, makeFinderTool, makeUpdateTaskTool, makeUseSkillTool } from '@/lib/ai/tools.shared';
 import type { GraphStore } from '../store/types';
 import type { IriFactory } from '../iri';
 import { factory, namedNode, literal, typedLiteral } from '../rdf';
@@ -84,7 +84,9 @@ const noopExecute = async () => ({ text: '' });
 function builtinToolDescriptors(): ToolDescriptor[] {
     const finder = makeFinderTool(async () => '');
     const useSkill = makeUseSkillTool([], async () => null);
-    return [finder, useSkill].map(tool => ({
+    const createTask = makeCreateTaskTool(async () => '');
+    const updateTask = makeUpdateTaskTool(async () => '');
+    return [finder, createTask, updateTask, useSkill].map(tool => ({
         name: tool.name,
         description: tool.description,
         parameters: tool.parameters as Record<string, unknown>,

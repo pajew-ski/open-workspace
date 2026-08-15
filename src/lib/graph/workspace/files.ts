@@ -19,6 +19,7 @@
 
 import { promises as fs } from 'fs';
 import path from 'path';
+import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import type { Doc, DocFrontmatter, DocType } from '@/types/doc';
 import type { Task, TasksData } from '@/lib/storage/tasks';
 import type { Project, ProjectsData } from '@/lib/storage/projects';
@@ -68,49 +69,98 @@ export function workspaceFilePathsFor(
     return defaultWorkspaceFilePaths(userDir);
 }
 
-// --- Frontmatter (Format unverändert zur Altfassung) ---------------------
+// --- Frontmatter (YAML, Ausgabeformat unverändert zur Altfassung) --------
 
-export function parseFrontmatter(content: string): { frontmatter: DocFrontmatter | null; body: string } {
-    const match = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+/**
+ * Gelesen und geschrieben wird mit `yaml` — derselben Bibliothek, die der
+ * Obsidian-Connector schon benutzt (ANALYSE §5 P0.4). Der handgeschriebene
+ * Vorgänger las jede Zeile als `key: wert`, strippte Anführungszeichen an
+ * den Rändern und zerlegte `[a, b]` am Komma. Er scheiterte damit an genau
+ * dem, was in echten Titeln vorkommt: einem Doppelpunkt im Wert
+ * (`title: "Teil 1: Anfang"` wurde zu `Teil 1`), einem Komma innerhalb
+ * eines Tags, einem Anführungszeichen im Text (er schrieb unparsbares
+ * YAML) und mehrzeiligen Werten.
+ *
+ * Das **Ausgabeformat bleibt byte-gleich**: dieselbe Schlüsselreihenfolge,
+ * doppelte Anführungszeichen, Tags als Flow-Liste `["a", "b"]`. Neu ist
+ * allein, dass Sonderzeichen korrekt maskiert werden — vorher entstand
+ * dort eine kaputte Datei, jetzt eine gültige.
+ */
+const YAML_SCALAR_OPTIONS = { defaultStringType: 'QUOTE_DOUBLE', defaultKeyType: 'PLAIN', lineWidth: 0 } as const;
+
+/** Ein Wert als YAML-Skalar, ohne abschließenden Zeilenumbruch. */
+function yamlScalar(value: string): string {
+    return stringifyYaml(value, YAML_SCALAR_OPTIONS).trimEnd();
+}
+
+/**
+ * Frontmatter-Werte kommen aus YAML mit Typen (Zahl, Boolean, null). Das
+ * Dokumentmodell kennt nur Strings und String-Listen, und eine `1` in
+ * einem Titel ist ein Titel — deshalb wird flach zu String verdichtet
+ * statt die Datei abzulehnen. Verschachteltes bleibt draußen: Dafür gibt
+ * es den Obsidian-Weg mit dem fm:-Namensraum, hier wäre es Erfindung.
+ */
+function toFrontmatterValue(value: unknown): string | string[] | undefined {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+    if (Array.isArray(value)) {
+        return value
+            .filter(entry => entry !== null && entry !== undefined && typeof entry !== 'object')
+            .map(entry => String(entry));
+    }
+    return undefined;
+}
+
+export interface ParsedFrontmatter {
+    frontmatter: DocFrontmatter | null;
+    body: string;
+    /** Gesetzt, wenn ein Block DA war, aber kein gültiges YAML-Mapping ist. */
+    error?: string;
+}
+
+export function parseFrontmatter(content: string): ParsedFrontmatter {
+    const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)([\s\S]*)$/);
     if (!match) {
         return { frontmatter: null, body: content };
     }
-    const frontmatter: Record<string, string | string[]> = {};
-    for (const line of match[1].split('\n')) {
-        const colonIndex = line.indexOf(':');
-        if (colonIndex === -1) continue;
-        const key = line.slice(0, colonIndex).trim();
-        let value = line.slice(colonIndex + 1).trim();
-        if (value.startsWith('[') && value.endsWith(']')) {
-            value = value.slice(1, -1);
-            frontmatter[key] = value === ''
-                ? []
-                : value.split(',').map(s => s.trim().replace(/^["']|["']$/g, ''));
-        } else {
-            frontmatter[key] = value.replace(/^["']|["']$/g, '');
-        }
+    const body = match[2].trim();
+
+    let parsed: unknown;
+    try {
+        parsed = parseYaml(match[1]);
+    } catch (error) {
+        return { frontmatter: null, body, error: error instanceof Error ? error.message : 'unlesbares YAML' };
     }
-    return {
-        frontmatter: frontmatter as unknown as DocFrontmatter,
-        body: match[2].trim(),
-    };
+    if (parsed === null || parsed === undefined) {
+        return { frontmatter: {} as unknown as DocFrontmatter, body };
+    }
+    if (typeof parsed !== 'object' || Array.isArray(parsed)) {
+        return { frontmatter: null, body, error: 'kein YAML-Mapping (Key: Wert)' };
+    }
+
+    const frontmatter: Record<string, string | string[]> = {};
+    for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+        const normalized = toFrontmatterValue(value);
+        if (normalized !== undefined) frontmatter[key] = normalized;
+    }
+    return { frontmatter: frontmatter as unknown as DocFrontmatter, body };
 }
 
 export function generateFrontmatter(meta: DocFrontmatter): string {
     const lines = [
         '---',
-        `id: "${meta.id}"`,
-        `slug: "${meta.slug}"`,
-        `title: "${meta.title}"`,
+        `id: ${yamlScalar(meta.id)}`,
+        `slug: ${yamlScalar(meta.slug)}`,
+        `title: ${yamlScalar(meta.title)}`,
     ];
-    if (meta.category) lines.push(`category: "${meta.category}"`);
-    if (meta.author) lines.push(`author: "${meta.author}"`);
-    if (meta.type) lines.push(`type: "${meta.type}"`);
-    if (meta.inLanguage) lines.push(`inLanguage: "${meta.inLanguage}"`);
-    const tagsStr = meta.tags.map(t => `"${t}"`).join(', ');
-    lines.push(`tags: [${tagsStr}]`);
-    lines.push(`createdAt: "${meta.createdAt}"`);
-    lines.push(`updatedAt: "${meta.updatedAt}"`);
+    if (meta.category) lines.push(`category: ${yamlScalar(meta.category)}`);
+    if (meta.author) lines.push(`author: ${yamlScalar(meta.author)}`);
+    if (meta.type) lines.push(`type: ${yamlScalar(meta.type)}`);
+    if (meta.inLanguage) lines.push(`inLanguage: ${yamlScalar(meta.inLanguage)}`);
+    lines.push(`tags: [${meta.tags.map(yamlScalar).join(', ')}]`);
+    lines.push(`createdAt: ${yamlScalar(meta.createdAt)}`);
+    lines.push(`updatedAt: ${yamlScalar(meta.updatedAt)}`);
     lines.push('---');
     return lines.join('\n');
 }
@@ -137,7 +187,10 @@ const REQUIRED_FRONTMATTER_KEYS = ['id', 'slug', 'title', 'createdAt', 'updatedA
  * Sorte Attrappe, die dieses Repo nicht haben will.
  */
 export function docFromMarkdown(raw: string): { doc: Doc } | { skipped: string } {
-    const { frontmatter, body } = parseFrontmatter(raw);
+    const { frontmatter, body, error } = parseFrontmatter(raw);
+    if (error) {
+        return { skipped: `Frontmatter ist kein gültiges YAML: ${error}` };
+    }
     if (!frontmatter) {
         return { skipped: 'kein Frontmatter (--- am Dateianfang)' };
     }

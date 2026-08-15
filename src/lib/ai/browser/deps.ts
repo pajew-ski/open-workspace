@@ -8,7 +8,15 @@ import type { SkillMeta } from '@/lib/skills/types';
 import { toSkillMeta } from '@/lib/skills/types';
 import { checkBackend } from '@/lib/platform/backend';
 import { listClientSkills } from '@/lib/skills/store.client';
-import { apiToolToEngineTool, makeFinderTool, makeUseSkillTool, mcpToolsToEngineTools } from '@/lib/ai/tools.shared';
+import {
+    apiToolToEngineTool,
+    makeCreateTaskTool,
+    makeFinderTool,
+    makeUpdateTaskTool,
+    makeUseSkillTool,
+    mcpToolsToEngineTools,
+    type TaskToolFields,
+} from '@/lib/ai/tools.shared';
 import {
     listMcpTools,
     callMcpTool,
@@ -255,6 +263,18 @@ export async function buildBrowserEngineDeps(state: ClientAIState): Promise<Brow
             const results = (data.results || []).slice(0, 10);
             return results.length === 0 ? `Keine Treffer für "${query}".` : JSON.stringify(results);
         }),
+        // Schreibende Aufgaben-Tools laufen im Browser über die Route —
+        // dort liegt die Validierung, dort liegt der Store. Ohne Backend
+        // gibt es sie nicht, und das sagt das Tool auch (die Runtime
+        // `local` ist für die Workspace-Inhalte noch offen, TODO P1).
+        makeCreateTaskTool(fields => taskWriteViaBackend(backend, '/api/tasks', 'POST', fields, 'angelegt')),
+        makeUpdateTaskTool((taskId, fields) => taskWriteViaBackend(
+            backend,
+            `/api/tasks/${encodeURIComponent(taskId)}`,
+            'PUT',
+            fields,
+            'geändert',
+        )),
     ];
 
     // API tools: server execution (credentials) when possible, direct
@@ -301,6 +321,42 @@ export async function buildBrowserEngineDeps(state: ClientAIState): Promise<Brow
         agents: enabledAgents.map(a => ({ id: a.id, name: a.name, description: a.description, type: a.type })),
         callAgent: (agentId, prompt) => callAgentFromBrowser(state, enabledAgents, agentId, prompt, backend),
     };
+}
+
+/**
+ * Schreibende Aufgaben-Tools im Browser: eine Route, ein Ergebnissatz.
+ * Die Validierung (Zod) und die SHACL-Prüfung liegen serverseitig — hier
+ * wird nur durchgereicht und der Fehler wörtlich weitergegeben, damit das
+ * Modell die Ursache sieht statt eines Statuscodes.
+ */
+async function taskWriteViaBackend(
+    backend: boolean,
+    path: string,
+    method: 'POST' | 'PUT',
+    fields: TaskToolFields,
+    verb: 'angelegt' | 'geändert',
+): Promise<string> {
+    if (!backend) {
+        return 'Aufgaben brauchen das Workspace-Backend, das gerade nicht erreichbar ist. Ohne Backend laufen nur Chat, Konfiguration und Skills.';
+    }
+    try {
+        const response = await fetch(path, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(fields),
+            signal: AbortSignal.timeout(15_000),
+        });
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+            const detail = data && typeof data === 'object' && 'error' in data ? String(data.error) : `HTTP ${response.status}`;
+            return `Fehler: ${detail}`;
+        }
+        const task = data && typeof data === 'object' ? (data as { task?: { id?: string; title?: string; status?: string } }).task : undefined;
+        if (!task?.id) return `Aufgabe ${verb}.`;
+        return `Aufgabe "${task.title ?? task.id}" ${verb} (ID ${task.id}, Status ${task.status ?? 'unbekannt'}).`;
+    } catch (error) {
+        return `Fehler beim Schreiben der Aufgabe: ${error instanceof Error ? error.message : 'unbekannt'}`;
+    }
 }
 
 /** Direct browser execution of an API tool (serverless fallback, no stored credentials). */

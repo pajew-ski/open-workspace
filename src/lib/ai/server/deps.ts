@@ -7,12 +7,21 @@ import { loadAIConfig, resolveMcpServerAuth, resolveDefaultServerProvider, resol
 import { listMcpTools, callMcpTool } from '@/lib/ai/mcp/client';
 import { sendA2AMessage } from '@/lib/ai/a2a/client';
 import { streamProviderChat } from '@/lib/ai/client';
-import { apiToolToEngineTool, makeFinderTool, makeUseSkillTool, mcpToolsToEngineTools } from '@/lib/ai/tools.shared';
+import {
+    apiToolToEngineTool,
+    makeCreateTaskTool,
+    makeFinderTool,
+    makeUpdateTaskTool,
+    makeUseSkillTool,
+    mcpToolsToEngineTools,
+    type TaskToolFields,
+} from '@/lib/ai/tools.shared';
 import type { EngineTool } from '@/lib/ai/engine';
 import type { PromptAgentInfo } from '@/lib/ai/prompt';
 import type { SkillMeta } from '@/lib/skills/types';
 import { toSkillMeta } from '@/lib/skills/types';
 import type { Agent } from '@/lib/agents/types';
+import { createTaskSchema, updateTaskSchema } from '@/lib/api/validation';
 
 /**
  * Server-side engine dependencies: assembles the tool belt (built-ins,
@@ -83,6 +92,48 @@ async function runFinder(query: string, type: string | undefined, origin: string
     return JSON.stringify(results);
 }
 
+/**
+ * Aufgaben-Tools schreiben serverseitig über die Storage-Fassade statt
+ * über einen zweiten HTTP-Aufruf an die eigene Route: Der Chat-Turn läuft
+ * bereits im Request des Nutzers, und `getWorkspaceContext()` zieht seine
+ * Identität von dort. Ein Fetch auf `/api/tasks` käme ohne die
+ * Identitäts-Header an und schriebe anonym in den falschen Nutzergraphen.
+ * Geprüft wird trotzdem mit denselben Zod-Schemas wie an der Route — die
+ * Argumente kommen von einem Sprachmodell.
+ */
+async function runCreateTask(fields: TaskToolFields): Promise<string> {
+    const parsed = createTaskSchema.safeParse(fields);
+    if (!parsed.success) {
+        return `Fehler: ${parsed.error.issues.map(i => `${i.path.join('.') || 'Eingabe'}: ${i.message}`).join('; ')}`;
+    }
+    try {
+        const { createTask } = await import('@/lib/storage');
+        const task = await createTask(parsed.data);
+        const { logActivity } = await import('@/lib/activity');
+        await logActivity('task_created', task.id, `Aufgabe erstellt: ${task.title}`);
+        return `Aufgabe "${task.title}" angelegt (ID ${task.id}, Status ${task.status}, Priorität ${task.priority}).`;
+    } catch (error) {
+        return `Fehler beim Anlegen der Aufgabe: ${error instanceof Error ? error.message : 'unbekannt'}`;
+    }
+}
+
+async function runUpdateTask(taskId: string, fields: TaskToolFields): Promise<string> {
+    const parsed = updateTaskSchema.safeParse(fields);
+    if (!parsed.success) {
+        return `Fehler: ${parsed.error.issues.map(i => `${i.path.join('.') || 'Eingabe'}: ${i.message}`).join('; ')}`;
+    }
+    try {
+        const { updateTask } = await import('@/lib/storage');
+        const task = await updateTask(taskId, parsed.data);
+        if (!task) return `Fehler: Aufgabe "${taskId}" existiert nicht.`;
+        const { logActivity } = await import('@/lib/activity');
+        await logActivity('task_updated', task.id, `Aufgabe geändert: ${task.title}`);
+        return `Aufgabe "${task.title}" geändert (ID ${task.id}, Status ${task.status}, Priorität ${task.priority}).`;
+    } catch (error) {
+        return `Fehler beim Ändern der Aufgabe: ${error instanceof Error ? error.message : 'unbekannt'}`;
+    }
+}
+
 export interface ServerEngineDeps {
     tools: EngineTool[];
     skills: SkillMeta[];
@@ -103,6 +154,8 @@ export async function buildServerEngineDeps(origin: string): Promise<ServerEngin
 
     const tools: EngineTool[] = [
         makeFinderTool((query, type) => runFinder(query, type, origin)),
+        makeCreateTaskTool(runCreateTask),
+        makeUpdateTaskTool(runUpdateTask),
         ...apiTools.filter(t => t.enabled && t.type === 'api').map(tool =>
             apiToolToEngineTool(tool, async (t, args) => {
                 const result = await executeTool(t, args as Record<string, unknown>);

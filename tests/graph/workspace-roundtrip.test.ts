@@ -335,6 +335,34 @@ describe('Store-first-CRUD (Dateien sind Projektion)', () => {
         });
     });
 
+    it('Frontmatter läuft über YAML: Doppelpunkte, Anführungszeichen und Kommas überleben den Round-Trip', async () => {
+        // ANALYSE §5 P0.4: Der handgeschriebene Parser schnitt am ersten
+        // Doppelpunkt ab, zerlegte Tags am Komma und schrieb bei einem
+        // Anführungszeichen im Titel unparsbares YAML. Genau das hier.
+        const { ctx } = await createTestContext();
+        const doc = await crud.createDoc(ctx, {
+            title: 'Teil 1: „Anfang" — mit "Zitat"',
+            content: 'Inhalt.',
+            tags: ['a, mit Komma', 'b: mit Doppelpunkt'],
+        });
+
+        const raw = await fs.readFile(path.join(ctx.paths.docsDir, `${doc.slug}.md`), 'utf-8');
+        const { frontmatter, body, error } = parseFrontmatter(raw);
+        expect(error).toBeUndefined();
+        expect(frontmatter?.title).toBe('Teil 1: „Anfang" — mit "Zitat"');
+        expect(frontmatter?.tags).toEqual(['a, mit Komma', 'b: mit Doppelpunkt']);
+        expect(body).toBe('Inhalt.');
+
+        // Das gewohnte Ausgabeformat bleibt: Flow-Liste, doppelte Quotes.
+        expect(raw).toContain('tags: [');
+        expect(raw.startsWith('---\nid: "')).toBe(true);
+    });
+
+    it('kaputtes YAML im Frontmatter wird begründet übergangen statt halb gelesen', () => {
+        const kaputt = docFromMarkdown('---\ntitle: "offen\ntags: [a\n---\n\nText.');
+        expect('skipped' in kaputt && kaputt.skipped).toContain('kein gültiges YAML');
+    });
+
     it('ein externer Datei-Edit ändert die Wahrheit nicht (SPEC §16: Rückfluss nur über Connectors)', async () => {
         const { ctx } = await createTestContext();
         const doc = await crud.createDoc(ctx, { title: 'Stabil', content: 'Original.' });
