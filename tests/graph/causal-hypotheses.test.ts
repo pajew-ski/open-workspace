@@ -46,7 +46,9 @@ import {
     parseProposalResponse,
     parseWikidataRows,
     proposeFromTopology,
+    proposalRunBody,
     PROPOSAL_PROMPT_VERSION,
+    PROPOSAL_SOURCES,
 } from '@/lib/graph/causal/propose';
 import {
     adoptHypothesis,
@@ -871,5 +873,21 @@ describe('Shapes und Persistenz', () => {
         const identifier = quads.find(quad =>
             quad.subject.value === agent && quad.predicate.value === DCTERMS.identifier);
         expect(identifier?.object.value).toBe('llm');
+    });
+    it('lässt eine einzelne Quelle anstoßen — „alles" fährt ohne Liste (Nacharbeit zu C6)', () => {
+        // Der Lauf ersetzt je Quelle; wer nach einem Geräteumzug nur die
+        // Topologie neu ableitet, soll keinen Sprachmodell-Aufruf zahlen.
+        expect(proposalRunBody(MODEL, ['topology'])).toEqual({ modelId: MODEL, sources: ['topology'] });
+
+        // Alle drei treffen die Voreinstellung der Route statt einer
+        // zufällig identischen Liste.
+        expect(proposalRunBody(MODEL, PROPOSAL_SOURCES)).toEqual({ modelId: MODEL });
+        expect(proposalRunBody(MODEL, ['wikidata', 'llm', 'topology'])).toEqual({ modelId: MODEL });
+
+        // Die Reihenfolge ist die des Laufs, nicht die der Klicks.
+        expect(proposalRunBody(MODEL, ['wikidata', 'llm'])).toEqual({ modelId: MODEL, sources: ['llm', 'wikidata'] });
+
+        // Ohne Quelle gibt es nichts zu fragen — und keinen Lauf.
+        expect(proposalRunBody(MODEL, [])).toBeNull();
     });
 });

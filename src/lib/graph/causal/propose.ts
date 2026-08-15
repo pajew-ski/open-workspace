@@ -56,6 +56,29 @@ export const EDGE_CLASS_OF_SOURCE: Record<ProposalSource, EdgeClass> = {
 };
 
 /**
+ * Auswahl der Quellen normalisieren (Nacharbeit zu C6): Der Lauf ersetzt
+ * je Quelle (§6.2-Muster), also darf man ihn auch je Quelle anstoßen —
+ * ein Topologie-Lauf nach einem Geräteumzug soll keinen
+ * Sprachmodell-Aufruf mitbezahlen.
+ *
+ * Rein und hier statt in der Seite, weil zwei Dinge nicht verrutschen
+ * dürfen: **Reihenfolge** (der Lauf hält sie ein, die Klickfolge des
+ * Menschen nicht) und die **Bedeutung von „alles"** — sind alle Quellen
+ * gewählt, fährt die Anfrage OHNE `sources` und trifft damit die
+ * Voreinstellung der Route statt eine zufällig identische Liste.
+ * `null` heißt: nichts zu fragen, kein Lauf.
+ */
+export function proposalRunBody(
+    modelId: string,
+    selection: readonly ProposalSource[],
+): { modelId: string; sources?: ProposalSource[] } | null {
+    const wanted = PROPOSAL_SOURCES.filter(source => selection.includes(source));
+    if (wanted.length === 0) return null;
+    if (wanted.length === PROPOSAL_SOURCES.length) return { modelId };
+    return { modelId, sources: wanted };
+}
+
+/**
  * Version des Prompts. §8 verlangt die Zuschreibung „auf Modell und
  * Prompt-Version" — ohne sie wäre nicht mehr feststellbar, ob ein
  * schlechter Vorschlag am Modell oder an der Frage lag. Sie wird
