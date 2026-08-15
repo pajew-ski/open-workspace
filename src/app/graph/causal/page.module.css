@@ -611,6 +611,40 @@
     gap: var(--space-3);
 }
 
+/* Quellenwahl des Vorschlagslaufs (Nacharbeit zu C6): Der Lauf ersetzt
+   je Quelle, also darf man auch je Quelle fragen. */
+.sourceChoice {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    border: none;
+}
+
+.sourceChoiceLegend {
+    padding: 0;
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+}
+
+.sourceOption {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: var(--touch-target);
+    font-size: var(--text-sm);
+    color: var(--color-text-primary);
+    cursor: pointer;
+}
+
+.sourceOption input {
+    accent-color: var(--color-primary);
+    width: 18px;
+    height: 18px;
+}
+
 /* --- Vorschläge und Quellenvergleich (§8, C6) -------------------------
    Ein Vorschlag darf nie aussehen wie eine gesetzte Kante (Invariante
    C2). Deshalb steht er in einem eigenen, deutlich abgesetzten Block,
