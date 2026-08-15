@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Activity, AlertTriangle, Clock, Pause, Play, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { Activity, AlertTriangle, Clock, History, Pause, Play, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { AppShell } from '@/components/layout';
 import { Button, ConfirmDialog } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
@@ -30,6 +30,8 @@ interface VariableView {
     id: string;
     iri: string;
     name: string;
+    /** Art der Quelle — entscheidet, ob es einen Rückgriff auf Statistik gibt. */
+    sourceKind: string;
     source: string;
     kind: ObservationKind;
     aggregation: Aggregation;
@@ -43,6 +45,14 @@ interface VariableView {
         capturedThrough?: string;
         count: number;
         lastRun?: { at: string; summary: string; errors: string[] };
+        /** Aus Stundenaggregaten nachgefüllte Strecke (§15.5). */
+        aggregate?: {
+            from: string;
+            through: string;
+            intervalSeconds: number;
+            at?: string;
+            summary?: string;
+        };
     };
 }
 
@@ -86,6 +96,25 @@ interface ObservationsResponse {
 interface CaptureReport {
     results: Array<{ variableId: string; status: string; appended: number; message: string }>;
     message: string;
+}
+
+interface BackfillReport {
+    status: 'filled' | 'noop' | 'refused' | 'failed';
+    appended: number;
+    message: string;
+}
+
+/**
+ * Kann diese Größe überhaupt aus der Langzeit-Statistik nachgefüllt
+ * werden? Die Antwort steht schon hier, damit kein Knopf erscheint, der
+ * nur eine Absage auslösen kann (Invariante C9 in klein): Die Statistik
+ * kennt nur numerische Größen mit `state_class`, und bei Summen führt sie
+ * einen fortlaufenden Zählerstand statt einer Intervallsumme.
+ */
+function canBackfill(variable: VariableView): boolean {
+    return variable.sourceKind === 'home-assistant'
+        && variable.kind === 'numeric'
+        && variable.aggregation !== 'sum';
 }
 
 /** Wie viele Kandidaten ohne Filter gezeigt werden — eine HA-Installation hat Tausende. */
@@ -145,6 +174,7 @@ export default function GraphObservationsPage() {
     const [busyId, setBusyId] = useState<string | null>(null);
     const [capturing, setCapturing] = useState(false);
     const [removing, setRemoving] = useState<VariableView | null>(null);
+    const [backfilling, setBackfilling] = useState<VariableView | null>(null);
 
     const { data, isLoading } = useQuery<ObservationsResponse>({
         queryKey: ['graph-observations'],
@@ -211,6 +241,26 @@ export default function GraphObservationsPage() {
             toast.error(error instanceof Error ? error.message : 'Erfassungslauf fehlgeschlagen');
         } finally {
             setCapturing(false);
+            invalidate();
+        }
+    };
+
+    const handleBackfill = async () => {
+        if (!backfilling) return;
+        const target = backfilling;
+        setBackfilling(null);
+        setBusyId(target.id);
+        try {
+            const report = await fetchJson<BackfillReport>(
+                `/api/graph/observations/${encodeURIComponent(target.id)}/backfill`,
+                { method: 'POST' },
+            );
+            if (report.status === 'filled') toast.success(report.message);
+            else toast.info(report.message);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Rückgriff fehlgeschlagen');
+        } finally {
+            setBusyId(null);
             invalidate();
         }
     };
@@ -317,6 +367,11 @@ export default function GraphObservationsPage() {
                                                     : `${variable.retentionDays} Tage aufbewahrt`}
                                             </span>
                                             {!variable.enabled && <span className={styles.badge}>pausiert</span>}
+                                            {variable.status.aggregate && (
+                                                <span className={styles.badge}>
+                                                    Stundenaggregate bis {formatTime(variable.status.aggregate.through)}
+                                                </span>
+                                            )}
                                         </div>
                                         <p className={styles.coverage}>
                                             <span className={
@@ -335,6 +390,14 @@ export default function GraphObservationsPage() {
                                                 {errors.map(message => <li key={message}>{message}</li>)}
                                             </ul>
                                         )}
+                                        {variable.status.aggregate && (
+                                            <p className={styles.coverage}>
+                                                Von {formatTime(variable.status.aggregate.from)} bis{' '}
+                                                {formatTime(variable.status.aggregate.through)} stammt der Bestand aus
+                                                Stundenaggregaten der Langzeit-Statistik, nicht aus erfassten
+                                                Zustandswechseln — gröber und ohne die Zwischenwerte.
+                                            </p>
+                                        )}
                                         <div className={styles.actions}>
                                             <Button
                                                 variant="secondary"
@@ -345,6 +408,16 @@ export default function GraphObservationsPage() {
                                                     ? <><Pause size={16} aria-hidden="true" />Pausieren</>
                                                     : <><Play size={16} aria-hidden="true" />Fortsetzen</>}
                                             </Button>
+                                            {canBackfill(variable) && (
+                                                <Button
+                                                    variant="secondary"
+                                                    onClick={() => setBackfilling(variable)}
+                                                    disabled={busyId === variable.id}
+                                                >
+                                                    <History size={16} aria-hidden="true" />
+                                                    Aus Statistik nachfüllen
+                                                </Button>
+                                            )}
                                             <Button variant="ghost" onClick={() => setRemoving(variable)}>
                                                 <Trash2 size={16} aria-hidden="true" />
                                                 Entfernen
@@ -428,6 +501,21 @@ export default function GraphObservationsPage() {
                     )}
                 </section>
             </div>
+
+            <ConfirmDialog
+                isOpen={backfilling !== null}
+                title="Aus der Langzeit-Statistik nachfüllen?"
+                message={backfilling
+                    ? `Für „${backfilling.name}" wird geholt, was Home Assistant vor dem erfassten ` +
+                      'Bestand noch hat: ein Jahr STUNDENWERTE. Das ist gröber als die laufende ' +
+                      'Erfassung und enthält keine Zwischenwerte — Tage, für die schon Messpunkte ' +
+                      'da sind, bleiben unangetastet. Die nachgefüllte Strecke wird als solche ' +
+                      'ausgewiesen, damit später niemand einen Stundenmittelwert für eine Messung hält.'
+                    : ''}
+                confirmText="Nachfüllen"
+                onConfirm={handleBackfill}
+                onCancel={() => setBackfilling(null)}
+            />
 
             <ConfirmDialog
                 isOpen={removing !== null}

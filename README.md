@@ -48,8 +48,12 @@ konfigurierte Tools selbstständig aus.
   SOSA), die Erfassung legt ausgewählte Reihen verdichtet auf ein festes Raster
   ab — **bevor** der Recorder sie nach `purge_keep_days` verwirft. Die Werte
   liegen als NDJSON neben dem Store, im Graphen steht die Erfassungsregel und die
-  Abdeckung (`ow:capturedFrom`/`-Through`, `ow:observationCount`). Read-only:
-  es wird nichts geschaltet
+  Abdeckung (`ow:capturedFrom`/`-Through`, `ow:observationCount`). Für die Zeit
+  **vor** dem Bestand gibt es den Rückgriff auf die Long-Term-Statistics
+  (WebSocket-API, Stundenwerte, nur numerische Größen): Er füllt ausschließlich
+  Tage ohne Messpunkte und weist die aggregierte Strecke als solche aus
+  (`ow:aggregatedFrom`/`-Through`, `ow:aggregateInterval`) — ein Stundenmittel
+  wird nie auf das Erfassungsraster gehoben. Read-only: es wird nichts geschaltet
 - **Föderation** (`/graph/federation`): `SERVICE`-Abfragen gegen registrierte
   SPARQL-Endpoints (Vertrauensstufe entscheidet, ob lokale Join-Schlüssel
   mitgeschickt werden), SSRF-Schutz, Zeit- und Ergebnis-Limits — und der eigene
@@ -255,6 +259,7 @@ tests/ e2e/         # Vitest-Suiten und Playwright-Gate
 | `GET/PATCH/DELETE /api/graph/observations/[id]` | Größe lesen, pausieren, entfernen (`?purge=1` löscht auch den Bestand) |
 | `GET /api/graph/observations/[id]/series` | Messreihe einer Größe (`from`, `to`, `limit`) |
 | `POST /api/graph/observations/capture` | Erfassungslauf auf Anforderung (regulär läuft der Zeitgeber) |
+| `POST /api/graph/observations/[id]/backfill` | Rückgriff auf die Long-Term-Statistics (`days`, Default 365) |
 | `GET /api/graph/self-model` | Selbstmodell der Installation (Module, Fähigkeiten, Connector-Arten) |
 | `GET /api/graph/provenance` | Aussagen je Herkunft (nativ, importiert, inferiert) |
 | `GET/POST/DELETE /api/onboarding` | Einführungsstrecke: Zustand, Schritt ausführen, zurücknehmen |

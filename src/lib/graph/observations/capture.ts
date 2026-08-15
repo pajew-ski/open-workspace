@@ -149,6 +149,11 @@ async function captureVariable(
                 capturedThrough: isoOf(Math.max(coverage.through ?? 0, hasWatermark ? watermark : fromMs, nowMs)),
                 count: coverage.count,
                 lastRun: { at: now.toISOString(), summary, errors: [] },
+                // Die aus Aggregaten nachgefüllte Strecke gehört nicht zu
+                // diesem Lauf und wird deshalb durchgereicht. Sie hier
+                // fallen zu lassen wäre still: Der Bestand behielte seine
+                // groben Stunden, nur wüsste es niemand mehr.
+                ...(variable.status.aggregate ? { aggregate: variable.status.aggregate } : {}),
             },
         };
         await saveVariable(handle, next);
