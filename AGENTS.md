@@ -8,7 +8,7 @@
 > Teil vollständig: C3, C0, C1, C2, C4, C5 und C6 sind gebaut, dazu der
 > aus C3 offen gebliebene Rückgriff auf die Long-Term-Statistics und die
 > erste Nacharbeit darunter, das Rechenraster an der Frage.** Neben
-> dem Graph-Kern gilt [CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md)
+> dem Graph-Kern gilt [CAUSAL_LAYER_SPEC](./docs/specs/causal-layer.md)
 > (verbindlich für C0–C6; C7 und C8 bleiben opt-in). Umgesetzt sind sieben
 > Meilensteine und die Nachzügler:
 >
@@ -244,6 +244,31 @@
 > aussieht. Was es an Quellen nicht gibt, gibt es weiterhin nicht: wer zu
 > Hause war, ob das Fenster offen stand.
 >
+> - **Aufräum-Session (15.08.2026)** — kein Meilenstein, sondern die
+>   Kanten daneben. Vier offene Punkte geschlossen: der **CopilotKit-Stack
+>   ist entfernt** (Analyse §5 P0.3 — er rendert keine Oberfläche, sein
+>   Endpunkt hing am AI-Hub vorbei, zwei seiner fünf Actions sprachen
+>   einen Vertrag von vor M5; die beiden tragenden leben als Builtins
+>   `workspace_create_task`/`workspace_update_task` im EINEN Tool-Loop
+>   weiter), der **Frontmatter-Parser läuft über `yaml`** (P0.4 — der
+>   handgeschriebene schnitt am ersten Doppelpunkt ab und schrieb bei
+>   einem Anführungszeichen im Titel unparsbares YAML zurück), der
+>   **Chat-Endpunkt hat ein Rate-Limit** (P2.11, `OW_CHAT_RATE_LIMIT`),
+>   und der **Chat-Verlauf ist eine Live-Region**. Die vierte Aufgabe
+>   brachte den eigentlichen Fund: Der axe-Scan im Dark Mode lief auf drei
+>   von zwanzig Seiten; auf allen zwanzig ausgeweitet fand er vier ernste
+>   Kontrastfehler mit zwei gemeinsamen Ursachen — sechs **Phantom-Token**
+>   in 26 Deklarationen (CSS meldet ein `var()` ins Leere nicht: ohne
+>   Fallback fällt die Deklaration still weg, mit Fallback gilt der fest
+>   eingetragene Wert, im Extremfall ein helles #fafafa auch im Dark Mode)
+>   und 26 Stellen, die die **Primärfarbe als Textfarbe** setzten statt
+>   `--color-primary-text`. Beides ist nachgezogen und durch
+>   `tests/platform/design-tokens.test.ts` gegen Wiederkehr gesichert.
+>   Dazu die Ordnung: Specs und Analyse liegen jetzt unter `docs/`
+>   ([docs/README.md](./docs/README.md) sagt, welches Dokument in welcher
+>   Frage gilt), die Kürzel `GRAPH_CORE_SPEC`/`CAUSAL_LAYER_SPEC` bleiben
+>   als Referenz auf Paragraphen unverändert.
+>
 > **Kein nächster Pflicht-Meilenstein.** Mit C6 ist der verbindliche Teil
 > der Spec (C0–C6) abgeschlossen, mit dem Statistik-Rückgriff auch der
 > letzte aus C3 offen gebliebene Punkt. Offen sind nur noch **C7**
@@ -258,17 +283,18 @@
 > stehen als Nächstes die einzeln erledigbaren Nacharbeiten, und eine
 > davon ist eine Session, ein Branch, ein PR wie ein Meilenstein (§19,
 > seit Eintrag 14); ihre Abnahme steht in ihrem eigenen TODO-Eintrag. Die
-> oberste — das Rechenraster an der Frage — ist erledigt. Die nächste ist,
-> dem Vorschlagslauf das Automations-YAML zu zeigen (§8 nennt es als
-> Quelle, gelesen wird es noch nicht), danach die Vorschläge je Quelle
-> einzeln anzustoßen.
+> oberste — das Rechenraster an der Frage — ist erledigt, und die
+> Quellenwahl des Vorschlagslaufs ebenfalls (Aufräum-Session). Die
+> nächste offene ist, dem Vorschlagslauf das **Automations-YAML** zu
+> zeigen (§8 nennt es als Quelle, gelesen wird es noch nicht) — dafür
+> braucht es die HA-Config-API, die der Connector heute nicht liest.
 
 **Stand 2026-08-10 (12. Ausbaustufe, Graph Core M0–M14 inkl. §12.4 und
 §18 — der Vollausbau der Spec ist damit abgeschlossen)**: Der
 **RDF-Graph ist das kanonische Datenmodell — und seit der 6. Stufe die
 einzige Wahrheit auch für die Schreibpfade**. Die verbindliche Spezifikation
 inklusive aller Meilensteine M0–M14 liegt in
-[GRAPH_CORE_SPEC.md](./GRAPH_CORE_SPEC.md) — **Arbeitsmodus: ein Meilenstein
+[GRAPH_CORE_SPEC](./docs/specs/graph-core.md) — **Arbeitsmodus: ein Meilenstein
 = eine Session = ein Branch = ein PR**; jede Session liest zuerst diesen
 Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
 (Store-Entscheidung mit Messwerten in
@@ -747,7 +773,8 @@ Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
   Modul-Registry** `src/lib/app/modules.ts`: Aus ihr entstehen die
   Sidebar-Navigation UND das Selbstmodell; Icons bleiben in der Sidebar,
   weil sie Darstellung sind. Die früher doppelt gepflegte
-  `MODULE_CONTEXT`-Tabelle (Assistent + CopilotKit-Provider) ist gelöscht,
+  `MODULE_CONTEXT`-Tabelle (Assistent + der damalige CopilotKit-Provider,
+  beide inzwischen weg) ist gelöscht,
   und ein Test verbietet ihre Rückkehr genauso wie eine Registry, die von
   `src/app/**/page.tsx` abweicht. **Ehrlich statt vollständig**: Ein Modul,
   dessen Runtime-Fähigkeit fehlt (`/graph/sparql` in `local`), steht nicht
@@ -824,9 +851,9 @@ Verzeichnis löschen. In Sandboxes ohne Playwright-Download zeigt
 vorinstallierten Browser (die Konfiguration wertet die Variable aus).
 
 **Bevor du etwas Neues baust, lies in dieser Reihenfolge:**
-1. [GRAPH_CORE_SPEC.md](./GRAPH_CORE_SPEC.md) — verbindliche Spec des
+1. [GRAPH_CORE_SPEC](./docs/specs/graph-core.md) — verbindliche Spec des
    Graph-Ausbaus (M0–M14, Invarianten, Abnahmen) — Pflicht für Graph-Arbeit
-1b. [CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md) — verbindliche Spec des
+1b. [CAUSAL_LAYER_SPEC](./docs/specs/causal-layer.md) — verbindliche Spec des
    Kausal-Layers (Invarianten C1–C10, Meilensteine C0–C8, §19 Arbeitsmodus)
    — Pflicht für jede Arbeit am Kausal-Layer, zusammen mit
    [docs/beobachtungen.md](./docs/beobachtungen.md) und
@@ -841,7 +868,7 @@ vorinstallierten Browser (die Konfiguration wertet die Variable aus).
    Modul-Registry und Einführungsstrecke (§18) — Pflicht, sobald eine
    Seite dazukommt oder verschwindet
 4. [docs/ai-platform.md](./docs/ai-platform.md) — Architektur der AI-Schicht
-5. [ANALYSE.md](./ANALYSE.md) — historische Bestandsaufnahme + **§5 Roadmap**
+5. [Analyse (2026-08)](./docs/analyse-2026-08.md) — historische Bestandsaufnahme + **§5 Roadmap**
 6. [TODO.md](./TODO.md) — Roadmap als abhakbare Liste (inkl. Graph Core)
 7. Diesen Abschnitt hier für die Architektur-Prinzipien
 
@@ -851,7 +878,7 @@ Liste ist mit M15 erledigt (Kalender, Chats, AI-Konfiguration sind
 Graph-Bürger).
 
 **Der laufende Arbeitsstrang ist der Kausal-Layer**
-([CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md), §16 Meilensteine, §19
+([CAUSAL_LAYER_SPEC](./docs/specs/causal-layer.md), §16 Meilensteine, §19
 Arbeitsmodus). C3 (Erfassung), C0 (Kausalmodell als Graph-Bürger), C1
 (Identifikation: Azyklizität, D-Separation, Backdoor/Frontdoor, minimale
 Adjustment Sets, Instrumente — reine Graphalgorithmik, läuft in allen drei
@@ -886,10 +913,15 @@ Unabhängig davon weiterhin offen, ohne Reihenfolge zum Kausal-Layer:
    mit `matrix-js-sdk` bekäme sie echte Räume und Nachrichten — die
    Chat-Modellierung aus M15 (schema:Conversation/Message) steht bereit.
 
-Parallel weiter sinnvoll: i18n mit `next-intl` (P0); CopilotKit-Entscheidung.
-Der `no-explicit-any`-Abbau ist erledigt — `bun run lint` steht auf 0
-Warnings, und das ist ab jetzt der Sollzustand: Wer eine neue Warnung
-einführt, hat sie zu begründen oder zu beheben.
+Parallel weiter sinnvoll: **i18n mit `next-intl`** — der letzte offene
+P0 und das einzige Versprechen des README, das der Code nicht hält (die
+UI ist deutsch, ein Umschalter existiert bewusst nicht, Invariante 10).
+Die beiden anderen P0 sind erledigt: der `no-explicit-any`-Abbau
+(`bun run lint` steht auf 0 Warnings — ab jetzt der Sollzustand: wer eine
+neue Warnung einführt, begründet oder behebt sie) und der
+Frontmatter-Parser, der jetzt über `yaml` läuft. Die
+CopilotKit-Entscheidung ist gefallen: **entfernt**, die beiden tragenden
+Actions leben als Builtins im Tool-Loop weiter.
 
 **Arbeitsprinzip dieses Repos**: Keine Attrappen. Lieber ein Feature ehrlich als
 „geplant" kennzeichnen, als tote Buttons stehen lassen.
@@ -1020,7 +1052,7 @@ open-workspace/
   Status read-only unter `/tools`
 
 ### Agent Tools
-- Verfügbare Tools sind in [TOOLS.md](./TOOLS.md) dokumentiert.
+- Verfügbare Tools sind in [Agent-Tools](./docs/specs/agent-tools.md) dokumentiert.
 - **Dynamic Tool Discovery**: Der Agent erhält verfügbare Tools via
   System-Prompt (Builtins + API-Tools + MCP-Tools) — bei Providern mit
   Function-Calling-Support zusätzlich als native Tool-Definitionen.
@@ -1150,8 +1182,19 @@ bun run build      # Produktion
 - **UI-Labels**: Deutsch. Englisch ist geplant, aber NICHT gebaut —
   `next-intl` steht als P0 in TODO.md; bis dahin keine Sprach-Umschalter
   in der UI behaupten (Invariante 10)
-- **Anrede**: Immer informell (du-Form, nie Sie-Form)
+- **Anrede**: Immer informell (du-Form, nie Sie-Form). Bewusst NICHT als
+  Test durchgesetzt: „Sie" am Satzanfang ist im Deutschen nicht maschinell
+  vom Plural „sie" zu unterscheiden — ein Test darüber wäre ein
+  Fehlalarm-Generator
 - **Umlaute**: Korrekte ä, ö, ü, ß verwenden (nie ae, oe, ue)
+- **Keine Emojis** — `.agent/rules/emojis.md` gilt `always_on` und für
+  alles: Code, Kommentare, Doku, Commit-Messages, Oberflächentexte. Die
+  Grenze zieht Unicode (`Extended_Pictographic`), nicht Geschmack:
+  Typografie mit Bedeutung bleibt (Haken, Kreuz, Pfeile in Tabellen und
+  CLI-Ausgaben), Piktogramme gehen — für Symbole in der Oberfläche gibt
+  es `lucide-react`, für Status in der Doku das ausgeschriebene Wort.
+  Durchgesetzt von `tests/platform/conventions.test.ts`; die zwei
+  benannten Ausnahmen stehen dort mit Begründung
 - **Design**: **Mobile First!**
   - UI muss auf kleinen Screens perfekt funktionieren.
   - **Aktionen**: Primäre "Hinzufügen"-Aktionen (Notiz, Aufgabe etc.) MÜSSEN als **Floating Action Button (FAB)** unten rechts platziert werden.
@@ -1193,7 +1236,7 @@ bun run build      # Produktion
 - **Komponenten**: Material Design 3 inspiriert
 
 ### Chat Widget Protocol (A2A Interface)
-- **Single Source of Truth**: The behavior of the Assistant Chat is strictly defined in `CHAT_WIDGET_SPEC.md` in the root directory.
+- **Single Source of Truth**: The behavior of the Assistant Chat is strictly defined in [docs/specs/chat-widget.md](./docs/specs/chat-widget.md).
 - **Compliance**: All agents modifying the Chat Widget MUST consult and adhere to this specification.
 - **No Guesswork**: Do not "guess" scroll behavior or persistence logic. Use the spec.
 - **Persistence**: The widget MUST persist state (open/close, size, scroll) across client-side navigation.

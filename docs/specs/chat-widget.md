@@ -10,12 +10,17 @@
   - **Action**: User types and sends.
   - **Behavior**: Input clears immediately. Message appends to list.
   - **Scroll**: Viewport MUST scroll to the **bottom** instantly to show the sent message.
-- **Agent Response (Streaming)**:
-  - **Start**: Agent begins typing (streaming chunks).
-  - **Scroll (CRITICAL)**: Viewport MUST jump to align the **TOP** of the new agent message with the **TOP** of the chat view.
-  - **During Stream**: Viewport SHOULD NOT auto-scroll to bottom. It must stay anchored to the top of the message so the user can read as text appears.
-  - **Manual Scroll**: User can manually scroll down. If they do, the "stick-to-top" anchor is released.
-  - **Completion**: When streaming ends, the viewport MUST NOT jump. It should stay where the user is looking (typically having read down, or still at the top).
+- **Agent Response (Streaming)** — "Fill then Anchor", decided by the height
+  of the growing message (`useChatScroll`):
+  - **Short answer** (fits the viewport): the view follows the bottom, the
+    way a chat is expected to behave. Jumping to the top here would leave
+    the answer floating against empty space.
+  - **Long answer** (taller than the viewport): the view anchors the TOP of
+    the agent message to the top of the chat, so the beginning is never
+    cut off while text keeps arriving.
+  - **Manual Scroll**: scrolling down releases the anchor; it only snaps
+    back when the reader has scrolled past the start of the message.
+  - **Completion**: when streaming ends, the viewport MUST NOT jump.
 
 ### 1.2 Layout & Spacing
 - **Spacer**: **Removed**. The message list should just fill naturally.
@@ -42,13 +47,16 @@
 
 | Feature | Status | Description |
 | :--- | :--- | :--- |
-| **Streaming Text** | ✅ | Real-time text rendering via `StreamChunk`. |
-| **A2UI Rendering** | ✅ | Renders interactive components (buttons, forms) embedded in chat. |
-| **Markdown** | ✅ | Supports GFM (tables, code blocks). |
-| **Mermaid** | ✅ | Renders diagrams dynamically. |
-| **Context** | ✅ | Sends current route, selection, and Copilot state to backend. |
-| **Slash Commands** | ❌/⚠️ | (To be verified) Specialized commands. |
-| **Optimistic UI** | ✅ | User message appears immediately. |
+| **Streaming Text** | gebaut | Real-time text rendering via `StreamChunk`. |
+| **A2UI Rendering** | gebaut | Renders interactive components (buttons, forms) embedded in chat. |
+| **MCP-UI** | gebaut | `ui://` resources delivered by MCP tools render on the stage (sandboxed iframe). |
+| **Markdown** | gebaut | Supports GFM (tables, code blocks). |
+| **Mermaid** | gebaut | Renders diagrams dynamically. |
+| **Context** | gebaut | Sends current route and view state; the SELF MODEL is read server-side from the graph, never taken from the request body. |
+| **Model picker** | gebaut | Provider and model per turn, with the routing badge (browser-direct vs. server route). |
+| **Live region** | gebaut | Transcript is `role="log"`; `aria-busy` holds announcements back while streaming, a visually hidden status line says what is happening. |
+| **Optimistic UI** | gebaut | User message appears immediately. |
+| **Slash Commands** | nicht gebaut | Kein Befehlsvokabular im Eingabefeld — was der Assistent kann, kommt über Tools und Skills. |
 
 ## 3. Technical Constraints & Logic
 
@@ -63,15 +71,26 @@
 - **Warning**: `suppressHydrationWarning` is active on `<body>`.
 - **Goal**: Move towards clean hydration by using `useEffect` for all `localStorage` reads (already partially implemented).
 
-## 4. Known Regressions (To Fix)
-1.  **"The Squeeze"**: New messages appearing squashed at the top before layout stabilizes.
-2.  **"The Jump Down"**: Chat jumping to bottom after streaming finishes, causing user to lose reading position.
-3.  **Spacer Jitters**: Conditional rendering of the spacer causes layout shifts. (Proposed fix: Permanent CSS padding).
+## 4. Formerly Known Regressions
+
+The three regressions this section used to list ("The Squeeze", "The Jump
+Down", "Spacer Jitters") all had the same root cause: an artificial spacer
+plus an unconditional jump-to-top. Both are gone — the spacer was removed
+and the jump became the height-dependent "Fill then Anchor" rule in §1.1.
+The section stays as a warning: reintroducing a spacer brings all three
+back at once.
 
 ## 5. Architecture
-- **State Mcm**: `useState` + `refs` for high-frequency updates (scroll tracking).
-- **Backend**: `/api/chat` (Standard) + `/api/copilotkit` (Context).
+- **State**: `useState` + `refs` for high-frequency updates (scroll tracking).
+- **Backend**: `/api/chat` — or no backend at all. The same engine runs in
+  the browser when a provider resolves to the browser route (local models,
+  browser-stored keys, serverless operation); see
+  [docs/ai-platform.md](../ai-platform.md).
 - **Styling**: modular CSS (`AssistantChat.module.css`).
+- **Full-page sibling**: `/assistant` (`src/app/assistant/FullPageAssistant.tsx`)
+  shares the engine, the conversations and the stage. Behavioural rules
+  that concern the transcript (scroll, live region) apply to both; window
+  rules (resize, drag, fullscreen) only to the widget.
 
 ---
 *True Source of Usage Definition for the Assistant Chat.*

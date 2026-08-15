@@ -1,6 +1,6 @@
 # Obsidian-Kompatibilität (Graph Core M4 + M5)
 
-> Verbindliche Referenz: [GRAPH_CORE_SPEC.md](../GRAPH_CORE_SPEC.md) §9/§10.
+> Verbindliche Referenz: [GRAPH_CORE_SPEC](./specs/graph-core.md) §9/§10.
 > Implementierung: `src/lib/graph/connectors/obsidian/` (Vault-Import),
 > `src/lib/graph/projection/obsidian.ts` (Vault-Export),
 > `src/lib/graph/connectors/json-canvas/` + `src/lib/graph/projection/json-canvas.ts` (`.canvas`, M5).

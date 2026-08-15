@@ -2,7 +2,7 @@
 
 > Was dieses System über sich selbst weiß — und wie es das erklärt.
 > Umgesetzt mit Meilenstein M14, verbindlich beschrieben in
-> [GRAPH_CORE_SPEC.md](../GRAPH_CORE_SPEC.md) §18.
+> [GRAPH_CORE_SPEC](./specs/graph-core.md) §18.
 
 ## Das Prinzip in drei Sätzen
 
