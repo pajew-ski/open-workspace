@@ -8,7 +8,8 @@ fest und legt ihn vor. Diese Datei ist dieser Ort.
 Widerspruch, wie er beim Bauen aufgelöst wurde und was es kosten würde,
 ihn anders aufzulösen. Die Einträge 1–8 sind am **14.08.2026**
 entschieden worden, die Einträge 9–11 kamen beim Bauen von C6 hinzu und
-sind mit ihm entschieden; wo die Entscheidung den Text der Spec betrifft,
+sind mit ihm entschieden, die Einträge 12–13 beim Rückgriff auf die
+Long-Term-Statistics; wo die Entscheidung den Text der Spec betrifft,
 ist sie dort eingearbeitet. Wer beim Bauen auf einen neuen stößt, trägt
 ihn hier ein. **Kein Eintrag steht offen.**
 
@@ -25,6 +26,8 @@ ihn hier ein. **Kein Eintrag steht offen.**
 | 9 | §8 verlangt für C6 drei Strukturquellen, eine davon ist C8 | C6 | entschieden, **fehlende Quelle wird benannt** |
 | 10 | §8 zählt Identifizierbarkeit zu den Filtern — gegen Invariante C1 | C6 | entschieden, umgesetzt |
 | 11 | §8 „temporale Zulässigkeit maschinell entscheidbar" — wie weit? | C6 | entschieden, Spec präzisiert |
+| 12 | §19: Der Startpunkt zeigt auf den obersten offenen Punkt — und der ist gesperrt | LTS-Backfill | entschieden, Spec präzisiert |
+| 13 | §3 verspricht „minutengenau über Monate", §15.5 widerruft es | LTS-Backfill | entschieden, Spec korrigiert |
 
 ---
 
@@ -342,3 +345,75 @@ gemeinsamer Ursache (Außentemperatur → Heizen, Außentemperatur →
 Verbrauch) zeigt die Kreuzkorrelation eine Richtung, die es nicht gibt.
 Ein Filter, der so etwas verwirft oder bestätigt, wäre eine Schätzung im
 Gewand einer Formprüfung.
+
+## 12. §19: Der Startpunkt zeigt auf den obersten offenen Punkt — und der ist gesperrt (LTS-Backfill)
+
+**Die Stelle.** §19 sagt zweierlei über denselben Satz Arbeit. Am Ende:
+„Startpunkt einer Session, wenn nichts anderes gesagt ist: **der oberste
+nicht abgehakte Punkt unter ‚Kausal-Layer' in TODO.md.**" Zwei Absätze
+davor: „Was eine Session zusätzlich nicht tut: C7 (Experimente in der
+echten Welt) oder C8 (Python-Sidecar) anfangen. Beide brauchen eine
+ausdrückliche Freigabe."
+
+**Der Widerspruch.** Seit C6 fertig ist, IST der oberste nicht abgehakte
+Punkt genau die Zeile mit C7 und C8. Die Regel schickt die Session also
+in dieselbe Arbeit, die die Regel daneben verbietet. Wer nur die erste
+Regel liest, fängt C7 an; wer nur die zweite liest, hat keinen Startpunkt.
+
+**Entschieden: das Verbot gewinnt, der Startpunkt wandert weiter.** Der
+Startpunkt ist der oberste nicht abgehakte Punkt, **den eine Session ohne
+Freigabe überhaupt beginnen darf**. C7 und C8 stehen in TODO.md
+ausdrücklich als „*Opt-in, nicht ohne ausdrückliche Freigabe*" — sie
+werden übersprungen, nicht abgehakt und nicht angefangen. Der nächste
+Punkt darunter ist der **Backfill aus den Long-Term-Statistics**, und der
+ist in dieser Session gebaut. §19 sagt das jetzt selbst.
+
+Die Begründung ist keine Formalie: Die beiden Meilensteine sind nicht
+deshalb opt-in, weil sie groß sind, sondern weil sie etwas Neues in die
+Welt lassen — C7 schaltet Aktoren in einer Wohnung, in der andere
+Menschen leben, C8 bringt eine zweite Laufzeitumgebung ins Deployment.
+Eine Reihenfolgeregel darf eine Sicherheitsregel nicht aushebeln.
+
+**Nebenbefund, mit erledigt.** AGENTS.md verwies für den Fall „ohne
+Freigabe weiterarbeiten" auf die Nacharbeiten aus C5 und C6 und
+übersprang dabei den LTS-Backfill, der in TODO.md darüber steht. Das war
+kein zweiter Widerspruch, sondern ein veralteter Zeiger — er zeigt jetzt
+auf denselben Punkt wie die Liste.
+
+**Was die Gegenrichtung gekostet hätte.** Die Umkehrung („der Startpunkt
+gewinnt") hieße, dass die nächste Session ohne Rückfrage anfängt,
+Automationen zu randomisieren. Die dritte Möglichkeit — die Session hält
+an und tut nichts — wäre die teuerste: Es steht Arbeit an, die niemanden
+gefährdet und niemandes Freigabe braucht.
+
+## 13. §3 verspricht „minutengenau über Monate", §15.5 widerruft es (LTS-Backfill)
+
+**Die Stelle.** §3, Tabellenzeile „Dichte, zeitgestempelte
+Beobachtungen": „Recorder-History und Long-Term-Statistics: multivariate
+Zeitreihen über Monate, minutengenau." Und §15.5: Vollständige
+Zustandswechsel hält der Recorder nur `purge_keep_days` (Standard 10);
+was bleibt, sind „stündliche Aggregate … aber **nur für Entitäten mit
+`state_class`**".
+
+**Der Widerspruch.** Beides zusammen gibt es nicht. Über Monate gibt es
+Stundenwerte, und die nur für die numerische Hälfte; minutengenau gibt es
+zehn Tage. §3 ist der Absatz, der den ganzen Aufwand rechtfertigt — er
+beschreibt die Datenlage besser, als sie ist, und zwar an genau der
+Eigenschaft (Dichte über die Zeit), die für kausale Inferenz zählt.
+
+**Entschieden: §15.5 hat recht, §3 ist korrigiert.** Die Zeile nennt jetzt
+beide Hälften und ihren Preis. Der Rückgriff auf die Statistik ist die
+praktische Fassung derselben Einsicht: Er verlängert die Wirkungsseite in
+**Stundenschritten** nach hinten und die Ursachenseite gar nicht — die
+Asymmetrie aus §15.5, nur diesmal als Code. Deshalb wird ein
+Stundenaggregat nie auf das Erfassungsraster gehoben (das erfände elf von
+zwölf Messungen und bliese jede spätere Fallzahl auf), und die
+nachgefüllte Strecke trägt eine eigene Auflösung im Graphen
+(`ow:aggregateInterval`), statt wie erfasste Werte auszusehen.
+
+**Was die Gegenrichtung gekostet hätte.** Hätte man §3 stehen lassen und
+den Rückgriff „minutengenau" ausgeliefert — also den Stundenwert zwölfmal
+geschrieben —, sähe eine spätere Studie über ein Jahr nach 105 000 Zeilen
+aus, von denen 96 000 erfunden wären. Die Konfidenzintervalle würden
+dadurch nicht falsch aussehen, sondern schmal: genau die
+selbstbewusste Scheinpräzision, gegen die §2.2 argumentiert.

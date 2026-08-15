@@ -198,6 +198,13 @@ export const OW = {
     capturedThrough: ow('capturedThrough'),
     observationCount: ow('observationCount'),
     retentionDays: ow('retentionDays'),
+    // Rückgriff auf die Long-Term-Statistics (§15.5): Ein Teil des
+    // Bestands kann aus Stundenaggregaten stammen statt aus erfassten
+    // Zustandswechseln. Die Strecke wird benannt, statt sie wie erfasste
+    // Werte aussehen zu lassen.
+    aggregatedFrom: ow('aggregatedFrom'),
+    aggregatedThrough: ow('aggregatedThrough'),
+    aggregateInterval: ow('aggregateInterval'),
     // Kausalmodell als Graph-Bürger (CAUSAL_LAYER_SPEC §5, C0). Die Kante
     // selbst ist fremd (RO.causallyUpstreamOf, Invariante C8); eigen ist
     // nur, was über sie ausgesagt wird — und das hängt als RDF-1.2-

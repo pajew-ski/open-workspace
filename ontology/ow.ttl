@@ -763,6 +763,27 @@ ow:retentionDays a owl:DatatypeProperty ;
     rdfs:comment "Aufbewahrungsdauer der erfassten Reihe in Tagen; 0 bedeutet unbegrenzt (der Default — der Zweck der Erfassung ist gerade, das zu behalten, was die Quelle verwirft). Sie steht an der Variablen und nicht als globale Einstellung, weil sich hochfrequente und seltene Größen im Volumen um Größenordnungen unterscheiden."@de ;
     rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
 
+ow:aggregatedFrom a owl:DatatypeProperty ;
+    rdfs:domain ow:Variable ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "Aggregate ab"@de, "aggregated from"@en ;
+    rdfs:comment "Ältester Zeitpunkt, für den der Bestand dieser Größe aus AGGREGATEN stammt statt aus erfassten Zustandswechseln — beim Rückgriff auf die Long-Term-Statistics von Home Assistant (§15.5) Stundenmittel statt Ereignissen. Ohne diese Angabe sähe der Bestand vor und nach der Grenze gleich aus, obwohl er es nicht ist; ow:capturedFrom benennt nur die Reichweite, nicht die Herkunft. Kein Standard-Term trennt innerhalb einer Reihe die gemessene von der aggregierten Strecke: schema:temporalCoverage beschreibt eine Abdeckung ohne Qualitätsaussage, prov:wasDerivedFrom nennt eine Quelle ohne Zeitgrenze."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:aggregatedThrough a owl:DatatypeProperty ;
+    rdfs:domain ow:Variable ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "Aggregate bis"@de, "aggregated through"@en ;
+    rdfs:comment "Jüngster Zeitpunkt, bis zu dem der Bestand dieser Größe aus Aggregaten stammt. Zusammen mit ow:aggregatedFrom grenzt er die nachgefüllte Strecke ein; alles danach ist erfasst (C3). Die Grenze liegt konstruktionsbedingt vor dem ältesten erfassten Punkt, weil ein Rückgriff nie einen bestehenden Tag überschreibt."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
+ow:aggregateInterval a owl:DatatypeProperty ;
+    rdfs:domain ow:Variable ;
+    rdfs:range xsd:duration ;
+    rdfs:label "Aggregat-Raster"@de, "aggregate interval"@en ;
+    rdfs:comment "Zeitraster der nachgefüllten Strecke als xsd:duration (bei den Long-Term-Statistics PT1H). Es ist bewusst getrennt von ow:samplingInterval: Der Abtastabstand ist die REGEL der Erfassung, dieses hier die tatsächliche Auflösung eines Teils des Bestands. Wer beide gleichsetzte, hielte einen Stundenmittelwert für zwölf Fünf-Minuten-Messungen — genau die Verfeinerung, die keine Auswertung tun darf."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
 #################################################################
 # Kausalmodell (CAUSAL_LAYER_SPEC §5, Meilenstein C0)
 #
