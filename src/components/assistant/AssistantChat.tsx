@@ -223,10 +223,12 @@ export function AssistantChat() {
         // eslint-disable-next-line react-hooks/exhaustive-deps -- Mount-Effekt, siehe oben
     }, []);
 
-    // Simplified Scroll Logic
-    // Smart Scroll Logic: "Fill then Stop"
-    // Simplified Scroll Logic
-    // Smart Scroll Logic: "Fill then Stop"
+    /**
+     * Scroll-Regel „Fill then Anchor" (CHAT_WIDGET_SPEC §1.1): Eine kurze
+     * Antwort folgt dem unteren Rand wie in jedem Chat, eine längere
+     * verankert ihren Anfang oben, damit er beim Weiterschreiben nicht aus
+     * dem Bild läuft. Die Höhe entscheidet, nicht ein fester Sprung.
+     */
     const useChatScroll = (messages: ChatMessage[]) => {
         useLayoutEffect(() => {
             const container = messagesContainerRef.current;
@@ -1020,10 +1022,6 @@ export function AssistantChat() {
                                 </div>
                             ))
                         )}
-
-
-
-
 
                         <div ref={messagesEndRef} />
                     </div>

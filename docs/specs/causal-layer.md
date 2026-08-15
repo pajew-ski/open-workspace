@@ -8,10 +8,10 @@ bzw. bringen eine zweite Laufzeitumgebung mit.
 **Umsetzungsstand**: **C3 (Erfassung) ist gebaut** — bewusst zuerst, weil
 er als einziger zeitkritisch ist (§15.5). Alles Übrige ist spezifiziert
 und nicht gebaut; es erscheint deshalb nirgends in der UI (Invariante 10).
-Was gebaut ist, steht in [docs/beobachtungen.md](./docs/beobachtungen.md),
-der offene Stand abhakbar in [TODO.md](./TODO.md); Reihenfolge und
+Was gebaut ist, steht in [docs/beobachtungen.md](../beobachtungen.md),
+der offene Stand abhakbar in [TODO.md](../../TODO.md); Reihenfolge und
 Arbeitsmodus stehen in §18 und §19.
-**Verhältnis zu bestehenden Dokumenten**: `GRAPH_CORE_SPEC.md` behält
+**Verhältnis zu bestehenden Dokumenten**: [GRAPH_CORE_SPEC](./graph-core.md) behält
 uneingeschränkt Vorrang. Dieser Entwurf setzt auf ihm auf und darf keine
 seiner Invarianten aufweichen. Wo er das täte, ist der Entwurf falsch, nicht
 die Spec.
@@ -148,7 +148,7 @@ plaudern. Niemand beantwortet „hat diese Automation je etwas bewirkt".
 
 ## 4. Invarianten des Kausal-Layers
 
-Ergänzend zu den zehn Invarianten aus `GRAPH_CORE_SPEC.md` §2. Verletzung ist
+Ergänzend zu den zehn Invarianten aus [GRAPH_CORE_SPEC](./graph-core.md) §2. Verletzung ist
 Review-Blocker.
 
 **C1 — Struktur ist Annahme, nicht Ergebnis.** Ein Effekt wird nie ohne den
@@ -719,10 +719,10 @@ Im Arbeitsmodus der Spec: ein Meilenstein, eine Session, ein Branch, ein PR.
 | **C0** | Vokabular (nach C8 fremdes zuerst), Named Graphs, SHACL-Shapes für kausale Kanten, `ow:CausalModel`/`Variable` als Graph-Bürger, DAG-Editor read-only | Ontologie-CI grün; ein von Hand modellierter DAG ist per SPARQL abfragbar; Layout-Blacklist hält |
 | **C1** | Tier-1-Kern: Azyklizität, D-Separation, Backdoor/Frontdoor, minimale Adjustment Sets, Identifizierbarkeits-Entscheidung. Reine Graphalgorithmik, keine Daten | Testsuite gegen bekannte Lehrbuch-DAGs; „nicht identifizierbar" wird korrekt und begründet zurückgegeben; läuft im Browser |
 | **C2** | Causal Path Tracing im Retrieval (§9) + Anzeige im Explorer | `explain` trägt den kausalen Pfad; d-separierte Knoten fallen bei gegebener Konditionierung nachweislich raus |
-| **C3** ✅ | Observation Store + `home-assistant`-Connector (Registry → Struktur, History → Reihen) + `homeassistant_api` im Add-on. **Gebaut** — Abnahme in `tests/graph/observations.test.ts` und `tests/graph/home-assistant.test.ts`, Doku in `docs/beobachtungen.md`. Der **LTS-Backfill** ist nachgezogen (`recorder/statistics_during_period` über die WebSocket-API — Abnahme in `tests/graph/observations-backfill.test.ts`): Er verlängert den Bestand in Stundenschritten nach hinten, füllt nur Tage ohne Messpunkte und weist die aggregierte Strecke als solche aus. Offen geblieben und einzeln notiert: Automations-Traces als Interventionslog | Zwei Läufe erzeugen keine Dublette (Wasserzeichen); kein Messwert landet im Store; Lücken werden erfasst statt fortgeschrieben; ein Fehler bei einer Größe lässt die anderen laufen |
+| **C3** (gebaut) | Observation Store + `home-assistant`-Connector (Registry → Struktur, History → Reihen) + `homeassistant_api` im Add-on. **Gebaut** — Abnahme in `tests/graph/observations.test.ts` und `tests/graph/home-assistant.test.ts`, Doku in `docs/beobachtungen.md`. Der **LTS-Backfill** ist nachgezogen (`recorder/statistics_during_period` über die WebSocket-API — Abnahme in `tests/graph/observations-backfill.test.ts`): Er verlängert den Bestand in Stundenschritten nach hinten, füllt nur Tage ohne Messpunkte und weist die aggregierte Strecke als solche aus. Offen geblieben und einzeln notiert: Automations-Traces als Interventionslog | Zwei Läufe erzeugen keine Dublette (Wasserzeichen); kein Messwert landet im Store; Lücken werden erfasst statt fortgeschrieben; ein Fehler bei einer Größe lässt die anderen laufen |
 | **C4** | Schätzung + Refutation Tier 1, `ow:CausalStudy` mit vollständiger Reproduktions-Signatur, Ergebnis-UI mit DAG, CI und Refutations-Badge | Ein bekannter Effekt aus synthetischen Daten wird korrekt geschätzt; ein konfundierter Fall wird als solcher erkannt; ein durchgefallener Effekt erscheint **nicht** als Effekt |
-| **C5** ✅ | Open-Data-Connector `rest-timeseries` + Confounder-Katalog (Wetter, Preis, Sonnenstand, Feiertag), dazu `csv-observations` und `solar-position`. **Gebaut** — Abnahme in `tests/graph/open-data.test.ts`, Doku in `docs/kausalmodell.md` | Dieselbe Frage mit und ohne Adjustierung liefert nachweislich unterschiedliche Ergebnisse, und die Differenz wird erklärt |
-| **C6** ✅ | Neurosymbolische Schleife: LLM-Hypothesen mit Provenienz, symbolische Filter, Vergleich der drei Strukturquellen, Widerspruchs-UI. **Gebaut** — Abnahme in `tests/graph/causal-hypotheses.test.ts`, Doku in `docs/kausalmodell.md`. Die dritte Strukturquelle ist `wikidata` statt Struktur-Lernen (gehört zu C8, §19) — die fehlende Quelle wird im Vergleich benannt, nicht erfunden (docs/spec-widersprueche.md, Eintrag 9) | Keine Hypothese erreicht ohne Filter den Studien-Pfad; ein temporal unmöglicher Vorschlag wird automatisch verworfen |
+| **C5** (gebaut) | Open-Data-Connector `rest-timeseries` + Confounder-Katalog (Wetter, Preis, Sonnenstand, Feiertag), dazu `csv-observations` und `solar-position`. **Gebaut** — Abnahme in `tests/graph/open-data.test.ts`, Doku in `docs/kausalmodell.md` | Dieselbe Frage mit und ohne Adjustierung liefert nachweislich unterschiedliche Ergebnisse, und die Differenz wird erklärt |
+| **C6** (gebaut) | Neurosymbolische Schleife: LLM-Hypothesen mit Provenienz, symbolische Filter, Vergleich der drei Strukturquellen, Widerspruchs-UI. **Gebaut** — Abnahme in `tests/graph/causal-hypotheses.test.ts`, Doku in `docs/kausalmodell.md`. Die dritte Strukturquelle ist `wikidata` statt Struktur-Lernen (gehört zu C8, §19) — die fehlende Quelle wird im Vergleich benannt, nicht erfunden (docs/spec-widersprueche.md, Eintrag 9) | Keine Hypothese erreicht ohne Filter den Studien-Pfad; ein temporal unmöglicher Vorschlag wird automatisch verworfen |
 | **C7** | *Optional, eigene Entscheidung*: Experimente (§13.3) mit allen Leitplanken | Nur freigegebene Entitäten; Not-Aus getestet; vollständiges `prov`-Protokoll; Grenzverletzung bricht ab |
 | **C8** | *Optional*: Tier-2-Sidecar, Struktur-Lernen, Föderation von Kausalmodellen | `capabilities.causalTier` steuert die UI ehrlich; ohne Sidecar ist nichts sichtbar, was ihn braucht |
 
@@ -821,7 +821,7 @@ Jede Session:
    Empfehlungen.
 
 **Wo diese Spec sich widerspricht**, steht es gesammelt in
-[docs/spec-widersprueche.md](./docs/spec-widersprueche.md) — mit
+[docs/spec-widersprueche.md](../spec-widersprueche.md) — mit
 Auflösung, Stand und den Kosten der Gegenrichtung. Einträge mit dem Stand
 „entschieden" sind hier eingearbeitet; „offen" heißt: die dort
 beschriebene Auslegung gilt und ist umgesetzt, aber sie ist eine
