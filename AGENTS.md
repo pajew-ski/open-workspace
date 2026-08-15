@@ -4,9 +4,10 @@
 
 ## Hier weitermachen (Einstieg für neue Sessions)
 
-> **Neu seit 2026-08-14 — der Kausal-Layer ist in seinem verbindlichen
+> **Neu seit 2026-08-15 — der Kausal-Layer ist in seinem verbindlichen
 > Teil vollständig: C3, C0, C1, C2, C4, C5 und C6 sind gebaut, dazu der
-> aus C3 offen gebliebene Rückgriff auf die Long-Term-Statistics.** Neben
+> aus C3 offen gebliebene Rückgriff auf die Long-Term-Statistics und die
+> erste Nacharbeit darunter, das Rechenraster an der Frage.** Neben
 > dem Graph-Kern gilt [CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md)
 > (verbindlich für C0–C6; C7 und C8 bleiben opt-in). Umgesetzt sind sieben
 > Meilensteine und die Nachzügler:
@@ -170,6 +171,28 @@
 >   einen Stundenmittelwert für eine Messung hält. Details:
 >   [docs/beobachtungen.md](./docs/beobachtungen.md).
 >
+> - **Das Rechenraster an der Frage** — die erste Nacharbeit unter den
+>   Meilensteinen, und die Lücke, die der Statistik-Rückgriff hinterließ.
+>   Das Panel liest einen Wert nur so lange, wie das Raster SEINER Reihe
+>   reicht; in der aus Stundenaggregaten nachgefüllten Strecke fallen auf
+>   dem feinen Raster deshalb elf von zwölf Rasterpunkten als Lücke heraus.
+>   Konservativ ist das richtig (verlieren statt erfinden), aber es kostet
+>   das **Zeilenbudget**: Gekappt wird am älteren Ende, und die Kappung
+>   greift, bevor die alte Strecke erreicht ist — sie war damit gar nicht
+>   rechenbar. Jetzt setzt die Frage das Raster (`ow:studyInterval` am
+>   `ow:Estimand`, ein neuer Term; Feld „Rechenraster" auf
+>   `/graph/causal`), und `PanelOptions.intervalSeconds` füllt sich daraus.
+>   **Nicht** gebaut ist das Naheliegende und Falsche: den Stundenwert im
+>   Panel fortzuschreiben — die Toleranz bleibt das Raster jeder einzelnen
+>   Reihe, gefragt wird nur seltener. Vier Regeln tragen es: **feiner als
+>   die gröbste beteiligte Reihe wird abgelehnt** statt stumm angehoben
+>   (sonst trüge die Studie ein Raster, nach dem niemand gefragt hat),
+>   **dasselbe Raster gilt für das breite Panel** der Refutationen, **das
+>   Raster ist Signatur** (C7 — an Frage, Studie und Chronik, auch wenn es
+>   aus der gröbsten Reihe kam; eine Zeilenzahl ohne Raster ist eine Zahl
+>   ohne Maßstab), und **ein leeres Panel nennt den Ausweg**. Details:
+>   [docs/kausalmodell.md](./docs/kausalmodell.md).
+>
 > - **Die Widersprüche der Spec sind entschieden** (14.08.2026, die ersten
 >   acht in
 >   [docs/spec-widersprueche.md](./docs/spec-widersprueche.md); wo die
@@ -203,8 +226,14 @@
 >   gewinnt, der Startpunkt wandert zum obersten Punkt, den eine Session
 >   **ohne Freigabe beginnen darf**; und dass §3 „minutengenau über
 >   Monate" versprach, was §15.5 widerruft — über Monate gibt es
->   Stundenwerte, und die nur für die numerische Hälfte. **Keiner der
->   dreizehn Einträge steht offen.**
+>   Stundenwerte, und die nur für die numerische Hälfte. **Einer kam mit dem Rechenraster
+>   hinzu** (Eintrag 14): dass §19 „genau einen **Meilenstein**" verlangt,
+>   der Startpunkt seit Eintrag 12 aber auf eine **Nacharbeit** zeigt, für
+>   die §16 keine Zeile und damit keine Abnahme hat — entschieden: Die
+>   Nacharbeit erbt den Arbeitsmodus des Meilensteins (eine Session, ein
+>   Branch, ein PR, Definition of Done unverändert), ihre Abnahme steht in
+>   ihrem eigenen TODO-Eintrag. **Keiner der vierzehn Einträge steht
+>   offen.**
 >
 > **Nicht gebaut** und deshalb nirgends in der UI: Frontdoor- und
 > IV-**Schätzer** (identifiziert, aber nicht gerechnet — die Studie sagt
@@ -226,12 +255,13 @@
 > §19): der oberste nicht abgehakte Punkt unter „Kausal-Layer" in TODO.md,
 > **den eine Session ohne Freigabe beginnen darf** — die Opt-in-Zeile
 > C7/C8 wird übersprungen, nicht abgehakt und nicht angefangen. Damit
-> stehen als Nächstes die einzeln erledigbaren Nacharbeiten; die oberste
-> davon ist, Studien über die aus Aggregaten nachgefüllte Strecke auf
-> einem groben Raster rechnen zu lassen (das Panel verliert dort heute elf
-> von zwölf Zeilen — konservativ, aber teuer), danach dem Vorschlagslauf
-> das Automations-YAML zu zeigen (§8 nennt es als Quelle, gelesen wird es
-> noch nicht).
+> stehen als Nächstes die einzeln erledigbaren Nacharbeiten, und eine
+> davon ist eine Session, ein Branch, ein PR wie ein Meilenstein (§19,
+> seit Eintrag 14); ihre Abnahme steht in ihrem eigenen TODO-Eintrag. Die
+> oberste — das Rechenraster an der Frage — ist erledigt. Die nächste ist,
+> dem Vorschlagslauf das Automations-YAML zu zeigen (§8 nennt es als
+> Quelle, gelesen wird es noch nicht), danach die Vorschläge je Quelle
+> einzeln anzustoßen.
 
 **Stand 2026-08-10 (12. Ausbaustufe, Graph Core M0–M14 inkl. §12.4 und
 §18 — der Vollausbau der Spec ist damit abgeschlossen)**: Der
@@ -248,7 +278,7 @@ Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
   (SPARQL 1.1 Query/Update, RDF 1.2/RDF-star, Quads) + ehrliches
   In-Memory-Test-Double. Kein Default-Graph-Schreibpfad — jedes Tripel hat
   einen Named Graph, per Store erzwungen.
-- **Vokabular** (`ontology/ow.ttl` + `src/lib/graph/vocab.ts`): 131 eigene
+- **Vokabular** (`ontology/ow.ttl` + `src/lib/graph/vocab.ts`): 132 eigene
   Terme unter der produktweit konstanten Base
   `https://pajew-ski.github.io/open-workspace/ns/v1#`, jeder mit
   de/en-Labels und Begründung. CI-Check `bun run check:ontology` erzwingt

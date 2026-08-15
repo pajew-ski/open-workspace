@@ -795,15 +795,23 @@ dieser Haltung.
 
 Wie beim Graph-Kern: **ein Meilenstein = eine Session = ein Branch = ein
 PR** (GRAPH_CORE_SPEC §13). Kein Meilenstein wird aufgeteilt, keine zwei
-werden zusammengelegt.
+werden zusammengelegt. Dasselbe gilt für die **Nacharbeiten** unter der
+Meilensteinliste in TODO.md: Seit der verbindliche Teil (C0–C6) fertig
+ist, sind sie es, die eine Session ohne Freigabe beginnen darf — und eine
+davon ist eine Session, ein Branch, ein PR, genau wie ein Meilenstein.
 
 Jede Session:
 
 1. liest `AGENTS.md` („Hier weitermachen"), dieses Dokument und den
    Abschnitt zum anstehenden Meilenstein in §16, dazu `TODO.md`
    („Kausal-Layer") für den offenen Stand;
-2. setzt **genau einen** Meilenstein vollständig um, inklusive seiner
-   Abnahme aus §16;
+2. setzt **genau einen** Punkt vollständig um, inklusive seiner Abnahme:
+   bei einem Meilenstein die aus §16, bei einer **Nacharbeit** die, die
+   in ihrem TODO-Eintrag steht — §16 hat für Nacharbeiten keine Zeile,
+   und eine Session, die deshalb ohne Abnahme arbeitete, wäre die
+   schlechteste Auslegung von zweien
+   (docs/spec-widersprueche.md, Eintrag 14). Beides gilt gleich streng:
+   ein Punkt, ein Branch, ein PR;
 3. erfüllt die Definition of Done aus GRAPH_CORE_SPEC §14 — Lint 0,
    Typecheck sauber, kein `any` unter `src/lib/graph/`, Ontologie-Check
    grün, Unit-Tests für jedes neue Mapping, E2E-Gate grün inklusive neuer

@@ -44,7 +44,7 @@ import type { GraphHandle } from './model';
 import type { EstimandView } from './estimand';
 import { ESTIMATORS, type EstimatorId } from './estimate';
 import { studyQuads, type StudyWriteContext } from './study-graph';
-import { STUDY_VERDICTS, type StudyResult, type StudyVerdict } from './study';
+import { isoDurationSeconds, STUDY_VERDICTS, type StudyResult, type StudyVerdict } from './study';
 
 /** `graph/<u>/causal-archive` — behauptet und im Snapshot, nicht inferiert. */
 export function causalArchiveGraph(iri: IriFactory): string {
@@ -83,6 +83,14 @@ export interface ArchiveEntryView {
     softwareVersion?: string;
     reason: string;
     rows?: number;
+    /**
+     * Rechenraster des Laufs in Sekunden. Es gehört in die Chronik, weil
+     * zwei Einträge derselben Frage sonst mit stark verschiedenen
+     * Zeilenzahlen nebeneinanderstünden, ohne dass der Grund sichtbar
+     * wäre — dieselbe Strecke ergibt stündlich ein Zwölftel der Zeilen
+     * von fünfminütlich.
+     */
+    intervalSeconds?: number;
     effect?: { value: number; ciLow: number; ciHigh: number; unit?: string };
 }
 
@@ -170,6 +178,8 @@ export async function readCausalArchive(
         if (options.estimandId && estimandId !== options.estimandId) continue;
         const verdictRaw = valueOf(subject, OW.studyVerdict) ?? 'not-estimable';
         const estimatorRaw = valueOf(subject, OW.estimator);
+        const intervalRaw = valueOf(subject, OW.studyInterval);
+        const intervalSeconds = intervalRaw ? isoDurationSeconds(intervalRaw) ?? undefined : undefined;
 
         // Der Effekt eines Eintrags hängt an einem studieneigenen Knoten
         // (`<eintrag>/effect`) — nie am Reifier der Kante.
@@ -208,6 +218,7 @@ export async function readCausalArchive(
             ...(numberOf(valueOf(subject, SCHEMA.numberOfItems)) !== undefined
                 ? { rows: numberOf(valueOf(subject, SCHEMA.numberOfItems)) as number }
                 : {}),
+            ...(intervalSeconds !== undefined ? { intervalSeconds } : {}),
             ...(effect ? { effect } : {}),
         });
     }
