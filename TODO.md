@@ -1102,6 +1102,13 @@
       kaputt; eine korrekte Fassung bräuchte eine Canvas-Auflistung im
       Tool-Loop (der Finder kennt Canvas nicht). Erst bauen, wenn jemand
       es im Chat vermisst
+- [ ] **`createLocalRuntimeAdapter` ruft niemand auf** — weder Code noch
+      Test. Der Adapter ist die Vorleistung aus M12 für die Runtime
+      `local` (siehe P1, „Anwendung auf `local` stellen"), und bis die
+      Umstellung kommt, ist er der einzige Baustein ohne Rückhalt: Seine
+      Teile sind geprüft (`tests/platform/opfs.test.ts`,
+      `worker-store.test.ts`), ihr Zusammenspiel nicht. Solange das so
+      bleibt, kann er unbemerkt verrotten
 
 ---
 
