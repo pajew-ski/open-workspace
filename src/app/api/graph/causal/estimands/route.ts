@@ -31,6 +31,11 @@ const createSchema = z.object({
     interventionAt: z.string().max(40).optional(),
     windowFrom: z.string().max(40).optional(),
     windowThrough: z.string().max(40).optional(),
+    // Rechenraster in Sekunden. Die Obergrenze ist ein Jahr; die
+    // inhaltliche Grenze (nie feiner als die gröbste beteiligte Reihe)
+    // kennt erst das Panel, weil sie an den Daten hängt und nicht an der
+    // Frage — sie wird dort begründet abgelehnt, nicht hier geraten.
+    intervalSeconds: z.number().int().min(1).max(366 * 86400).optional(),
 }).strict();
 
 export async function GET(): Promise<Response> {
@@ -87,7 +92,8 @@ export async function POST(request: Request): Promise<Response> {
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Frage konnte nicht angelegt werden.';
         const status = message.includes('existiert bereits') ? 409
-            : /Ungültige|braucht|dieselbe Größe|Zeitpunkt|Fenster|Startwert|Unbekanntes/.test(message) ? 400
+            : /Ungültige|braucht|dieselbe Größe|Zeitpunkt|Fenster|Startwert|Unbekanntes|Rechenraster/
+                .test(message) ? 400
             : 500;
         if (status === 500) console.error('Causal Estimand Create Error:', error);
         return NextResponse.json({ error: message }, { status });

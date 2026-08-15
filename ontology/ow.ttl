@@ -930,6 +930,12 @@ ow:seed a owl:DatatypeProperty ;
     rdfs:comment "Der gesetzte Startwert jeder Ziehung in Bootstrap und Refutation. Ohne ihn ergäbe derselbe Lauf zweimal verschiedene Intervalle, und Invariante C7 wäre nicht einlösbar. Er steht am Estimand (die Frage legt ihn fest) und in der Studie (der Lauf hat ihn benutzt)."@de ;
     rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
 
+ow:studyInterval a owl:DatatypeProperty ;
+    rdfs:range xsd:duration ;
+    rdfs:label "Rechenraster"@de, "study interval"@en ;
+    rdfs:comment "Zeitraster, auf dem das Panel einer Frage gebaut wird, als xsd:duration (z. B. PT1H). Er steht am Estimand (die Frage setzt ihn) und an der Studie (der Lauf hat ihn benutzt) und ist Teil der Reproduktions-Signatur: Dieselbe Frage auf einem anderen Raster ist eine andere Rechnung mit anderer Fallzahl. Bewusst getrennt von ow:samplingInterval (Erfassungsregel EINER Reihe) und von ow:aggregateInterval (tatsächliche Auflösung eines Bestandsteils): Hier steht, worauf ausgewertet wird, nicht, was vorliegt. Gesetzt wird er nur gröber als die gröbste beteiligte Reihe — feiner wäre Verfeinern, und das erfände Werte."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
 ow:studyVerdict a owl:DatatypeProperty ;
     rdfs:domain ow:CausalStudy ;
     rdfs:range xsd:string ;
