@@ -9,7 +9,8 @@ Widerspruch, wie er beim Bauen aufgelöst wurde und was es kosten würde,
 ihn anders aufzulösen. Die Einträge 1–8 sind am **14.08.2026**
 entschieden worden, die Einträge 9–11 kamen beim Bauen von C6 hinzu und
 sind mit ihm entschieden, die Einträge 12–13 beim Rückgriff auf die
-Long-Term-Statistics; wo die Entscheidung den Text der Spec betrifft,
+Long-Term-Statistics, Eintrag 14 bei der ersten Nacharbeit (grobes
+Rechenraster); wo die Entscheidung den Text der Spec betrifft,
 ist sie dort eingearbeitet. Wer beim Bauen auf einen neuen stößt, trägt
 ihn hier ein. **Kein Eintrag steht offen.**
 
@@ -28,6 +29,7 @@ ihn hier ein. **Kein Eintrag steht offen.**
 | 11 | §8 „temporale Zulässigkeit maschinell entscheidbar" — wie weit? | C6 | entschieden, Spec präzisiert |
 | 12 | §19: Der Startpunkt zeigt auf den obersten offenen Punkt — und der ist gesperrt | LTS-Backfill | entschieden, Spec präzisiert |
 | 13 | §3 verspricht „minutengenau über Monate", §15.5 widerruft es | LTS-Backfill | entschieden, Spec korrigiert |
+| 14 | §19 kennt nur Meilensteine, gearbeitet wird an Nacharbeiten | Rechenraster | entschieden, Spec präzisiert |
 
 ---
 
@@ -417,3 +419,40 @@ geschrieben —, sähe eine spätere Studie über ein Jahr nach 105 000 Zeilen
 aus, von denen 96 000 erfunden wären. Die Konfidenzintervalle würden
 dadurch nicht falsch aussehen, sondern schmal: genau die
 selbstbewusste Scheinpräzision, gegen die §2.2 argumentiert.
+
+## 14. §19 verlangt „genau einen Meilenstein" — anstehen tut eine Nacharbeit (Rechenraster)
+
+**Die Stelle.** §19 Punkt 2: Jede Session „setzt **genau einen**
+Meilenstein vollständig um, inklusive seiner Abnahme aus §16." Und der
+Startpunkt, seit Eintrag 12: „der oberste nicht abgehakte Punkt unter
+‚Kausal-Layer' in TODO.md, den eine Session ohne Freigabe beginnen darf."
+
+**Der Widerspruch.** Seit C6 fertig und C7/C8 gesperrt sind, ist dieser
+oberste Punkt **keine Meilenstein-Zeile mehr**, sondern die erste
+Nacharbeit — hier: „Studien auf grobem Raster rechnen lassen". Damit
+zeigt der Startpunkt auf Arbeit, für die §16 keine Zeile und deshalb auch
+keine Abnahme hat. Wörtlich gelesen kann eine Session ab jetzt entweder
+gar nichts tun (kein Meilenstein offen, den sie beginnen darf) oder etwas
+tun, wofür Punkt 2 keine Anforderung stellt — und „keine Abnahme
+gefordert" ist die gefährlichere der beiden Lesarten. Der Widerspruch ist
+ein Nachlauf von Eintrag 12: Dort wanderte der Startpunkt weiter, die
+Anforderung daneben nicht.
+
+**Entschieden: Die Nacharbeit erbt den Arbeitsmodus des Meilensteins,
+ihre Abnahme steht in ihrem eigenen TODO-Eintrag.** §19 sagt das jetzt
+selbst. Konkret für diese Session: Der TODO-Eintrag nennt die
+Anforderungen ausdrücklich („ein Raster an der Frage (`ow:Estimand`), das
+`PanelOptions.intervalSeconds` füllt") **und** die Grenze („was es NICHT
+sein darf: den Stundenwert im Panel fortschreiben"). Beides ist als Test
+verankert (`tests/graph/causal-study-interval.test.ts`), die Definition
+of Done aus GRAPH_CORE_SPEC §14 gilt unverändert, und es blieb bei einem
+Punkt, einem Branch, einem PR.
+
+**Warum nicht die andere Richtung.** Die Nacharbeiten zu Meilensteinen zu
+erheben und in §16 einzutragen, hieße, die Tabelle mit dreizehn Zeilen zu
+füllen, von denen jede halbe Tage kostet — und der Unterschied, den §16
+transportiert (ein Meilenstein ist eine Fähigkeit, die es vorher nicht
+gab), ginge dabei verloren. Die dritte Möglichkeit — Nacharbeiten
+sammeln und in einem PR abräumen — widerspräche §19 an der Stelle, die
+seit dem Graph-Kern trägt: Ein PR, den man am Stück lesen kann, ist der
+Grund für die ganze Regel.

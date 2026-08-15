@@ -337,9 +337,10 @@ Ein Schätzer sieht keine Zeitreihen, sondern Zeilen. Die Umformung
 (`panel.ts`) ist der Ort, an dem die meisten stillen Fehler entstünden,
 wenn man sie nicht benennt:
 
-- **Das Raster ist das gröbste der beteiligten Reihen.** Eine
+- **Das Raster ist mindestens das gröbste der beteiligten Reihen.** Eine
   Fünf-Minuten-Reihe auf ein Minutenraster zu heben, hieße vier von fünf
-  Werten erfinden. Verdichten ist zulässig, Verfeinern nicht.
+  Werten erfinden. Verdichten ist zulässig, Verfeinern nicht — die Frage
+  darf das Raster deshalb nur **gröber** setzen (siehe unten).
 - **Eine Lücke kippt die ganze Zeile** (listenweiser Ausschluss) — und
   wird gezählt, je Größe. Fehlende Werte sind selten zufällig fehlend
   (§15.4); wer sie interpoliert, verzerrt unsichtbar.
@@ -350,6 +351,47 @@ wenn man sie nicht benennt:
   immer auf 21° steht, hat keinen schätzbaren Effekt — egal wie lang die
   Reihe ist. Das ist keine Schwäche des Verfahrens, sondern die Lage, und
   sie wird als solche ausgegeben.
+
+#### Das Rechenraster an der Frage (`ow:studyInterval`)
+
+Ohne Angabe nimmt das Panel den gröbsten Abstand der beteiligten Reihen.
+Eine Frage darf ihn **gröber** setzen — und für eine bestimmte Lage muss
+sie es sogar.
+
+**Die Lage** ist der Rückgriff auf die Long-Term-Statistics (§15.5,
+[docs/beobachtungen.md](./beobachtungen.md)): Er verlängert den Bestand
+nach hinten, aber in Stundenschritten. Die Erfassungsregel der Größe
+bleibt dabei ihr feines Raster (`ow:samplingInterval`, z. B. PT5M) — nur
+liegt in der alten Strecke pro Stunde genau ein Punkt
+(`ow:aggregateInterval` PT1H). Auf dem feinen Raster fallen dort elf von
+zwölf Rasterpunkten als Lücke heraus. Das ist die konservative Seite
+(verlieren statt erfinden), kostet aber das **Zeilenbudget**: Gekappt
+wird am älteren Ende, und die Kappung greift, bevor die alte Strecke
+überhaupt erreicht ist. Eine Frage, die stündlich rechnet, holt sie
+zurück — sie fragt seltener, statt mehr zu behaupten.
+
+**Was es ausdrücklich nicht ist**: den Stundenwert im Panel
+fortzuschreiben. Das bliese die Fallzahl auf das Zwölffache und machte
+die Konfidenzintervalle schmal, ohne dass eine einzige Beobachtung
+dazugekommen wäre — genau die Scheinpräzision, gegen die §2.2
+argumentiert.
+
+**Die Regeln:**
+
+| Regel | Wogegen sie steht |
+|---|---|
+| Feiner als die gröbste beteiligte Reihe wird **abgelehnt**, nicht angehoben | Eine Studie mit einem Raster, nach dem niemand gefragt hat — und Zeilen, die niemand gemessen hat |
+| Die Toleranz bleibt das Raster **jeder einzelnen Reihe** | Ein Wert, der über sein eigenes Raster hinaus fortgeschrieben wird |
+| Dasselbe Raster gilt für das breite Panel der Refutationen | Refutationen auf einer anderen Datenlage als die Zahl, die sie widerlegen sollen |
+| Das Raster steht an Frage, Studie und Chronik (`ow:studyInterval`) | Eine Zeilenzahl ohne Maßstab: dieselbe Strecke ergibt stündlich ein Zwölftel der Zeilen von fünfminütlich |
+
+Ein leeres Panel sagt es von sich aus: Wo jede Zeile an einer Lücke
+gescheitert ist, nennt die Begründung das gerechnete Raster und den
+gröberen Weg. Die Oberfläche geht einen Schritt weiter — sie zeigt bei
+jeder Frage, welche beteiligte Größe eine nachgefüllte Strecke hat und
+welches Raster diese braucht.
+
+Abnahme: `tests/graph/causal-study-interval.test.ts`.
 
 ### Refutation: der Versuch, die eigene Zahl zu widerlegen
 
@@ -431,7 +473,9 @@ und in den Shapes:
   keiner Annahme
 - Behandlung, Wirkung, Identifikationsstrategie, Schätzverfahren
 - **Startwert des Zufalls** (`ow:seed`) und Softwareversion
-- Datenfenster (`schema:temporalCoverage`) und Zeilenzahl
+- Datenfenster (`schema:temporalCoverage`), Zeilenzahl und das
+  **Rechenraster** (`ow:studyInterval`) — die Zeilenzahl ohne ihr Raster
+  wäre eine Zahl ohne Maßstab
 - je Eingabe ein Knoten mit eingefrorener Erfassungsregel: Quelle, Rolle,
   Verdichtung, Raster, Zeitversatz, Anzahl Beobachtungen
 - jeder Refutationsversuch mit Verfahren, Verdikt und Kennzahl
@@ -842,6 +886,8 @@ Eng bleibt es trotzdem, je mit Negativtest in
 - seit C4: eine Frage mit Kennung, Behandlung, Wirkung und Startwert; eine
   Studie mit Urteil, Modell-Revision, Startwert, Softwareversion und
   Zeitpunkt; ein Falsifikationsversuch mit Verfahren und Verdikt
+- höchstens ein Rechenraster (`ow:studyInterval`, `xsd:duration`) je Frage
+  und je Studie — zwei Raster an derselben Rechnung wären keine Rechnung
 - seit C4 und am schärfsten: **eine Effektstärke ohne bestandene
   Refutation ist ein Verstoß**, kein Mangel (`ow:refutationPassed` muss
   vorhanden und `true` sein) — Invariante C5, in SHACL geschrieben. Ebenso

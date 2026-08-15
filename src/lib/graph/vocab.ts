@@ -232,6 +232,11 @@ export const OW = {
     adjustedFor: ow('adjustedFor'),
     modelRevision: ow('modelRevision'),
     seed: ow('seed'),
+    // Das Raster, auf dem gerechnet wird. Es steht an der Frage (die
+    // Setzung) und an der Studie (was der Lauf benutzt hat) — bewusst
+    // getrennt von ow:samplingInterval, das die Erfassungsregel EINER
+    // Reihe ist.
+    studyInterval: ow('studyInterval'),
     studyVerdict: ow('studyVerdict'),
     effectSize: ow('effectSize'),
     standardError: ow('standardError'),

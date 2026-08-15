@@ -37,7 +37,9 @@ import { listEstimands, type EstimandView } from './estimand';
 import { ESTIMATORS, type EstimatorId } from './estimate';
 import { REFUTATION_METHODS, REFUTATION_VERDICTS, type RefutationMethod, type RefutationVerdict } from './refute';
 import {
+    isoDurationSeconds,
     runStudy,
+    secondsToIsoDuration,
     STUDY_VERDICTS,
     type StudyDatasetInput,
     type StudyResult,
@@ -117,19 +119,10 @@ const ROLE_LABEL: Record<StudyDatasetInput['role'], string> = {
     'control-outcome': 'control-outcome',
 };
 
-/** `900` → `PT15M`; Sekunden nur, wenn sie übrig bleiben. */
-export function secondsToIsoDuration(seconds: number): string {
-    const total = Math.max(0, Math.round(seconds));
-    const hours = Math.floor(total / 3600);
-    const minutes = Math.floor((total % 3600) / 60);
-    const rest = total % 60;
-    const parts = [
-        hours > 0 ? `${hours}H` : '',
-        minutes > 0 ? `${minutes}M` : '',
-        rest > 0 || total === 0 ? `${rest}S` : '',
-    ].join('');
-    return `PT${parts}`;
-}
+// Die Umrechnung liegt im puren Kern (`study.ts`), weil auch die Frage
+// selbst (`estimand.ts`) sie braucht — und ein Import von dort hierher
+// wäre ein Kreis.
+export { secondsToIsoDuration } from './study';
 
 /**
  * Der vollständige Lauf als Quads. Enthalten ist immer die Signatur
@@ -192,6 +185,16 @@ export function studyQuads(iri: IriFactory, context: StudyWriteContext): Quad[] 
             study,
             namedNode(SCHEMA.numberOfItems),
             typedLiteral.integer(dataset.rows),
+            graph,
+        ));
+        // Das Raster gehört zur Signatur, und zwar immer — auch wenn es
+        // aus der gröbsten Reihe kam. Ohne es wäre die Zeilenzahl eine
+        // Zahl ohne Maßstab: dieselbe Frage über dieselbe Strecke ergibt
+        // stündlich ein Zwölftel der Zeilen von fünfminütlich.
+        quads.push(factory.quad(
+            study,
+            namedNode(OW.studyInterval),
+            typedLiteral.duration(secondsToIsoDuration(dataset.intervalSeconds)),
             graph,
         ));
         if (dataset.from !== undefined && dataset.through !== undefined) {
@@ -424,6 +427,8 @@ export interface StudyView {
     generatedAt?: string;
     reason: string;
     rows?: number;
+    /** Rechenraster des Panels in Sekunden — Teil der Signatur (C7). */
+    intervalSeconds?: number;
     /** Datenfenster als ISO-Intervall, quelltreu. */
     window?: string;
     adjustedFor: string[];
@@ -480,6 +485,8 @@ export async function readCausalStudies(
         if (!own.some(quad => quad.predicate.value === RDF.type && quad.object.value === OW.CausalStudy)) continue;
         const verdictRaw = valueOf(subject, OW.studyVerdict) ?? 'not-estimable';
         const estimatorRaw = valueOf(subject, OW.estimator);
+        const intervalRaw = valueOf(subject, OW.studyInterval);
+        const studyIntervalSeconds = intervalRaw ? isoDurationSeconds(intervalRaw) ?? undefined : undefined;
         const parts = valuesOf(subject, SCHEMA.hasPart);
 
         const refutations: StudyRefutationView[] = [];
@@ -597,6 +604,7 @@ export async function readCausalStudies(
             ...(numberOf(valueOf(subject, SCHEMA.numberOfItems)) !== undefined
                 ? { rows: numberOf(valueOf(subject, SCHEMA.numberOfItems)) as number }
                 : {}),
+            ...(studyIntervalSeconds !== undefined ? { intervalSeconds: studyIntervalSeconds } : {}),
             ...(valueOf(subject, SCHEMA.temporalCoverage)
                 ? { window: valueOf(subject, SCHEMA.temporalCoverage) as string }
                 : {}),
@@ -751,6 +759,9 @@ export async function runCausalStudies(
                 ...(estimand.interventionAt ? { interventionAt: Date.parse(estimand.interventionAt) } : {}),
                 ...(windowFrom !== undefined ? { windowFrom } : {}),
                 ...(windowThrough !== undefined ? { windowThrough } : {}),
+                ...(estimand.intervalSeconds !== undefined
+                    ? { intervalSeconds: estimand.intervalSeconds }
+                    : {}),
             },
             model,
             series,

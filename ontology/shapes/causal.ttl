@@ -214,6 +214,16 @@ owsh:EstimandShape a sh:NodeShape ;
         sh:datatype xsd:integer ;
         sh:severity sh:Violation ;
         sh:message "Ohne gesetzten Startwert (ow:seed) wäre kein Lauf reproduzierbar (Invariante C7)."@de ;
+    ] ;
+    # Das Rechenraster ist optional — ohne Angabe nimmt das Panel den
+    # gröbsten Abstand der beteiligten Reihen. Zwei Raster an derselben
+    # Frage wären dagegen keine Frage mehr.
+    sh:property [
+        sh:path ow:studyInterval ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:duration ;
+        sh:severity sh:Violation ;
+        sh:message "Eine Zielgröße hat höchstens ein Rechenraster (ow:studyInterval) als xsd:duration."@de ;
     ] .
 
 owsh:CausalStudyShape a sh:NodeShape ;
@@ -242,6 +252,17 @@ owsh:CausalStudyShape a sh:NodeShape ;
         sh:datatype xsd:integer ;
         sh:severity sh:Violation ;
         sh:message "Eine Studie muss ihren gesetzten Startwert (ow:seed) nennen (Invariante C7)."@de ;
+    ] ;
+    # Ohne Raster wäre die Zeilenzahl eine Zahl ohne Maßstab: Dieselbe
+    # Strecke ergibt stündlich ein Zwölftel der Zeilen von fünfminütlich.
+    # Kein Pflichtfeld, weil ein Lauf ohne Panel (nicht identifizierbar)
+    # auch kein Raster hatte — behauptete er eines, wäre es erfunden.
+    sh:property [
+        sh:path ow:studyInterval ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:duration ;
+        sh:severity sh:Violation ;
+        sh:message "Eine Studie nennt höchstens ein Rechenraster (ow:studyInterval) als xsd:duration."@de ;
     ] ;
     sh:property [
         sh:path schema:softwareVersion ;

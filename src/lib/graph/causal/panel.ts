@@ -7,9 +7,12 @@
  * Ort, an dem die meisten stillen Fehler entstehen würden, wenn man sie
  * nicht benennt:
  *
- *  - **Das Raster ist das gröbste der beteiligten Reihen.** Wer eine
- *    Fünf-Minuten-Reihe auf ein Minutenraster hebt, erfindet vier von fünf
- *    Werten. Verdichten ist zulässig, Verfeinern nicht.
+ *  - **Das Raster ist mindestens das gröbste der beteiligten Reihen.** Wer
+ *    eine Fünf-Minuten-Reihe auf ein Minutenraster hebt, erfindet vier von
+ *    fünf Werten. Verdichten ist zulässig, Verfeinern nicht — deshalb darf
+ *    ein an der Frage gesetztes Raster (`intervalSeconds`) nur gröber
+ *    sein, und ein feineres wird abgelehnt statt stillschweigend
+ *    hochgesetzt.
  *  - **Eine Lücke kippt die ganze Zeile.** Fehlt eine Größe, fällt der
  *    Zeitpunkt heraus (listenweiser Ausschluss) — und wird gezählt, je
  *    Größe. Fehlende Werte sind selten zufällig fehlend (§15.4); wer sie
@@ -50,7 +53,17 @@ export interface PanelOptions {
     from?: number;
     /** Obere Fenstergrenze (inklusiv, ms seit Epoch). */
     through?: number;
-    /** Raster in Sekunden; ohne Angabe der gröbste Abstand der Reihen. */
+    /**
+     * Raster in Sekunden; ohne Angabe der gröbste Abstand der Reihen.
+     *
+     * Gesetzt wird es an der **Frage** (`ow:studyInterval`), und es darf
+     * nur gröber sein als dieser Abstand. Der Grund ist die aus
+     * Stundenaggregaten nachgefüllte Strecke (§15.5): Dort trägt eine
+     * Fünf-Minuten-Reihe nur die vollen Stunden bei, und auf dem feinen
+     * Raster fallen elf von zwölf Zeilen als Lücke heraus. Ein gröberes
+     * Raster gewinnt sie zurück, ohne einen einzigen Wert zu erfinden —
+     * es fragt schlicht seltener.
+     */
     intervalSeconds?: number;
     /** Harte Obergrenze an Zeilen; gekappt wird am ÄLTEREN Ende. */
     maxRows?: number;
@@ -74,6 +87,12 @@ export interface Panel {
     columns: PanelColumn[];
     rows: number;
     intervalSeconds: number;
+    /**
+     * Woher das Raster kommt: aus der gröbsten Reihe (`series`) oder aus
+     * der Frage (`requested`). Es gehört in die Signatur der Studie —
+     * dieselbe Frage auf einem anderen Raster ist eine andere Rechnung.
+     */
+    intervalSource: 'series' | 'requested';
     from?: number;
     through?: number;
     /** Rasterpunkte insgesamt, bevor Lücken Zeilen gestrichen haben. */
@@ -173,17 +192,30 @@ function valueAt(prepared: PreparedSeries, at: number): number | null {
     return point.v;
 }
 
-function emptyPanel(intervalSeconds: number, problem: string): Panel {
+function emptyPanel(
+    intervalSeconds: number,
+    problem: string,
+    intervalSource: Panel['intervalSource'] = 'series',
+): Panel {
     return {
         timestamps: [],
         columns: [],
         rows: 0,
         intervalSeconds,
+        intervalSource,
         candidateRows: 0,
         truncated: false,
         problem,
         column: () => undefined,
     };
+}
+
+/** `3600` → „1 h", `900` → „15 min". Deutsch, deterministisch, ohne Locale. */
+export function formatInterval(seconds: number): string {
+    if (seconds % 86400 === 0) return `${seconds / 86400} d`;
+    if (seconds % 3600 === 0) return `${seconds / 3600} h`;
+    if (seconds % 60 === 0) return `${seconds / 60} min`;
+    return `${seconds} s`;
 }
 
 /**
@@ -194,8 +226,24 @@ function emptyPanel(intervalSeconds: number, problem: string): Panel {
 export function buildPanel(series: readonly PanelSeries[], options: PanelOptions = {}): Panel {
     if (series.length === 0) return emptyPanel(0, 'Ohne Größen entsteht kein Panel.');
 
-    const intervalSeconds = options.intervalSeconds
-        ?? Math.max(...series.map(entry => Math.max(entry.intervalSeconds, 1)));
+    const coarsest = Math.max(...series.map(entry => Math.max(entry.intervalSeconds, 1)));
+    // Ein an der Frage gesetztes Raster darf verdichten, nie verfeinern.
+    // Es stillschweigend auf `coarsest` anzuheben wäre die bequemere
+    // Variante — und die unehrliche: Die Studie trüge dann ein Raster,
+    // nach dem niemand gefragt hat.
+    if (options.intervalSeconds !== undefined && options.intervalSeconds < coarsest) {
+        return emptyPanel(
+            options.intervalSeconds,
+            `Das gesetzte Rechenraster (${formatInterval(options.intervalSeconds)}) ist feiner als die `
+            + `gröbste beteiligte Reihe (${formatInterval(coarsest)}). Auf diesem Raster gäbe es nur `
+            + 'Werte, die niemand gemessen hat — verdichten ist zulässig, verfeinern nicht.',
+            'requested',
+        );
+    }
+    const intervalSource: Panel['intervalSource'] = options.intervalSeconds !== undefined
+        ? 'requested'
+        : 'series';
+    const intervalSeconds = options.intervalSeconds ?? coarsest;
     const step = intervalSeconds * 1000;
     const prepared = series.map(prepare);
 
@@ -204,6 +252,7 @@ export function buildPanel(series: readonly PanelSeries[], options: PanelOptions
         return emptyPanel(
             intervalSeconds,
             `Für ${missing.map(entry => entry.series.key).join(', ')} liegt keine einzige Beobachtung vor.`,
+            intervalSource,
         );
     }
 
@@ -223,13 +272,18 @@ export function buildPanel(series: readonly PanelSeries[], options: PanelOptions
             intervalSeconds,
             'Die Reihen überlappen sich zeitlich nicht — es gibt keinen Zeitpunkt, '
             + 'an dem alle beteiligten Größen erfasst waren.',
+            intervalSource,
         );
     }
 
     const firstBucket = Math.ceil(start / step) * step;
     const lastBucket = Math.floor(end / step) * step;
     if (lastBucket < firstBucket) {
-        return emptyPanel(intervalSeconds, 'Das gemeinsame Fenster ist kürzer als ein Rasterschritt.');
+        return emptyPanel(
+            intervalSeconds,
+            'Das gemeinsame Fenster ist kürzer als ein Rasterschritt.',
+            intervalSource,
+        );
     }
 
     const candidateRows = Math.floor((lastBucket - firstBucket) / step) + 1;
@@ -271,13 +325,22 @@ export function buildPanel(series: readonly PanelSeries[], options: PanelOptions
         columns,
         rows,
         intervalSeconds,
+        intervalSource,
         ...(rows > 0 ? { from: timestamps[0], through: timestamps[rows - 1] } : {}),
         candidateRows: truncated ? Math.min(candidateRows, maxRows) : candidateRows,
         truncated,
         ...(rows === 0
             ? {
                 problem: 'Kein Zeitpunkt, an dem alle beteiligten Größen einen Wert hatten — '
-                    + 'jede Zeile ist an einer Lücke gescheitert.',
+                    + 'jede Zeile ist an einer Lücke gescheitert.'
+                    // Der häufigste Fall dahinter ist eine aus Stundenaggregaten
+                    // nachgefüllte Strecke unter einem feinen Raster (§15.5).
+                    // Dann ist ein gröberes Rechenraster die Antwort — und kein
+                    // Fortschreiben der Werte.
+                    + (intervalSource === 'series'
+                        ? ` Gerechnet wurde auf ${formatInterval(intervalSeconds)}; ein gröberes `
+                            + 'Rechenraster an der Frage kann Zeilen zurückholen, ohne einen Wert zu erfinden.'
+                        : ''),
             }
             : {}),
         column: key => byKey.get(key),

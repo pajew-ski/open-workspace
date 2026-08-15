@@ -245,9 +245,18 @@ Reihe reicht (C4). Eine Größe im Fünf-Minuten-Raster trägt in der
 nachgefüllten Strecke deshalb nur die **vollen Stunden** bei; die übrigen
 Rasterpunkte fallen als Lücke heraus und stehen als solche in der Studie.
 Das ist gewollt: lieber elf von zwölf Zeilen verlieren als elf von zwölf
-erfinden. Wer die alte Strecke wirklich auswerten will, braucht Größen
-im Stundenraster — für Wetter, Preis und Verbrauch ist das ohnehin das
-passende.
+erfinden.
+
+Wer die alte Strecke auswerten will, stellt die Frage deshalb
+**stündlich**: Ein Rechenraster an der Frage (`ow:studyInterval`, Feld
+„Rechenraster" auf `/graph/causal`) verdichtet das Panel auf ein Raster,
+auf dem die nachgefüllte Strecke wirklich Werte hat. Das verliert nichts
+und erfindet nichts — es fragt seltener. Ohne diese Einstellung wird das
+Zeilenbudget am jüngeren Rand verbraucht, und die alte Strecke ist gar
+nicht erreichbar. Feiner als die gröbste beteiligte Reihe geht das Raster
+nicht; das Panel lehnt es begründet ab, statt es stumm anzuheben.
+Einzelheiten: [docs/kausalmodell.md](./kausalmodell.md),
+„Das Rechenraster an der Frage".
 
 Ein zweiter Lauf ist ein No-Op: Die Tage sind dann da, und ein
 vorhandener Tag wird nicht überschrieben.
