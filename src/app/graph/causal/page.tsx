@@ -18,6 +18,7 @@ import { identifyInModel } from '@/lib/graph/causal/view';
 import { ESTIMATOR_LABEL, type EstimatorId } from '@/lib/graph/causal/estimate';
 import { REFUTATION_LABEL, type RefutationMethod, type RefutationVerdict } from '@/lib/graph/causal/refute';
 import { ESTIMATOR_CHOICES, STUDY_VERDICT_LABEL, type StudyVerdict } from '@/lib/graph/causal/study';
+import { formatInterval } from '@/lib/graph/causal/panel';
 import type { EstimandView } from '@/lib/graph/causal/estimand';
 import type { StudyView } from '@/lib/graph/causal/study-graph';
 import type { ArchiveEntryView } from '@/lib/graph/causal/archive';
@@ -71,6 +72,10 @@ interface ObservedVariable {
     unit?: string;
     count: number;
     enabled: boolean;
+    /** Abtastabstand der Reihe in Sekunden (Erfassungsregel, C3). */
+    intervalSeconds: number;
+    /** Raster der aus Aggregaten nachgefüllten Strecke, falls es eine gibt. */
+    aggregateIntervalSeconds?: number;
 }
 
 interface ValidationResult {
@@ -655,11 +660,27 @@ interface StudiesProps {
     estimands: readonly EstimandView[];
     studies: readonly StudyView[];
     archive: readonly ArchiveEntryView[];
+    observedVariables: readonly ObservedVariable[];
     busy: boolean;
     onAsk(input: Record<string, unknown>): Promise<void>;
     onRemove(estimandId: string): Promise<void>;
     onDiscardArchive(entryId: string): Promise<void>;
 }
+
+/**
+ * Auswahl fürs Rechenraster. „Automatisch" ist der Normalfall — dann
+ * nimmt das Panel den gröbsten Abstand der beteiligten Reihen. Gesetzt
+ * wird es für die aus Stundenaggregaten nachgefüllte Strecke (§15.5):
+ * Dort trägt eine Fünf-Minuten-Reihe nur die vollen Stunden bei, und auf
+ * ihrem eigenen Raster fallen elf von zwölf Zeilen als Lücke heraus.
+ */
+const INTERVAL_CHOICES: ReadonlyArray<{ value: number; label: string }> = [
+    { value: 300, label: '5 min' },
+    { value: 900, label: '15 min' },
+    { value: 3600, label: '1 h (Statistik-Strecke)' },
+    { value: 21600, label: '6 h' },
+    { value: 86400, label: '1 d' },
+];
 
 function StudyCard({ model, estimand, study, history, busy, onDiscardArchive }: {
     model: CausalModelView;
@@ -694,6 +715,8 @@ function StudyCard({ model, estimand, study, history, busy, onDiscardArchive }: 
                 Wirkung von <strong>{shortName(model, estimand.treatment)}</strong> auf{' '}
                 <strong>{shortName(model, estimand.outcome)}</strong>
                 {estimand.estimator !== 'auto' && ` — ${ESTIMATOR_LABEL[estimand.estimator as EstimatorId]}`}
+                {estimand.intervalSeconds !== undefined
+                    && ` — gerechnet im Raster ${formatInterval(estimand.intervalSeconds)}`}
             </p>
 
             {study?.effect && (
@@ -782,6 +805,11 @@ function StudyCard({ model, estimand, study, history, busy, onDiscardArchive }: 
                                 </span>
                                 <span className={styles.badges}>
                                     <span className={styles.badge}>Rev. {entry.modelRevision}</span>
+                                    {entry.intervalSeconds !== undefined && (
+                                        <span className={styles.badge}>
+                                            {formatInterval(entry.intervalSeconds)}
+                                        </span>
+                                    )}
                                     {entry.generatedAt && (
                                         <span className={styles.badge}>
                                             {new Date(entry.generatedAt).toLocaleDateString('de-DE')}
@@ -816,6 +844,14 @@ function StudyCard({ model, estimand, study, history, busy, onDiscardArchive }: 
                     Modell-Revision {study.modelRevision}
                     {study.estimator ? ` · ${ESTIMATOR_LABEL[study.estimator]}` : ''}
                     {study.rows !== undefined ? ` · ${study.rows.toLocaleString('de-DE')} Zeilen` : ''}
+                    {/*
+                      * Die Zeilenzahl ohne ihr Raster wäre eine Zahl ohne
+                      * Maßstab: dieselbe Strecke ergibt stündlich ein
+                      * Zwölftel der Zeilen von fünfminütlich.
+                      */}
+                    {study.intervalSeconds !== undefined
+                        ? ` · Raster ${formatInterval(study.intervalSeconds)}`
+                        : ''}
                     {` · Startwert ${study.seed}`}
                     {study.softwareVersion ? ` · Version ${study.softwareVersion}` : ''}
                     {study.generatedAt ? ` · ${new Date(study.generatedAt).toLocaleString('de-DE')}` : ''}
@@ -832,7 +868,7 @@ function StudyCard({ model, estimand, study, history, busy, onDiscardArchive }: 
  * das Ergebnis darunter zu einer anderen Revision gehört.
  */
 function StudiesPanel({
-    model, estimands, studies, archive, busy, onAsk, onRemove, onDiscardArchive,
+    model, estimands, studies, archive, observedVariables, busy, onAsk, onRemove, onDiscardArchive,
 }: StudiesProps) {
     const [treatment, setTreatment] = useState('');
     const [outcome, setOutcome] = useState('');
@@ -840,7 +876,25 @@ function StudiesPanel({
     const [name, setName] = useState('');
     const [interventionAt, setInterventionAt] = useState('');
     const [controlOutcome, setControlOutcome] = useState('');
+    const [interval, setInterval] = useState('auto');
     const byId = new Map(studies.map(study => [study.estimandId, study]));
+
+    const inModel = new Set(model.variables.map(variable => variable.iri));
+    const involved = observedVariables.filter(variable => inModel.has(variable.iri));
+    // Das gröbste Raster der beteiligten Reihen ist die Untergrenze: Ein
+    // feineres würde das Panel begründet ablehnen (verfeinern hieße
+    // Werte erfinden), und darauf sollte niemand erst nach einem Lauf
+    // stoßen.
+    const coarsest = involved.reduce((max, variable) => Math.max(max, variable.intervalSeconds), 0);
+    // Größen mit einer aus Aggregaten nachgefüllten Strecke: Sie sind der
+    // Grund, warum es die Einstellung überhaupt gibt.
+    const aggregated = involved.filter(variable => variable.aggregateIntervalSeconds !== undefined);
+    const aggregateInterval = aggregated.reduce(
+        (max, variable) => Math.max(max, variable.aggregateIntervalSeconds ?? 0),
+        0,
+    );
+    const chosen = interval === 'auto' ? undefined : Number(interval);
+    const tooFine = chosen !== undefined && coarsest > 0 && chosen < coarsest;
 
     const ask = async (event: React.FormEvent) => {
         event.preventDefault();
@@ -859,10 +913,12 @@ function StudiesPanel({
             ...(interventionAt !== ''
                 ? { interventionAt: new Date(interventionAt).toISOString() }
                 : {}),
+            ...(chosen !== undefined ? { intervalSeconds: chosen } : {}),
         });
         setName('');
         setInterventionAt('');
         setControlOutcome('');
+        setInterval('auto');
     };
 
     return (
@@ -939,6 +995,21 @@ function StudiesPanel({
                         </select>
                     </label>
                     <label className={styles.field}>
+                        <span className={styles.fieldLabel}>Rechenraster</span>
+                        <select
+                            className={styles.input}
+                            value={interval}
+                            onChange={event => setInterval(event.target.value)}
+                        >
+                            <option value="auto">
+                                automatisch{coarsest > 0 ? ` (${formatInterval(coarsest)})` : ''}
+                            </option>
+                            {INTERVAL_CHOICES.map(choice => (
+                                <option key={choice.value} value={String(choice.value)}>{choice.label}</option>
+                            ))}
+                        </select>
+                    </label>
+                    <label className={styles.field}>
                         <span className={styles.fieldLabel}>Name (optional)</span>
                         <input
                             className={styles.input}
@@ -985,11 +1056,34 @@ function StudiesPanel({
                         Frage stellen
                     </Button>
                 </div>
+                {tooFine && (
+                    <p className={styles.editorHint}>
+                        <AlertTriangle size={14} aria-hidden="true" /> Das gewählte Raster (
+                        {formatInterval(chosen as number)}) ist feiner als die gröbste beteiligte Reihe (
+                        {formatInterval(coarsest)}). Das Panel wird es ablehnen: Auf diesem Raster gäbe es
+                        nur Werte, die niemand gemessen hat — verdichten ist zulässig, verfeinern nicht.
+                    </p>
+                )}
+                {aggregated.length > 0 && (
+                    <p className={styles.editorHint}>
+                        {aggregated.length === 1
+                            ? `${aggregated[0].name} hat`
+                            : `${aggregated.length} beteiligte Größen haben`}{' '}
+                        eine aus Aggregaten nachgefüllte Strecke (
+                        {formatInterval(aggregateInterval)}, Long-Term-Statistics). Dort liegt nur zu jeder
+                        vollen Stunde ein Punkt; auf einem feineren Raster fallen die übrigen Zeilen als Lücke
+                        heraus. Wer diese Strecke auswerten will, setzt das Rechenraster bewusst auf{' '}
+                        {formatInterval(aggregateInterval)} — das verliert nichts und erfindet nichts, es
+                        fragt seltener.
+                    </p>
+                )}
                 <p className={styles.editorHint}>
                     Das Verfahren darf <strong>automatisch</strong> bleiben — dann entscheidet die
                     Datenlage: binäre Behandlung über Propensity-Gewichtung, stetige über Regression,
-                    mit gesetztem Eingriffszeitpunkt über die Zeitreihe. Was gerechnet wurde, steht
-                    hinterher am Ergebnis, samt Startwert, Datenfenster und Modell-Revision.
+                    mit gesetztem Eingriffszeitpunkt über die Zeitreihe. Auch das Rechenraster darf
+                    automatisch bleiben; dann ist es das gröbste der beteiligten Reihen. Was gerechnet
+                    wurde, steht hinterher am Ergebnis, samt Raster, Startwert, Datenfenster und
+                    Modell-Revision.
                 </p>
             </form>
         </div>
@@ -1356,6 +1450,7 @@ function ModelCard({
                 estimands={estimands}
                 studies={studies}
                 archive={archive}
+                observedVariables={observedVariables}
                 busy={busy}
                 onAsk={onAsk}
                 onRemove={onRemoveEstimand}

@@ -81,6 +81,14 @@ export async function GET(): Promise<Response> {
                 ...(variable.unit ? { unit: variable.unit } : {}),
                 count: variable.status.count,
                 enabled: variable.enabled,
+                // Abtastabstand und die aus Aggregaten nachgefüllte
+                // Strecke (§15.5): Erst mit beidem kann die Oberfläche
+                // sagen, welches Rechenraster eine Frage braucht, statt
+                // den Nutzer raten zu lassen, warum das Panel leer bleibt.
+                intervalSeconds: variable.intervalSeconds,
+                ...(variable.status.aggregate
+                    ? { aggregateIntervalSeconds: variable.status.aggregate.intervalSeconds }
+                    : {}),
             }));
         // Fragen und Ergebnisse gehören auf dieselbe Seite wie der DAG:
         // Ein Effekt wird nie ohne das Modell ausgegeben, aus dem er

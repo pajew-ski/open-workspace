@@ -40,7 +40,14 @@ import {
     type EstimatorId,
 } from './estimate';
 import { identifyEffect, type IdentificationResult } from './identify';
-import { buildPanel, checkPositivity, type Panel, type PanelSeries, type PositivityReport } from './panel';
+import {
+    buildPanel,
+    checkPositivity,
+    formatInterval,
+    type Panel,
+    type PanelSeries,
+    type PositivityReport,
+} from './panel';
 import { refutationPassed, runRefutations, type RefutationResult } from './refute';
 import type { CausalModelView } from './types';
 import { dagFromModel } from './view';
@@ -75,6 +82,16 @@ export interface StudySpec {
     /** Datenfenster (ms seit Epoch), beide inklusiv. */
     windowFrom?: number;
     windowThrough?: number;
+    /**
+     * Rechenraster in Sekunden, an der Frage gesetzt (`ow:studyInterval`).
+     * Ohne Angabe nimmt das Panel den gröbsten Abstand der beteiligten
+     * Reihen. Gesetzt wird es, um über eine aus Stundenaggregaten
+     * nachgefüllte Strecke rechnen zu können (§15.5): Dort trägt eine
+     * feine Reihe nur die vollen Stunden bei, und auf ihrem eigenen
+     * Raster fielen elf von zwölf Zeilen als Lücke heraus. Feiner als der
+     * gröbste Abstand darf es nicht sein — das Panel lehnt es dann ab.
+     */
+    intervalSeconds?: number;
 }
 
 /** Eine Reihe samt der Angaben, die in die Signatur der Studie gehören. */
@@ -111,6 +128,8 @@ export interface StudyDatasetInput {
 export interface StudyDataset {
     rows: number;
     intervalSeconds: number;
+    /** Kam das Raster aus der Frage oder aus der gröbsten Reihe? */
+    intervalSource: Panel['intervalSource'];
     from?: number;
     through?: number;
     truncated: boolean;
@@ -205,6 +224,20 @@ export function treatmentLagSeconds(model: CausalModelView, treatment: string, o
     return isoDurationSeconds(edge.temporalLag) ?? 0;
 }
 
+/** `900` → `PT15M`; Sekunden nur, wenn sie übrig bleiben. */
+export function secondsToIsoDuration(seconds: number): string {
+    const total = Math.max(0, Math.round(seconds));
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const rest = total % 60;
+    const parts = [
+        hours > 0 ? `${hours}H` : '',
+        minutes > 0 ? `${minutes}M` : '',
+        rest > 0 || total === 0 ? `${rest}S` : '',
+    ].join('');
+    return `PT${parts}`;
+}
+
 /** `PT15M` → 900. Nur die Formen, die der Editor schreibt; sonst `null`. */
 export function isoDurationSeconds(value: string): number | null {
     const match = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?)?$/.exec(value);
@@ -295,6 +328,7 @@ export function runStudy(input: StudyInput): StudyResult {
     const panel = buildPanel(panelSeries, {
         ...(spec.windowFrom !== undefined ? { from: spec.windowFrom } : {}),
         ...(spec.windowThrough !== undefined ? { through: spec.windowThrough } : {}),
+        ...(spec.intervalSeconds !== undefined ? { intervalSeconds: spec.intervalSeconds } : {}),
         ...(input.maxRows !== undefined ? { maxRows: input.maxRows } : {}),
     });
     if (panel.rows === 0) {
@@ -401,8 +435,14 @@ export function runStudy(input: StudyInput): StudyResult {
         ...common,
         verdict: 'passed',
         effect: outcome.estimate,
-        reason: `Geschätzt über ${estimator} auf ${panel.rows} Zeilen; alle blockierenden `
-            + 'Refutationsversuche bestanden.',
+        reason: `Geschätzt über ${estimator} auf ${panel.rows} Zeilen`
+            // Das Raster gehört in den Satz, sobald es gesetzt wurde: Eine
+            // Zahl auf Stundenzeilen ist eine andere Rechnung als dieselbe
+            // Frage auf Fünf-Minuten-Zeilen, auch wenn beide gleich heißen.
+            + (panel.intervalSource === 'requested'
+                ? ` im gesetzten Rechenraster ${formatInterval(panel.intervalSeconds)}`
+                : '')
+            + '; alle blockierenden Refutationsversuche bestanden.',
     };
 }
 
@@ -498,6 +538,7 @@ function describeDataset(
     return {
         rows: panel.rows,
         intervalSeconds: panel.intervalSeconds,
+        intervalSource: panel.intervalSource,
         ...(panel.from !== undefined ? { from: panel.from } : {}),
         ...(panel.through !== undefined ? { through: panel.through } : {}),
         truncated: panel.truncated,
@@ -535,6 +576,10 @@ function buildWidePanel(
     return buildPanel(series, {
         ...(spec.windowFrom !== undefined ? { from: spec.windowFrom } : {}),
         ...(spec.windowThrough !== undefined ? { through: spec.windowThrough } : {}),
+        // Dasselbe Raster wie das Panel der Schätzung. Ein anderes hier
+        // hieße, die Refutationen auf einer anderen Datenlage zu rechnen
+        // als die Zahl, die sie widerlegen sollen.
+        ...(spec.intervalSeconds !== undefined ? { intervalSeconds: spec.intervalSeconds } : {}),
         ...(input.maxRows !== undefined ? { maxRows: input.maxRows } : {}),
     });
 }

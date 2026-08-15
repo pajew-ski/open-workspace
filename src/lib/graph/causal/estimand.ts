@@ -24,7 +24,7 @@ import type { Quad } from '@rdfjs/types';
 import type { IriFactory } from '../iri';
 import { factory, literal, namedNode, typedLiteral } from '../rdf';
 import { DCTERMS, OW, RDF, SCHEMA } from '../vocab';
-import { ESTIMATOR_CHOICES, type EstimatorChoice } from './study';
+import { ESTIMATOR_CHOICES, isoDurationSeconds, secondsToIsoDuration, type EstimatorChoice } from './study';
 import type { GraphHandle } from './model';
 
 /** IDs sind Dateinamen-tauglich und IRI-arm — dieselbe Regel wie sonst. */
@@ -60,6 +60,19 @@ export interface EstimandInput {
     /** Fenstergrenzen als ISO-Zeitpunkte; ohne sie zählt alles Erfasste. */
     windowFrom?: string;
     windowThrough?: string;
+    /**
+     * Rechenraster in Sekunden (`ow:studyInterval`). Ohne Angabe nimmt das
+     * Panel den gröbsten Abstand der beteiligten Reihen.
+     *
+     * **Wozu es gut ist**: Über der aus Stundenaggregaten nachgefüllten
+     * Strecke (§15.5) trägt eine Fünf-Minuten-Reihe nur die vollen
+     * Stunden bei; auf ihrem eigenen Raster fallen elf von zwölf Zeilen
+     * als Lücke heraus. Wer diese Strecke auswerten will, stellt die
+     * Frage bewusst stündlich — das verliert nichts und erfindet nichts,
+     * es fragt seltener. Feiner als der gröbste Reihenabstand darf es
+     * nicht sein; das Panel lehnt das ab, statt es stumm anzuheben.
+     */
+    intervalSeconds?: number;
 }
 
 export interface EstimandView extends EstimandInput {
@@ -115,6 +128,17 @@ export function assertEstimandInput(input: EstimandInput): void {
     if (input.windowFrom && input.windowThrough && Date.parse(input.windowFrom) >= Date.parse(input.windowThrough)) {
         throw new Error('Das Fenster endet, bevor es beginnt.');
     }
+    if (input.intervalSeconds !== undefined) {
+        // Obergrenze ist ein Jahr: Ein Raster darüber hätte über jeden
+        // realistischen Bestand weniger Zeilen als Parameter.
+        if (!Number.isInteger(input.intervalSeconds)
+            || input.intervalSeconds < 1
+            || input.intervalSeconds > 366 * 86400) {
+            throw new Error(
+                'Das Rechenraster muss eine ganze Zahl von Sekunden zwischen 1 und einem Jahr sein.',
+            );
+        }
+    }
 }
 
 export function estimandQuads(iri: IriFactory, input: EstimandView, graph: Quad['graph']): Quad[] {
@@ -149,6 +173,14 @@ export function estimandQuads(iri: IriFactory, input: EstimandView, graph: Quad[
     if (coverage) {
         quads.push(factory.quad(subject, namedNode(SCHEMA.temporalCoverage), literal(coverage), graph));
     }
+    if (input.intervalSeconds !== undefined) {
+        quads.push(factory.quad(
+            subject,
+            namedNode(OW.studyInterval),
+            typedLiteral.duration(secondsToIsoDuration(input.intervalSeconds)),
+            graph,
+        ));
+    }
     if (input.created) {
         quads.push(factory.quad(subject, namedNode(DCTERMS.created), typedLiteral.dateTime(input.created), graph));
     }
@@ -173,6 +205,11 @@ function viewFrom(handle: GraphHandle, subject: string, quads: readonly Quad[]):
     const coverage = value(SCHEMA.temporalCoverage);
     const window = coverage ? parseTemporalCoverage(coverage) : {};
     const estimator = value(OW.estimator) ?? 'auto';
+    // Ein unlesbares Raster wird weggelassen, nicht geraten: Ohne Angabe
+    // rechnet das Panel auf der gröbsten Reihe, und das ist die
+    // konservative Seite.
+    const interval = value(OW.studyInterval);
+    const intervalSeconds = interval ? isoDurationSeconds(interval) : null;
     const modelPrefix = handle.iri.entity('causal-model', '');
     return {
         id,
@@ -193,6 +230,7 @@ function viewFrom(handle: GraphHandle, subject: string, quads: readonly Quad[]):
         ...(value(OW.interventionAt) ? { interventionAt: value(OW.interventionAt) as string } : {}),
         ...(window.from ? { windowFrom: window.from } : {}),
         ...(window.through ? { windowThrough: window.through } : {}),
+        ...(intervalSeconds !== null && intervalSeconds > 0 ? { intervalSeconds } : {}),
         ...(value(DCTERMS.created) ? { created: value(DCTERMS.created) as string } : {}),
     };
 }

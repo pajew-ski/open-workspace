@@ -362,13 +362,17 @@
 > `purge_keep_days`, jeder Tag ohne Erfassung war unwiederbringlich.
 > **Gebaut sind C3, C0, C1, C2, C4, C5 und C6 — der verbindliche Teil
 > dieser Spec ist damit vollständig**, dazu der aus C3 offen gebliebene
-> **Backfill aus den Long-Term-Statistics**. Offen sind nur noch die
-> beiden Opt-in-Meilensteine und die einzeln erledigbaren Nacharbeiten
-> darunter. Alle dreizehn Widersprüche, die beim Bauen auffielen, sind in
+> **Backfill aus den Long-Term-Statistics** und die erste Nacharbeit
+> darunter (**das Rechenraster an der Frage**). Offen sind nur noch die
+> beiden Opt-in-Meilensteine und die übrigen einzeln erledigbaren
+> Nacharbeiten. Eine Nacharbeit wird gearbeitet wie ein Meilenstein —
+> eine Session, ein Branch, ein PR (§19, seit Widerspruch 14). Alle
+> vierzehn Widersprüche, die beim Bauen auffielen, sind in
 > [docs/spec-widersprueche.md](./docs/spec-widersprueche.md)
 > **entschieden** festgehalten (1–8 aus C3/C4/C5 am 14.08.2026, 9–11 aus
-> C6, 12–13 aus dem Statistik-Rückgriff); wo die Entscheidung den Text
-> betrifft, ist sie in die Spec eingearbeitet. Kein Eintrag steht offen.
+> C6, 12–13 aus dem Statistik-Rückgriff, 14 aus dem Rechenraster); wo die
+> Entscheidung den Text betrifft, ist sie in die Spec eingearbeitet. Kein
+> Eintrag steht offen.
 
 - [x] **C3 Erfassung („früh materialisieren")**:
       `homeassistant_api: true` im Add-on-Manifest (lesend, begründet in
@@ -771,19 +775,44 @@
 
 > Nichts davon blockiert etwas. Es sind die Kanten, die beim Bauen von C5
 > und C6 und beim Auflösen der Widersprüche sichtbar geworden sind — in
-> Reihenfolge ihres Nutzens.
+> Reihenfolge ihres Nutzens. **Jede einzelne ist eine Session, ein Branch,
+> ein PR** (§19); ihre Abnahme steht in ihrem eigenen Eintrag, weil §16
+> für Nacharbeiten keine Zeile hat (docs/spec-widersprueche.md,
+> Eintrag 14). Die oberste ist abgehakt; die nächste ist die oberste
+> offene darunter.
 
-- [ ] **Studien auf grobem Raster rechnen lassen.** Das Panel liest einen
+- [x] **Studien auf grobem Raster rechnen lassen.** Das Panel liest einen
       Wert nur so lange, wie das Raster SEINER Reihe reicht — eine Größe im
       Fünf-Minuten-Raster trägt in der aus Stundenaggregaten nachgefüllten
       Strecke deshalb nur die vollen Stunden bei, der Rest fällt als Lücke
       heraus. Das ist die konservative Seite (verlieren statt erfinden),
-      kostet aber elf von zwölf Zeilen. Der ehrliche Ausbau wäre ein Raster
-      an der Frage (`ow:Estimand`), das `PanelOptions.intervalSeconds`
-      füllt — dann rechnet eine Frage über die alte Strecke bewusst
-      stündlich. Was es NICHT sein darf: den Stundenwert im Panel
-      fortschreiben; das bläht die Fallzahl auf und macht die Intervalle
-      schmal, ohne dass etwas dazugekommen wäre
+      kostet aber elf von zwölf Zeilen. Gebaut ist das Raster an der Frage
+      (`ow:studyInterval` am `ow:Estimand`, ein neuer Term), das
+      `PanelOptions.intervalSeconds` füllt — dann rechnet eine Frage über
+      die alte Strecke bewusst stündlich. Der Stundenwert wird dabei NICHT
+      fortgeschrieben (das bliese die Fallzahl aufs Zwölffache, ohne dass
+      eine Beobachtung dazukäme): Die Toleranz bleibt das Raster jeder
+      einzelnen Reihe, gefragt wird nur seltener. Vier Regeln tragen es:
+      - **Feiner als die gröbste beteiligte Reihe wird abgelehnt**, nicht
+        stillschweigend angehoben — sonst trüge die Studie ein Raster, nach
+        dem niemand gefragt hat, und Zeilen, die niemand gemessen hat
+      - **Dasselbe Raster gilt für das breite Panel** der Refutationen;
+        ein anderes hieße, die Zahl auf anderen Daten zu widerlegen als sie
+        entstanden ist
+      - **Das Raster ist Signatur** (C7): Es steht an der Frage, an der
+        Studie und in der Chronik — auch wenn es aus der gröbsten Reihe kam.
+        Eine Zeilenzahl ohne ihr Raster ist eine Zahl ohne Maßstab
+      - **Ein leeres Panel nennt den Ausweg**: Wo jede Zeile an einer Lücke
+        gescheitert ist, steht das gerechnete Raster im Klartext dabei; die
+        Oberfläche zeigt zusätzlich je Frage, welche beteiligte Größe eine
+        nachgefüllte Strecke hat und welches Raster diese braucht
+      Abnahme: `tests/graph/causal-study-interval.test.ts` (die alte Strecke
+      ist auf dem feinen Raster unerreichbar und auf dem gesetzten
+      vollständig; elf von zwölf Rasterpunkten als Lücke nachgewiesen; die
+      alten Zeilen sind Wert für Wert die gemessenen Stundenwerte;
+      Ablehnung des zu feinen Rasters; Frage, Lauf und Shapes). Doku:
+      [docs/kausalmodell.md](./docs/kausalmodell.md) und
+      [docs/beobachtungen.md](./docs/beobachtungen.md)
 
 - [ ] **Der Vorschlagslauf sieht keine Dokumente.** §8 nennt als Quellen
       für das Sprachmodell „Dokumente, HA-Entitätsnamen, Automations-YAML,
