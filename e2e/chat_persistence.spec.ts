@@ -31,6 +31,19 @@ test('chat window opens and survives client-side navigation', async ({ page }) =
     await expect(chatWindow).toBeVisible();
 });
 
+test('Chat-Verlauf ist eine Live-Region (TODO P2 „A11y-Feinschliff")', async ({ page }) => {
+    // Ohne LLM prüfbar: Es geht um die Auszeichnung, nicht um Inhalte.
+    await page.goto('/');
+    await page.getByTestId('assistant-chat-fab').click();
+    await expect(page.getByTestId('assistant-chat-window')).toBeVisible();
+
+    const log = page.getByRole('log', { name: 'Chat-Verlauf' });
+    await expect(log).toBeVisible();
+    // Im Ruhezustand darf nichts „beschäftigt" sein — sonst hielte die
+    // Region ihre Ansagen dauerhaft zurück.
+    await expect(log).not.toHaveAttribute('aria-busy', 'true');
+});
+
 test('chat answers with page context', async ({ page, request }) => {
     const health = await request.get('/api/chat/health');
     const healthData = await health.json().catch(() => ({ status: 'error' }));

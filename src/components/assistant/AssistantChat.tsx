@@ -973,8 +973,25 @@ export function AssistantChat() {
                         </div>
                     </div>
 
-                    {/* Messages */}
-                    <div ref={messagesContainerRef} className={styles.messages} onClick={() => showSidebar && setShowSidebar(false)}>
+                    {/*
+                      * Messages — Live-Region (TODO P2 „A11y-Feinschliff").
+                      *
+                      * `role="log"` bringt `aria-live="polite"` mit: neue
+                      * Beiträge werden vorgelesen, der Verlauf bleibt
+                      * navigierbar. Während der Antwort steht
+                      * `aria-busy` — sonst würde jeder gestreamte
+                      * Textschnipsel eine eigene Ansage auslösen und der
+                      * Screenreader spräche buchstabenweise. Was gerade
+                      * passiert, sagt stattdessen die Statuszeile unten.
+                      */}
+                    <div
+                        ref={messagesContainerRef}
+                        className={styles.messages}
+                        role="log"
+                        aria-label="Chat-Verlauf"
+                        aria-busy={isLoading || undefined}
+                        onClick={() => showSidebar && setShowSidebar(false)}
+                    >
                         {messages.length === 0 ? (
                             <div className={styles.emptyChat}>
                                 <p>Wie kann ich dir helfen?</p>
@@ -1009,6 +1026,12 @@ export function AssistantChat() {
 
 
                         <div ref={messagesEndRef} />
+                    </div>
+
+                    {/* Was der Assistent gerade tut — für Screenreader, die
+                        den stummgeschalteten Verlauf nicht mitlesen. */}
+                    <div className="visually-hidden" role="status">
+                        {isLoading ? 'Der Assistent antwortet.' : ''}
                     </div>
 
                     {/* Input */}

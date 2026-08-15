@@ -76,7 +76,7 @@
 .markRead {
     border: none;
     background: none;
-    color: var(--color-primary);
+    color: var(--color-primary-text);
     font-size: var(--text-xs);
     cursor: pointer;
 }

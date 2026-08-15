@@ -21,6 +21,11 @@
   --color-surface: #FAFAFA;
   --color-surface-elevated: #FFFFFF;
   --color-surface-sunken: #F0F0F0;
+  /* Durchscheinende Fläche für schwebende Panels mit backdrop-filter.
+     Als einzige Fläche nicht aus den übrigen ableitbar (Alpha), deshalb
+     ein eigenes Token statt eines Fallbacks am Verwendungsort — der war
+     dort fest dunkel und machte das Panel im Light Mode unlesbar. */
+  --color-surface-translucent: rgba(250, 250, 250, 0.85);
   --color-border: #E0E0E0;
   --color-border-subtle: #EBEBEB;
 
@@ -149,6 +154,7 @@
   --color-surface: #1A1A1A;
   --color-surface-elevated: #242424;
   --color-surface-sunken: #121212;
+  --color-surface-translucent: rgba(26, 26, 26, 0.85);
   --color-border: #333333;
   --color-border-subtle: #2A2A2A;
 

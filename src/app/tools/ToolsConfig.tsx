@@ -87,7 +87,7 @@ export function ToolsConfig() {
                                         <div key={tool.id} className={styles.toolItem}>
                                             <div>
                                                 <strong>{tool.name}</strong>
-                                                <div style={{ fontSize: '0.8em', color: '#666' }}>{tool.config.url}</div>
+                                                <div className={styles.toolUrl}>{tool.config.url}</div>
                                             </div>
                                             <div className={styles.toolBadge}>{tool.config.method}</div>
                                         </div>

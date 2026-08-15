@@ -4,7 +4,7 @@
 .a2ui-markdown {
     font-size: 14px;
     line-height: 1.6;
-    color: var(--color-text);
+    color: var(--color-text-primary);
 }
 
 .a2ui-markdown h1,
@@ -37,7 +37,7 @@
 }
 
 .a2ui-markdown a {
-    color: var(--color-primary);
+    color: var(--color-primary-text);
     text-decoration: none;
 }
 
@@ -134,7 +134,7 @@
 
 /* Link */
 .a2ui-link {
-    color: var(--color-primary);
+    color: var(--color-primary-text);
     text-decoration: none;
     cursor: pointer;
     transition: color 0.2s;
@@ -142,7 +142,7 @@
 
 .a2ui-link:hover {
     text-decoration: underline;
-    color: var(--color-primary-hover);
+    color: var(--color-primary-text-hover);
 }
 
 .a2ui-link-external::after {

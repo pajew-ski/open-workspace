@@ -138,7 +138,15 @@ export function FullPageAssistant() {
                     )}
                 </header>
 
-                <div className={styles.messages}>
+                {/* Live-Region wie im Widget: role="log" spricht neue
+                    Beiträge, aria-busy hält die gestreamten Schnipsel
+                    zurück (TODO P2 „A11y-Feinschliff"). */}
+                <div
+                    className={styles.messages}
+                    role="log"
+                    aria-label="Chat-Verlauf"
+                    aria-busy={isLoading || undefined}
+                >
                     {messages.length === 0 ? (
                         <div className={styles.empty}>
                             <Sparkles size={32} className={styles.emptyIcon} />
@@ -179,6 +187,10 @@ export function FullPageAssistant() {
                         ))
                     )}
                     <div ref={messagesEndRef} />
+                </div>
+
+                <div className="visually-hidden" role="status">
+                    {isLoading ? 'Der Assistent antwortet.' : ''}
                 </div>
 
                 <form className={styles.inputBar} onSubmit={handleSubmit}>

@@ -41,7 +41,7 @@
 
 .ghost:hover:not(:disabled) {
     background-color: var(--color-primary-subtle);
-    color: var(--color-primary);
+    color: var(--color-primary-text);
 }
 
 /* Sizes */

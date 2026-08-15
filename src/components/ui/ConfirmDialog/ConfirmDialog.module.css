@@ -43,7 +43,7 @@
 
 .icon.info {
     background-color: var(--color-primary-subtle);
-    color: var(--color-primary);
+    color: var(--color-primary-text);
 }
 
 .title {

@@ -166,7 +166,7 @@
 
 /* Links */
 .md-link {
-    color: var(--color-primary, #00674F);
+    color: var(--color-primary-text);
     text-decoration: none;
 }
 

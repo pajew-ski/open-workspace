@@ -45,7 +45,7 @@
 
 .iconBtn:hover {
     background-color: var(--color-surface-sunken);
-    color: var(--color-primary);
+    color: var(--color-primary-text);
 }
 
 .editing {

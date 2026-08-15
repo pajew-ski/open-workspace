@@ -24,7 +24,7 @@
     padding: 4px 0;
     font-size: 14px;
     line-height: 1.5;
-    color: var(--color-text);
+    color: var(--color-text-primary);
 }
 
 .a2ui-list-item::marker {
@@ -55,7 +55,7 @@
 .a2ui-table th {
     background: var(--color-surface);
     font-weight: 600;
-    color: var(--color-text);
+    color: var(--color-text-primary);
     white-space: nowrap;
 }
 
@@ -64,7 +64,7 @@
 }
 
 .a2ui-table tbody tr:hover {
-    background: var(--color-surface-hover);
+    background: var(--color-surface-sunken);
 }
 
 .a2ui-table--striped tbody tr:nth-child(even) {
