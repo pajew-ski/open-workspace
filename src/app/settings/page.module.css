@@ -79,7 +79,9 @@
     padding: var(--space-2) var(--space-4);
     font-size: var(--text-sm);
     font-weight: 500;
-    color: var(--color-primary);
+    /* Text in Primärfarbe: Text-Token (Dark-Mode-Kontrast), der Rahmen
+       darf die Markenfarbe behalten. */
+    color: var(--color-primary-text);
     border: 1px solid var(--color-primary);
     border-radius: var(--radius-md);
     background-color: transparent;

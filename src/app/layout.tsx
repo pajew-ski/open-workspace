@@ -3,8 +3,6 @@ import { ThemeProvider, QueryProvider, BasePathProvider } from "@/components/pro
 import { withBasePath } from "@/lib/platform/base-path";
 import { ToastContainer } from "@/components/ui";
 import { AssistantProvider } from "@/lib/assistant/context";
-import { CopilotKit } from "@copilotkit/react-core";
-import { CopilotStateProvider } from "@/components/copilot";
 import { AssistantChat } from "@/components/assistant";
 import { GlobalFinder } from "@/components/finder/GlobalFinder";
 import { ServiceWorkerRegistration } from "@/components/pwa";
@@ -45,17 +43,13 @@ export default function RootLayout({
         <BasePathProvider>
         <ThemeProvider>
           <QueryProvider>
-          <CopilotKit runtimeUrl={withBasePath("/api/copilotkit")} showDevConsole={false}>
             <AssistantProvider>
-              <CopilotStateProvider>
-                {children}
-                <AssistantChat />
-                <GlobalFinder />
-              </CopilotStateProvider>
+              {children}
+              <AssistantChat />
+              <GlobalFinder />
               <ToastContainer />
               <ServiceWorkerRegistration />
             </AssistantProvider>
-          </CopilotKit>
           </QueryProvider>
         </ThemeProvider>
         </BasePathProvider>

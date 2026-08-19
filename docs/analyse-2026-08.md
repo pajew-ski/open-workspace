@@ -8,9 +8,9 @@
 > Abschnitte 1–4 und 7 beschreiben den Stand vom 2026-08-08 und werden
 > bewusst nicht fortgeschrieben — sie sind der Vorher-Zustand, gegen den
 > gemessen wurde. Aktuell und verbindlich sind:
-> [AGENTS.md](./AGENTS.md) („Hier weitermachen"),
-> [GRAPH_CORE_SPEC.md](./GRAPH_CORE_SPEC.md) (Graph-Ausbau M0–M14) und
-> [TODO.md](./TODO.md). Der Status der Roadmap in §5 ist unten
+> [AGENTS.md](../AGENTS.md) („Hier weitermachen"),
+> [GRAPH_CORE_SPEC](./specs/graph-core.md) (Graph-Ausbau M0–M14) und
+> [TODO.md](../TODO.md). Der Status der Roadmap in §5 ist unten
 > eingearbeitet.
 >
 > **Nachtrag (2. Ausbaustufe, 2026-08-08)**: Die AI-Plattform wurde voll
@@ -21,7 +21,7 @@
 > Damit sind die Roadmap-Punkte **P1.5 (A2A), P1.6 (MCP), P1.7 (natives
 > Tool-Calling)** umgesetzt; P1.9 (IndexedDB-Spiegel) ist für die
 > AI-Schicht (Chats, Konfiguration, Skills) erledigt und bleibt für die
-> Content-Module offen. Architektur: [docs/ai-platform.md](./docs/ai-platform.md).
+> Content-Module offen. Architektur: [docs/ai-platform.md](./ai-platform.md).
 
 ## 1. Executive Summary
 
@@ -198,73 +198,87 @@ Priorisierung: **P0** = nächster sinnvoller Schritt, **P1** = danach, **P2** = 
 Aufwände sind Richtwerte für eine Person.
 
 > **Stand 2026-08-10**: Der Graph-Ausbau nach
-> [GRAPH_CORE_SPEC.md](./GRAPH_CORE_SPEC.md) (M0–M14) hat große Teile
+> [GRAPH_CORE_SPEC](./specs/graph-core.md) (M0–M14) hat große Teile
 > dieser Liste eingeholt — teils anders gelöst als hier gedacht. Der
 > Status steht bei jedem Punkt; die abhakbare Fassung ist
-> [TODO.md](./TODO.md). Bei Widerspruch gilt die Spec.
+> [TODO.md](../TODO.md). Bei Widerspruch gilt die Spec.
 
 ### P0 — Fundament abrunden (je 0,5–2 Tage)
 
-1. ⏳ **offen** — **i18n wirklich einführen** (`next-intl`): Dictionary-Extraktion aller
+1. **offen** — **i18n wirklich einführen** (`next-intl`): Dictionary-Extraktion aller
    UI-Strings (de als Quelle), en-Übersetzung, Umschalter in den Settings,
    `<html lang>` dynamisch. Das README-Versprechen ist sonst unerfüllbar.
-2. ✅ **erledigt** — **`no-explicit-any`-Abbau**: `bun run lint` meldet 0 Warnings.
+2. **erledigt** — **`no-explicit-any`-Abbau**: `bun run lint` meldet 0 Warnings.
    Die vorhandenen Typen (`Tool`, `CreateToolRequest`, `Connection`, `Widget`,
    `LegacyGraphView`) tragen jetzt die Stellen, die vorher `any` waren; die
    Force-Graph-Callbacks nutzen die Generics des Pakets. Einzige verbleibende
    Ausnahme ist die A2UI-Protokollgrenze — dort kommen die Bausteine von einem
    entfernten Agenten und sind zur Bauzeit nicht typisierbar; das steht als
    `A2UIValue` benannt und begründet im Code.
-3. ⏳ **offen** — **CopilotKit-Entscheidung**: Entweder die CopilotKit-UI (Sidebar/Popup)
-   rendern und die 5 Actions erlebbar machen — oder den Stack entfernen und
-   die Actions in den eigenen Tool-Loop überführen. Aktuell doppelte
-   Infrastruktur (~Bundle-Kosten ohne Nutzererlebnis).
-4. ⏳ **offen** — **Frontmatter-Parser ersetzen** durch `yaml`/`gray-matter` (Robustheit).
+3. **entschieden und erledigt** (2026-08-15) — **CopilotKit**: Stack
+   **entfernt**, nicht gerendert. Die Gründe standen am Ende alle auf
+   derselben Seite: keine Oberfläche, ein Runtime-Endpunkt an einem
+   hartkodierten Ollama/OpenAI vorbei am AI-Hub, und zwei der fünf Actions
+   sprachen einen Vertrag, den die Routen seit M5 nicht mehr haben. Die
+   beiden tragenden Actions sind als Builtins in den eigenen Tool-Loop
+   überführt (`workspace_create_task`, `workspace_update_task`);
+   `navigate` und `createCanvasCard` sind begründet nicht übernommen
+   (siehe TODO.md, „AI-Integration").
+4. **erledigt** (2026-08-15) — **Frontmatter-Parser ersetzt** durch
+   `yaml` — dieselbe Bibliothek, die der Obsidian-Connector seit M4 nutzt.
+   Der Vorgänger schnitt am ersten Doppelpunkt ab, zerlegte Tags am Komma
+   und schrieb bei einem Anführungszeichen im Titel unparsbares YAML.
 
 ### P1 — Versprochene Großfeatures (je 3–10 Tage)
 
-5. ✅ **erledigt** (2. Ausbaustufe) — **Echtes A2A-Protokoll**: `/.well-known/agent.json` (Agent Card),
+5. **erledigt** (2. Ausbaustufe) — **Echtes A2A-Protokoll**: `/.well-known/agent.json` (Agent Card),
    JSON-RPC-Endpunkt, Task-Lifecycle (submitted → working → completed),
    Remote-Agent-Aufruf im Chat-Tool-Loop (`[[AGENT:id:prompt]]` analog zum
    Tool-Muster), Capability Discovery.
-6. ✅ **erledigt** — Client in der 2. Ausbaustufe, **Server** mit M10
+6. **erledigt** — Client in der 2. Ausbaustufe, **Server** mit M10
    (`/api/mcp`, SPEC §7.6) — **Echtes MCP**: `@modelcontextprotocol/sdk` als Client — konfigurierte
    MCP-Server (stdio/HTTP) verbinden, deren Tools in den Tool-Loop einspeisen;
    den "Geplant"-Button in den Werkzeugen aktivieren.
-7. ✅ **erledigt** (2. Ausbaustufe) — **Natives Tool-Calling**: Bei Modellen mit Function-Calling-Support
+7. **erledigt** (2. Ausbaustufe) — **Natives Tool-Calling**: Bei Modellen mit Function-Calling-Support
    (Ollama `tools`-Parameter) die Text-Syntax durch echtes Tool-Calling
    ersetzen; Text-Syntax als Fallback behalten.
-8. ✅ **anders gelöst** (M6) — Git-Sync läuft über den EINEN
+8. **anders gelöst** (M6) — Git-Sync läuft über den EINEN
    Connector-Vertrag (`git-backup`: Backup-Einbahnstraße oder
    bidirektional mit Konfliktregel §6.2, `process-git` und
    `isomorphic-git` als zwei Bindungen), lesende GitHub-Quellen über
    `github-rdf` (commit-gepinnt). Offen bleibt nur der **OAuth Device
    Flow** als bequemerer Zugang statt Token aus der Umgebung.
-9. ⏳ **teilweise** — für die AI-Schicht erledigt (Chats in IndexedDB,
+9. **teilweise** — für die AI-Schicht erledigt (Chats in IndexedDB,
    Konfiguration im localStorage); für die Workspace-Inhalte offen. Die
    Bausteine der Runtime `local` stehen seit M12 (Store im Web Worker,
    OPFS, isomorphic-git) — was fehlt, ist die Umstellung der Oberflächen
    auf sie. **IndexedDB-Spiegel + Background Sync**
-10. ⏳ **offen** (die Seite kennzeichnet ihren Planungsstand) — **Matrix-Chat**: matrix-js-sdk, Login/SSO, Raum-Liste, E2EE via
+10. **offen** (die Seite kennzeichnet ihren Planungsstand) — **Matrix-Chat**: matrix-js-sdk, Login/SSO, Raum-Liste, E2EE via
     Rust-Crypto-WASM. Bewusst groß — alternativ Element-Web-Embed prüfen.
 
 ### P2 — Reife & Vision
 
-11. ⏳ **teilweise** — Identität und Rechte sind gebaut (M12/M13:
+11. **teilweise** — Identität und Rechte sind gebaut (M12/M13:
     `OW_AUTH_MODE`, Web Access Control in `graph/acl`, Rate-Limits an
-    MCP-, Föderations- und anonymen Routen). Offen: Passkey/WebAuthn als
-    eigener Anmeldefluss und Rate Limiting an den **Chat**-Routen.
-12. ✅ **erledigt** und im blockierenden E2E-Gate abgesichert
+    MCP-, Föderations- und anonymen Routen); der **Chat** hat seins seit
+    2026-08-15 (`OW_CHAT_RATE_LIMIT`, 20/min je geprüfter Identität bzw.
+    Absenderadresse). Offen bleibt Passkey/WebAuthn als eigener
+    Anmeldefluss — heute führt ihn bewusst die Schicht davor.
+12. **erledigt** und im blockierenden E2E-Gate abgesichert
     (`e2e/a11y`, `e2e/mobile-*`) — **Accessibility-Durchgang**: Fokus-Management in Dialogen/Overlays,
     ARIA-Rollen im Chat (log/status), Reduced-Motion, Tastatur-Navigation
-    auf der Pinnwand.
-13. ⏳ **bewusst ausgeschlossen für v1** (SPEC §15: Store bleibt
+    auf der Pinnwand. Seit 2026-08-15 läuft der axe-Scan in **beiden
+    Themes auf allen zwanzig Seiten**; die vier Kontrastfehler, die das
+    zutage förderte, sind samt ihrer beiden Ursachen behoben
+    (Phantom-Token, Primärfarbe als Textfarbe) und durch
+    `tests/platform/design-tokens.test.ts` gegen Wiederkehr gesichert.
+13. **bewusst ausgeschlossen für v1** (SPEC §15: Store bleibt
     single-writer pro Graph) — **Kollaboration**: CRDT-Layer (Yjs) über Docs/Canvas, wenn Multi-Device
     oder Multi-User real wird.
-14. ⏳ **offen** (git-basiert ist über `git-backup` möglich, aber ohne UI) —
+14. **offen** (git-basiert ist über `git-backup` möglich, aber ohne UI) —
     **Versionshistorie für Dokumente** (einfach: Snapshot-Ordner; besser: git-basiert
     mit dem GitHub-Sync aus P1).
-15. ✅ **Grundlage steht** — MCP in beide Richtungen (Client + Server),
+15. **Grundlage steht** — MCP in beide Richtungen (Client + Server),
     dazu der Connector-Vertrag als zweiter Erweiterungspunkt.
     **Plugin-System**
 
@@ -290,4 +304,4 @@ Aufwände sind Richtwerte für eine Person.
 **Heutiger Stand (2026-08-10)**: dieselben Kommandos plus
 `bun run check:ontology`; 495 Unit-Tests und ein blockierendes E2E-Gate
 (`e2e/a11y`, `e2e/mobile-navigation`, `e2e/mobile-ux`, `e2e/ingress`).
-Die laufend gepflegte Fassung steht in [AGENTS.md](./AGENTS.md).
+Die laufend gepflegte Fassung steht in [AGENTS.md](../AGENTS.md).

@@ -13,7 +13,7 @@ This tool allows agents to fuzzy-search across the entire workspace or specific 
 - **Endpoint**: `GET /api/finder`
 - **Parameters**:
     - `q` (string, required): The search query.
-    - `type` (string, optional): One of [`task`, `note`, `project`, `chat`, `calendar`]. If omitted, searches all.
+    - `type` (string, optional): One of [`task`, `doc`, `project`, `chat`, `calendar`]. If omitted, searches all.
 
 ### Response Format
 
@@ -45,6 +45,31 @@ When the user asks to find something, you should:
 loop — no configuration required. It runs server-side in `/api/chat` AND
 in the in-browser engine when a backend is reachable; without one it
 reports honestly that workspace search needs the backend.)*
+
+## Tools: workspace_create_task / workspace_update_task
+
+Die beiden schreibenden Builtins. Sie kamen aus der CopilotKit-Ablösung
+(Analyse §5 P0.3): Dort lagen sie als Actions in einem zweiten Stack, den
+nichts gerendert hat — jetzt stehen sie im EINEN Tool-Loop.
+
+- **`workspace_create_task`** — legt eine Aufgabe an.
+  Pflicht: `title`. Optional: `description`, `status`
+  (`backlog|todo|in-progress|review|done|on-hold`), `priority`
+  (`low|medium|high|urgent`), `projectId`, `dueDate` (ISO-Datum).
+- **`workspace_update_task`** — ändert eine vorhandene Aufgabe.
+  Pflicht: `taskId` plus mindestens ein Feld. Die ID kommt aus
+  `workspace_finder`; geraten wird sie nie.
+
+Beide sind konstruktiv im Sinne der Safety-Regeln (Anlegen, Ändern) und
+brauchen deshalb keine Bestätigung. **Gelöscht wird über kein Tool** —
+Löschen verlangt eine Sicherheitsabfrage, und die kann ein Tool-Loop nicht
+führen.
+
+Ausführung: serverseitig über die Storage-Fassade, damit der Schreibvorgang
+im Request des Nutzers und damit in SEINEM Graphen landet (ein zweiter
+HTTP-Aufruf an die eigene Route käme ohne Identitäts-Header an); im
+Browser über `/api/tasks`. Geprüft wird auf beiden Wegen mit denselben
+Zod-Schemas. Ohne Backend sagen die Tools, dass es sie dort nicht gibt.
 
 ## Tool: use_skill
 

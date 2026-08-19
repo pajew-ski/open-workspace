@@ -1,6 +1,6 @@
 # Multi-User, Nutzergraphen und Zugriffssteuerung
 
-Betriebs- und Architekturdoku zu [GRAPH_CORE_SPEC.md §17](../GRAPH_CORE_SPEC.md)
+Betriebs- und Architekturdoku zu [GRAPH_CORE_SPEC §17](./specs/graph-core.md)
 (Meilenstein M13). Gilt für die Runtime `server`; `local` und `ha-addon`
 laufen mit einem impliziten Einzelnutzer **durch dieselbe Codebahn** — der
 Übergang ist eine Konfigurationsfrage, keine Datenmigration.

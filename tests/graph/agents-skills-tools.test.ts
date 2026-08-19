@@ -533,6 +533,10 @@ describe('AI-Spiegel in graph/meta (M9)', () => {
         expect(subjects.has(handle.iri.entity('tool', 'api-aus'))).toBe(false);
         expect(subjects.has(handle.iri.entity('tool', 'workspace_finder'))).toBe(true);
         expect(subjects.has(handle.iri.entity('tool', 'use_skill'))).toBe(true);
+        // Die beiden schreibenden Builtins aus der CopilotKit-Ablösung
+        // (ANALYSE §5 P0.3) stehen im selben Spiegel wie die lesenden.
+        expect(subjects.has(handle.iri.entity('tool', 'workspace_create_task'))).toBe(true);
+        expect(subjects.has(handle.iri.entity('tool', 'workspace_update_task'))).toBe(true);
         expect(subjects.has(handle.iri.entity('tool-provider', 'mcp-srv1'))).toBe(true);
     });
 
@@ -670,7 +674,9 @@ describe('AI-Spiegel in graph/meta (M9)', () => {
             { toolId: 'api-wetter', providerName: 'Open Workspace' },
             { toolId: 'search', providerName: 'stub-mcp' },
             { toolId: 'use_skill', providerName: 'Open Workspace' },
+            { toolId: 'workspace_create_task', providerName: 'Open Workspace' },
             { toolId: 'workspace_finder', providerName: 'Open Workspace' },
+            { toolId: 'workspace_update_task', providerName: 'Open Workspace' },
         ]);
     });
 });

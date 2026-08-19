@@ -34,7 +34,13 @@ const PAGES = [
     '/onboarding',
 ];
 
-const DARK_MODE_PAGES = ['/', '/tasks', '/docs'];
+/**
+ * Dark Mode auf ALLEN Seiten (TODO P2 „A11y-Feinschliff", zweite Hälfte).
+ * Vorher lief der Dunkel-Scan auf drei Seiten — Kontrastfehler in den
+ * Graph-Oberflächen, die eigene Farbskalen mitbringen (Herkunfts-Chips,
+ * Kausal-Editor, Föderations-Status), fielen damit systematisch nicht auf.
+ */
+const DARK_MODE_PAGES = PAGES;
 
 /**
  * Seiten laden Inhalte asynchron nach (Tasks, Widgets, Docs). Der Scan

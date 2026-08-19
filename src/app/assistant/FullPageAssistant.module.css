@@ -3,7 +3,11 @@
     grid-template-columns: 1fr;
     height: 100%;
     min-height: 0;
-    background: var(--color-background, #fafafa);
+    /* `--color-background` gibt es in der Token-Skala nicht — die
+       Bühne lief deshalb im Dark Mode auf dem hellen Fallback #fafafa,
+       während der Text dem Theme folgte (Kontrast 1,04:1). Richtig ist
+       `--color-surface`. */
+    background: var(--color-surface);
 }
 
 .shell.withStage {
@@ -37,7 +41,7 @@
     align-items: center;
     gap: var(--space-2, 8px);
     font-weight: 600;
-    color: var(--color-primary, #00674F);
+    color: var(--color-primary-text);
 }
 
 .stageToggle {
@@ -54,7 +58,7 @@
 }
 
 .stageToggle:hover {
-    color: var(--color-primary, #00674F);
+    color: var(--color-primary-text);
     border-color: var(--color-primary, #00674F);
 }
 
@@ -107,7 +111,7 @@
 }
 
 .emptyIcon {
-    color: var(--color-primary, #00674F);
+    color: var(--color-primary-text);
     margin-bottom: var(--space-2, 8px);
 }
 
@@ -138,7 +142,7 @@
 
 .suggestion:hover {
     border-color: var(--color-primary, #00674F);
-    color: var(--color-primary, #00674F);
+    color: var(--color-primary-text);
 }
 
 /* Input */
@@ -223,7 +227,7 @@
     flex-direction: column;
     min-height: 0;
     min-width: 0;
-    background: var(--color-surface-variant, #f5f7f6);
+    background: var(--color-surface-sunken);
 }
 
 .stageHeader {

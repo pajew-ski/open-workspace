@@ -24,7 +24,7 @@ import type { StudyView } from '@/lib/graph/causal/study-graph';
 import type { ArchiveEntryView } from '@/lib/graph/causal/archive';
 import type { DagPath } from '@/lib/graph/causal/dsep';
 import { HYPOTHESIS_FILTER_LABEL, HYPOTHESIS_VERDICT_LABEL } from '@/lib/graph/causal/filters';
-import { PROPOSAL_SOURCE_LABEL } from '@/lib/graph/causal/propose';
+import { PROPOSAL_SOURCE_LABEL, PROPOSAL_SOURCES, proposalRunBody, type ProposalSource } from '@/lib/graph/causal/propose';
 import { ABSENT_SOURCES, STRUCTURE_SOURCE_LABEL, type Agreement, type StructureComparison } from '@/lib/graph/causal/compare';
 import type { HypothesisView } from '@/lib/graph/causal/hypothesis';
 import type { ProposalRunSummary } from '@/lib/graph/causal/propose.server';
@@ -1115,10 +1115,25 @@ function HypothesesPanel({
     lastRun: ProposalRunSummary | null;
     running: boolean;
     busy: boolean;
-    onPropose(): Promise<void>;
+    onPropose(sources: readonly ProposalSource[]): Promise<void>;
     onAdopt(id: string): Promise<void>;
     onDiscard(id: string): Promise<void>;
 }) {
+    /**
+     * Auswahl der Quellen (Nacharbeit zu C6). Der Lauf ersetzt je Quelle
+     * (§6.2-Muster) — wer nach einem Umzug nur die Topologie neu ableiten
+     * will, soll dafür keinen Sprachmodell-Aufruf mitbezahlen. Die Route
+     * kann das seit C6 über `sources` im Body; hier ist die Wahl dazu.
+     * Voreinstellung bleibt „alle drei", damit der gewohnte Weg der
+     * bequemste bleibt.
+     */
+    const [selected, setSelected] = useState<readonly ProposalSource[]>(PROPOSAL_SOURCES);
+    const toggleSource = (source: ProposalSource) => {
+        setSelected(previous => previous.includes(source)
+            ? previous.filter(entry => entry !== source)
+            : PROPOSAL_SOURCES.filter(entry => entry === source || previous.includes(entry)));
+    };
+
     return (
         <div className={styles.hypotheses}>
             <h5 className={styles.editorTitle}>Vorschläge</h5>
@@ -1130,11 +1145,33 @@ function HypothesesPanel({
                 kannst du übernehmen. Struktur&shy;lernen aus Daten gibt es hier nicht; es
                 gehört zu C8 und ist nicht gebaut.
             </p>
+            <fieldset className={styles.sourceChoice} disabled={running || busy}>
+                <legend className={styles.sourceChoiceLegend}>Welche Quellen?</legend>
+                {PROPOSAL_SOURCES.map(source => (
+                    <label key={source} className={styles.sourceOption}>
+                        <input
+                            type="checkbox"
+                            checked={selected.includes(source)}
+                            onChange={() => toggleSource(source)}
+                        />
+                        {PROPOSAL_SOURCE_LABEL[source]}
+                    </label>
+                ))}
+            </fieldset>
             <div className={styles.runRow}>
-                <Button variant="secondary" onClick={onPropose} disabled={running || busy}>
+                <Button
+                    variant="secondary"
+                    onClick={() => onPropose(selected)}
+                    disabled={running || busy || selected.length === 0}
+                >
                     <Lightbulb size={16} aria-hidden="true" />
                     {running ? 'Frage die Quellen…' : 'Vorschläge holen'}
                 </Button>
+                {selected.length === 0 && (
+                    <span className={styles.signature} role="status">
+                        Ohne Quelle gibt es nichts zu fragen.
+                    </span>
+                )}
                 {lastRun && (
                     <span className={styles.signature} role="status">
                         {lastRun.sources.map(source =>
@@ -1289,7 +1326,7 @@ interface ModelCardProps {
     onAsk(input: Record<string, unknown>): Promise<void>;
     onRemoveEstimand(estimandId: string): Promise<void>;
     onDiscardArchive(entryId: string): Promise<void>;
-    onPropose(): Promise<void>;
+    onPropose(sources: readonly ProposalSource[]): Promise<void>;
     onAdopt(id: string): Promise<void>;
     onDiscardHypothesis(id: string): Promise<void>;
     onCopy(): void;
@@ -1630,13 +1667,17 @@ export default function GraphCausalPage() {
      * `causal-hypotheses` — ins Modell kommt erst, was ein Mensch
      * übernimmt, und auch das nur, wenn die Filter es durchgelassen haben.
      */
-    const proposeFor = async (modelId: string) => {
+    const proposeFor = async (modelId: string, sources: readonly ProposalSource[]) => {
+        // Alle drei bleiben der Normalfall und fahren ohne `sources`;
+        // ohne jede Quelle gibt es nichts zu fragen (proposalRunBody).
+        const body = proposalRunBody(modelId, sources);
+        if (!body) return;
         setProposing(modelId);
         try {
             const result = await fetchJson<ProposalRunSummary>('/api/graph/causal/hypotheses', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ modelId }),
+                body: JSON.stringify(body),
             });
             setLastProposal(previous => ({ ...previous, [modelId]: result }));
             const total = result.sources.reduce((sum, source) => sum + source.proposed, 0);
@@ -1887,7 +1928,7 @@ export default function GraphCausalPage() {
                                     onAsk={askQuestion}
                                     onRemoveEstimand={removeQuestion}
                                     onDiscardArchive={discardArchiveEntry}
-                                    onPropose={() => proposeFor(model.id)}
+                                    onPropose={sources => proposeFor(model.id, sources)}
                                     onAdopt={adoptHypothesis}
                                     onDiscardHypothesis={discardHypothesis}
                                     onCopy={() => handleCopy(model)}

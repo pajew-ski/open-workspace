@@ -271,16 +271,36 @@ tests/ e2e/         # Vitest-Suiten und Playwright-Gate
 
 ## Dokumentation
 
+Einstieg und Wegweiser: **[docs/README.md](./docs/README.md)** — dort steht,
+welches Dokument in welcher Frage gilt.
+
+**Verbindliche Specs** (bei Widerspruch gewinnen sie gegen Analyse und TODO):
+
+- [GRAPH_CORE_SPEC](./docs/specs/graph-core.md) — Graph-Kern: Invarianten 1–10, Meilensteine M0–M14 (vollständig)
+- [CAUSAL_LAYER_SPEC](./docs/specs/causal-layer.md) — Kausal-Layer: Invarianten C1–C10, Meilensteine C0–C6 (verbindlich, vollständig); C7/C8 opt-in
+- [CHAT_WIDGET_SPEC](./docs/specs/chat-widget.md) — Verhalten des Assistenten-Widgets
+- [Agent-Tools](./docs/specs/agent-tools.md) — die eingebauten Werkzeuge des Tool-Loops
+
+**Architektur und Betrieb**:
+
 - [docs/ai-platform.md](./docs/ai-platform.md) — AI-Plattform: Multi-Provider, Routing, MCP, A2A, Skills, Serverless
+- [docs/kausalmodell.md](./docs/kausalmodell.md) — Kausalmodelle als Graph-Bürger: DAG-Editor, Identifikation, Revisionen, Schätzung und Refutation — und warum ein Effekt ohne bestandene Falsifikation nirgends erscheint
+- [docs/beobachtungen.md](./docs/beobachtungen.md) — Zeitreihen erfassen, bevor die Quelle sie verwirft
 - [docs/multi-user.md](./docs/multi-user.md) — Identität, ACL-Modell, Durchsetzung, öffentlicher Teilgraph
-- [docs/beobachtungen.md](./docs/beobachtungen.md) — Zeitreihen aus Home Assistant erfassen: was der Recorder behält, was er verwirft, und wie der Bestand entsteht
-- [docs/kausalmodell.md](./docs/kausalmodell.md) — Kausalmodelle als Graph-Bürger: DAG-Editor, Identifikation (Adjustment Sets, Frontdoor, Instrumente), Revisionen, Schätzung und Refutation — und warum ein Effekt ohne bestandene Falsifikation nirgends erscheint
-- [CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md) — verbindliche Spec des Kausal-Layers (Invarianten C1–C10, Meilensteine C0–C5; C7/C8 optional)
-- [GRAPH_CORE_SPEC.md](./GRAPH_CORE_SPEC.md) — verbindliche Spec des Graph-Kerns (M0–M13)
-- [ANALYSE.md](./ANALYSE.md) — Vollständige Analyse, Modernisierung und Roadmap
-- [AGENTS.md](./AGENTS.md) — AI-Agent-Protokoll und Architektur
-- [CHAT_WIDGET_SPEC.md](./CHAT_WIDGET_SPEC.md) — Verhaltens-Spezifikation des Chat-Widgets
-- [TODO.md](./TODO.md) — Entwicklungs-Roadmap
+- [docs/selbstmodell.md](./docs/selbstmodell.md) — wie sich der Workspace in seinem eigenen Graphen beschreibt
+- [docs/obsidian-kompatibilitaet.md](./docs/obsidian-kompatibilitaet.md) — was der Vault-Round-Trip erhält und was nicht
+- [docs/deployment.md](./docs/deployment.md) — ein Image, drei Runtimes
+
+**Entscheidungen, Widersprüche, Geschichte**:
+
+- [docs/decisions/](./docs/decisions/) — ADRs mit Messwerten statt Gefühl
+- [docs/spec-widersprueche.md](./docs/spec-widersprueche.md) — wo eine Spec sich selbst widersprach und wie entschieden wurde
+- [Analyse (2026-08)](./docs/analyse-2026-08.md) — historische Bestandsaufnahme des Prototyps und die Roadmap §5
+
+**Arbeitsprotokoll**:
+
+- [AGENTS.md](./AGENTS.md) — „Hier weitermachen", Architektur, Code-Konventionen, Safety-Regeln
+- [TODO.md](./TODO.md) — der abhakbare Stand
 
 ## Lizenz
 

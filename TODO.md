@@ -1,7 +1,7 @@
 # TODO - Open Workspace Development
 
-> Roadmap auf Basis der vollständigen Analyse in [ANALYSE.md](./ANALYSE.md).
-> Für den Graph-Ausbau gilt [GRAPH_CORE_SPEC.md](./GRAPH_CORE_SPEC.md)
+> Roadmap auf Basis der vollständigen Analyse in [Analyse (2026-08)](./docs/analyse-2026-08.md).
+> Für den Graph-Ausbau gilt [GRAPH_CORE_SPEC](./docs/specs/graph-core.md)
 > (hat Vorrang vor ANALYSE §5, wo sie widersprechen). Arbeitsmodus:
 > ein Meilenstein = eine Session = ein Branch = ein PR.
 
@@ -349,7 +349,7 @@
 
 ## Kausal-Layer (CAUSAL_LAYER_SPEC, C0–C6 verbindlich — vollständig)
 
-> Die Spec steht in [CAUSAL_LAYER_SPEC.md](./CAUSAL_LAYER_SPEC.md) und ist für
+> Die Spec steht in [CAUSAL_LAYER_SPEC](./docs/specs/causal-layer.md) und ist für
 > **C0–C6 verbindlich**; C7 (Experimente) und C8 (Sidecar) bleiben opt-in.
 > Arbeitsmodus: ein Meilenstein = eine Session = ein Branch = ein PR (§19).
 > **Die Liste ist in Baureihenfolge** — der nächste ist der oberste offene
@@ -824,11 +824,20 @@
       heute nicht liest. Dokumente und Chats liegen bereits im Graphen und
       wären über das Retrieval (M8) erreichbar; was fehlt, ist die
       Entscheidung, wie viel Kontext ein Vorschlagslauf kosten darf
-- [ ] **Vorschläge je Quelle einzeln anstoßen.** Der Lauf ersetzt je
-      Quelle, die Oberfläche bietet aber nur „alle drei". Wer nur die
-      Topologie neu ableiten will (nach einem Umzug eines Geräts), zahlt
-      heute einen Sprachmodell-Aufruf mit. Die Route kann es bereits
-      (`sources` im Body) — es fehlt die Auswahl im UI
+- [x] **Vorschläge je Quelle einzeln anstoßen.** Der Lauf ersetzt je
+      Quelle, die Oberfläche bot aber nur „alle drei" an — wer nach dem
+      Umzug eines Geräts bloß die Topologie neu ableiten wollte, zahlte
+      einen Sprachmodell-Aufruf mit. Die Wahl steht jetzt über dem Knopf,
+      voreingestellt auf alle drei; ohne gewählte Quelle bleibt er aus.
+      Was in den Body kommt, entscheidet eine reine Funktion neben den
+      Quellen (`proposalRunBody`), damit zwei Dinge nicht verrutschen: die
+      **Reihenfolge** (der Lauf hält sie ein, die Klickfolge nicht) und die
+      Bedeutung von **„alles"** — vollständig gewählt fährt die Anfrage
+      OHNE `sources` und trifft die Voreinstellung der Route statt einer
+      zufällig identischen Liste. Abnahme:
+      `tests/graph/causal-hypotheses.test.ts` (einzelne Quelle,
+      Vollauswahl ohne Liste, Reihenfolge, leere Auswahl ohne Lauf); dass
+      eine Quelle nur ihre eigenen Vorschläge ersetzt, steht dort seit C6
 - [ ] **Wikidata trifft selten.** Gefragt wird über die `device_class` als
       englisches Label; wo Home Assistant keine setzt, gibt es keinen
       Suchbegriff, und geraten wird nichts. Eine gepflegte Abbildung
@@ -954,7 +963,20 @@
       MCP-Prompt, Progressive Disclosure (use_skill), /skills-Seite
 - [ ] A2A-Streaming (message/stream) + Push-Notifications — Vertiefung
 - [ ] MCP-Ressourcen-Browser (resources/list als UI) — Vertiefung
-- [ ] CopilotKit: UI rendern oder Stack entfernen (Entscheidung, siehe ANALYSE §5 P0.3)
+- [x] **CopilotKit: Stack entfernt** (Entscheidung zu Analyse §5 P0.3).
+      Er rendert keine Oberfläche, sein Runtime-Endpunkt hing an einem
+      hartkodierten Ollama/OpenAI vorbei am AI-Hub, und zwei seiner fünf
+      Actions sprachen einen Vertrag, den die Routen seit M5 nicht mehr
+      haben. Die beiden tragenden Actions leben als Builtins im EINEN
+      Tool-Loop weiter: `workspace_create_task` und
+      `workspace_update_task`, auf Server- und Browser-Pfad, mit den
+      Zod-Schemas der Routen und im AI-Spiegel des Graphen. Nicht
+      übernommen und benannt statt stillschweigend fallengelassen:
+      `navigate` (reiner Client-Effekt, bräche die Symmetrie der Engine)
+      und `createCanvasCard` (sein Body wird seit M5 abgelehnt; eine
+      korrekte Fassung bräuchte eine Canvas-Auflistung, die der Tool-Loop
+      nicht hat). Abnahme: `tests/ai/workspace-tools.test.ts`,
+      `tests/graph/agents-skills-tools.test.ts`
 
 ## Sicherheit & Datenqualität
 
@@ -971,11 +993,18 @@
       durchgesetzt im Dataset-Resolver (M13, §17)
 - [x] Rate Limiting an MCP-, Föderations- und anonymen Routen (gleitendes
       Minutenfenster, 429 + Retry-After)
-- [ ] Rate Limiting am Chat-Endpunkt — P2 (die anderen Routen haben es)
+- [x] Rate Limiting am Chat-Endpunkt: derselbe gleitende RateLimiter wie
+      an den MCP-, Föderations- und anonymen Routen, geprüft VOR jeder
+      Arbeit (ein abgelehnter Turn kostet weder Modell noch Store).
+      Gezählt wird pro **geprüfter** Identität, sonst pro Absenderadresse
+      — „ohne geprüfte Identität ist eine Anfrage anonym, nicht der
+      Einzelnutzer" (M12/M13) gilt auch fürs Zählen. 20/min,
+      `OW_CHAT_RATE_LIMIT` verstellt es, `0` schaltet ab. Abnahme:
+      `tests/ai/chat-limits.test.ts`
 - [ ] Optionale Auth (Passkey/WebAuthn) als EIGENER Anmeldefluss — P2;
       heute führt ihn bewusst die Schicht davor (oauth2-proxy, HA-Ingress)
 
-## Offen (priorisiert — Herkunft der Nummerierung: ANALYSE.md §5)
+## Offen (priorisiert — Herkunft der Nummerierung: [Analyse](./docs/analyse-2026-08.md) §5)
 
 > Der Graph-Ausbau nach GRAPH_CORE_SPEC ist mit M14 vollständig. Was hier
 > steht, ist bewusst NICHT Teil der Spec und will einzeln entschieden
@@ -988,7 +1017,14 @@
       als `A2UIValue` benannt steht. Ebenso erledigt: unbenutzte
       Bindungen und die React-Hook-Dependencies (die verbliebenen
       Ausnahmen tragen eine Begründung am Code)
-- [ ] Frontmatter-Parser durch yaml/gray-matter ersetzen
+- [x] Frontmatter-Parser durch `yaml` ersetzt (dieselbe Bibliothek wie im
+      Obsidian-Connector). Der handgeschriebene Vorgänger schnitt am ersten
+      Doppelpunkt ab, zerlegte Tags am Komma und schrieb bei einem
+      Anführungszeichen im Titel unparsbares YAML zurück. Das
+      Ausgabeformat bleibt byte-gleich (Schlüsselreihenfolge, doppelte
+      Quotes, Tags als Flow-Liste); neu sind die Maskierung und dass ein
+      kaputter Block begründet übergangen wird statt halb gelesen.
+      Abnahme: `tests/graph/workspace-roundtrip.test.ts`
 
 ### P1
 - [x] A2A, MCP (Client UND Server), natives Tool-Calling (siehe AI-Integration)
@@ -1014,7 +1050,21 @@
 ### P2
 - [x] Accessibility-Durchgang (Fokus-Management, ARIA, Reduced Motion, Kontraste,
       Touch-Targets — automatisiert abgesichert via e2e/a11y + e2e/mobile-*)
-- [ ] A11y-Feinschliff: Chat-Verlauf als Live-Region, Dark-Mode-Scans auf alle Seiten ausweiten
+- [x] A11y-Feinschliff: Chat-Verlauf als Live-Region (`role="log"` an
+      Widget und ganzseitigem Assistenten; `aria-busy` während der Antwort,
+      sonst spräche der Screenreader die gestreamten Schnipsel einzeln,
+      dazu eine verborgene Statuszeile), Dark-Mode-Scans auf alle zwanzig
+      Seiten ausgeweitet. Der erweiterte Scan fand vier ernste
+      Kontrastfehler mit zwei gemeinsamen Ursachen: sechs **Phantom-Token**
+      in 26 Deklarationen (`--color-background`, `--color-text`,
+      `--color-surface-hover`, `--color-surface-variant`,
+      `--color-primary-hover`, `--color-surface-translucent` — CSS meldet
+      das nicht: ohne Fallback fällt die Deklaration still weg, mit
+      Fallback gilt der fest eingetragene Wert) und 26 Stellen, die die
+      **Primärfarbe als Textfarbe** setzten statt `--color-primary-text`.
+      Beides durchgängig nachgezogen und gegen Wiederkehr abgesichert:
+      `tests/platform/design-tokens.test.ts` (kein `var()` ins Leere, jedes
+      Farb-Token mit Dark-Mode-Wert oder begründet themenkonstant)
 - [ ] Versionshistorie für Dokumente als UI (die Daten liegen mit
       `git-backup` bereits versioniert vor)
 - [x] Export: Workspace-Backup als JSON-Download (Settings → Daten;
@@ -1029,6 +1079,38 @@
 - [ ] GitLab-Sync (Plugin-Erweiterung: MCP und der Connector-Vertrag sind
       die beiden vorgesehenen Erweiterungspunkte)
 
+### Beim Aufräumen gefunden, bewusst offen gelassen
+
+> Kleinigkeiten, die beim Durchgang vom 15.08.2026 sichtbar wurden. Keine
+> davon blockiert etwas; sie stehen hier, damit sie nicht wieder als
+> Überraschung auftauchen.
+
+- [ ] **Rohe `z-index`-Werte in zwölf CSS-Modulen** (5, 10, 30) neben der
+      Token-Skala `--z-*`. Sie sind lokale Stapelordnungen INNERHALB einer
+      Komponente und deshalb nicht falsch — aber die Konvention nennt nur
+      die Skala, und der eine Fall, der wirklich eine Ebene war
+      (`.floatingSettings` auf 100, numerisch gleich `--z-dropdown`), ist
+      bereits umgestellt. Zu entscheiden ist, ob die Konvention „nur die
+      Skala" oder „die Skala für Ebenen, freie Werte lokal" heißen soll
+- [ ] **`--color-surface-hover` zeigt jetzt auf `--color-surface-sunken`.**
+      Das Phantom-Token war an sechs Stellen gemeint als „die Fläche unter
+      dem Zeiger" — eine eigene Entscheidung, die eine gesenkte Fläche nur
+      annähert. Ein echtes Hover-Token wäre ehrlicher, ist aber eine
+      Design-Entscheidung, keine Aufräumarbeit
+- [ ] **Der Assistent kann Aufgaben anlegen und ändern, aber keine
+      Pinnwand-Karten.** Die alte CopilotKit-Action dafür war seit M5
+      kaputt; eine korrekte Fassung bräuchte eine Canvas-Auflistung im
+      Tool-Loop (der Finder kennt Canvas nicht). Erst bauen, wenn jemand
+      es im Chat vermisst
+- [ ] **`createLocalRuntimeAdapter` ruft niemand auf** — weder Code noch
+      Test. Der Adapter ist die Vorleistung aus M12 für die Runtime
+      `local` (siehe P1, „Anwendung auf `local` stellen"), und bis die
+      Umstellung kommt, ist er der einzige Baustein ohne Rückhalt: Seine
+      Teile sind geprüft (`tests/platform/opfs.test.ts`,
+      `worker-store.test.ts`), ihr Zusammenspiel nicht. Solange das so
+      bleibt, kann er unbemerkt verrotten
+
 ---
 
-*Last updated: 2026-08-10 (M15 Kalender/Chats/AI-Konfiguration als Graph-Bürger)*
+*Last updated: 2026-08-15 (Aufräum-Session: CopilotKit abgelöst, Frontmatter über YAML,
+Chat-Limit, Live-Region, Dark-Mode-Scan auf allen Seiten, Doku nach `docs/` konsolidiert)*

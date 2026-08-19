@@ -61,7 +61,7 @@
 
 .tabs button.activeTab {
     border-bottom-color: var(--color-primary);
-    color: var(--color-primary);
+    color: var(--color-primary-text);
     font-weight: bold;
 }
 

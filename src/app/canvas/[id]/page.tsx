@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { FileText } from 'lucide-react';
 import { AppShell } from '@/components/layout';
 import { Button, IconButton, ConfirmDialog, useToast } from '@/components/ui';
 import { nativeCanvasToJsonCanvas } from '@/lib/graph/connectors/json-canvas/native';
@@ -569,7 +570,10 @@ export default function CanvasEditorPage() {
                                                 }
                                             }} onMouseDown={(e) => e.stopPropagation()} placeholder={card.type === 'file' ? 'Dateipfad...' : 'Markdown schreiben...'} />
                                         ) : card.type === 'file' ? (
-                                            <div className={styles.cardContent}>📄 {card.content || 'Keine Datei verknüpft'}</div>
+                                            <div className={styles.cardContent}>
+                                                <FileText size={14} aria-hidden="true" />{' '}
+                                                {card.content || 'Keine Datei verknüpft'}
+                                            </div>
                                         ) : (
                                             <div className={styles.cardContent} dangerouslySetInnerHTML={{ __html: parseMarkdown(card.content || '') }} />
                                         )}

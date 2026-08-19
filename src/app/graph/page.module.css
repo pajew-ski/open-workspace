@@ -27,9 +27,9 @@
 .floatingSettings {
     position: fixed;
     width: 280px;
-    z-index: 100;
+    z-index: var(--z-dropdown);
     backdrop-filter: blur(12px);
-    background-color: var(--color-surface-translucent, rgba(20, 20, 20, 0.85));
+    background-color: var(--color-surface-translucent);
     border: 1px solid var(--color-border);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     border-radius: 12px;
@@ -81,7 +81,7 @@
 .closeButton:hover,
 .resetButton:hover {
     color: var(--color-text-primary);
-    background-color: var(--color-surface-hover);
+    background-color: var(--color-surface-sunken);
 }
 
 .resetButton {
@@ -124,7 +124,7 @@
 }
 
 .section label:hover {
-    color: var(--color-primary);
+    color: var(--color-primary-text);
 }
 
 .section input[type="checkbox"] {
@@ -159,7 +159,7 @@
     gap: 6px;
     font-size: 13px;
     color: var(--color-text-secondary);
-    background-color: var(--color-surface-hover);
+    background-color: var(--color-surface-sunken);
     border-radius: var(--radius-sm);
     padding: 8px;
 }
@@ -235,7 +235,7 @@
 .viewDelete:hover,
 .viewDelete:focus-visible {
     color: var(--color-error, #b3261e);
-    background-color: var(--color-surface-hover);
+    background-color: var(--color-surface-sunken);
 }
 
 .viewError {
