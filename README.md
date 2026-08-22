@@ -304,4 +304,4 @@ welches Dokument in welcher Frage gilt.
 
 ## Lizenz
 
-GPL-3.0 — Diese Software ist und bleibt Open Source.
+GPL-3.0
