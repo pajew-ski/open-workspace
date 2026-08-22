@@ -23,6 +23,7 @@ import process from 'node:process';
 
 import { applyBasePath, normalizeBasePath } from './base-path.mjs';
 import { startIngressProxy } from './ingress-proxy.mjs';
+import { SEED_DIR, seedDataDir } from './seed-data.mjs';
 
 const log = message => console.log(`[open-workspace] ${message}`);
 
@@ -79,9 +80,14 @@ function rewriteTargets(root) {
 
 /**
  * Add-on-Datenablage: Der Supervisor gibt jedem Add-on ein persistentes
- * `/data`. Die App liest ihren Bestand aus `<root>/data` — beim ersten Start
- * wandert der mitgelieferte Saat-Bestand dorthin, danach ist `<root>/data`
- * ein Symlink. Ohne diesen Schritt wäre jedes Add-on-Update ein Datenverlust.
+ * `/data`. Die App liest ihren Bestand aus `<root>/data`, das deshalb ein
+ * Symlink dorthin wird. Ohne diesen Schritt wäre jedes Add-on-Update ein
+ * Datenverlust.
+ *
+ * Der Saat-Bestand kommt seit Issue #32 NICHT mehr aus `<root>/data` —
+ * dieses Verzeichnis ist reiner Instanzbestand und liegt weder im Repo
+ * noch im Image. Gesät wird aus `<root>/seed`, und zwar in `ensureData()`
+ * für beide Runtimes gleich.
  *
  * @param {string} root
  * @param {string | null | undefined} dataDir
@@ -93,16 +99,28 @@ export async function linkPersistentData(root, dataDir) {
     const stats = await fs.lstat(appData).catch(() => null);
     if (stats?.isSymbolicLink()) return dataDir;
 
-    const seeded = path.join(dataDir, '.ow-seeded');
-    if (!existsSync(seeded)) {
-        if (stats?.isDirectory()) {
-            await fs.cp(appData, dataDir, { recursive: true, force: false, errorOnExist: false });
-        }
-        await fs.writeFile(seeded, `${new Date().toISOString()}\n`, 'utf-8');
+    if (stats?.isDirectory()) {
+        // Was ein früherer Lauf im Image-Verzeichnis angelegt hat, gehört
+        // dem Betreiber — es wandert mit, überschreibt aber nichts.
+        await fs.cp(appData, dataDir, { recursive: true, force: false, errorOnExist: false });
     }
     if (stats) await fs.rm(appData, { recursive: true, force: true });
     await fs.symlink(dataDir, appData, 'dir');
     return dataDir;
+}
+
+/**
+ * Saat ausbringen: fehlende Auslieferungsdateien aus `<root>/seed` nach
+ * `<dataDir>` bzw. `<root>/data`. Additiv — bearbeiteter Bestand bleibt
+ * unangetastet (scripts/seed-data.mjs).
+ *
+ * @param {string} root
+ * @param {string | null | undefined} dataDir
+ * @returns {Promise<string[]>}
+ */
+export async function ensureData(root, dataDir) {
+    const target = dataDir ?? path.join(root, 'data');
+    return seedDataDir(path.join(root, SEED_DIR), target);
 }
 
 /**
@@ -188,6 +206,8 @@ async function main() {
 
     // Packaging-Schritte, solange wir sie noch dürfen (Add-on startet als root).
     const dataDir = await linkPersistentData(root, process.env.OW_DATA_DIR ?? (ingress ? '/data' : null));
+    const seeded = await ensureData(root, dataDir);
+    if (seeded.length > 0) log(`Saat ausgebracht: ${seeded.length} Datei(en) (${seeded.slice(0, 3).join(', ')}${seeded.length > 3 ? ', …' : ''}).`);
     const options = await applyAddonOptions(dataDir);
     if (Object.keys(options).length > 0) log(`Add-on-Optionen übernommen: ${Object.keys(options).join(', ')}.`);
     const dropped = await dropPrivileges({

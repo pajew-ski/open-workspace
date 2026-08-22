@@ -275,6 +275,70 @@ describe.each(bindings)('git-backup über $name', binding => {
     });
 });
 
+describe('Backup-Ziel innerhalb eines fremden Repos (Issue #32)', () => {
+    /**
+     * Der Weg, den diese Prüfung schließt: `isRepo()` fragt Git, ob der
+     * Pfad in einem Working Tree liegt — unter einem Checkout ist die
+     * Antwort ja, wegen des UMGEBENDEN Repos. `push` überspringt dann
+     * `init()`, und `git add -A` + `commit` legen den Graphen samt
+     * `acl.nq` im fremden Repo ab. Steht dessen Remote auf einem
+     * öffentlichen `origin`, ist der Rest ein Lauf ohne Rückfrage.
+     */
+    it('lehnt ab, statt in das umgebende Repo zu committen', async () => {
+        const base = await nodeFs.mkdtemp(path.join(os.tmpdir(), 'ow-fremd-'));
+        tmpRoots.push(base);
+        process.env.OW_GIT_ROOTS = base;
+        const files = createNodeFileSystem();
+        const git = createProcessGitProvider();
+        await git.init(base);
+
+        const nested = path.join(base, 'data', 'graph');
+        await files.mkdir(nested);
+        expect(await git.isRepo(nested)).toBe(true);        // das fremde Repo
+        expect(await files.exists(`${nested}/.git`)).toBe(false);
+
+        const store = new OxigraphStore();
+        const iri = createIriFactory(INSTANCE);
+        const handle: GraphHandle = { store, iri };
+        await writeWorkspaceToStore(store, iri, fixture());
+        const runtime = testRuntime(store, files, git);
+        const id = await registerBackup(handle, { path: nested, mode: 'backup', branch: 'main' });
+
+        const receipt = await pushConnector(handle, id, { files, runtime });
+        expect(receipt.status).toBe('failed');
+        expect(receipt.message).toMatch(/fremden Git-Repositories/);
+        // Und zwar VOR dem ersten Byte: kein Snapshot, kein Commit.
+        expect(await files.exists(`${nested}/workspace.nq`)).toBe(false);
+        expect(await git.head(base)).toBeNull();
+    });
+
+    it('lässt ein eigenes Repository am selben Ort zu', async () => {
+        const base = await nodeFs.mkdtemp(path.join(os.tmpdir(), 'ow-eigen-'));
+        tmpRoots.push(base);
+        process.env.OW_GIT_ROOTS = base;
+        const files = createNodeFileSystem();
+        const git = createProcessGitProvider();
+        await git.init(base);
+
+        const nested = path.join(base, 'backup');
+        await files.mkdir(nested);
+        await git.init(nested);                              // eigenes .git am Ziel
+
+        const store = new OxigraphStore();
+        const iri = createIriFactory(INSTANCE);
+        const handle: GraphHandle = { store, iri };
+        await writeWorkspaceToStore(store, iri, fixture());
+        const runtime = testRuntime(store, files, git);
+        const id = await registerBackup(handle, { path: nested, mode: 'backup', branch: 'main' });
+
+        const receipt = await pushConnector(handle, id, { files, runtime });
+        expect(receipt.status).toBe('pushed');
+        expect(await git.head(nested)).toMatch(/^[0-9a-f]{40}$/);
+        // Das umgebende Repo bleibt unberührt.
+        expect(await git.head(base)).toBeNull();
+    });
+});
+
 describe('git-backup Locator ↔ Konfiguration', () => {
     it('ist verlustfrei (Invariante 6)', () => {
         const config: GitBackupConfig = {

@@ -27,11 +27,16 @@ vom Add-on verwaltet.
 
 ## Daten
 
-Der Bestand liegt in `/data` (persistent über Add-on-Updates hinweg). Beim
-ersten Start wird der mitgelieferte Beispiel-Bestand dorthin kopiert; danach
-fasst das Add-on ihn nicht mehr an. Der RDF-Snapshot liegt unter
-`/data/graph` — er ist die kanonische Ablage (SPEC §8.1) und lässt sich mit
-dem Connector `git-backup` versionieren.
+Der Bestand liegt in `/data` (persistent über Add-on-Updates hinweg). Bei
+jedem Start ergänzt das Add-on fehlende Auslieferungsdateien aus dem
+mitgelieferten `seed/`; was dort schon liegt, fasst es nicht an. Der
+RDF-Snapshot liegt unter `/data/graph` — er ist die kanonische Ablage
+(SPEC §8.1) und lässt sich mit dem Connector `git-backup` versionieren.
+
+Für das Backup ein eigenes Ziel wählen, etwa unter `/share` (per Option
+`git_roots` freigeben): `/data/graph` ist der Live-Snapshot, den die App
+nach jeder Mutation neu schreibt, und ein Backup-Ziel innerhalb eines
+fremden Git-Working-Tree lehnt der Connector ab.
 
 ## Ingress und Links
 

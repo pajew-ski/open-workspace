@@ -740,6 +740,13 @@ export default function GraphConnectorsPage() {
                                             placeholder="data/backup"
                                         />
                                     </label>
+                                    <p className={styles.kindDescription}>
+                                        Das Ziel muss ein eigenes Repository sein. Liegt es in einem fremden
+                                        Working Tree — etwa im Checkout dieser Anwendung —, committet das Backup
+                                        den Graphen samt Zugriffsregeln dorthin statt in ein eigenes Repo; solche
+                                        Ziele werden abgelehnt. Am saubersten ist eine Wurzel außerhalb der
+                                        Installation (OW_GIT_ROOTS), sonst ein eigenes &bdquo;git init&ldquo; im Zielordner.
+                                    </p>
                                     <label className={styles.field}>
                                         <span>Modus</span>
                                         <select value={formGitMode} onChange={e => setFormGitMode(e.target.value as 'backup' | 'bidirectional')}>

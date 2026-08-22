@@ -80,8 +80,31 @@ gesetzt — derselbe Mechanismus wie beim Ingress, nur mit festem Wert.
 `deploy/ha-addon/config.yaml` als Add-on-Repository hinzufügen; Details in
 [deploy/ha-addon/DOCS.md](../deploy/ha-addon/DOCS.md). Das Add-on baut
 nichts selbst, es zieht das veröffentlichte Image. Daten liegen in `/data`
-(beim ersten Start mit dem Saat-Bestand befüllt, danach unangetastet),
-Vaults und Git-Ziele unter `/share`.
+(bei jedem Start um fehlende Saat ergänzt, vorhandener Bestand bleibt
+unangetastet), Vaults und Git-Ziele unter `/share`.
+
+## Wo die Instanzdaten liegen
+
+Zwei Bestände, die nicht zu verwechseln sind (Issue #32):
+
+| | `seed/` | `data/` |
+|---|---|---|
+| Inhalt | Onboarding-Dokumente, Start-Dashboard, Beispiel-Pinnwand, Beispiel-Werkzeug | Graph-Snapshot samt `acl.nq`, Projektionen, Chats, Kalender-Abos, Vaults, Bilder, Provider-Keys |
+| Gilt für | jede Installation gleich | genau diese Installation |
+| Im Repo | ja | **nein** (`.gitignore`: `/data/`) |
+| Im Image | ja | **nein** (`.dockerignore`) |
+| Ort im Betrieb | `/app/seed` | Volume `ow-data` (`server`) bzw. `/data` (`ha-addon`) |
+
+`scripts/seed-data.mjs` kopiert beim Start, was am Ziel fehlt — additiv,
+nie überschreibend. Eingebunden ist es in `scripts/start.mjs` (Container)
+sowie in `bun run dev` und `bun run start` (lokal); `bun run seed` bringt
+die Saat auch von Hand aus.
+
+Für ein Backup des eigenen Graphen ist der Connector `git-backup` da — mit
+einem Ziel **außerhalb** des Arbeitsverzeichnisses der Anwendung (Wurzel
+über `OW_GIT_ROOTS` freigeben). Ein Ziel innerhalb eines fremden
+Git-Working-Tree lehnt der Connector ab: dort würde das Backup den Graphen
+samt Zugriffsregeln in dieses fremde Repo committen.
 
 ## Identität (`OW_AUTH_MODE`)
 

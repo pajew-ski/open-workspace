@@ -15,7 +15,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { startIngressProxy } from '../../scripts/ingress-proxy.mjs';
-import { applyAddonOptions, fetchIngressEntry, isIngressMode, linkPersistentData } from '../../scripts/start.mjs';
+import { applyAddonOptions, ensureData, fetchIngressEntry, isIngressMode, linkPersistentData } from '../../scripts/start.mjs';
 
 const INGRESS = '/api/hassio_ingress/abcd1234';
 
@@ -163,7 +163,7 @@ describe('Add-on-Vorbereitung', () => {
         await fs.rm(path.dirname(root), { recursive: true, force: true });
     });
 
-    it('sät den Bestand einmalig nach /data und verknüpft ihn danach', async () => {
+    it('übernimmt vorhandenen Bestand nach /data und verknüpft ihn danach', async () => {
         expect(await linkPersistentData(root, dataDir)).toBe(dataDir);
 
         const linked = await fs.lstat(path.join(root, 'data'));
@@ -174,6 +174,34 @@ describe('Add-on-Vorbereitung', () => {
         await fs.writeFile(path.join(dataDir, 'graph', 'manifest.json'), '{"version":3}\n');
         await linkPersistentData(root, dataDir);
         expect(await fs.readFile(path.join(root, 'data', 'graph', 'manifest.json'), 'utf-8')).toBe('{"version":3}\n');
+    });
+
+    it('sät aus seed/ nach /data — additiv, ohne Bearbeitetes zu überschreiben', async () => {
+        // Auslieferungsbestand des Images (Issue #32): seed/ statt data/.
+        await fs.mkdir(path.join(root, 'seed', 'docs'), { recursive: true });
+        await fs.writeFile(path.join(root, 'seed', 'docs', 'willkommen.md'), 'Willkommen\n');
+        await fs.writeFile(path.join(root, 'seed', 'dashboard.json'), '{"layout":[]}\n');
+
+        await linkPersistentData(root, dataDir);
+        expect(await ensureData(root, dataDir)).toEqual(['dashboard.json', 'docs/willkommen.md']);
+        expect(await fs.readFile(path.join(dataDir, 'docs', 'willkommen.md'), 'utf-8')).toBe('Willkommen\n');
+
+        // Zweiter Start nach einer Bearbeitung: die Saat hält sich zurück.
+        await fs.writeFile(path.join(dataDir, 'docs', 'willkommen.md'), 'Meins\n');
+        expect(await ensureData(root, dataDir)).toEqual([]);
+        expect(await fs.readFile(path.join(dataDir, 'docs', 'willkommen.md'), 'utf-8')).toBe('Meins\n');
+    });
+
+    it('sät ohne persistentes Verzeichnis in das Arbeitsverzeichnis (Runtime `server`)', async () => {
+        await fs.mkdir(path.join(root, 'seed'), { recursive: true });
+        await fs.writeFile(path.join(root, 'seed', 'dashboard.json'), '{"layout":[]}\n');
+
+        expect(await ensureData(root, null)).toEqual(['dashboard.json']);
+        expect(await fs.readFile(path.join(root, 'data', 'dashboard.json'), 'utf-8')).toBe('{"layout":[]}\n');
+    });
+
+    it('bleibt ohne seed/ still — ein Build ohne Saat ist kein Fehler', async () => {
+        expect(await ensureData(root, dataDir)).toEqual([]);
     });
 
     it('bleibt untätig, wenn es kein persistentes Verzeichnis gibt', async () => {

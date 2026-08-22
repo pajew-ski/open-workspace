@@ -1,0 +1,30 @@
+---
+id: "note-welcome-1"
+slug: "willkommen-in-open-workspace"
+title: "Willkommen in Open Workspace"
+category: "Einführung"
+author: "michael-pajewski"
+type: "CreativeWork"
+inLanguage: "de"
+tags: ["willkommen", "start"]
+createdAt: "2026-01-24T09:00:00.000Z"
+updatedAt: "2026-01-24T10:52:27.895Z"
+---
+
+# Willkommen in Open Workspace
+
+Dies ist deine erste Notiz in der Wissensbasis. Du kannst hier beliebige Markdown-Inhalte speichern.
+
+## Features
+
+- **Markdown-Unterstützung**: Schreibe in vollem Markdown
+- **YAML Frontmatter**: Metadaten werden im Frontmatter gespeichert
+- **GitHub Sync**: Notizen werden als `.md` Dateien gespeichert
+
+## Erste Schritte
+
+1. Erstelle neue Notizen über die Wissensbasis
+2. Nutze den Persönlichen Assistenten für Hilfe
+3. Organisiere deine Notizen mit Kategorien und Tags
+
+Viel Erfolg!
