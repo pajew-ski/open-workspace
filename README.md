@@ -219,7 +219,8 @@ src/
 │   └── …           # skills, tools, agents, chat, calendar, security, storage
 └── types/          # TypeScript-Definitionen
 ontology/           # ow.ttl (Produktvokabular), rules/ (Reasoning), shapes/ (SHACL)
-data/               # Projektionen (docs/tasks/canvas) + Graph-Snapshot (data/graph)
+seed/               # Auslieferungsbestand: wird beim Start nach data/ kopiert
+data/               # Instanzbestand (Projektionen + Graph-Snapshot) — NICHT im Repo
 public/             # PWA: sw.js, icons, offline.html (Manifest ist eine Route)
 deploy/             # Packaging: HA-Add-on (config.yaml) und server-Compose
 scripts/            # Start-Einstieg des Images, Base-Path-Rewrite, Ingress-Proxy

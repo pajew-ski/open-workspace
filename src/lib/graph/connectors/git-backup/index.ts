@@ -187,6 +187,33 @@ async function requireExistingRepoDir(files: FileSystemLike, config: GitBackupCo
     return root;
 }
 
+/**
+ * Ein Backup-Ziel muss sein EIGENES Repository sein (Issue #32).
+ *
+ * Der Weg, der ohne diese Prüfung offensteht, ist kein hypothetischer:
+ * `isRepo()` fragt Git, ob der Pfad in einem Working Tree liegt — und für
+ * jedes Verzeichnis unter einem Checkout ist die Antwort ja, wegen des
+ * UMGEBENDEN Repos. `push` überspringt dann `init()`, und `commitAll()`
+ * legt den Graphen samt `acl.nq` als Commit im fremden Repo ab. Steht
+ * dessen Remote auf einem öffentlichen `origin`, ist der Rest ein
+ * automatisierter Lauf ohne Rückfrage.
+ *
+ * Die Grenze ist deshalb nicht „ist da ein Repo", sondern „ist das Repo
+ * dieses Verzeichnis": ein eigenes `.git` am Ziel. Ein noch leeres
+ * Verzeichnis außerhalb jedes Checkouts bleibt erlaubt — `push` legt dort
+ * beim ersten Lauf sein Repo an.
+ */
+async function assertOwnRepo(files: FileSystemLike, git: GitProvider, root: string, locatorPath: string): Promise<void> {
+    if (!(await git.isRepo(root))) return;
+    if (await files.exists(`${root}/.git`)) return;
+    throw new Error(
+        `Backup-Ziel "${locatorPath}" liegt INNERHALB eines fremden Git-Repositories und ist blockiert: `
+        + 'ein Backup dorthin committet den Graphen samt Zugriffsregeln in dieses Repo, nicht in ein eigenes. '
+        + 'Wähle ein Ziel außerhalb (Wurzel über OW_GIT_ROOTS freigeben) oder mache das Verzeichnis mit '
+        + '`git init` zu einem eigenen Repository.',
+    );
+}
+
 export const gitBackupConnector: Connector<GitBackupConfig> = {
     kind: 'git-backup',
     mode: 'materialize',
@@ -213,6 +240,7 @@ export const gitBackupConnector: Connector<GitBackupConfig> = {
     async probe(config, ctx): Promise<SourceRef> {
         const files = requireFiles(ctx);
         const root = await requireExistingRepoDir(files, config);
+        await assertOwnRepo(files, requireGit(ctx), root, config.path);
         const repoFiles = await readRepoFiles(files, root);
         return {
             id: '',
@@ -299,6 +327,8 @@ export const gitBackupConnector: Connector<GitBackupConfig> = {
         const root = resolveBackupRoot(config.path);
 
         const existed = await files.exists(root);
+        // Vor dem ersten Byte: das Ziel darf kein fremder Working Tree sein.
+        if (existed) await assertOwnRepo(files, git, root, config.path);
         if (existed && config.mode === 'bidirectional') {
             // Konfliktregel §6.2: weicht der Repo-Inhalt vom Stand des
             // letzten Sync ab, wird nichts geschrieben. (Im Modus „backup"

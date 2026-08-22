@@ -1,4 +1,3 @@
-#/data
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
@@ -44,18 +43,19 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 
-# Security & User Data
-data/secure/
-data/connections/
-data/tools/
-data/agents/
-data/settings.json
-# AI platform config: enthält verschlüsselte Provider-Keys/MCP-Auth
-data/ai/
-# Erfasste Messreihen (docs/beobachtungen.md): Betriebsdaten der
-# Installation, oft personenbeziehbar (Anwesenheit, Verbrauch). Sie
-# gehören in ein Backup, nicht ins Produkt-Repo.
-data/observations/
+# Instanzdaten (Issue #32)
+#
+# `data/` ist der Bestand EINER laufenden Installation: Graph-Snapshot
+# samt Zugriffsregeln (`data/graph/acl.nq`), Projektionen (docs, tasks,
+# canvas, calendar), Chatverlauf, hochgeladene Bilder, Vaults, Messreihen,
+# Provider-Keys. Nichts davon gehört in dieses Repo — es ist öffentlich,
+# und Git vergisst nicht.
+#
+# Ausgeliefert wird stattdessen `seed/`: der Saat-Bestand, den
+# `scripts/seed-data.mjs` beim ersten Start nach `data/` kopiert. Wer eine
+# neue Auslieferungsdatei braucht, legt sie dort ab — nicht hier eine
+# Ausnahme. Erzwungen wird die Grenze von tests/platform/data-privacy.test.ts.
+/data/
 
 # playwright
 /playwright-report/

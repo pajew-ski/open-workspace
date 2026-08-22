@@ -26,12 +26,13 @@ blob-report
 .env*
 
 # Root-level docs only. Patterns without "/" match at the context root, so
-# data/docs/*.md (seed content needed in the runner stage) stays included.
+# seed/docs/*.md (delivery content needed in the runner stage) stays included.
 *.md
 
-# Never bake secrets or per-user runtime data into the image.
-# data/ itself must stay in the build context (seed data for the runner).
-data/secure
+# Instance state never enters the image (issue #32): the build context is
+# somebody's working directory, and data/ there is their graph, their chat
+# history, their keys. Delivery content lives in seed/.
+data
 
 # Docker build files themselves
 Dockerfile

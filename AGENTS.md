@@ -442,9 +442,13 @@ Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
   `restoresCanonicalGraphs`, EINE Transaktion; acl/vocab/shapes/inferred
   nie — Negativtest), fremde RDF-Dateien in den Import-Graphen; nach
   einem Restore projiziert die Sync-Route die Workspace-Dateien neu.
-  Pfad-Politik `data/` + `OW_GIT_ROOTS`; Empfehlung: `data/graph` für
-  `backup`, eigenes Verzeichnis (z. B. `data/backup`) für
-  `bidirectional`. UI: git-backup im Katalog (Pfad/Modus/Remote/Branch,
+  Pfad-Politik `data/` + `OW_GIT_ROOTS`; das Ziel muss sein EIGENES
+  Repository sein (`assertOwnRepo`, Issue #32): liegt es in einem fremden
+  Working Tree, committet `commitAll` den Graphen samt `acl.nq` dorthin,
+  weil `isRepo()` das umgebende Repo bejaht und `init()` ausbleibt —
+  deshalb Abbruch statt Warnung. Empfohlenes Ziel: eine Wurzel außerhalb
+  der Installation über `OW_GIT_ROOTS`, sonst `data/backup` mit eigenem
+  `git init`. UI: git-backup im Katalog (Pfad/Modus/Remote/Branch,
   „Backup erstellen"; Sync-Button nur bei bidirectional). Abnahme in
   BEIDEN Bindungen: `tests/graph/git-provider.test.ts`,
   `tests/graph/git-backup.test.ts`.
@@ -990,7 +994,8 @@ open-workspace/
 │       ├── skills/ tools/ agents/ chat/ calendar/ connections/ security/
 │       └── storage/              # Fassaden über die Store-first-CRUD
 ├── ontology/                     # ow.ttl, rules/, shapes/
-├── data/                         # Projektionen + Snapshot (siehe Data Layer)
+├── seed/                         # Auslieferungsbestand (wird nach data/ gesät)
+├── data/                         # Instanzbestand, NICHT im Repo (Data Layer)
 ├── deploy/                       # server-Compose, HA-Add-on
 ├── scripts/                      # start.mjs, base-path, migrate, checks
 └── tests/ e2e/                   # Vitest + Playwright
@@ -1093,6 +1098,17 @@ Keys AES-256-GCM-verschlüsselt oder browser-lokal):
 
 ## Data Layer
 
+**`data/` gehört der Installation, nicht dem Repo** (Issue #32). Es ist
+weder eingecheckt (`.gitignore`: `/data/`) noch im Image (`.dockerignore`)
+— es entsteht zur Laufzeit im Volume bzw. im Arbeitsverzeichnis des
+Betreibers. Ausgeliefert wird `seed/`: Onboarding-Dokumente,
+Start-Dashboard, Beispiel-Pinnwand, Beispiel-Werkzeug.
+`scripts/seed-data.mjs` kopiert daraus bei jedem Start, was am Ziel fehlt
+— additiv, nie überschreibend. Neue Auslieferungsdatei ⇒ nach `seed/`;
+eine `!`-Ausnahme in `.gitignore` ist die falsche Antwort. Die Grenze
+erzwingt `tests/platform/data-privacy.test.ts` über `git check-ignore`,
+also auch für Dateien, die es noch nicht gibt.
+
 **Die Wahrheit ist der RDF-Store** (SPEC §12.4/§16). Alles unter `data/`
 außer `data/graph/` ist **Projektion**: lesbar für Git und Obsidian,
 geschrieben von `src/lib/graph/workspace/files.ts`, nie direkt von der App
@@ -1120,7 +1136,8 @@ regulären Connector-Weg zurück (`obsidian-vault`, `git-backup`) — nicht
 
 ### Graph-Snapshot (`data/graph/`)
 - Deterministische N-Quads je kanonischem Graphen plus `manifest.json`
-  (RDFC-1.0, byte-identisch → git-tauglich). `acl.nq` liegt NEBEN dem
+  (RDFC-1.0, byte-identisch → git-tauglich — aber git-tauglich heißt
+  „taugt für DEIN Backup-Repo", nicht für dieses hier). `acl.nq` liegt NEBEN dem
   Manifest (§17.4). `inferred/*` und die Suchindizes werden nie
   persistiert — sie entstehen beim Start neu.
 

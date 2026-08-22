@@ -296,7 +296,9 @@
       des Snapshots; `graph/acl` wird als `acl.nq` NEBEN dem Manifest
       gesichert (überlebt Neustart; kein Restore und kein Nutzer-Export
       fasst ihn an — ein Git-Backup direkt auf `data/graph` nimmt die
-      Datei mit, was zulässig ist, weil es `control` auf allem verlangt). Neue Terme
+      Datei mit, was zulässig ist, weil es `control` auf allem verlangt;
+      seit Issue #32 nur noch in ein EIGENES Repository, nicht in einen
+      fremden Working Tree). Neue Terme
       `ow:Space`/`ow:spaceGraph`, sonst Standard-Vokabular (WAC, FOAF,
       VoID). UI `/graph/access`, `capabilities.multiUser` = true.
       Doku: docs/multi-user.md — Abnahme: `tests/graph/multi-user.test.ts`

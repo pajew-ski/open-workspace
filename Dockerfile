@@ -16,11 +16,11 @@
 # Build ein (Wurzel, festes Präfix oder Home-Assistant-Ingress-Pfad) und
 # startet Next — im Ingress-Fall hinter dem Ingress-Proxy.
 #
-# The image ships the repository's data/ directory as seed content
-# (data/secure is excluded via .dockerignore). /app/data is declared as a
-# volume mountpoint: mount a named volume there (see run command above) to
-# persist workspace data across container restarts — on first use the named
-# volume is initialized with the seed data baked into the image.
+# The image ships seed/ — the delivery content shared by every installation
+# (issue #32). data/ is per-instance state and is in NEITHER the repo nor the
+# image (.gitignore, .dockerignore). /app/data is a volume mountpoint: mount a
+# named volume there (see run command above) to persist workspace data across
+# restarts; scripts/start.mjs seeds what is missing on every start.
 
 # ---- Stage 1: install dependencies (bun) --------------------------------
 FROM oven/bun:1 AS deps
@@ -59,11 +59,13 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 # Start- und Packaging-Skripte (reines Node-ESM, kein bun im Runtime-Image).
-COPY --from=builder --chown=nextjs:nodejs /app/scripts/start.mjs /app/scripts/base-path.mjs /app/scripts/ingress-proxy.mjs ./scripts/
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/start.mjs /app/scripts/base-path.mjs /app/scripts/ingress-proxy.mjs /app/scripts/seed-data.mjs ./scripts/
 
-# Seed data. Declared as a volume so runtime writes persist outside the
-# container (mount: -v ow-data:/app/data).
-COPY --from=builder --chown=nextjs:nodejs /app/data ./data
+# Delivery content. scripts/start.mjs copies what is missing into /app/data on
+# start — declared as a volume so runtime writes persist outside the container
+# (mount: -v ow-data:/app/data).
+COPY --from=builder --chown=nextjs:nodejs /app/seed ./seed
+RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
 VOLUME /app/data
 
 # Der Start-Schritt schreibt die Base-Path-Markierung nach /app.
