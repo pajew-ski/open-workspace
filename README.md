@@ -1,5 +1,5 @@
 # Open Workspace
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 [![Stack: Next.js 16](https://img.shields.io/badge/Stack-Next.js_16-black)](https://nextjs.org/)
 [![Protocol: A2UI](https://img.shields.io/badge/Protocol-A2UI-00674F)](https://github.com/google/A2UI)
 [![Protocol: A2A](https://img.shields.io/badge/Protocol-A2A-00674F)](https://github.com/a2aproject/A2A)
@@ -305,4 +305,7 @@ welches Dokument in welcher Frage gilt.
 
 ## Lizenz
 
-GPL-3.0
+Apache-2.0 — dieselbe Lizenz, unter der Home Assistant Core und die
+offiziellen Add-ons stehen. Bis August 2026 stand das Projekt unter
+GPL-3.0; die Umstellung war möglich, weil außer dem Urheber niemand
+beigetragen hat. Ältere Commits bleiben unter GPL-3.0 verfügbar.
