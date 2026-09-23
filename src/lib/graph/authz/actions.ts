@@ -52,7 +52,12 @@ export const accessOverview = defineAction({
             identity: {
                 userId: ctx.identity.userId,
                 displayName: ctx.identity.displayName ?? null,
+                // Die Seite zeigt Verfahren, Gruppen und Grund — dieselben
+                // Felder wie vor der Migration (sonst bricht sie im Render).
+                mode: ctx.identity.mode ?? null,
                 authenticated: ctx.identity.authenticated,
+                groups: ctx.identity.groups ?? [],
+                reason: ctx.identity.reason ?? null,
                 label: ctx.identity.label,
             },
             capabilities: { multiUser: ctx.platform?.runtime.capabilities.multiUser ?? false },

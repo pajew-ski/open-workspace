@@ -41,6 +41,7 @@ import { executeAction } from '@/lib/actions/execute';
 import { ActionDeniedError, type ActionContext } from '@/lib/actions/contract';
 import { createTask, deleteTask } from '@/lib/graph/workspace/actions';
 import { workspaceFinder } from '@/lib/graph/search/actions';
+import { accessOverview } from '@/lib/graph/authz/actions';
 
 const INSTANCE_BASE = 'https://ws.example.org/id/';
 const alice = createIriFactory(INSTANCE_BASE, 'alice');
@@ -249,5 +250,26 @@ describe('ACTIONS_SPEC — Identität: die Aufgabe landet im Graphen des Anfrage
         const id = (created.output as { task: { id: string } }).task.id;
         await executeAction(deleteTask, { id }, ctx);
         expect(await dump(fx.store, alice.graph('workspace'))).toEqual([]);
+    });
+});
+
+describe('ACTIONS_SPEC — eine migrierte Route behält ihre Antwortform', () => {
+    // Regression: `/graph/access` liest `identity.groups.length`, `mode` und
+    // `reason`. Fehlt eines davon, rendert die Seite den Fehlerzustand
+    // (CI #68). Die Aktion trägt deshalb dieselben Felder wie die Route
+    // vor der Migration — auch wenn der Kontext sie nicht kennt.
+    it('liefert access_overview mit mode, groups und reason der Identität', async () => {
+        const ctx = await fx.ctx('alice');
+        const bare = await executeAction(accessOverview, {}, ctx);
+        expect(bare.output).toMatchObject({
+            identity: { userId: 'alice', authenticated: true, mode: null, groups: [], reason: null },
+        });
+        const withMode = await executeAction(accessOverview, {}, {
+            ...ctx,
+            identity: { ...ctx.identity, mode: 'proxy-header', groups: ['team'], reason: 'nur zum Test' },
+        });
+        expect(withMode.output).toMatchObject({
+            identity: { mode: 'proxy-header', groups: ['team'], reason: 'nur zum Test' },
+        });
     });
 });

@@ -87,5 +87,8 @@ export async function actionContextFromRequest(options: ServerContextOptions = {
         authenticated: identity.authenticated,
         ...(identity.displayName ? { displayName: identity.displayName } : {}),
         label: grant.identity,
+        mode: identity.mode,
+        groups: identity.groups,
+        ...(identity.reason ? { reason: identity.reason } : {}),
     }, options);
 }
