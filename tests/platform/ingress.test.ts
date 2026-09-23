@@ -15,7 +15,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { startIngressProxy } from '../../scripts/ingress-proxy.mjs';
-import { applyAddonOptions, ensureData, fetchIngressEntry, isIngressMode, linkPersistentData } from '../../scripts/start.mjs';
+import { applyAddonOptions, ensureData, fetchIngressEntry, isIngressMode, linkPersistentData, listenPorts } from '../../scripts/start.mjs';
 
 const INGRESS = '/api/hassio_ingress/abcd1234';
 
@@ -67,6 +67,17 @@ describe('Ingress-Modus erkennen und Pfad ermitteln', () => {
 
         const empty = (async () => new Response('{}', { headers: { 'Content-Type': 'application/json' } })) as unknown as typeof fetch;
         await expect(fetchIngressEntry({ SUPERVISOR_TOKEN: 'x' }, empty)).rejects.toThrow(/ingress_entry/);
+    });
+
+    it('hört im Add-on auf den ingress_port des Manifests, nicht auf PORT', () => {
+        // Das Image setzt PORT=3000 für den Server-Betrieb. Der Supervisor
+        // verbindet sich aber mit ingress_port (8099) — ein Proxy auf PORT
+        // wäre für ihn unerreichbar.
+        expect(listenPorts(true, { PORT: '3000' })).toEqual({ publicPort: 8099, internalPort: 3001 });
+        expect(listenPorts(true, { OW_INGRESS_PORT: '3101', OW_INTERNAL_PORT: '3102' }))
+            .toEqual({ publicPort: 3101, internalPort: 3102 });
+        expect(listenPorts(false, { PORT: '4000' })).toEqual({ publicPort: 4000, internalPort: 4000 });
+        expect(listenPorts(false, {})).toEqual({ publicPort: 3000, internalPort: 3000 });
     });
 });
 
