@@ -107,6 +107,12 @@ export interface ActionSurface {
     viewState(): Record<string, unknown>;
     module(): { label: string; description: string } | null;
     activeSurface(): Array<Record<string, unknown>>;
+    /**
+     * `live`: die Getter lesen den jetzigen Zustand (Browser-Loop).
+     * `request`: der Stand vom Anfang der Anfrage (Server-Loop) — auf dem
+     * Server gibt es keinen Rückkanal in den Browser.
+     */
+    freshness: 'live' | 'request';
 }
 
 /** Nachbereitung von Schreibvorgängen — vom Server bereitgestellt, in Tests weglassbar. */

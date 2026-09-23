@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useWorkspaceChanges } from '@/lib/assistant/changes';
+import { OW } from '@/lib/graph/vocab';
 import { AppShell } from '@/components/layout';
 import { Card, CardContent, Button, Input, FloatingActionButton } from '@/components/ui';
 import { MarkdownEditor } from '@/components/markdown';
@@ -35,6 +37,9 @@ export default function DocsPage() {
             setIsLoading(false);
         }
     };
+
+    // Rückfluss (A3): Ein vom Assistenten angelegtes Dokument erscheint sofort.
+    useWorkspaceChanges([OW.Document], fetchDocs);
 
     const handleSelectDoc = (doc: Doc) => {
         if (hasChanges && selectedDoc) {

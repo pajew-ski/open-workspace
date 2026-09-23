@@ -25,10 +25,18 @@ export interface ActionInvokeResponse {
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
-/** Definitionen des Aufrufers vom Server holen; `[]` ohne Backend. */
-export async function fetchActionDefinitions(fetchImpl: FetchLike): Promise<ActionToolDefinition[]> {
+/**
+ * Definitionen des Aufrufers vom Server holen; `[]` ohne Backend.
+ * `surface: true` sagt dem Server, dass der Aufrufer eine Oberfläche hat
+ * und deren Aktionen lokal ausführt (A3).
+ */
+export async function fetchActionDefinitions(
+    fetchImpl: FetchLike,
+    options: { surface?: boolean } = {},
+): Promise<ActionToolDefinition[]> {
     try {
-        const response = await fetchImpl('/api/actions', { cache: 'no-store', signal: AbortSignal.timeout(10_000) });
+        const url = options.surface ? '/api/actions?surface=1' : '/api/actions';
+        const response = await fetchImpl(url, { cache: 'no-store', signal: AbortSignal.timeout(10_000) });
         if (!response.ok) return [];
         const data = await response.json() as { actions?: ActionToolDefinition[] };
         return Array.isArray(data.actions) ? data.actions : [];
@@ -44,15 +52,20 @@ function describeError(data: ActionInvokeResponse, status: number): string {
     return `Fehler: ${data.error ?? `HTTP ${status}`}${details}`;
 }
 
+/** Lokale Ausführung einer Aktion, die nicht über die Route läuft (Oberflächen-Aktionen, A3). */
+export type LocalExecutors = Record<string, EngineTool['execute']>;
+
 /**
  * Engine-Tools aus Definitionen. Die Ausführung läuft über die Route —
  * Validierung, Autorisierung und SHACL liegen dort; hier wird nur
  * durchgereicht und der Fehler wörtlich weitergegeben, damit das Modell
- * die Ursache sieht statt eines Statuscodes.
+ * die Ursache sieht statt eines Statuscodes. Ausnahme: Aktionen mit
+ * lokalem Ausführer (die Oberfläche selbst) laufen im Browser.
  */
 export function engineToolsFromDefinitions(
     definitions: readonly ActionToolDefinition[],
     fetchImpl: FetchLike,
+    local: LocalExecutors = {},
 ): EngineTool[] {
     return definitions.map(definition => ({
         name: definition.name,
@@ -60,6 +73,8 @@ export function engineToolsFromDefinitions(
         parameters: definition.parameters,
         source: 'builtin',
         execute: async args => {
+            const runLocally = local[definition.name];
+            if (runLocally) return runLocally(args);
             try {
                 const response = await fetchImpl(`/api/actions/${encodeURIComponent(definition.name)}`, {
                     method: 'POST',

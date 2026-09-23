@@ -13,7 +13,10 @@ import {
     makeUseSkillTool,
     mcpToolsToEngineTools,
 } from '@/lib/ai/tools.shared';
-import { engineToolsFromDefinitions, fetchActionDefinitions } from '@/lib/actions/browser';
+import { engineToolsFromDefinitions, fetchActionDefinitions, type LocalExecutors } from '@/lib/actions/browser';
+import type { ActionSurface } from '@/lib/actions/contract';
+import { formatActionError, formatActionOutput, withSignals } from '@/lib/actions/tools';
+import { runSurfaceAction, SURFACE_ACTIONS } from '@/lib/assistant/actions';
 import {
     listMcpTools,
     callMcpTool,
@@ -236,7 +239,27 @@ export interface BrowserEngineDeps {
     callAgent: (agentId: string, prompt: string) => Promise<string>;
 }
 
-export async function buildBrowserEngineDeps(state: ClientAIState): Promise<BrowserEngineDeps> {
+/**
+ * Oberflächen-Aktionen (view_screen, navigate — A3) laufen im Browser
+ * selbst: Die Oberfläche ist hier, nicht auf dem Server. Dieselbe
+ * Definition wie überall, nur der Ausführer ist lokal.
+ */
+function surfaceExecutors(surface: ActionSurface): LocalExecutors {
+    const executors: LocalExecutors = {};
+    for (const action of SURFACE_ACTIONS) {
+        executors[action.name] = async args => {
+            try {
+                const result = await runSurfaceAction(action, args, surface);
+                return withSignals(formatActionOutput(result.output), result.signals);
+            } catch (error) {
+                return { text: formatActionError(error) };
+            }
+        };
+    }
+    return executors;
+}
+
+export async function buildBrowserEngineDeps(state: ClientAIState, surface?: ActionSurface): Promise<BrowserEngineDeps> {
     const backend = (await checkBackend()) === 'available';
 
     const [apiTools, agents, clientSkills] = await Promise.all([
@@ -251,8 +274,14 @@ export async function buildBrowserEngineDeps(state: ClientAIState): Promise<Brow
     // Workspace-Aktionen: DIESELBEN Definitionen wie im Server-Loop
     // (ACTIONS_SPEC §3), ausgeführt über die Route. Ohne Backend gibt es
     // sie nicht — und dann erscheinen sie auch nicht als Werkzeug.
-    const definitions = backend ? await fetchActionDefinitions((input, init) => fetch(input, init)) : [];
-    const tools: EngineTool[] = engineToolsFromDefinitions(definitions, (input, init) => fetch(input, init));
+    const definitions = backend
+        ? await fetchActionDefinitions((input, init) => fetch(input, init), { surface: Boolean(surface) })
+        : [];
+    const tools: EngineTool[] = engineToolsFromDefinitions(
+        definitions,
+        (input, init) => fetch(input, init),
+        surface ? surfaceExecutors(surface) : {},
+    );
 
     // API tools: server execution (credentials) when possible, direct
     // browser fetch as the serverless fallback (CORS permitting).

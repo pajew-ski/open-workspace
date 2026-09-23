@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAssistantContext } from '@/lib/assistant/context';
+import { applyWorkspaceChanges } from '@/lib/assistant/changes';
 import { useSelfModel } from '@/lib/assistant/useSelfModel';
 import { moduleForPath } from '@/lib/graph/meta/self-model-view';
 import { ConfirmDialog } from '@/components/ui';
@@ -108,6 +110,8 @@ export function AssistantChat() {
     const isAtBottomRef = useRef(true); // Track if user is at bottom
     const lastScrolledMessageIdRef = useRef<string | null>(null); // Track which messages triggered scroll-to-top
     const pathname = usePathname();
+    const router = useRouter();
+    const queryClient = useQueryClient();
 
     // Get viewState for dashboard and module-specific context
     const { viewState } = useAssistantContext();
@@ -154,6 +158,13 @@ export function AssistantChat() {
         () => (selfModel ? moduleForPath(selfModel.modules, pathname) : null),
         [selfModel, pathname],
     );
+
+    // Was die Oberfläche JETZT zeigt — als Ref, damit ein laufender Turn
+    // den aktuellen Stand liest, nicht den vom Anfang des Turns (A3).
+    const liveSurfaceRef = useRef({ pathname, viewState, module: currentModule });
+    useEffect(() => {
+        liveSurfaceRef.current = { pathname, viewState, module: currentModule };
+    }, [pathname, viewState, currentModule]);
 
     // Check mobile
     useEffect(() => {
@@ -603,6 +614,16 @@ export function AssistantChat() {
                 },
                 provider,
                 model,
+                // Live-Sicht der Oberfläche für den Browser-Loop (A3):
+                // `view_screen` liest, was JETZT gilt — nach einer
+                // Navigation im selben Turn also die neue Seite.
+                surface: () => ({
+                    pathname: liveSurfaceRef.current.pathname,
+                    viewState: liveSurfaceRef.current.viewState,
+                    module: liveSurfaceRef.current.module?.label ?? 'Open Workspace',
+                    moduleDescription: liveSurfaceRef.current.module?.description ?? '',
+                    activeSurface,
+                }),
                 handlers: {
                     onText: chunk => {
                         fullContent += chunk;
@@ -612,6 +633,13 @@ export function AssistantChat() {
                         collectedResources.push(resource);
                         applyUpdate();
                     },
+                    // Rückfluss (A3): Eine schreibende Aktion hat Typen
+                    // verändert — die betroffenen Queries und Seiten laden
+                    // neu, ohne Polling.
+                    onChanges: entityTypes => applyWorkspaceChanges(queryClient, entityTypes),
+                    // Navigationsabsicht (A3): Das Widget bleibt offen, sein
+                    // Zustand überlebt den Wechsel (CHAT_WIDGET_SPEC §1.3).
+                    onNavigate: target => router.push(`${target.pathname}${target.search ?? ''}`),
                 },
             });
 
@@ -643,7 +671,7 @@ export function AssistantChat() {
         } finally {
             setIsLoading(false);
         }
-    }, [messages, activeConversation, currentModule, selfModel, pathname, viewState, provider, model]);
+    }, [messages, activeConversation, currentModule, selfModel, pathname, viewState, provider, model, queryClient, router]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

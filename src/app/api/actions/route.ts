@@ -5,16 +5,32 @@
  * dieser Grant erreicht.
  */
 
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { actionContextFromRequest } from '@/lib/actions/context.server';
+import type { ActionSurface } from '@/lib/actions/contract';
 import { actionErrorResponse } from '@/lib/actions/route';
 import { visibleToolDefinitions } from '@/lib/actions/tools';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(): Promise<Response> {
+/**
+ * `?surface=1`: Der Aufrufer hat eine Oberfläche (das Chat-Widget) und
+ * führt Oberflächen-Aktionen selbst aus (A3) — die Liste enthält sie
+ * dann. Für die Auflistung reicht ein Platzhalter; ausgeführt wird hier
+ * nichts.
+ */
+const LISTING_SURFACE: ActionSurface = {
+    pathname: () => '/',
+    viewState: () => ({}),
+    module: () => null,
+    activeSurface: () => [],
+    freshness: 'request',
+};
+
+export async function GET(request: NextRequest): Promise<Response> {
     try {
-        const ctx = await actionContextFromRequest();
+        const withSurface = request.nextUrl.searchParams.get('surface') === '1';
+        const ctx = await actionContextFromRequest(withSurface ? { surface: LISTING_SURFACE } : {});
         return NextResponse.json({ actions: await visibleToolDefinitions(ctx) });
     } catch (error) {
         return actionErrorResponse(error, 'Aktionsliste');

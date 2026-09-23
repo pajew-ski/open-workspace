@@ -9,6 +9,7 @@ import { toPromptInfo } from './tools.shared';
 import { buildBrowserEngineDeps } from './browser/deps';
 import { loadClientAIState, resolveBrowserProvider, resolveRoute, type ClientProviderRecord } from './store.client';
 import { checkBackend } from '@/lib/platform/backend';
+import type { ActionSurface } from '@/lib/actions/contract';
 
 /**
  * The one entry point both chat surfaces use to run an assistant turn.
@@ -170,7 +171,17 @@ async function browserTurn(
     provider: ClientProviderRecord
 ): Promise<AssistantTurnResult> {
     const state = await loadClientAIState();
-    const deps = await buildBrowserEngineDeps(state);
+    // Die Oberfläche als Live-Sicht (A3): `view_screen` liest den Zustand
+    // von jetzt, nicht den vom Anfang des Turns.
+    const current = request.surface ?? (() => request.context);
+    const surface: ActionSurface = {
+        pathname: () => current().pathname,
+        viewState: () => current().viewState ?? {},
+        module: () => ({ label: current().module, description: current().moduleDescription }),
+        activeSurface: () => current().activeSurface ?? [],
+        freshness: request.surface ? 'live' : 'request',
+    };
+    const deps = await buildBrowserEngineDeps(state, surface);
     const resolved = resolveBrowserProvider(provider);
     const adapter = getAdapter(resolved.protocol);
     const nativeTools = provider.toolCalls !== 'text' && adapter.supportsNativeTools;

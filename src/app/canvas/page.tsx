@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useWorkspaceChanges } from '@/lib/assistant/changes';
+import { OW } from '@/lib/graph/vocab';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/layout';
@@ -82,6 +84,9 @@ export default function CanvasOverviewPage() {
             setIsLoading(false);
         }
     };
+
+    // Rückfluss (A3): Eine vom Assistenten angelegte Pinnwand erscheint sofort.
+    useWorkspaceChanges([OW.Canvas], fetchCanvases);
 
     const createCanvas = async () => {
         if (!newName.trim()) return;

@@ -106,7 +106,55 @@ Routen brauchen keine Grenze, die Tools bekommen sie im Vertrag.
 
 ## 5. Kontext und Rückfluss (A3)
 
-Wird mit A3 gebaut; siehe die Abnahme dort.
+Zwei Aktionen des Assistenten-Moduls (`src/lib/assistant/actions.ts`),
+beide mit Ziel `surface`:
+
+- **`view_screen`** liefert Seite, Modul, `viewState` und die Komponenten
+  auf der Bühne. Die Oberfläche reicht **Getter** herein, keine Werte: Im
+  Browser-Loop liest die Aktion den jetzigen Zustand (`freshness: 'live'`),
+  auch nach einer Navigation im selben Turn. Im Server-Loop gibt es keinen
+  Rückkanal in den Browser — dort ist es der Stand der Anfrage
+  (`freshness: 'request'`), und die Antwort sagt das. Ein Rückkanal über
+  den NDJSON-Strom wäre eine eigene Mechanik (Frage vom Server, Antwort
+  vom Client auf eine zweite Route) und ist nicht Teil von A3.
+- **`navigate`** gibt eine Navigationsabsicht zurück (Route aus der
+  Modul-Registry, optional Query), die als Signal aus der Engine kommt
+  (`{ type: 'navigate' }`) und die das Widget mit `router.push` ausführt.
+  Der Widget-Zustand überlebt den Wechsel (CHAT_WIDGET_SPEC §1.3). Eine
+  Route, die es nicht gibt, ist ein 404 — der Assistent führt nirgendwohin,
+  was das Selbstmodell nicht kennt.
+
+Ausführung: auf dem Server im Prozess, im Browser **lokal**
+(`runSurfaceAction`, kein Netz) — die Oberfläche ist dort, nicht auf dem
+Server. `GET /api/actions?surface=1` sagt dem Server, dass der Aufrufer
+eine Oberfläche hat; ohne Oberfläche (MCP-Server, Tests ohne Widget)
+erscheinen beide nicht.
+
+**Rückfluss.** Nach einer schreibenden Aktion trägt der Chat-Stream ein
+Änderungsereignis mit den `changes` der Aktion
+(`{ type: 'changes', entityTypes }`, aus der Engine als Ereignis, im
+NDJSON als eigene Zeile). Der Client (`src/lib/assistant/changes.ts`)
+invalidiert die betroffenen React-Query-Schlüssel (Zuordnung Typ → Schlüssel,
+`activity` immer) und löst das DOM-Ereignis `ow:workspace-changed` aus,
+an das die Seiten ohne React Query (Aufgaben, Dokumente, Pinnwände) über
+`useWorkspaceChanges` hängen. Kein Polling: Im selben Client ist das
+Ereignis bekannt.
+
+**Wo `changes` herkommt — entschieden.** Handgepflegt je Aktion, aber
+erzwungen: `defineAction` lehnt eine `constructive`- oder
+`destructive`-Aktion ohne `changes` beim Laden ab. Die Ableitung aus der
+Transaktion wäre die schönere Quelle, trägt aber nicht: Die Store-first-
+CRUD ersetzt den Workspace-Graphen als Ganzes (`replace: true`), die
+Transaktion kennt den Graphen, nicht die Typen. Eine Typ-Ableitung
+bräuchte einen Diff je Mutation — Aufwand ohne Aufrufer, solange die
+Zuordnung Typ → Query eine Handvoll Zeilen ist.
+
+**Abnahme (A3)**: `tests/ai/surface.test.ts` — `view_screen` sieht den
+Zustand von jetzt und nennt seine Frische; ohne Oberfläche gibt es beide
+Aktionen nicht; `navigate` kennt nur Registry-Routen, kommt als Ereignis
+aus der Engine und läuft im Browser ohne Netz; das Änderungsereignis
+kommt aus der Engine, invalidiert genau die betroffenen Schlüssel und
+löst das Seiten-Ereignis aus.
 
 ## 6. Abnahme
 

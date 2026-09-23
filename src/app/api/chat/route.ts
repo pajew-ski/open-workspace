@@ -117,6 +117,7 @@ export async function POST(request: NextRequest) {
             viewState: () => context.viewState ?? {},
             module: () => ({ label: context.module, description: context.moduleDescription }),
             activeSurface: () => context.activeSurface ?? [],
+            freshness: 'request',
         };
         const actions = await actionContextFromRequest({ surface, origin: request.nextUrl.origin });
         const deps = await buildServerEngineDeps(actions);

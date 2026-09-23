@@ -931,11 +931,21 @@
       Effektklasse unter „Open Workspace" = Registry),
       `tests/graph/mcp-server.test.ts` (ein Lese-Token sieht nur
       `read`-Aktionen, ein Schreib-Token nichts Destruktives)
-- [ ] **A3 Kontext und Rückfluss**: `view_screen` liefert den aktuellen
-      `viewState`, `navigate` gibt eine Navigationsabsicht zurück, die das
-      Widget ausführt; nach einer schreibenden Aktion trägt der Chat-Stream
-      ein Änderungsereignis mit den `changes` der Aktion, der Client
-      invalidiert die betroffenen Queries. Abnahme in der Spec (§5)
+- [x] **A3 Kontext und Rückfluss** (`src/lib/assistant/actions.ts`,
+      `changes.ts`): `view_screen` liefert Seite, Modul, `viewState` und
+      Bühne über Getter — im Browser-Loop live (auch nach einer Navigation
+      im selben Turn), im Server-Loop der Stand der Anfrage, und die
+      Antwort nennt ihre Frische (`freshness`). `navigate` prüft die Route
+      gegen die Modul-Registry und gibt eine Navigationsabsicht als Signal
+      zurück; das Widget und der ganzseitige Assistent führen sie mit
+      `router.push` aus, der Chat bleibt offen. Beide Aktionen laufen im
+      Browser lokal (kein Netz) und gibt es nur mit Oberfläche. Nach einer
+      schreibenden Aktion trägt der Stream `{type:'changes', entityTypes}`;
+      der Client invalidiert die zugeordneten React-Query-Schlüssel und
+      löst `ow:workspace-changed` aus, an dem die Seiten Aufgaben,
+      Dokumente und Pinnwände hängen. `changes` bleibt handgepflegt, vom
+      Vertrag erzwungen — die Transaktion kennt nur den Graphen, nicht den
+      Typ (ACTIONS_SPEC §5). Abnahme: `tests/ai/surface.test.ts`
 - [ ] **A4 Restmigration**: `graph/*`, `connectors`, `causal`,
       `observations`, `access` und der Rest. Abgenommen, wenn „noch nicht
       migriert" leer ist
