@@ -137,8 +137,12 @@ export interface ActionContext {
     graph: GraphHandle;
     /** Store-first-CRUD des Aufrufers (Aufgaben, Dokumente, Pinnwände, …). */
     workspace?: () => Promise<WorkspaceContext>;
-    /** Seed-Quellen des Retrievals über ein Dataset (Index-Cache des Servers). */
-    retrieval?: (dataset: readonly string[]) => Promise<RetrievalDeps>;
+    /**
+     * Seed-Quellen des Retrievals über ein Dataset (Index-Cache des Servers).
+     * Der Vektorindex kostet Embedding-Aufrufe über das ganze Dataset und
+     * wird deshalb nur auf Anforderung gebaut.
+     */
+    retrieval?: (dataset: readonly string[], options?: { vector?: boolean }) => Promise<RetrievalDeps>;
     /** Dateibaum und Runtime-Adapter (Connector-Läufe, Beobachtungen). */
     platform?: { files: FileSystemLike; runtime: RuntimeAdapter };
     persist?: ActionPersistence;

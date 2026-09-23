@@ -39,6 +39,8 @@ import {
 import { readSelfModel } from '@/lib/graph/meta/self-model-query';
 import { moduleForPath, systemContextText } from '@/lib/graph/meta/self-model-view';
 import { replaceAiMirror } from '@/lib/graph/meta/ai';
+import { listActions } from '@/lib/actions/registry';
+import '@/lib/actions/catalog';
 import type { RuntimeCapabilities } from '@/lib/platform/runtime/types';
 
 const INSTANCE_BASE = 'urn:ow:12345678-1234-1234-1234-123456789abc:';
@@ -216,6 +218,33 @@ describe('M14 — Selbstmodell in graph/meta (SPEC §18)', () => {
         const blocked = await readSelfModel(store, iri, { allowedGraphs: [iri.graph('workspace')] });
         expect(blocked.app).toBeNull();
         expect(blocked.modules).toEqual([]);
+    });
+});
+
+describe('A2 — die Tools im Selbstmodell sind die Registry (ACTIONS_SPEC §3)', () => {
+    it('spiegelt jede Aktion als ow:Tool mit Effektklasse unter dem Anbieter „Open Workspace"', async () => {
+        const store = new OxigraphStore();
+        await replaceAiMirror({ store, iri }, { skills: [], agents: [], apiTools: [], mcpServers: [], providers: [], defaults: {} });
+        const rows = await select(store, `
+            SELECT ?id ?effect ?schema WHERE { GRAPH <${iri.sharedGraph('meta')}> {
+                ?tool a ow:Tool ; dcterms:identifier ?id ; ow:providedBy ?provider ; ow:inputSchema ?schema .
+                ?provider schema:name "Open Workspace" .
+                OPTIONAL { ?tool ow:effectClass ?effect }
+            } } ORDER BY ?id`);
+        const withEffect = rows.filter(row => row.effect !== undefined);
+        // Die Menge der Tools mit Effektklasse IST die Registry — auch die
+        // destruktiven, die kein Agent sieht: Der Spiegel beschreibt, was
+        // das System kann, nicht die Handliste eines Tool-Loops.
+        expect(withEffect.map(row => row.id)).toEqual(listActions().map(action => action.name));
+        expect(withEffect.map(row => row.effect)).toEqual(listActions().map(action => action.effect));
+        expect(withEffect.some(row => row.effect === 'destructive')).toBe(true);
+        // Jedes Schema ist das aus Zod erzeugte, parsebar und ein Objekt.
+        for (const row of withEffect) {
+            expect(JSON.parse(row.schema).type).toBe('object');
+        }
+        // Das einzige Tool ohne Effektklasse ist use_skill — es lädt eine
+        // Anleitung und ist bewusst keine Aktion.
+        expect(rows.filter(row => row.effect === undefined).map(row => row.id)).toEqual(['use_skill']);
     });
 });
 

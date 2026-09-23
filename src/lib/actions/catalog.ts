@@ -6,5 +6,6 @@
  * jeder `actions.ts` unter `src/lib/`.
  */
 
+import '@/lib/graph/mcp/actions';
 import '@/lib/graph/search/actions';
 import '@/lib/graph/workspace/actions';

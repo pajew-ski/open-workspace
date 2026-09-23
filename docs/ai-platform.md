@@ -63,8 +63,9 @@ Backend da (statisches Hosting, Backend down, offline PWA):
 Datensätze, die serverlos angelegt wurden, sind in der UI als „nur dieser
 Browser" markiert (`origin: 'local'`). Workspace-Inhalte (Dokumente,
 Aufgaben …) bleiben server-gebunden; der Service Worker liefert besuchte
-Daten offline aus dem Cache (bestehendes Verhalten). Der `workspace_finder`
-meldet serverlos ehrlich, dass er das Backend braucht.
+Daten offline aus dem Cache (bestehendes Verhalten). Die Workspace-Aktionen
+(`workspace_finder`, Aufgaben, Dokumente, …) gibt es serverlos nicht, und
+dann erscheinen sie auch nicht als Werkzeug (Invariante 10).
 
 **Die extremste Stufe: WebLLM.** `@mlc-ai/web-llm` lädt Modellgewichte
 einmalig in den Browser-Cache und rechnet per WebGPU auf der GPU des
@@ -119,13 +120,19 @@ Ergebnisse zurückspeisen. Zwei Aufrufwege parallel:
   sicher geparst (`CallMarkerStreamFilter`), aus dem sichtbaren Stream
   entfernt, Ergebnisse als `[TOOL_RESULT]`/`[AGENT_RESULT]`-Nachrichten.
 
-Tool-Quellen (`tools.shared.ts` baut einheitliche `EngineTool`s):
+Tool-Quellen:
 
-1. **Builtins**: `workspace_finder`, `use_skill`
-2. **API-Tools** (Werkzeuge-Modul): Schema aus `{platzhaltern}` extrahiert;
+1. **Aktionen** der Registry ([ACTIONS_SPEC](./specs/actions.md)):
+   Workspace-Fähigkeiten (Finder, Aufgaben, Dokumente, Pinnwände, Graph, …)
+   als `read`/`constructive`-Werkzeuge — auf dem Server im Prozess mit der
+   Identität des Requests (`actions/tools.ts`), im Browser über
+   `POST /api/actions/<name>` mit denselben Definitionen
+   (`actions/browser.ts`); ohne Backend erscheinen sie nicht
+2. **Builtin** `use_skill` (`tools.shared.ts`)
+3. **API-Tools** (Werkzeuge-Modul): Schema aus `{platzhaltern}` extrahiert;
    Browser-Engine delegiert an `POST /api/tools/execute` (Credentials,
    SSRF-Schutz), serverlos direkter Fetch ohne Credentials
-3. **MCP-Tools**: pro aktivem Server entdeckt, namespaced
+4. **MCP-Tools**: pro aktivem Server entdeckt, namespaced
    (`mcp_<server>_<tool>`), Ergebnisse inkl. `ui://`-Ressourcen
 
 Events der Engine: `text`, `status` (Tool-Fortschritt als Blockquote),

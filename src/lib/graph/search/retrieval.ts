@@ -213,6 +213,12 @@ export interface RetrievalDeps {
     vector?: VectorIndex | null;
     /** Bettet den Query-Text ein (nur nötig für Text→Vektor-Seeding). */
     embedQuery?: (text: string) => Promise<number[]>;
+    /**
+     * Auskunft über die Embedding-Quelle — damit ein Aufrufer ohne
+     * Vektorindex erfährt, WARUM (keine Konfiguration, kein Modell), statt
+     * leere Vektor-Treffer für ein Ergebnis zu halten.
+     */
+    embeddings?: { available: boolean; reason?: string; providerLabel?: string; model?: string };
     /** Uhr für das Laufzeit-Budget (Tests: deterministisch stellbar). */
     now?: () => number;
 }

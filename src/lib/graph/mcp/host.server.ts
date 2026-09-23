@@ -9,10 +9,8 @@
  */
 
 import { getServerGraph, persistServerGraphSnapshot } from '@/lib/graph/server/instance';
-import { getFulltextIndex, getVectorIndex } from '@/lib/graph/search/cache';
-import { resolveEmbeddingProvider } from '@/lib/ai/embeddings.server';
 import { createNodeRuntimeAdapter } from '@/lib/platform/runtime/server';
-import type { GraphHandle, RetrievalDeps } from '@/lib/graph/search/retrieval';
+import { actionContextForIdentity, serverRetrievalDeps } from '@/lib/actions/context.server';
 import { McpHost } from './http';
 import { mcpTokensFromEnv } from './tokens';
 
@@ -24,19 +22,18 @@ export function getMcpHost(): McpHost {
             graph: () => getServerGraph(),
             tokens: () => mcpTokensFromEnv(),
             capable: createNodeRuntimeAdapter().capabilities.mcpServer,
-            retrievalDeps: async (handle: GraphHandle, dataset: readonly string[]) => {
-                const deps: RetrievalDeps = { fulltext: await getFulltextIndex(handle, dataset) };
-                const embedding = await resolveEmbeddingProvider();
-                if (embedding.provider) {
-                    const provider = embedding.provider;
-                    deps.vector = await getVectorIndex(handle, dataset, provider);
-                    deps.embedQuery = async text => (await provider.embed([text]))[0];
-                }
-                return deps;
-            },
+            retrievalDeps: (handle, dataset, options) => serverRetrievalDeps(handle, dataset, options),
             afterWrite: async () => {
                 await persistServerGraphSnapshot();
             },
+            // Der Aktionskontext eines Tokens hat dieselben Bausteine wie
+            // eine Anfrage der Oberfläche — nur die Identität kommt aus dem
+            // Token (Nutzer, dessen Rechte gelten; Token-ID als Bezeichnung).
+            actionContext: (handle, grant, token) => actionContextForIdentity(handle, grant, {
+                userId: token.user,
+                authenticated: true,
+                label: token.id,
+            }),
         });
     }
     return globalHost.__owMcpHost;

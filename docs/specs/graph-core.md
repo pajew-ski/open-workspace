@@ -459,6 +459,8 @@ Endpoint: `/api/mcp` (Streamable HTTP mit SSE-Fallback, `@modelcontextprotocol/s
 
 **Sicherheit**: identische Authz wie SPARQL und Retrieval, kein zweiter Pfad. Ein MCP-Token ist an eine Identität und deren erlaubtes Dataset gebunden. Rate-Limits und Timeouts sind Pflicht. Der MCP-Server sieht nie mehr als der Nutzer, dessen Token er trägt.
 
+**Seit A2 ([ACTIONS_SPEC](./actions.md))**: Die sechs Werkzeuge sind Aktionen der Registry, und das Inventar eines Tokens ist die Registry nach Effektklasse und Recht gefiltert — `read` per Default, `constructive` (darunter `graph_write` und die Workspace-Aktionen) nur mit freigegebenem Schreibgraphen, `destructive` nie.
+
 ### 7.7 Suche
 
 SPARQL kann keine Ähnlichkeit. Ergänzend, gekoppelt über IRIs als gemeinsamen Schlüssel:

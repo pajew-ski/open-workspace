@@ -32,10 +32,20 @@ export interface ServerContextOptions {
     origin?: string;
 }
 
-/** Seed-Quellen aus dem M8-Index-Cache, Vektoren nur mit konfigurierten Embeddings. */
-export async function serverRetrievalDeps(handle: GraphHandle, dataset: readonly string[]): Promise<RetrievalDeps> {
+/**
+ * Seed-Quellen aus dem M8-Index-Cache. Der Vektorindex entsteht nur auf
+ * Anforderung und nur mit konfigurierten Embeddings; fehlen sie, sagt
+ * `embeddings.reason` ehrlich, warum (Invariante 10).
+ */
+export async function serverRetrievalDeps(
+    handle: GraphHandle,
+    dataset: readonly string[],
+    options: { vector?: boolean } = {},
+): Promise<RetrievalDeps> {
     const deps: RetrievalDeps = { fulltext: await getFulltextIndex(handle, dataset) };
+    if (!options.vector) return deps;
     const embedding = await resolveEmbeddingProvider();
+    deps.embeddings = embedding.availability;
     if (embedding.provider) {
         const provider = embedding.provider;
         deps.vector = await getVectorIndex(handle, dataset, provider);
@@ -55,7 +65,7 @@ export function actionContextForIdentity(
         grant,
         graph: handle,
         workspace: () => getWorkspaceContextFor(identity.userId, identity.displayName),
-        retrieval: dataset => serverRetrievalDeps(handle, dataset),
+        retrieval: (dataset, options) => serverRetrievalDeps(handle, dataset, options),
         platform: { files: createNodeFileSystem(), runtime: createNodeRuntimeAdapter() },
         persist: {
             snapshot: async () => { await persistServerGraphSnapshot(); },

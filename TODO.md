@@ -912,14 +912,25 @@
       `tests/ai/actions.test.ts` (Schema aus Zod, kein handgeschriebenes
       Workspace-Tool, `destructive` in keiner Liste, Server = Browser,
       Aufgabe landet im Graphen des Anfragenden)
-- [ ] **A2 Selbstmodell und MCP**: AI-Spiegel liest Tools aus der
-      Registry (statt aus `tools.shared.ts`); MCP-Server exponiert
-      Aktionen nach Klasse und Token-Recht; `graph_search`/`graph_retrieve`/
-      `graph_neighbors`/`graph_describe`/`graph_sparql`/`graph_write`
-      werden Aktionen mit unveränderten Namen und unverändertem
-      Rechtemodell. Abnahme: `tests/graph/self-model.test.ts` (Tools unter
-      „Open Workspace" = Registry), `tests/graph/mcp-server.test.ts`
-      (Lese-Token sieht keine `constructive`-Aktion)
+- [x] **A2 Selbstmodell und MCP**: Der AI-Spiegel (`meta/ai.ts`) liest
+      seine Tools aus der Registry — jede Aktion als `ow:Tool` mit
+      erzeugtem `ow:inputSchema` und `ow:effectClass`, auch die
+      destruktiven; `use_skill` bleibt das eine Builtin ohne Klasse.
+      `graph_search`/`graph_retrieve`/`graph_neighbors`/`graph_describe`/
+      `graph_sparql`/`graph_write` sind Aktionen (`graph/mcp/actions.ts`)
+      mit unveränderten Namen; das Rechtemodell steckt im Ziel
+      (`dataset`, `sparql` = Token-Recht, `grant-write` = freigegebener
+      Graph). Der MCP-Server (`graph/mcp/server.ts`) leitet sein Inventar
+      pro Sitzung aus der Registry ab: `read` per Default, `constructive`
+      nur mit freigegebenem Schreibgraphen, `destructive` nie; was dem
+      Kontext fehlt (Store-first-CRUD), erscheint nicht. Der Server reicht
+      dem Token denselben Aktionskontext wie einer Anfrage der Oberfläche
+      (`host.server.ts`), damit ein Token mit Schreibrecht auch Aufgaben
+      anlegen kann. Routen `graph/search` und `graph/retrieve` sind
+      Adapter. Abnahme: `tests/graph/self-model.test.ts` (Tools mit
+      Effektklasse unter „Open Workspace" = Registry),
+      `tests/graph/mcp-server.test.ts` (ein Lese-Token sieht nur
+      `read`-Aktionen, ein Schreib-Token nichts Destruktives)
 - [ ] **A3 Kontext und Rückfluss**: `view_screen` liefert den aktuellen
       `viewState`, `navigate` gibt eine Navigationsabsicht zurück, die das
       Widget ausführt; nach einer schreibenden Aktion trägt der Chat-Stream

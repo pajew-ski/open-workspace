@@ -24,6 +24,8 @@
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { GraphHandle, RetrievalDeps } from '../search/retrieval';
+import type { AccessGrant } from '../authz/grant';
+import type { ActionContext } from '@/lib/actions/contract';
 import { grantForToken, bearerFromHeaders, findMcpToken, type McpTokenConfig, type McpTokenParseResult, MCP_TOKENS_ENV } from './tokens';
 import { createGraphMcpServer, registerRetrievalPrompts } from './server';
 import type { McpGraphContext } from './tools';
@@ -37,9 +39,16 @@ export interface McpHostDeps {
     /** `capabilities.mcpServer` der Runtime (SPEC §5.2). */
     capable: boolean;
     /** Seed-Quellen für ein Dataset (M8-Index-Cache bzw. Test-Index). */
-    retrievalDeps?: (handle: GraphHandle, dataset: readonly string[]) => Promise<RetrievalDeps>;
+    retrievalDeps?: (handle: GraphHandle, dataset: readonly string[], options?: { vector?: boolean }) => Promise<RetrievalDeps>;
     /** Nachbereitung nach graph_write (Snapshot + Index-Invalidierung). */
     afterWrite?: () => Promise<void>;
+    /**
+     * Aktionskontext des Tokens (ACTIONS_SPEC, A2). Der Server reicht hier
+     * seine Bausteine (Store-first-CRUD, Dateibaum, Persistenz) herein;
+     * ohne Angabe entsteht ein Kontext aus Handle, Grant und den übrigen
+     * Deps — Aktionen, die mehr brauchen, erscheinen dann nicht.
+     */
+    actionContext?: (handle: GraphHandle, grant: AccessGrant, token: McpTokenConfig) => ActionContext;
     now?: () => Date;
     /** Monotone Uhr des Rate-Limiters (Tests: stellbar). */
     clock?: () => number;
@@ -160,7 +169,11 @@ export class McpHost {
                 return jsonRpcError(404, -32003, 'Unbekannte MCP-Sitzung.');
             }
             session.lastSeen = this.now();
-            session.ctx.grant = await this.grantFor(token, session.ctx.handle);
+            // Der Grant wird PRO ANFRAGE neu aus graph/acl abgeleitet — in
+            // beiden Kontexten, die die Sitzung hält.
+            const grant = await this.grantFor(token, session.ctx.handle);
+            session.ctx.grant = grant;
+            session.ctx.actions.grant = grant;
             return session.transport.handleRequest(request, parsedBody === undefined ? undefined : { parsedBody });
         }
 
@@ -171,6 +184,31 @@ export class McpHost {
 
         const session = await this.createSession(token);
         return session.transport.handleRequest(request, { parsedBody });
+    }
+
+    /** Aktionskontext des Tokens — vom Server bereitgestellt oder aus den Deps gebaut. */
+    actionContextFor(handle: GraphHandle, grant: AccessGrant, token: McpTokenConfig): ActionContext {
+        if (this.deps.actionContext) return this.deps.actionContext(handle, grant, token);
+        return {
+            identity: { userId: token.user, authenticated: true, label: token.id },
+            grant,
+            graph: handle,
+            ...(this.deps.retrievalDeps
+                ? { retrieval: (dataset: readonly string[], options?: { vector?: boolean }) => this.deps.retrievalDeps!(handle, dataset, options) }
+                : {}),
+            ...(this.deps.afterWrite
+                ? {
+                    persist: {
+                        snapshot: this.deps.afterWrite,
+                        acl: async () => undefined,
+                        reasoning: async () => undefined,
+                        reproject: async () => undefined,
+                        aiMirror: async () => undefined,
+                    },
+                }
+                : {}),
+            ...(this.deps.now ? { now: this.deps.now } : {}),
+        };
     }
 
     private async grantFor(token: McpTokenConfig, handle: GraphHandle) {
@@ -184,13 +222,14 @@ export class McpHost {
         const ctx: McpGraphContext = {
             handle,
             grant,
+            actions: this.actionContextFor(handle, grant, token),
             ...(this.deps.retrievalDeps
                 ? { retrievalDeps: (dataset: readonly string[]) => this.deps.retrievalDeps!(handle, dataset) }
                 : {}),
             ...(this.deps.afterWrite ? { afterWrite: this.deps.afterWrite } : {}),
             ...(this.deps.now ? { now: this.deps.now } : {}),
         };
-        const server = createGraphMcpServer(ctx);
+        const server = await createGraphMcpServer(ctx);
         await registerRetrievalPrompts(server, ctx);
 
         // Die Session-ID wird hier erzeugt (nicht erst im Transport),

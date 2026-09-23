@@ -96,8 +96,6 @@ export const NOT_YET_MIGRATED: string[] = [
     'graph/reasoning',
     'graph/retrieval-profiles',
     'graph/retrieval-profiles/[id]',
-    'graph/retrieve',
-    'graph/search',
     'graph/self-model',
     'graph/validate',
     'graph/views',
@@ -113,7 +111,7 @@ export const NOT_YET_MIGRATED: string[] = [
 ];
 
 /** Obergrenze der Liste — wird beim Migrieren gesenkt, nie erhöht. */
-export const NOT_MIGRATED_CEILING = 63;
+export const NOT_MIGRATED_CEILING = 61;
 
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'] as const;
 

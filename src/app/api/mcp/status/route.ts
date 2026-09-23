@@ -13,7 +13,7 @@ import { NextResponse } from 'next/server';
 import { getServerGraph } from '@/lib/graph/server/instance';
 import { getMcpHost } from '@/lib/graph/mcp/host.server';
 import { grantForToken, mcpTokensFromEnv, MCP_TOKENS_ENV } from '@/lib/graph/mcp/tokens';
-import { toolsForGrant } from '@/lib/graph/mcp/server';
+import { toolsForContext } from '@/lib/graph/mcp/server';
 import { createNodeRuntimeAdapter } from '@/lib/platform/runtime/server';
 
 export const dynamic = 'force-dynamic';
@@ -38,7 +38,9 @@ export async function GET(): Promise<Response> {
                 writeScope: token.writeScope ?? null,
                 rateLimitPerMinute: token.rateLimitPerMinute,
                 readableGraphs: resolved?.grant.readableGraphs ?? [],
-                tools: resolved ? toolsForGrant(resolved.grant) : [],
+                tools: resolved && handle
+                    ? await toolsForContext(getMcpHost().actionContextFor(handle, resolved.grant, token))
+                    : [],
                 ...(resolved?.writeScopeError ? { warning: resolved.writeScopeError } : {}),
             };
         }));
