@@ -127,6 +127,7 @@ function describeTarget(target: ActionTarget): string {
         case 'sparql': return 'rohes SPARQL';
         case 'surface': return 'die Oberfläche';
         case 'instance': return 'die Konfiguration der Installation';
+        case 'registry': return 'den eigenen Registry-Eintrag in graph/meta';
     }
 }
 
@@ -157,6 +158,12 @@ export async function availability(action: Action, ctx: ActionContext): Promise<
                 ? ctx.grant.readableGraphs.includes(meta)
                 : (ctx.grant.controlGraphs ?? []).includes(meta);
             return ok ? { available: true } : { available: false, reason: 'kein Recht auf graph/meta' };
+        }
+        case 'registry': {
+            const meta = ctx.graph.iri.sharedGraph('meta');
+            if (!ctx.grant.readableGraphs.includes(meta)) return { available: false, reason: 'graph/meta nicht lesbar' };
+            if (action.effect !== 'read' && ctx.identity.userId === '') return { available: false, reason: 'anonym' };
+            return { available: true };
         }
         case 'graph': {
             if (typeof target.scope !== 'string') {
@@ -201,6 +208,12 @@ export async function authorizeTarget(action: Action, input: unknown, ctx: Actio
             } else if (!(ctx.grant.controlGraphs ?? []).includes(meta)) {
                 deny('instanzweite Konfiguration verlangt die Verwaltung von graph/meta');
             }
+            return { graph: meta };
+        }
+        case 'registry': {
+            const meta = ctx.graph.iri.sharedGraph('meta');
+            if (!ctx.grant.readableGraphs.includes(meta)) deny('graph/meta ist nicht lesbar');
+            if (action.effect !== 'read' && ctx.identity.userId === '') deny('ein Registry-Eintrag braucht eine angemeldete Identität');
             return { graph: meta };
         }
         case 'graph': {

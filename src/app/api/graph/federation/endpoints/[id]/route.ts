@@ -1,84 +1,33 @@
 /**
- * Einzelner föderierter Endpoint (SPEC §7.4, M11).
- *
- * GET    /api/graph/federation/endpoints/[id] → lesen
- * PATCH  /api/graph/federation/endpoints/[id] → ändern (u. a. Vertrauensstufe)
- * DELETE /api/graph/federation/endpoints/[id] → entfernen
+ * Ein föderierter Endpoint — Route-Adapter der Aktionen
+ * `graph_get_federation_endpoint`, `graph_update_federation_endpoint`
+ * und `graph_delete_federation_endpoint`.
  */
 
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
-import {persistServerGraphSnapshot } from '@/lib/graph/server/instance';
-import { getUserGraph } from '@/lib/graph/server/context';
-import {
-    deleteFederatedEndpoint,
-    getFederatedEndpoint,
-    updateFederatedEndpoint,
-    TRUST_LEVELS,
-} from '@/lib/graph/federation/registry';
+import type { NextRequest } from 'next/server';
+import { actionErrorResponse, readJsonBody, respondWithAction } from '@/lib/actions/route';
+import { deleteEndpoint, getEndpoint, updateEndpoint } from '@/lib/graph/federation/actions';
 
-interface RouteContext {
+interface RouteParams {
     params: Promise<{ id: string }>;
 }
 
-const patchSchema = z.object({
-    name: z.string().min(1).max(200).optional(),
-    url: z.string().min(1).max(2000).optional(),
-    trustLevel: z.enum(TRUST_LEVELS).optional(),
-    description: z.string().max(2000).nullable().optional(),
-}).strict();
+export async function GET(_request: NextRequest, { params }: RouteParams) {
+    const { id } = await params;
+    return respondWithAction(getEndpoint, { id });
+}
 
-export async function GET(_request: Request, context: RouteContext): Promise<Response> {
-    const { id } = await context.params;
+export async function PATCH(request: NextRequest, { params }: RouteParams) {
+    const { id } = await params;
     try {
-        const endpoint = await getFederatedEndpoint(await getUserGraph(), id);
-        if (!endpoint) {
-            return NextResponse.json({ error: `Endpoint "${id}" existiert nicht.` }, { status: 404 });
-        }
-        return NextResponse.json({ endpoint });
+        const body = await readJsonBody(request);
+        return await respondWithAction(updateEndpoint, { ...(body as object), id });
     } catch (error) {
-        console.error('Federation Endpoint Error:', error);
-        return NextResponse.json({ error: 'Endpoint konnte nicht gelesen werden.' }, { status: 500 });
+        return actionErrorResponse(error);
     }
 }
 
-export async function PATCH(request: Request, context: RouteContext): Promise<Response> {
-    const { id } = await context.params;
-    let parsed: z.infer<typeof patchSchema>;
-    try {
-        parsed = patchSchema.parse(await request.json());
-    } catch (error) {
-        const message = error instanceof z.ZodError
-            ? error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join('; ')
-            : 'Ungültiger Request-Body.';
-        return NextResponse.json({ error: message }, { status: 400 });
-    }
-    try {
-        const endpoint = await updateFederatedEndpoint(await getUserGraph(), id, parsed);
-        if (!endpoint) {
-            return NextResponse.json({ error: `Endpoint "${id}" existiert nicht.` }, { status: 404 });
-        }
-        await persistServerGraphSnapshot();
-        return NextResponse.json({ endpoint });
-    } catch (error) {
-        const message = error instanceof Error ? error.message : 'Endpoint konnte nicht geändert werden.';
-        const status = /Ungültige|blockiert|erlaubt/.test(message) ? 400 : 500;
-        if (status === 500) console.error('Federation Endpoint Update Error:', error);
-        return NextResponse.json({ error: message }, { status });
-    }
-}
-
-export async function DELETE(_request: Request, context: RouteContext): Promise<Response> {
-    const { id } = await context.params;
-    try {
-        const removed = await deleteFederatedEndpoint(await getUserGraph(), id);
-        if (!removed) {
-            return NextResponse.json({ error: `Endpoint "${id}" existiert nicht.` }, { status: 404 });
-        }
-        await persistServerGraphSnapshot();
-        return NextResponse.json({ ok: true });
-    } catch (error) {
-        console.error('Federation Endpoint Delete Error:', error);
-        return NextResponse.json({ error: 'Endpoint konnte nicht gelöscht werden.' }, { status: 500 });
-    }
+export async function DELETE(_request: NextRequest, { params }: RouteParams) {
+    const { id } = await params;
+    return respondWithAction(deleteEndpoint, { id });
 }

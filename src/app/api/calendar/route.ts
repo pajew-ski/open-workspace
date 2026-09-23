@@ -1,69 +1,34 @@
-import { NextRequest, NextResponse } from 'next/server';
-import {
-    listProviders,
-    addProvider,
-    updateProvider,
-    deleteProvider,
-    syncProvider,
-    getEvents
-} from '@/lib/storage/calendar';
-import { calendarActionSchema, parseBody } from '@/lib/api/validation';
+/**
+ * Kalender — Route-Adapter der Aktionen `calendar_*` (ACTIONS_SPEC §3).
+ * Aktionsbasiert: `{ action: 'addProvider', … }` wählt die Aktion.
+ */
+
+import { NextResponse, type NextRequest } from 'next/server';
+import { readJsonBody, respondWithAction, actionErrorResponse } from '@/lib/actions/route';
+import { CALENDAR_ACTIONS_BY_KIND, listCalendars, listEvents } from '@/lib/graph/workspace/actions';
 
 export async function GET(request: NextRequest) {
-    try {
-        const { searchParams } = new URL(request.url);
-        const action = searchParams.get('action');
-
-        if (action === 'events') {
-            const start = searchParams.get('start') || undefined;
-            const end = searchParams.get('end') || undefined;
-            const events = await getEvents(start, end);
-            return NextResponse.json({ events });
-        }
-
-        // Default: list providers
-        const providers = await listProviders();
-        return NextResponse.json({ providers });
-    } catch (error) {
-        console.error('Calendar GET error:', error);
-        return NextResponse.json({ error: 'Fehler beim Laden' }, { status: 500 });
+    const { searchParams } = new URL(request.url);
+    if (searchParams.get('action') === 'events') {
+        return respondWithAction(listEvents, {
+            ...(searchParams.get('start') ? { start: searchParams.get('start') } : {}),
+            ...(searchParams.get('end') ? { end: searchParams.get('end') } : {}),
+            limit: 1000,
+        });
     }
+    return respondWithAction(listCalendars, {});
 }
 
 export async function POST(request: NextRequest) {
     try {
-        const parsed = await parseBody(calendarActionSchema, request);
-        if (!parsed.ok) return parsed.response;
-        const body = parsed.data;
-
-        switch (body.action) {
-            case 'addProvider': {
-                const provider = await addProvider(body.name, body.url, body.color);
-                return NextResponse.json({ provider }, { status: 201 });
-            }
-
-            case 'updateProvider': {
-                const provider = await updateProvider(body.id, body.updates);
-                if (!provider) return NextResponse.json({ error: 'Provider nicht gefunden' }, { status: 404 });
-                return NextResponse.json({ provider });
-            }
-
-            case 'deleteProvider': {
-                const success = await deleteProvider(body.id);
-                if (!success) return NextResponse.json({ error: 'Provider nicht gefunden' }, { status: 404 });
-                return NextResponse.json({ success: true });
-            }
-
-            case 'syncProvider': {
-                const count = await syncProvider(body.id);
-                return NextResponse.json({ success: true, count });
-            }
-
-            default:
-                return NextResponse.json({ error: 'Unbekannte Aktion' }, { status: 400 });
-        }
+        const body = await readJsonBody(request);
+        const { action: kind, ...input } = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
+        const action = typeof kind === 'string' && kind in CALENDAR_ACTIONS_BY_KIND
+            ? CALENDAR_ACTIONS_BY_KIND[kind as keyof typeof CALENDAR_ACTIONS_BY_KIND]
+            : null;
+        if (!action) return NextResponse.json({ error: 'Unbekannte Aktion' }, { status: 400 });
+        return await respondWithAction(action, input, { status: kind === 'addProvider' ? 201 : 200 });
     } catch (error) {
-        console.error('Calendar POST error:', error);
-        return NextResponse.json({ error: 'Aktion fehlgeschlagen', details: error instanceof Error ? error.message : String(error) }, { status: 500 });
+        return actionErrorResponse(error);
     }
 }

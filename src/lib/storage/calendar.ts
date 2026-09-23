@@ -13,9 +13,9 @@
  * Connector-Import (SPEC §6.2).
  */
 
-import { parseICS } from '@/lib/calendar/ical';
 import { getWorkspaceContext } from '@/lib/graph/server/instance';
 import * as crud from '@/lib/graph/workspace/crud';
+import { syncCalendar } from '@/lib/graph/workspace/calendar-sync';
 
 export interface CalendarProvider {
     id: string;
@@ -68,39 +68,13 @@ export async function deleteProvider(id: string): Promise<boolean> {
     return crud.deleteCalendar(await getWorkspaceContext(), id);
 }
 
-// Sync Operation
+// Sync Operation — der Lauf selbst steht in graph/workspace/calendar-sync.ts.
 export async function syncProvider(id: string): Promise<number> {
     const ctx = await getWorkspaceContext();
-    const provider = (await crud.listCalendars(ctx)).find(entry => entry.id === id);
-    if (!provider) throw new Error('Provider not found');
-
     try {
-        console.log(`[Calendar] Fetching ${provider.url}...`);
-        const response = await fetch(provider.url);
-        if (!response.ok) throw new Error(`Fetch failed: ${response.statusText}`);
-        const icsData = await response.text();
-        console.log(`[Calendar] Fetched ${icsData.length} bytes`);
-
-        console.log(`[Calendar] Parsing ICS data...`);
-        const parsedEvents = await parseICS(icsData);
-        console.log(`[Calendar] Parsed ${parsedEvents.length} events`);
-
-        const events: CalendarEvent[] = parsedEvents.map(e => ({
-            id: `evt-${provider.id}-${e.uid || Math.random().toString(36)}`,
-            providerId: provider.id,
-            title: e.summary || '(Ohne Titel)',
-            description: e.description,
-            startDate: e.start.toISOString(),
-            endDate: e.end.toISOString(),
-            allDay: e.allDay || false,
-            location: e.location,
-        }));
-
-        const count = await crud.replaceCalendarEvents(ctx, provider.id, events, new Date().toISOString());
-        if (count === null) throw new Error('Provider not found');
-        return count;
+        return await syncCalendar(ctx, id);
     } catch (error) {
-        console.error(`Sync error for ${provider.name}:`, error);
+        console.error(`Sync error for calendar ${id}:`, error);
         throw error;
     }
 }

@@ -946,9 +946,29 @@
       Dokumente und Pinnwände hängen. `changes` bleibt handgepflegt, vom
       Vertrag erzwungen — die Transaktion kennt nur den Graphen, nicht den
       Typ (ACTIONS_SPEC §5). Abnahme: `tests/ai/surface.test.ts`
-- [ ] **A4 Restmigration**: `graph/*`, `connectors`, `causal`,
-      `observations`, `access` und der Rest. Abgenommen, wenn „noch nicht
-      migriert" leer ist
+- [x] **A4 Restmigration**: Die Liste „noch nicht migriert" ist leer,
+      Obergrenze 0. Neue Aktionsmodule: `graph/meta` (Ansicht,
+      Selbstmodell, Herkunft), `graph/reasoning` (Zustand, Lauf,
+      Validierung), `graph/views` (Query-Views, Auflösung, Vorschau),
+      `graph/search` (Retrieval-Profile), `graph/connectors` (Katalog,
+      Instanzen, Sync, Export; Ziel ist der Import-Graph der Instanz,
+      Backup-Verweigerung aus dem Grant), `graph/federation` (Endpoints,
+      Probe; Ändern verlangt `control` auf graph/meta), `graph/authz`
+      (Übersicht, Regeln, Gruppen, Räume, Freigeben — jede schreibende
+      Aktion zielt auf den Graphen, den sie verwaltet), `graph/causal`
+      (Modelle, Strukturänderung, Chronik, Fragen, Vorschläge, Studien;
+      Vorschlags- und Studienlauf brauchen `platform` und den Tier-1-Kern,
+      sonst 501), `graph/observations` (Größen, Messreihe, Rückgriff,
+      Erfassungslauf; Werte bleiben auf dem Dateibaum), `graph/onboarding`
+      (Zustand, Schritt, Rücknahme) und `graph/mcp` (Status). Zwei
+      Zielarten kamen dazu: `instance` (instanzweite Konfiguration,
+      Lesen = graph/meta lesbar, Ändern = `control`) und `registry` (ein
+      Eintrag in graph/meta unter der eigenen Nutzer-IRI). Statuscodes,
+      die eine Route aus dem Ergebnis ableitet (Backfill 409/502,
+      Erfassungslauf 502, Regel 201/200), stehen als `statusFor` im
+      Adapter. 147 Aktionen in 20 Modulen, 70 Adapter-Routen, 13 begründet
+      ausgenommen. Die verwaisten Hüllen-Schemas in `validation.ts` sind
+      weg. Abnahme: `tests/platform/action-parity.test.ts` mit leerer Liste
 
 ## Fundament (fertig)
 

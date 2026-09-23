@@ -176,6 +176,17 @@ A2: `tests/graph/self-model.test.ts` (die `ow:Tool` mit Effektklasse unter
 „Open Workspace" sind gleich der Registry), `tests/graph/mcp-server.test.ts`
 (ein Lese-Token sieht keine `constructive`-Aktion).
 
+A3: `tests/ai/surface.test.ts` (§5).
+
+A4: Die Liste „noch nicht migriert" im Paritätstest ist leer und ihre
+Obergrenze steht auf 0 — jeder Handler unter `src/app/api/` ist Adapter
+oder begründet ausgenommen. Die Ausnahmen sind Protokoll-Endpunkte, die
+keine Aktion sind: SPARQL-Protokoll (`graph/sparql`,
+`graph/federation/sparql`, `well-known/void`), der Chat-Stream, der
+MCP-Server, die Relais der Fremdfähigkeiten (`tools/execute`,
+`ai/mcp/[id]`, `ai/a2a`), Binärdateien (`images`, `export`), die
+Runtime-Auskunft und der Aktionskatalog selbst (`actions`).
+
 Dazu die Definition of Done nach GRAPH_CORE_SPEC §14.
 
 ## 7. Nicht

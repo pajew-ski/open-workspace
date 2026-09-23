@@ -48,70 +48,10 @@ export const EXCLUDED_ROUTES: Record<string, string> = {
 };
 
 /** Noch nicht migriert. Darf nur schrumpfen (A4 leert sie). */
-export const NOT_YET_MIGRATED: string[] = [
-    'activity',
-    'agents',
-    'ai/config',
-    'ai/defaults',
-    'ai/mcp-servers',
-    'ai/mcp-servers/[id]',
-    'ai/providers',
-    'ai/providers/[id]',
-    'ai/providers/[id]/health',
-    'calendar',
-    'chat/conversations',
-    'chat/health',
-    'connections',
-    'dashboard',
-    'graph',
-    'graph/access',
-    'graph/access/authorizations',
-    'graph/access/authorizations/[id]',
-    'graph/access/groups',
-    'graph/access/groups/[id]',
-    'graph/access/publish',
-    'graph/access/spaces',
-    'graph/access/spaces/[id]',
-    'graph/causal',
-    'graph/causal/[id]',
-    'graph/causal/archive/[id]',
-    'graph/causal/estimands',
-    'graph/causal/estimands/[id]',
-    'graph/causal/hypotheses',
-    'graph/causal/hypotheses/[id]',
-    'graph/causal/studies',
-    'graph/connectors',
-    'graph/connectors/[id]',
-    'graph/connectors/[id]/push',
-    'graph/connectors/[id]/sync',
-    'graph/federation/endpoints',
-    'graph/federation/endpoints/[id]',
-    'graph/federation/endpoints/[id]/probe',
-    'graph/observations',
-    'graph/observations/[id]',
-    'graph/observations/[id]/backfill',
-    'graph/observations/[id]/series',
-    'graph/observations/capture',
-    'graph/provenance',
-    'graph/reasoning',
-    'graph/retrieval-profiles',
-    'graph/retrieval-profiles/[id]',
-    'graph/self-model',
-    'graph/validate',
-    'graph/views',
-    'graph/views/[id]',
-    'graph/views/[id]/resolve',
-    'graph/views/preview',
-    'mcp/status',
-    'onboarding',
-    'settings',
-    'skills',
-    'skills/[id]',
-    'tools',
-];
+export const NOT_YET_MIGRATED: string[] = [];
 
 /** Obergrenze der Liste — wird beim Migrieren gesenkt, nie erhöht. */
-export const NOT_MIGRATED_CEILING = 61;
+export const NOT_MIGRATED_CEILING = 0;
 
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'] as const;
 

@@ -1,24 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { resolveServerProvider } from '@/lib/ai/store.server';
-import { probeProvider } from '@/lib/ai/client';
-
 /**
- * Server-side provider probe. The client calls this when the direct
- * browser route fails (or is not allowed) — together they answer the
- * routing question "who can reach this endpoint?".
+ * Server-seitige Provider-Probe — Route-Adapter der Aktion
+ * `ai_probe_provider` (ACTIONS_SPEC §3). Der Client ruft sie, wenn der
+ * direkte Browser-Weg scheitert — zusammen beantworten sie die
+ * Routing-Frage „wer erreicht diesen Endpunkt?".
  */
+
+import type { NextRequest } from 'next/server';
+import { respondWithAction } from '@/lib/actions/route';
+import { aiProbeProvider } from '@/lib/ai/actions.server';
+
 export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
     const { id } = await context.params;
-    const resolved = await resolveServerProvider(id);
-    if (!resolved) {
-        return NextResponse.json({ error: 'Provider nicht gefunden' }, { status: 404 });
-    }
-    if (resolved.protocol === 'webllm') {
-        return NextResponse.json({
-            status: 'error',
-            detail: 'WebLLM läuft ausschließlich im Browser — es gibt keine Server-Route.',
-        });
-    }
-    const result = await probeProvider(resolved);
-    return NextResponse.json(result);
+    return respondWithAction(aiProbeProvider, { id });
 }

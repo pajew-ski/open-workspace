@@ -9,9 +9,11 @@
  */
 
 import { z } from 'zod';
-import { defineAction, type ActionContext } from '@/lib/actions/contract';
+import { defineAction, notFound, REGISTRY_ERROR_RULES, withStatusFromMessage, type ActionContext } from '@/lib/actions/contract';
 import { registerActions } from '@/lib/actions/registry';
+import { OW } from '../vocab';
 import { retrievalDataset, buildFulltextIndexForGraphs } from './retrieval';
+import { createRetrievalProfile, deleteRetrievalProfile, getRetrievalProfile, listRetrievalProfiles } from './profiles';
 import { searchWorkspaceGraph, type FinderHit } from './finder';
 import { workspaceFromStore } from '../workspace/read';
 
@@ -72,3 +74,79 @@ export const workspaceFinder = defineAction({
 });
 
 registerActions('graph/search', [workspaceFinder]);
+
+// ---------------------------------------------------------------------------
+// Retrieval-Profile (SPEC §7.5, M8): gespeicherte Parametersätze als
+// ow:RetrievalProfile in graph/meta — Registry-Einträge des Aufrufers.
+// ---------------------------------------------------------------------------
+
+export const listProfiles = defineAction({
+    name: 'graph_list_retrieval_profiles',
+    title: 'Retrieval-Profile auflisten',
+    description: 'Listet die gespeicherten Retrieval-Profile (Parametersätze für graph_retrieve).',
+    input: z.object({}),
+    effect: 'read',
+    target: { kind: 'registry' },
+    async run(_input, ctx) {
+        return { profiles: await listRetrievalProfiles(ctx.graph) };
+    },
+});
+
+export const getProfile = defineAction({
+    name: 'graph_get_retrieval_profile',
+    title: 'Retrieval-Profil lesen',
+    description: 'Liest ein gespeichertes Retrieval-Profil.',
+    input: z.object({ id: z.string().min(1).max(200) }),
+    effect: 'read',
+    target: { kind: 'registry' },
+    async run(input, ctx) {
+        const profile = await getRetrievalProfile(ctx.graph, input.id);
+        if (!profile) throw notFound(`Retrieval-Profil "${input.id}" existiert nicht.`);
+        return { profile };
+    },
+});
+
+export const createProfile = defineAction({
+    name: 'graph_create_retrieval_profile',
+    title: 'Retrieval-Profil anlegen',
+    description: 'Speichert einen Parametersatz für graph_retrieve als Profil (auch als MCP-Prompt sichtbar).',
+    input: z.object({
+        name: z.string().min(1).max(200),
+        description: z.string().max(2000).optional(),
+        config: z.record(z.string(), z.unknown()).default({}).describe('RetrievalRequest-Parameter'),
+    }).strict(),
+    effect: 'constructive',
+    target: { kind: 'registry' },
+    changes: [OW.RetrievalProfile],
+    async run(input, ctx) {
+        try {
+            const profile = await createRetrievalProfile(ctx.graph, {
+                name: input.name,
+                description: input.description,
+                config: input.config,
+            });
+            await ctx.persist?.snapshot();
+            return { profile };
+        } catch (error) {
+            return withStatusFromMessage(error, REGISTRY_ERROR_RULES);
+        }
+    },
+});
+
+export const deleteProfile = defineAction({
+    name: 'graph_delete_retrieval_profile',
+    title: 'Retrieval-Profil löschen',
+    description: 'Entfernt ein gespeichertes Retrieval-Profil.',
+    input: z.object({ id: z.string().min(1).max(200) }),
+    effect: 'destructive',
+    target: { kind: 'registry' },
+    changes: [OW.RetrievalProfile],
+    async run(input, ctx) {
+        const removed = await deleteRetrievalProfile(ctx.graph, input.id);
+        if (!removed) throw notFound(`Retrieval-Profil "${input.id}" existiert nicht.`);
+        await ctx.persist?.snapshot();
+        return { ok: true as const };
+    },
+});
+
+registerActions('graph/search', [listProfiles, getProfile, createProfile, deleteProfile]);

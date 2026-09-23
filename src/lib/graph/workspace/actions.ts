@@ -17,8 +17,10 @@
 import { z } from 'zod';
 import { defineAction, notFound, type ActionContext } from '@/lib/actions/contract';
 import { registerActions } from '@/lib/actions/registry';
-import { OW } from '../vocab';
+import { OW, SCHEMA } from '../vocab';
 import * as crud from './crud';
+import { syncCalendar } from './calendar-sync';
+import { httpUrlSchema } from '@/lib/api/validation';
 import { parseJsonCanvas } from '../connectors/json-canvas/format';
 import { jsonCanvasToNative } from '../connectors/json-canvas/native';
 import { ActionError } from '@/lib/actions/contract';
@@ -705,4 +707,296 @@ registerActions('graph/workspace', [
     listDocs, getDoc, createDoc, updateDoc, deleteDoc,
     listCanvases, getCanvas, createCanvas, importCanvas, updateCanvas, deleteCanvas,
     createCard, updateCard, deleteCard, createConnection, updateConnection, deleteConnection, setViewport,
+]);
+
+// ---------------------------------------------------------------------------
+// Kalender (M15: schema:DataFeed + schema:Event im Workspace-Graphen)
+// ---------------------------------------------------------------------------
+
+const calendarProviderUpdatesSchema = z.object({
+    name: z.string().min(1).max(200).optional(),
+    url: httpUrlSchema.optional(),
+    color: z.string().max(50).optional(),
+    enabled: z.boolean().optional(),
+});
+
+export const listCalendars = defineAction({
+    name: 'calendar_list_providers',
+    title: 'Kalender auflisten',
+    description: 'Listet die abonnierten Kalender (ICS-Quellen) mit Farbe und letztem Abruf.',
+    input: z.object({}),
+    effect: 'read',
+    target: { kind: 'graph', scope: 'workspace' },
+    requires: ['workspace'],
+    async run(_input, ctx) {
+        return { providers: await crud.listCalendars(await workspaceOf(ctx)) };
+    },
+});
+
+export const listEvents = defineAction({
+    name: 'calendar_list_events',
+    title: 'Termine auflisten',
+    description: 'Listet Termine der abonnierten Kalender, optional in einem Zeitfenster (ISO-Zeitpunkte).',
+    input: z.object({
+        start: z.string().max(40).optional().describe('Beginn des Fensters (ISO)'),
+        end: z.string().max(40).optional().describe('Ende des Fensters (ISO)'),
+        limit: z.number().int().min(1).max(1000).optional().describe('Maximale Anzahl (Default 200)'),
+    }),
+    effect: 'read',
+    target: { kind: 'graph', scope: 'workspace' },
+    requires: ['workspace'],
+    async run(input, ctx) {
+        const events = await crud.listEvents(await workspaceOf(ctx), { start: input.start, end: input.end });
+        return { events: events.slice(0, input.limit ?? 200) };
+    },
+});
+
+export const addCalendar = defineAction({
+    name: 'calendar_add_provider',
+    title: 'Kalender abonnieren',
+    description: 'Abonniert einen ICS-Kalender (URL) und ruft ihn sofort ab.',
+    input: z.object({
+        name: z.string().min(1, 'Name ist erforderlich').max(200),
+        url: httpUrlSchema,
+        color: z.string().max(50).default('#00674F'),
+    }),
+    effect: 'constructive',
+    target: { kind: 'graph', scope: 'workspace' },
+    requires: ['workspace'],
+    changes: [SCHEMA.DataFeed, SCHEMA.Event],
+    async run(input, ctx) {
+        const workspace = await workspaceOf(ctx);
+        const provider = await crud.createCalendar(workspace, { name: input.name, url: input.url, color: input.color });
+        // Sofort abrufen — ein leerer Kalender direkt nach dem Anlegen sähe
+        // aus wie ein kaputter. Scheitert der Abruf, bleibt das Abonnement
+        // bestehen und meldet es beim nächsten Sync.
+        try {
+            await syncCalendar(workspace, provider.id);
+        } catch (error) {
+            console.error(`Failed to initial sync provider ${input.name}:`, error);
+        }
+        return { provider };
+    },
+});
+
+export const updateCalendar = defineAction({
+    name: 'calendar_update_provider',
+    title: 'Kalender ändern',
+    description: 'Ändert Name, URL, Farbe oder Aktivierung eines abonnierten Kalenders.',
+    input: z.object({ id: idSchema, updates: calendarProviderUpdatesSchema }),
+    effect: 'constructive',
+    target: { kind: 'graph', scope: 'workspace' },
+    requires: ['workspace'],
+    changes: [SCHEMA.DataFeed],
+    async run(input, ctx) {
+        const provider = await crud.updateCalendar(await workspaceOf(ctx), input.id, input.updates);
+        if (!provider) throw notFound('Provider nicht gefunden');
+        return { provider };
+    },
+});
+
+export const deleteCalendar = defineAction({
+    name: 'calendar_delete_provider',
+    title: 'Kalender entfernen',
+    description: 'Entfernt ein Kalender-Abonnement samt seiner Termine.',
+    input: z.object({ id: idSchema }),
+    effect: 'destructive',
+    target: { kind: 'graph', scope: 'workspace' },
+    requires: ['workspace'],
+    changes: [SCHEMA.DataFeed, SCHEMA.Event],
+    async run(input, ctx) {
+        const success = await crud.deleteCalendar(await workspaceOf(ctx), input.id);
+        if (!success) throw notFound('Provider nicht gefunden');
+        return { success: true as const };
+    },
+});
+
+export const syncCalendarAction = defineAction({
+    name: 'calendar_sync_provider',
+    title: 'Kalender abrufen',
+    description: 'Ruft einen abonnierten Kalender neu ab und ersetzt seine Termine.',
+    input: z.object({ id: idSchema }),
+    effect: 'constructive',
+    target: { kind: 'graph', scope: 'workspace' },
+    requires: ['workspace'],
+    changes: [SCHEMA.Event],
+    async run(input, ctx) {
+        const count = await syncCalendar(await workspaceOf(ctx), input.id);
+        return { success: true as const, count };
+    },
+});
+
+export const CALENDAR_ACTIONS_BY_KIND = {
+    addProvider: addCalendar,
+    updateProvider: updateCalendar,
+    deleteProvider: deleteCalendar,
+    syncProvider: syncCalendarAction,
+} as const;
+
+// ---------------------------------------------------------------------------
+// Unterhaltungen des Assistenten (M15: schema:Conversation + schema:Message)
+// ---------------------------------------------------------------------------
+
+const conversationTarget = { kind: 'graph', scope: 'workspace' } as const;
+
+export const listConversations = defineAction({
+    name: 'chat_list_conversations',
+    title: 'Unterhaltungen auflisten',
+    description: 'Listet die gespeicherten Unterhaltungen des Assistenten und die zuletzt geöffnete.',
+    input: z.object({}),
+    effect: 'read',
+    target: conversationTarget,
+    requires: ['workspace'],
+    async run(_input, ctx) {
+        const workspace = await workspaceOf(ctx);
+        return {
+            conversations: await crud.listConversations(workspace),
+            activeId: await crud.getActiveConversationId(workspace),
+        };
+    },
+});
+
+export const getConversation = defineAction({
+    name: 'chat_get_conversation',
+    title: 'Unterhaltung lesen',
+    description: 'Liest eine Unterhaltung mit allen Nachrichten.',
+    input: z.object({ id: idSchema }),
+    effect: 'read',
+    target: conversationTarget,
+    requires: ['workspace'],
+    async run(input, ctx) {
+        const conversation = await crud.getConversation(await workspaceOf(ctx), input.id);
+        if (!conversation) throw notFound('Konversation nicht gefunden');
+        return { conversation };
+    },
+});
+
+export const createConversation = defineAction({
+    name: 'chat_create_conversation',
+    title: 'Unterhaltung anlegen',
+    description: 'Legt eine neue Unterhaltung an.',
+    input: z.object({ title: z.string().max(300).optional() }),
+    effect: 'constructive',
+    target: conversationTarget,
+    requires: ['workspace'],
+    changes: [SCHEMA.Conversation],
+    async run(input, ctx) {
+        return { conversation: await crud.createConversation(await workspaceOf(ctx), input.title) };
+    },
+});
+
+export const addMessage = defineAction({
+    name: 'chat_add_message',
+    title: 'Nachricht anhängen',
+    description: 'Hängt eine Nachricht (Nutzer oder Assistent) an eine Unterhaltung an, optional mit A2UI-Oberfläche.',
+    input: z.object({
+        conversationId: idSchema,
+        role: z.enum(['user', 'assistant']),
+        content: z.string().max(500_000),
+        uiComponents: z.array(z.unknown()).max(500).optional(),
+    }),
+    effect: 'constructive',
+    target: conversationTarget,
+    requires: ['workspace'],
+    changes: [SCHEMA.Message],
+    async run(input, ctx) {
+        const message = await crud.addMessage(await workspaceOf(ctx), input.conversationId, input.role, input.content, input.uiComponents);
+        if (!message) throw notFound('Konversation nicht gefunden');
+        return { message };
+    },
+});
+
+export const updateMessage = defineAction({
+    name: 'chat_update_message',
+    title: 'Nachricht ändern',
+    description: 'Ersetzt den Text einer Nachricht.',
+    input: z.object({ conversationId: idSchema, messageId: idSchema, content: z.string().max(500_000) }),
+    effect: 'constructive',
+    target: conversationTarget,
+    requires: ['workspace'],
+    changes: [SCHEMA.Message],
+    async run(input, ctx) {
+        const message = await crud.updateMessage(await workspaceOf(ctx), input.conversationId, input.messageId, input.content);
+        if (!message) throw notFound('Nachricht nicht gefunden');
+        return { message };
+    },
+});
+
+export const renameConversation = defineAction({
+    name: 'chat_rename_conversation',
+    title: 'Unterhaltung umbenennen',
+    description: 'Gibt einer Unterhaltung einen neuen Titel.',
+    input: z.object({ id: idSchema, title: z.string().min(1).max(300) }),
+    effect: 'constructive',
+    target: conversationTarget,
+    requires: ['workspace'],
+    changes: [SCHEMA.Conversation],
+    async run(input, ctx) {
+        const conversation = await crud.renameConversation(await workspaceOf(ctx), input.id, input.title);
+        if (!conversation) throw notFound('Konversation nicht gefunden');
+        return { conversation };
+    },
+});
+
+export const deleteConversation = defineAction({
+    name: 'chat_delete_conversation',
+    title: 'Unterhaltung löschen',
+    description: 'Löscht eine Unterhaltung mit allen Nachrichten.',
+    input: z.object({ id: idSchema }),
+    effect: 'destructive',
+    target: conversationTarget,
+    requires: ['workspace'],
+    changes: [SCHEMA.Conversation, SCHEMA.Message],
+    async run(input, ctx) {
+        const success = await crud.deleteConversation(await workspaceOf(ctx), input.id);
+        if (!success) throw notFound('Konversation nicht gefunden');
+        return { success: true as const };
+    },
+});
+
+export const setActiveConversation = defineAction({
+    name: 'chat_set_active',
+    title: 'Unterhaltung auswählen',
+    description: 'Merkt sich, welche Unterhaltung die Oberfläche als Nächstes öffnet.',
+    input: z.object({ id: idSchema }),
+    effect: 'constructive',
+    target: conversationTarget,
+    requires: ['workspace'],
+    changes: [SCHEMA.Conversation],
+    async run(input, ctx) {
+        await crud.setActiveConversation(await workspaceOf(ctx), input.id);
+        return { success: true as const };
+    },
+});
+
+export const clearConversations = defineAction({
+    name: 'chat_clear_conversations',
+    title: 'Alle Unterhaltungen löschen',
+    description: 'Löscht sämtliche Unterhaltungen.',
+    input: z.object({}),
+    effect: 'destructive',
+    target: conversationTarget,
+    requires: ['workspace'],
+    changes: [SCHEMA.Conversation, SCHEMA.Message],
+    async run(_input, ctx) {
+        await crud.clearConversations(await workspaceOf(ctx));
+        return { success: true as const };
+    },
+});
+
+/** Die Konversations-Route ist aktionsbasiert (`{ action: 'addMessage', … }`). */
+export const CONVERSATION_ACTIONS_BY_KIND = {
+    create: createConversation,
+    addMessage,
+    updateMessage,
+    rename: renameConversation,
+    delete: deleteConversation,
+    setActive: setActiveConversation,
+    clearAll: clearConversations,
+} as const;
+
+registerActions('graph/workspace', [
+    listCalendars, listEvents, addCalendar, updateCalendar, deleteCalendar, syncCalendarAction,
+    listConversations, getConversation, createConversation, addMessage, updateMessage,
+    renameConversation, deleteConversation, setActiveConversation, clearConversations,
 ]);

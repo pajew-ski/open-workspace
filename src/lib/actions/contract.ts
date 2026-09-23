@@ -65,6 +65,17 @@ export const ACTION_NAME_PATTERN = /^[a-z0-9_]{1,64}$/;
  *    (AGENTS.md, „Noch keine Graph-Bürger"). Lesen verlangt Leserecht auf
  *    `graph/meta`, Ändern `control` darauf — dieselbe Schwelle wie für
  *    jede andere instanzweite Aussage (Gruppen, SPEC §17.1).
+ *  - `registry`: ein Eintrag in `graph/meta` unter der EIGENEN Nutzer-IRI
+ *    (Retrieval-Profil, Query-View, Frage, Beobachtungsgröße,
+ *    Connector-Instanz). `graph/meta` schreiben Systemkomponenten — hier
+ *    im Auftrag der angemeldeten Identität, deren Namensraum der Eintrag
+ *    trägt. Lesen: `graph/meta` lesbar; Schreiben: dazu eine Identität.
+ *    Instanzweite Einträge ohne Nutzerbezug (Gruppen, Föderations-
+ *    Endpoints) bleiben `graph` auf `meta` mit `mode: 'control'`.
+ *
+ *  Ein `graph`-Scope `import/*` steht für „ein neuer Import-Graph im
+ *  eigenen Namensraum" (Connector anlegen: die Kennung entsteht erst
+ *  beim Anlegen).
  */
 export type ActionTarget =
     | { kind: 'dataset' }
@@ -76,7 +87,8 @@ export type ActionTarget =
     | { kind: 'grant-write' }
     | { kind: 'sparql' }
     | { kind: 'surface' }
-    | { kind: 'instance' };
+    | { kind: 'instance' }
+    | { kind: 'registry' };
 
 /**
  * Was eine Aktion aus ihrem Kontext braucht, um überhaupt zu laufen. Ein
@@ -226,6 +238,27 @@ export class ActionError extends Error {
 export function notFound(message: string): ActionError {
     return new ActionError(404, message);
 }
+
+/**
+ * Fehlertexte der Bibliotheken auf HTTP-Bedeutung abbilden („existiert
+ * bereits" → 409, „Ungültige" → 400). Was keine Regel trifft, bleibt ein
+ * unerwarteter Fehler (500) — die Route protokolliert ihn.
+ */
+export function withStatusFromMessage(error: unknown, rules: ReadonlyArray<readonly [RegExp, number]>): never {
+    if (error instanceof ActionError) throw error;
+    if (error instanceof Error) {
+        for (const [pattern, status] of rules) {
+            if (pattern.test(error.message)) throw new ActionError(status, error.message);
+        }
+    }
+    throw error;
+}
+
+/** Die üblichen Regeln der Graph-Registries. */
+export const REGISTRY_ERROR_RULES: ReadonlyArray<readonly [RegExp, number]> = [
+    [/existiert bereits/, 409],
+    [/Ungültige|blockiert|erlaubt|nicht zulässig/, 400],
+];
 
 /** Der Grant reicht für das Ziel nicht (aus `authorize.ts`). */
 export class ActionDeniedError extends ActionError {

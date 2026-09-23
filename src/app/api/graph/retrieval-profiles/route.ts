@@ -1,56 +1,21 @@
 /**
- * Retrieval-Profile (SPEC §7.5, M8): gespeicherte Parametersätze als
- * ow:RetrievalProfile-Entitäten in graph/meta.
- *
- * GET  /api/graph/retrieval-profiles       → Liste
- * POST /api/graph/retrieval-profiles      → anlegen
+ * Retrieval-Profile (GRAPH_CORE_SPEC §7.5, M8) — Route-Adapter der
+ * Aktionen `graph_list_retrieval_profiles` und
+ * `graph_create_retrieval_profile`.
  */
 
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
-import {persistServerGraphSnapshot } from '@/lib/graph/server/instance';
-import { getUserGraph } from '@/lib/graph/server/context';
-import { createRetrievalProfile, listRetrievalProfiles } from '@/lib/graph/search/profiles';
+import type { NextRequest } from 'next/server';
+import { actionErrorResponse, readJsonBody, respondWithAction } from '@/lib/actions/route';
+import { createProfile, listProfiles } from '@/lib/graph/search/actions';
 
-const createSchema = z.object({
-    name: z.string().min(1).max(200),
-    description: z.string().max(2000).optional(),
-    config: z.record(z.string(), z.unknown()).default({}),
-}).strict();
-
-export async function GET(): Promise<Response> {
-    try {
-        const handle = await getUserGraph();
-        return NextResponse.json({ profiles: await listRetrievalProfiles(handle) });
-    } catch (error) {
-        console.error('Retrieval Profiles Error:', error);
-        return NextResponse.json({ error: 'Profile konnten nicht gelesen werden.' }, { status: 500 });
-    }
+export async function GET() {
+    return respondWithAction(listProfiles, {});
 }
 
-export async function POST(request: Request): Promise<Response> {
-    let parsed: z.infer<typeof createSchema>;
+export async function POST(request: NextRequest) {
     try {
-        parsed = createSchema.parse(await request.json());
+        return await respondWithAction(createProfile, await readJsonBody(request), { status: 201 });
     } catch (error) {
-        const message = error instanceof z.ZodError
-            ? error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join('; ')
-            : 'Ungültiger Request-Body.';
-        return NextResponse.json({ error: message }, { status: 400 });
-    }
-    try {
-        const handle = await getUserGraph();
-        const profile = await createRetrievalProfile(handle, {
-            name: parsed.name,
-            description: parsed.description,
-            config: parsed.config,
-        });
-        await persistServerGraphSnapshot();
-        return NextResponse.json({ profile }, { status: 201 });
-    } catch (error) {
-        const message = error instanceof Error ? error.message : 'Profil konnte nicht angelegt werden.';
-        const status = message.includes('existiert bereits') ? 409 : 500;
-        if (status === 500) console.error('Retrieval Profile Create Error:', error);
-        return NextResponse.json({ error: message }, { status });
+        return actionErrorResponse(error);
     }
 }

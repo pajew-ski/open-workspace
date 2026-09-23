@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { parseBody, updateMcpServerSchema } from '@/lib/api/validation';
-import { deleteMcpServer, updateMcpServer } from '@/lib/ai/store.server';
-import { refreshAiMirrorAfterMutation } from '@/lib/graph/server/instance';
+/** Ein MCP-Server — Route-Adapter der Aktionen `ai_update_mcp_server` und `ai_delete_mcp_server` (ACTIONS_SPEC §3). */
+
+import type { NextRequest } from 'next/server';
+import { readJsonBody, respondWithAction, actionErrorResponse } from '@/lib/actions/route';
+import { aiDeleteMcpServer, aiUpdateMcpServer } from '@/lib/ai/actions.server';
 
 interface RouteContext {
     params: Promise<{ id: string }>;
@@ -9,34 +10,15 @@ interface RouteContext {
 
 export async function PUT(request: NextRequest, context: RouteContext) {
     const { id } = await context.params;
-    const parsed = await parseBody(updateMcpServerSchema, request);
-    if (!parsed.ok) return parsed.response;
-
     try {
-        const server = await updateMcpServer(id, parsed.data);
-        if (!server) {
-            return NextResponse.json({ error: 'MCP-Server nicht gefunden' }, { status: 404 });
-        }
-        await refreshAiMirrorAfterMutation('MCP-Server aktualisiert');
-        return NextResponse.json({ server });
+        const body = await readJsonBody(request);
+        return await respondWithAction(aiUpdateMcpServer, { ...(body as object), id });
     } catch (error) {
-        return NextResponse.json(
-            { error: 'MCP-Server konnte nicht aktualisiert werden', details: error instanceof Error ? error.message : 'unknown' },
-            { status: 500 }
-        );
+        return actionErrorResponse(error);
     }
 }
 
 export async function DELETE(_request: NextRequest, context: RouteContext) {
     const { id } = await context.params;
-    try {
-        await deleteMcpServer(id);
-        await refreshAiMirrorAfterMutation('MCP-Server gelöscht');
-        return NextResponse.json({ success: true });
-    } catch (error) {
-        return NextResponse.json(
-            { error: 'MCP-Server konnte nicht gelöscht werden', details: error instanceof Error ? error.message : 'unknown' },
-            { status: 500 }
-        );
-    }
+    return respondWithAction(aiDeleteMcpServer, { id });
 }
