@@ -1,8 +1,11 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import type { A2UINode, UIResourceContent } from '@/components/a2ui/types';
 import { runAssistantTurn } from '@/lib/ai/transport';
+import { applyWorkspaceChanges } from '@/lib/assistant/changes';
 import { addMessage as persistMessage } from '@/lib/chat/gateway';
 import type { ClientProviderRecord } from '@/lib/ai/store.client';
 import type { SelfModelView } from '@/lib/graph/meta/self-model-view';
@@ -81,6 +84,13 @@ export function useConversation(
 ) {
     const [messages, setMessages] = useState<UIMessage[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const router = useRouter();
+    const queryClient = useQueryClient();
+    // Live-Sicht für `view_screen` im Browser-Loop (A3).
+    const liveContext = useRef(context);
+    useEffect(() => {
+        liveContext.current = context;
+    }, [context]);
 
     // The stage shows the most recent non-empty surface in the conversation.
     const activeSurface = [...messages].reverse()
@@ -136,6 +146,12 @@ export function useConversation(
                     ...context,
                     activeSurface: summarizeSurface(activeSurface),
                 },
+                surface: () => ({
+                    pathname: liveContext.current.pathname,
+                    module: liveContext.current.module,
+                    moduleDescription: liveContext.current.moduleDescription,
+                    activeSurface: summarizeSurface(surface ?? activeSurface),
+                }),
                 provider: options.provider,
                 model: options.model,
                 handlers: {
@@ -147,6 +163,9 @@ export function useConversation(
                         collectedResources.push(resource);
                         applyUpdate();
                     },
+                    // Rückfluss und Navigationsabsicht (A3) — wie im Widget.
+                    onChanges: entityTypes => applyWorkspaceChanges(queryClient, entityTypes),
+                    onNavigate: target => router.push(`${target.pathname}${target.search ?? ''}`),
                 },
             });
 
@@ -162,7 +181,7 @@ export function useConversation(
         } finally {
             setIsLoading(false);
         }
-    }, [conversationId, isLoading, messages, context, activeSurface, options.provider, options.model]);
+    }, [conversationId, isLoading, messages, context, activeSurface, options.provider, options.model, queryClient, router]);
 
     return { messages, isLoading, activeSurface, sendMessage, loadMessages, setMessages };
 }

@@ -39,7 +39,8 @@ import { parseRdf } from '@/lib/graph/serialize/io';
 import { McpHost } from '@/lib/graph/mcp/http';
 import { parseMcpTokens, grantForToken, MCP_TOKENS_ENV } from '@/lib/graph/mcp/tokens';
 import { ensureDefaultAuthorizations, setAuthorization } from '@/lib/graph/authz/acl-graph';
-import { toolsForGrant } from '@/lib/graph/mcp/server';
+import { toolsForContext } from '@/lib/graph/mcp/server';
+import { listActions } from '@/lib/actions/registry';
 import { graphResourceUri } from '@/lib/graph/mcp/tools';
 import { RateLimiter } from '@/lib/graph/mcp/limits';
 
@@ -223,11 +224,19 @@ describe('M10 — externer MCP-Client auf dem Graphen (SPEC §7.6)', () => {
         const external = await client(harness, OPEN_TOKEN);
 
         const { tools } = await external.listTools();
-        expect(tools.map(t => t.name).sort()).toEqual([
-            'graph_describe', 'graph_neighbors', 'graph_retrieve', 'graph_search', 'graph_sparql',
-        ]);
+        for (const name of ['graph_describe', 'graph_neighbors', 'graph_retrieve', 'graph_search', 'graph_sparql']) {
+            expect(tools.map(t => t.name)).toContain(name);
+        }
         // graph_write ist per Default AUS (§7.6) — dieses Token hat es nicht.
         expect(tools.map(t => t.name)).not.toContain('graph_write');
+        // Seit A2 (ACTIONS_SPEC §3) ist das Inventar die Registry, nach
+        // Effektklasse gefiltert: Ein Lese-Token sieht KEINE constructive-
+        // und keine destructive-Aktion — nicht einmal ihren Namen.
+        const effects = new Map(listActions().map(action => [action.name, action.effect]));
+        for (const tool of tools) {
+            expect(effects.get(tool.name), `${tool.name} ist keine Aktion`).toBe('read');
+        }
+        expect(listActions().some(action => action.effect === 'constructive')).toBe(true);
 
         const result = await external.callTool({
             name: 'graph_retrieve',
@@ -479,6 +488,9 @@ describe('M10 — graph_write (Default aus, SPEC §7.6)', () => {
         expect(tools.map(t => t.name)).toContain('graph_write');
         // Dieses Token hat kein SPARQL-Recht — das Werkzeug existiert nicht.
         expect(tools.map(t => t.name)).not.toContain('graph_sparql');
+        // Und auch mit Schreibrecht: nichts Destruktives (ACTIONS_SPEC §3).
+        const effects = new Map(listActions().map(action => [action.name, action.effect]));
+        expect(tools.every(tool => effects.get(tool.name) !== 'destructive')).toBe(true);
 
         const written = jsonOf<{ graph: string; added: number; agent: string; activity: string }>(
             await writer.callTool({
@@ -543,7 +555,11 @@ describe('M10 — Token-Konfiguration und Grant (SPEC §7.6)', () => {
             iri.graph('workspace'),
         ].sort());
         expect(voll.readableGraphs).not.toContain(iri.sharedGraph('acl'));
-        expect(toolsForGrant(voll)).toContain('graph_sparql');
+        const vollCtx = harness.host.actionContextFor(harness.handle, voll, tokens[0]);
+        expect(await toolsForContext(vollCtx)).toContain('graph_sparql');
+        // Ein Werkzeug, dessen Kontext-Baustein fehlt (Store-first-CRUD des
+        // Nutzers), erscheint nicht — statt beim Aufruf zu scheitern.
+        expect(await toolsForContext(vollCtx)).not.toContain('workspace_create_task');
 
         const eng = (await grantForToken(tokens[1], harness.handle, existing)).grant;
         expect(eng.readableGraphs).not.toContain(iri.importGraph('geheim'));

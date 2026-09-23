@@ -1,31 +1,17 @@
 /**
- * Auflösung einer Query-View zum Live-Subgraphen (GRAPH_CORE_SPEC §9, M5).
- * Läuft über dasselbe erlaubte Dataset wie jede SPARQL-Anfrage
- * (resolveDataset) — presentation/inferred/acl sind draußen.
+ * GET /api/graph/views/<id>/resolve — Route-Adapter der Aktion
+ * `graph_resolve_view` (Subgraph einer gespeicherten Query).
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getRequestGraph } from '@/lib/graph/server/context';
-import { resolveQueryView } from '@/lib/graph/views/registry';
+import type { NextRequest } from 'next/server';
+import { respondWithAction } from '@/lib/actions/route';
+import { resolveView } from '@/lib/graph/views/actions.server';
 
-interface RouteContext {
+interface RouteParams {
     params: Promise<{ id: string }>;
 }
 
-const ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/i;
-
-export async function GET(_request: NextRequest, context: RouteContext) {
-    const { id } = await context.params;
-    if (!ID_PATTERN.test(id)) {
-        return NextResponse.json({ error: 'Ungültige View-ID' }, { status: 400 });
-    }
-    try {
-        const { store, iri, grant } = await getRequestGraph();
-        const resolved = await resolveQueryView({ store, iri }, id, { allowedGraphs: grant.readableGraphs });
-        return NextResponse.json(resolved);
-    } catch (error) {
-        const message = error instanceof Error ? error.message : 'unknown';
-        const status = message.includes('nicht registriert') ? 404 : 400;
-        return NextResponse.json({ error: 'View nicht auflösbar', details: message }, { status });
-    }
+export async function GET(_request: NextRequest, { params }: RouteParams) {
+    const { id } = await params;
+    return respondWithAction(resolveView, { id });
 }

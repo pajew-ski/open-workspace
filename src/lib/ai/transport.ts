@@ -9,6 +9,7 @@ import { toPromptInfo } from './tools.shared';
 import { buildBrowserEngineDeps } from './browser/deps';
 import { loadClientAIState, resolveBrowserProvider, resolveRoute, type ClientProviderRecord } from './store.client';
 import { checkBackend } from '@/lib/platform/backend';
+import type { ActionSurface } from '@/lib/actions/contract';
 
 /**
  * The one entry point both chat surfaces use to run an assistant turn.
@@ -26,11 +27,21 @@ export interface TurnHandlers {
     onText(text: string): void;
     /** MCP-UI resource delivered by a tool — belongs on the stage. */
     onUiResource?(resource: UIResourceContent): void;
+    /** Eine schreibende Aktion hat diese Entitätstypen verändert (A3): Queries invalidieren. */
+    onChanges?(entityTypes: readonly string[]): void;
+    /** Navigationsabsicht einer Aktion (A3): das Widget navigiert, ohne seinen Zustand zu verlieren. */
+    onNavigate?(target: { pathname: string; search?: string }): void;
 }
 
 export interface AssistantTurnRequest {
     messages: Array<{ role: 'user' | 'assistant'; content: string }>;
     context: PromptContext;
+    /**
+     * Live-Sicht auf die Oberfläche für den Browser-Loop (A3): `view_screen`
+     * liest darüber den JETZIGEN Zustand, nicht den vom Turn-Anfang. Ohne
+     * Getter gilt `context`.
+     */
+    surface?: () => Pick<PromptContext, 'pathname' | 'viewState' | 'module' | 'moduleDescription' | 'activeSurface'>;
     provider?: ClientProviderRecord;
     model?: string;
     signal?: AbortSignal;
@@ -117,6 +128,9 @@ async function serverTurn(
                 message?: { content?: string };
                 type?: string;
                 resource?: UIResourceContent;
+                entityTypes?: string[];
+                pathname?: string;
+                search?: string;
                 error?: string;
             };
             try {
@@ -128,6 +142,14 @@ async function serverTurn(
             if (chunk.type === 'ui-resource' && chunk.resource) {
                 uiResources.push(chunk.resource);
                 request.handlers.onUiResource?.(chunk.resource);
+                continue;
+            }
+            if (chunk.type === 'changes' && Array.isArray(chunk.entityTypes)) {
+                request.handlers.onChanges?.(chunk.entityTypes);
+                continue;
+            }
+            if (chunk.type === 'navigate' && typeof chunk.pathname === 'string') {
+                request.handlers.onNavigate?.({ pathname: chunk.pathname, ...(chunk.search ? { search: chunk.search } : {}) });
                 continue;
             }
             if (chunk.message?.content) {
@@ -149,7 +171,17 @@ async function browserTurn(
     provider: ClientProviderRecord
 ): Promise<AssistantTurnResult> {
     const state = await loadClientAIState();
-    const deps = await buildBrowserEngineDeps(state);
+    // Die Oberfläche als Live-Sicht (A3): `view_screen` liest den Zustand
+    // von jetzt, nicht den vom Anfang des Turns.
+    const current = request.surface ?? (() => request.context);
+    const surface: ActionSurface = {
+        pathname: () => current().pathname,
+        viewState: () => current().viewState ?? {},
+        module: () => ({ label: current().module, description: current().moduleDescription }),
+        activeSurface: () => current().activeSurface ?? [],
+        freshness: request.surface ? 'live' : 'request',
+    };
+    const deps = await buildBrowserEngineDeps(state, surface);
     const resolved = resolveBrowserProvider(provider);
     const adapter = getAdapter(resolved.protocol);
     const nativeTools = provider.toolCalls !== 'text' && adapter.supportsNativeTools;
@@ -200,6 +232,12 @@ async function browserTurn(
                 case 'ui-resource':
                     uiResources.push(event.resource);
                     request.handlers.onUiResource?.(event.resource);
+                    break;
+                case 'changes':
+                    request.handlers.onChanges?.(event.entityTypes);
+                    break;
+                case 'navigate':
+                    request.handlers.onNavigate?.({ pathname: event.pathname, ...(event.search ? { search: event.search } : {}) });
                     break;
                 case 'progress': {
                     // Model load progress (WebLLM): report in 10% steps.

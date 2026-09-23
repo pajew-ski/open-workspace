@@ -1,87 +1,32 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getProject, updateProject, deleteProject } from '@/lib/storage';
-import { parseBody, shaclErrorResponse, updateProjectSchema } from '@/lib/api/validation';
+/**
+ * Ein Projekt — Route-Adapter der Aktionen `workspace_get_project`,
+ * `workspace_update_project` und `workspace_delete_project` (ACTIONS_SPEC §3).
+ */
+
+import type { NextRequest } from 'next/server';
+import { readJsonBody, respondWithAction, actionErrorResponse } from '@/lib/actions/route';
+import { deleteProject, getProject, updateProject } from '@/lib/graph/workspace/actions';
 
 interface RouteParams {
     params: Promise<{ id: string }>;
 }
 
-export async function GET(request: NextRequest, { params }: RouteParams) {
-    try {
-        const { id } = await params;
-        const project = await getProject(id);
-
-        if (!project) {
-            return NextResponse.json(
-                { error: 'Projekt nicht gefunden' },
-                { status: 404 }
-            );
-        }
-
-        return NextResponse.json({ project });
-    } catch (error) {
-        console.error('Project get error:', error);
-        return NextResponse.json(
-            { error: 'Projekt konnte nicht geladen werden' },
-            { status: 500 }
-        );
-    }
+export async function GET(_request: NextRequest, { params }: RouteParams) {
+    const { id } = await params;
+    return respondWithAction(getProject, { id });
 }
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
+    const { id } = await params;
     try {
-        const { id } = await params;
-        const parsed = await parseBody(updateProjectSchema, request);
-        if (!parsed.ok) return parsed.response;
-
-        const project = await updateProject(id, parsed.data);
-
-        if (!project) {
-            return NextResponse.json(
-                { error: 'Projekt nicht gefunden' },
-                { status: 404 }
-            );
-        }
-
-        const { logActivity } = await import('@/lib/activity');
-        await logActivity('project_updated', project.id, `Projekt aktualisiert: ${project.title}`);
-
-        return NextResponse.json({ project });
+        const body = await readJsonBody(request);
+        return await respondWithAction(updateProject, { ...(body as object), projectId: id });
     } catch (error) {
-        const shacl = shaclErrorResponse(error);
-        if (shacl) return shacl;
-        console.error('Project update error:', error);
-        return NextResponse.json(
-            { error: 'Projekt konnte nicht aktualisiert werden' },
-            { status: 500 }
-        );
+        return actionErrorResponse(error);
     }
 }
 
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
-    try {
-        const { id } = await params;
-        const project = await getProject(id);
-        const success = await deleteProject(id);
-
-        if (!success) {
-            return NextResponse.json(
-                { error: 'Projekt nicht gefunden' },
-                { status: 404 }
-            );
-        }
-
-        if (project) {
-            const { logActivity } = await import('@/lib/activity');
-            await logActivity('project_deleted', id, `Projekt gelöscht: ${project.title}`);
-        }
-
-        return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error('Project delete error:', error);
-        return NextResponse.json(
-            { error: 'Projekt konnte nicht gelöscht werden' },
-            { status: 500 }
-        );
-    }
+export async function DELETE(_request: NextRequest, { params }: RouteParams) {
+    const { id } = await params;
+    return respondWithAction(deleteProject, { id });
 }

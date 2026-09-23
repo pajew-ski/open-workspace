@@ -17,6 +17,8 @@
  *     an der Connector-Registry in graph/meta.
  */
 
+import '@/lib/actions/catalog';
+import { listActions } from '@/lib/actions/registry';
 import { describe, expect, it, beforeEach } from 'vitest';
 import type { Quad } from '@rdfjs/types';
 import { OxigraphStore } from '@/lib/graph/store/oxigraph';
@@ -670,13 +672,13 @@ describe('AI-Spiegel in graph/meta (M9)', () => {
                 GRAPH ?g2 { ?provider schema:name ?providerName . }
             } ORDER BY ?toolId
         `);
+        // Seit A2 (ACTIONS_SPEC) trägt der Anbieter „Open Workspace" jede
+        // Aktion der Registry — dazu das API-Tool und `use_skill`.
         expect(tools).toEqual([
             { toolId: 'api-wetter', providerName: 'Open Workspace' },
             { toolId: 'search', providerName: 'stub-mcp' },
             { toolId: 'use_skill', providerName: 'Open Workspace' },
-            { toolId: 'workspace_create_task', providerName: 'Open Workspace' },
-            { toolId: 'workspace_finder', providerName: 'Open Workspace' },
-            { toolId: 'workspace_update_task', providerName: 'Open Workspace' },
-        ]);
+            ...listActions().map(action => ({ toolId: action.name, providerName: 'Open Workspace' })),
+        ].sort((a, b) => a.toolId.localeCompare(b.toolId)));
     });
 });

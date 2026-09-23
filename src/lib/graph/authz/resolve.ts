@@ -117,7 +117,14 @@ export async function grantForIdentity(
         ? handle.iri
         : createIriFactory(handle.iri.instanceBase, identity.userId || DEFAULT_USER_ID);
 
-    const candidates = existing.filter(graph => {
+    // Kandidaten sind der Bestand PLUS die Graphen, für die eine Regel
+    // existiert: Ein Nutzergraph oder ein geteilter Raum bekommt seine
+    // Regel VOR dem ersten Quad (bootstrapAccess, createSpace) — ein
+    // Grant, der nur den Bestand kennte, verweigerte genau den ersten
+    // Schreibvorgang, den die Regel erlauben soll. Ein Recht ist eine
+    // Regel, keine Existenz.
+    const ruled = authorizations.flatMap(rule => rule.accessTo);
+    const candidates = [...new Set([...existing, ...ruled])].filter(graph => {
         const key = graphScopeKey(userIri, graph);
         return key !== null && !isAclScope(key);
     });

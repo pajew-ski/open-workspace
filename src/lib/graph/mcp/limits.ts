@@ -87,4 +87,10 @@ export const MCP_TOOL_TIMEOUT_MS = {
     graph_sparql: 30_000,
     graph_write: 20_000,
     resource: 10_000,
+    /** Jede weitere Aktion aus der Registry (ACTIONS_SPEC, A2). */
+    default: 30_000,
 } as const;
+
+export function toolTimeoutMs(name: string): number {
+    return (MCP_TOOL_TIMEOUT_MS as Record<string, number>)[name] ?? MCP_TOOL_TIMEOUT_MS.default;
+}

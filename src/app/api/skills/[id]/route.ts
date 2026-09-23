@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { parseBody, updateSkillSchema } from '@/lib/api/validation';
-import { deleteSkill, updateSkill } from '@/lib/skills/store.server';
-import { refreshAiMirrorAfterMutation } from '@/lib/graph/server/instance';
+/** Ein Skill — Route-Adapter der Aktionen `skills_update` und `skills_delete` (ACTIONS_SPEC §3). */
+
+import type { NextRequest } from 'next/server';
+import { readJsonBody, respondWithAction, actionErrorResponse } from '@/lib/actions/route';
+import { deleteSkillAction, updateSkillAction } from '@/lib/skills/actions.server';
 
 interface RouteContext {
     params: Promise<{ id: string }>;
@@ -9,34 +10,15 @@ interface RouteContext {
 
 export async function PUT(request: NextRequest, context: RouteContext) {
     const { id } = await context.params;
-    const parsed = await parseBody(updateSkillSchema, request);
-    if (!parsed.ok) return parsed.response;
-
     try {
-        const skill = await updateSkill(id, parsed.data);
-        if (!skill) {
-            return NextResponse.json({ error: 'Skill nicht gefunden' }, { status: 404 });
-        }
-        await refreshAiMirrorAfterMutation('Skill aktualisiert');
-        return NextResponse.json({ skill });
+        const body = await readJsonBody(request);
+        return await respondWithAction(updateSkillAction, { ...(body as object), id });
     } catch (error) {
-        return NextResponse.json(
-            { error: 'Skill konnte nicht aktualisiert werden', details: error instanceof Error ? error.message : 'unknown' },
-            { status: 500 }
-        );
+        return actionErrorResponse(error);
     }
 }
 
 export async function DELETE(_request: NextRequest, context: RouteContext) {
     const { id } = await context.params;
-    try {
-        await deleteSkill(id);
-        await refreshAiMirrorAfterMutation('Skill gelöscht');
-        return NextResponse.json({ success: true });
-    } catch (error) {
-        return NextResponse.json(
-            { error: 'Skill konnte nicht gelöscht werden', details: error instanceof Error ? error.message : 'unknown' },
-            { status: 500 }
-        );
-    }
+    return respondWithAction(deleteSkillAction, { id });
 }

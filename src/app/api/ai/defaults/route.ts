@@ -1,20 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { parseBody, aiDefaultsSchema } from '@/lib/api/validation';
-import { setDefaults } from '@/lib/ai/store.server';
-import { refreshAiMirrorAfterMutation } from '@/lib/graph/server/instance';
+/** Voreinstellung — Route-Adapter der Aktion `ai_set_defaults` (ACTIONS_SPEC §3). */
+
+import type { NextRequest } from 'next/server';
+import { readJsonBody, respondWithAction, actionErrorResponse } from '@/lib/actions/route';
+import { aiSetDefaults } from '@/lib/ai/actions.server';
 
 export async function PUT(request: NextRequest) {
-    const parsed = await parseBody(aiDefaultsSchema, request);
-    if (!parsed.ok) return parsed.response;
-
     try {
-        await setDefaults(parsed.data.providerId, parsed.data.model);
-        await refreshAiMirrorAfterMutation('AI-Voreinstellung geändert');
-        return NextResponse.json({ success: true });
+        return await respondWithAction(aiSetDefaults, await readJsonBody(request));
     } catch (error) {
-        return NextResponse.json(
-            { error: 'Standard konnte nicht gespeichert werden', details: error instanceof Error ? error.message : 'unknown' },
-            { status: 500 }
-        );
+        return actionErrorResponse(error);
     }
 }

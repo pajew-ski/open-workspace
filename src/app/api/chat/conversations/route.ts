@@ -1,98 +1,32 @@
-import { NextRequest, NextResponse } from 'next/server';
-import {
-    listConversations,
-    getConversation,
-    createConversation,
-    addMessage,
-    updateMessage,
-    renameConversation,
-    deleteConversation,
-    setActiveConversation,
-    getActiveId,
-    clearAllConversations,
-} from '@/lib/storage';
+/**
+ * Unterhaltungen — Route-Adapter der Aktionen `chat_*` (ACTIONS_SPEC §3).
+ * Aktionsbasiert: `{ action: 'addMessage', … }` wählt die Aktion.
+ */
+
+import { NextResponse, type NextRequest } from 'next/server';
+import { readJsonBody, respondWithAction, actionErrorResponse } from '@/lib/actions/route';
+import { CONVERSATION_ACTIONS_BY_KIND, getConversation, listConversations } from '@/lib/graph/workspace/actions';
+
+const CREATED = new Set(['create', 'addMessage']);
 
 export async function GET(request: NextRequest) {
-    try {
-        const { searchParams } = new URL(request.url);
-        const id = searchParams.get('id');
-
-        if (id) {
-            const conversation = await getConversation(id);
-            if (!conversation) {
-                return NextResponse.json({ error: 'Konversation nicht gefunden' }, { status: 404 });
-            }
-            return NextResponse.json(conversation);
-        }
-
-        const conversations = await listConversations();
-        const activeId = await getActiveId();
-        return NextResponse.json({ conversations, activeId });
-    } catch (error) {
-        console.error('Conversations get error:', error);
-        return NextResponse.json({ error: 'Fehler beim Laden' }, { status: 500 });
+    const id = new URL(request.url).searchParams.get('id');
+    if (id) {
+        return respondWithAction(getConversation, { id }, { shape: output => (output as { conversation: unknown }).conversation });
     }
+    return respondWithAction(listConversations, {});
 }
 
 export async function POST(request: NextRequest) {
     try {
-        const body = await request.json();
-        const { action } = body;
-
-        switch (action) {
-            case 'create': {
-                const conversation = await createConversation(body.title);
-                return NextResponse.json({ conversation }, { status: 201 });
-            }
-
-            case 'addMessage': {
-                const uiComponents = Array.isArray(body.uiComponents) ? body.uiComponents : undefined;
-                const message = await addMessage(body.conversationId, body.role, body.content, uiComponents);
-                if (!message) {
-                    return NextResponse.json({ error: 'Konversation nicht gefunden' }, { status: 404 });
-                }
-                return NextResponse.json({ message }, { status: 201 });
-            }
-
-            case 'updateMessage': {
-                const message = await updateMessage(body.conversationId, body.messageId, body.content);
-                if (!message) {
-                    return NextResponse.json({ error: 'Nachricht nicht gefunden' }, { status: 404 });
-                }
-                return NextResponse.json({ message });
-            }
-
-            case 'rename': {
-                const conversation = await renameConversation(body.id, body.title);
-                if (!conversation) {
-                    return NextResponse.json({ error: 'Konversation nicht gefunden' }, { status: 404 });
-                }
-                return NextResponse.json({ conversation });
-            }
-
-            case 'delete': {
-                const success = await deleteConversation(body.id);
-                if (!success) {
-                    return NextResponse.json({ error: 'Konversation nicht gefunden' }, { status: 404 });
-                }
-                return NextResponse.json({ success: true });
-            }
-
-            case 'setActive': {
-                await setActiveConversation(body.id);
-                return NextResponse.json({ success: true });
-            }
-
-            case 'clearAll': {
-                await clearAllConversations();
-                return NextResponse.json({ success: true });
-            }
-
-            default:
-                return NextResponse.json({ error: 'Unbekannte Aktion' }, { status: 400 });
-        }
+        const body = await readJsonBody(request);
+        const { action: kind, ...input } = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
+        const action = typeof kind === 'string' && kind in CONVERSATION_ACTIONS_BY_KIND
+            ? CONVERSATION_ACTIONS_BY_KIND[kind as keyof typeof CONVERSATION_ACTIONS_BY_KIND]
+            : null;
+        if (!action) return NextResponse.json({ error: 'Unbekannte Aktion' }, { status: 400 });
+        return await respondWithAction(action, input, { status: typeof kind === 'string' && CREATED.has(kind) ? 201 : 200 });
     } catch (error) {
-        console.error('Conversations action error:', error);
-        return NextResponse.json({ error: 'Aktion fehlgeschlagen' }, { status: 500 });
+        return actionErrorResponse(error);
     }
 }

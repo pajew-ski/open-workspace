@@ -4,6 +4,31 @@
 
 ## Hier weitermachen (Einstieg für neue Sessions)
 
+> **Neu seit 2026-09-23 — der Aktionsvertrag (Issue #34, A1–A4).** Jede
+> Fähigkeit des Systems ist genau einmal definiert: `defineAction` in
+> `src/lib/actions/contract.ts` (Name, Beschreibung, Zod-Eingabe,
+> Effektklasse `read`/`constructive`/`destructive`, Ziel im Graphen,
+> Abhängigkeiten, `changes`, `run`), registriert beim Laden des Moduls
+> (`actions.ts`/`actions.server.ts` neben der Fachlogik, gesammelt in
+> `actions/catalog.ts`). Daraus abgeleitet, nicht nachgebaut: die Routen
+> unter `src/app/api/` (dünne Adapter über `respondWithAction`), die
+> Tool-Definitionen des Server- und Browser-Loops (JSON-Schema aus Zod,
+> `GET /api/actions` + `POST /api/actions/<name>`), das MCP-Inventar pro
+> Token und das Selbstmodell (`ow:Tool` mit `ow:effectClass`). Die
+> Erlaubnis kommt aus dem Grant über das Ziel (`authorize.ts`) — kein
+> zweites Rechtesystem. `destructive` erscheint auf keiner
+> Agenten-Oberfläche; die UI ruft es nach dem Bestätigungsdialog auf.
+> Der Assistent sieht seine Bühne über `view_screen`, navigiert über
+> `navigate`, und jede schreibende Aktion trägt ein Änderungsereignis
+> zurück, an dem die Seiten hängen. Stand: 147 Aktionen in 20 Modulen,
+> 70 Adapter-Routen, 13 begründet ausgenommene Protokoll-Endpunkte.
+> Verbindlich: [ACTIONS_SPEC](./docs/specs/actions.md); Abnahme
+> `tests/platform/action-parity.test.ts` (jeder Handler Adapter oder
+> ausgenommen, Warteliste leer), `tests/ai/actions.test.ts`,
+> `tests/ai/surface.test.ts`. Wer eine Fähigkeit hinzufügt, schreibt eine
+> Aktion und einen Adapter — nie eine Route mit eigener Logik, nie ein
+> handgeschriebenes Tool.
+
 > **Neu seit 2026-08-15 — der Kausal-Layer ist in seinem verbindlichen
 > Teil vollständig: C3, C0, C1, C2, C4, C5 und C6 sind gebaut, dazu der
 > aus C3 offen gebliebene Rückgriff auf die Long-Term-Statistics und die
@@ -554,9 +579,10 @@ Abschnitt und den jeweiligen Meilenstein-Abschnitt der Spec.
   `schema:text` = Anleitung → volltext-suchbar, `[[TOOL:…]]`-Bedarf als
   `ow:requiresTool` ⊑ schema:tool [neuer Term, §4.3]), Agenten aus
   `data/agents/config.json` (Remote-A2A inkl. Card-Capabilities als
-  Skills), Builtins + API-Tools als `ow:Tool` unter dem Anbieter
-  „Open Workspace" (Beschreibungen aus `tools.shared.ts` — keine zweite
-  Kopie), konfigurierte MCP-Server als `ow:ToolProvider` OHNE erfundenes
+  Skills), jede Aktion der Registry + API-Tools als `ow:Tool` unter dem
+  Anbieter „Open Workspace" (Beschreibung und Schema aus der Aktion,
+  `ow:effectClass` als Klasse — keine zweite Kopie; seit A2), konfigurierte
+  MCP-Server als `ow:ToolProvider` OHNE erfundenes
   Tool-Inventar (das liefert der Connector). Wahrheits-Semantik: die
   JSON-Bestände bleiben operative Konfiguration (AI-Schicht läuft auch
   serverlos), der Spiegel wird GENERIERT — beim Start und nach jeder
@@ -909,9 +935,11 @@ Unabhängig davon weiterhin offen, ohne Reihenfolge zum Kausal-Layer:
 1. **Die Anwendung selbst auf die Runtime `local` stellen**. Die Bausteine
    stehen seit M12 (Store im Web Worker, OPFS als `FileSystemLike`,
    isomorphic-git), die Graph-Oberflächen laufen aber weiterhin gegen das
-   Backend — das ist die größte ehrlich benannte Lücke im Repo. Umfang:
-   rund 30 Routen unter `/api/graph` brauchen eine Bindung im Browser;
-   das ist mehr als eine Session.
+   Backend — das ist die größte ehrlich benannte Lücke im Repo. Seit dem
+   Aktionsvertrag ist die Einheit dafür die Aktion, nicht die Route: Wer
+   `executeAction` mit einem Browser-Kontext (Worker-Store, OPFS) füttert,
+   hat die Graph-Oberflächen lokal; das ist trotzdem mehr als eine
+   Session.
 2. **Matrix-Chat** (`/communication`): die letzte Seite ohne
    Entitätstypen. Die Seite kennzeichnet ihren Planungsstand ehrlich;
    mit `matrix-js-sdk` bekäme sie echte Räume und Nachrichten — die
@@ -949,8 +977,13 @@ Der **Persönliche Assistent** ist der zentrale AI-Agent und einziger Ansprechpa
 - Pinnwand-Karten (`/canvas`) erstellen und verknüpfen
 - Aufgaben und Projekte (`/tasks`) verwalten und priorisieren
 - Global Finder nutzen (`workspace_finder`, seit M8 auf dem Graph-Index)
+- Jede `read`- und `constructive`-Aktion der Registry aufrufen — Kalender,
+  Chats, Einstellungen, Graph-Retrieval, Connectors, Kausalmodelle,
+  Beobachtungen, Zugriff (ACTIONS_SPEC §3); destruktive Aktionen nie
+- Die eigene Bühne lesen (`view_screen`) und den Nutzer führen
+  (`navigate`, A3)
 - A2A-Agenten koordinieren und delegieren
-- Werkzeuge aufrufen: Builtins, API-Tools, MCP-Tools
+- Werkzeuge aufrufen: Aktionen, API-Tools, MCP-Tools, `use_skill`
 - Code generieren und analysieren
 
 ### Kontext-Informationen
@@ -985,6 +1018,8 @@ open-workspace/
 │   ├── components/               # ui, layout, a2ui, assistant, dashboard,
 │   │                             #   finder, notifications, pwa, seo, …
 │   └── lib/
+│       ├── actions/              # Aktionsvertrag: contract, registry, authorize,
+│       │                         #   schema, tools (Loop), route (Adapter), catalog
 │       ├── graph/                # DER Kern: store, serialize, workspace,
 │       │                         #   connectors, sparql, reasoning, search,
 │       │                         #   federation, authz, mcp, meta, onboarding
@@ -1059,8 +1094,11 @@ open-workspace/
 ### Agent Tools
 - Verfügbare Tools sind in [Agent-Tools](./docs/specs/agent-tools.md) dokumentiert.
 - **Dynamic Tool Discovery**: Der Agent erhält verfügbare Tools via
-  System-Prompt (Builtins + API-Tools + MCP-Tools) — bei Providern mit
-  Function-Calling-Support zusätzlich als native Tool-Definitionen.
+  System-Prompt (Aktionen der Registry + API-Tools + MCP-Tools +
+  `use_skill`) — bei Providern mit Function-Calling-Support zusätzlich als
+  native Tool-Definitionen. Die Aktionen kommen aus `src/lib/actions/`
+  (Server: `actionEngineTools`, Browser: `GET /api/actions`); ihr
+  JSON-Schema ist aus Zod erzeugt (ACTIONS_SPEC).
 - **Tool Protocol** (isomorphe Engine `src/lib/ai/engine.ts`, Parser
   `src/lib/tools/callParser.ts`): Nativ ruft das Modell Function Calls auf;
   als universeller Fallback gilt die Text-Syntax
@@ -1244,6 +1282,8 @@ bun run build      # Produktion
 ### Bestätigungen
 - Destruktive Aktionen (Löschen, Überschreiben) = Bestätigungsdialog
 - Konstruktive Aktionen (Erstellen, Speichern) = Keine Bestätigung nötig
+- Die Effektklasse steht im Aktionsvertrag (`effect`); `destructive` sieht
+  kein Agent, `POST /api/actions/<name>` kennt es nicht (ACTIONS_SPEC §3)
 
 ## Design System
 

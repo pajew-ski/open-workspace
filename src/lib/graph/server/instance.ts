@@ -393,11 +393,21 @@ export async function reprojectWorkspaceFiles(): Promise<void> {
  * und `data/docs|tasks|canvas`.
  */
 export async function getWorkspaceContext(): Promise<WorkspaceContext> {
-    const state = await getState();
     const { currentIdentity } = await import('./context');
     const identity = await currentIdentity();
-    const userId = identity.userId || DEFAULT_USER_ID;
-    if (userId !== DEFAULT_USER_ID) await ensureUserBootstrap(userId, identity.displayName);
+    return getWorkspaceContextFor(identity.userId, identity.displayName);
+}
+
+/**
+ * Workspace-Kontext einer BENANNTEN Identität — für Aufrufer, die ihre
+ * Identität nicht aus den Headern beziehen (MCP-Token, Aktionskontext).
+ * Der Erstkontakt läuft wie bei der Anfrage: Nutzerknoten und
+ * Standardregeln entstehen vor der ersten Mutation.
+ */
+export async function getWorkspaceContextFor(requestedUserId: string, displayName?: string): Promise<WorkspaceContext> {
+    const state = await getState();
+    const userId = requestedUserId || DEFAULT_USER_ID;
+    if (userId !== DEFAULT_USER_ID) await ensureUserBootstrap(userId, displayName);
     const iri = userId === state.iri.userId ? state.iri : createIriFactory(state.iri.instanceBase, userId);
     return {
         store: state.store,

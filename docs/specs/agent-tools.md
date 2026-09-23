@@ -2,74 +2,32 @@
 
 The Open Workspace provides standardized tools for agents (including the Personal Assistant) to interact with the system.
 
-## Tool: Global Finder
+## Workspace-Fähigkeiten sind Aktionen
 
-This tool allows agents to fuzzy-search across the entire workspace or specific modules.
+> Übergeordnet: [ACTIONS_SPEC](./actions.md). Was der Assistent im
+> Workspace tun kann (suchen, Aufgaben, Projekte, Dokumente, Pinnwände,
+> Graph, …), ist eine **Aktion** aus der Registry (`src/lib/actions/`),
+> nicht mehr ein hier beschriebenes Builtin. Die Tool-Definition (Name,
+> Beschreibung, JSON-Schema) wird aus der Aktion erzeugt; die Liste ist
+> `GET /api/actions` und im Selbstmodell als `ow:Tool` abfragbar.
 
-### Definition
+Die drei Namen aus der Zeit vor dem Vertrag bleiben — Skills referenzieren
+sie über `[[TOOL:…]]`:
 
-- **Name**: `workspace_finder`
-- **Description**: Search for tasks, notes, projects, chats, and calendar events.
-- **Endpoint**: `GET /api/finder`
-- **Parameters**:
-    - `q` (string, required): The search query.
-    - `type` (string, optional): One of [`task`, `doc`, `project`, `chat`, `calendar`]. If omitted, searches all.
+- **`workspace_finder`** — `q` (Pflicht), `type` aus
+  `task|doc|project|chat|calendar`, `limit`. Liefert `{ results }` mit
+  `type`, `id`, `title`, `subtitle`, `url`, `matchScore`. Seit M8 auf dem
+  Graph-Index (Fuzzy-Verhalten inklusive), seit M15 auch Termine und
+  Chats.
+- **`workspace_create_task`** — legt eine Aufgabe an (Pflicht: `title`).
+- **`workspace_update_task`** — ändert eine Aufgabe (Pflicht: `taskId`
+  plus mindestens ein Feld; die ID kommt aus dem Finder).
 
-### Response Format
-
-```json
-{
-  "results": [
-    {
-      "type": "task",
-      "id": "task-123",
-      "title": "Fix Login Bug",
-      "subtitle": "Aufgabe • TODO • Frontend",
-      "url": "/tasks?id=task-123",
-      "matchScore": 2
-    }
-  ]
-}
-```
-
-### Usage for Assistant
-
-When the user asks to find something, you should:
-1.  Identify if they mean a specific type (e.g., "Find task X").
-2.  Emit `[[TOOL:workspace_finder:{"q":"query","type":"task"}]]` — the chat
-    backend executes the search and feeds the results back as a
-    `[TOOL_RESULT]` message (see AGENTS.md, Tool Protocol).
-3.  Present the results to the user.
-
-*(Implemented: `workspace_finder` is a built-in tool of the engine tool
-loop — no configuration required. It runs server-side in `/api/chat` AND
-in the in-browser engine when a backend is reachable; without one it
-reports honestly that workspace search needs the backend.)*
-
-## Tools: workspace_create_task / workspace_update_task
-
-Die beiden schreibenden Builtins. Sie kamen aus der CopilotKit-Ablösung
-(Analyse §5 P0.3): Dort lagen sie als Actions in einem zweiten Stack, den
-nichts gerendert hat — jetzt stehen sie im EINEN Tool-Loop.
-
-- **`workspace_create_task`** — legt eine Aufgabe an.
-  Pflicht: `title`. Optional: `description`, `status`
-  (`backlog|todo|in-progress|review|done|on-hold`), `priority`
-  (`low|medium|high|urgent`), `projectId`, `dueDate` (ISO-Datum).
-- **`workspace_update_task`** — ändert eine vorhandene Aufgabe.
-  Pflicht: `taskId` plus mindestens ein Feld. Die ID kommt aus
-  `workspace_finder`; geraten wird sie nie.
-
-Beide sind konstruktiv im Sinne der Safety-Regeln (Anlegen, Ändern) und
-brauchen deshalb keine Bestätigung. **Gelöscht wird über kein Tool** —
-Löschen verlangt eine Sicherheitsabfrage, und die kann ein Tool-Loop nicht
-führen.
-
-Ausführung: serverseitig über die Storage-Fassade, damit der Schreibvorgang
-im Request des Nutzers und damit in SEINEM Graphen landet (ein zweiter
-HTTP-Aufruf an die eigene Route käme ohne Identitäts-Header an); im
-Browser über `/api/tasks`. Geprüft wird auf beiden Wegen mit denselben
-Zod-Schemas. Ohne Backend sagen die Tools, dass es sie dort nicht gibt.
+Ausführung: auf dem Server im Prozess mit der Identität des
+Chat-Requests, im Browser über `POST /api/actions/<name>`. Ohne Backend
+gibt es die Aktionen nicht, und dann erscheinen sie auch nicht als
+Werkzeug (Invariante 10). Löschen ist `destructive` und deshalb auf keiner
+Agenten-Oberfläche (ACTIONS_SPEC §3).
 
 ## Tool: use_skill
 

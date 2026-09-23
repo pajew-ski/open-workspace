@@ -459,6 +459,8 @@ Endpoint: `/api/mcp` (Streamable HTTP mit SSE-Fallback, `@modelcontextprotocol/s
 
 **Sicherheit**: identische Authz wie SPARQL und Retrieval, kein zweiter Pfad. Ein MCP-Token ist an eine Identität und deren erlaubtes Dataset gebunden. Rate-Limits und Timeouts sind Pflicht. Der MCP-Server sieht nie mehr als der Nutzer, dessen Token er trägt.
 
+**Seit A2 ([ACTIONS_SPEC](./actions.md))**: Die sechs Werkzeuge sind Aktionen der Registry, und das Inventar eines Tokens ist die Registry nach Effektklasse und Recht gefiltert — `read` per Default, `constructive` (darunter `graph_write` und die Workspace-Aktionen) nur mit freigegebenem Schreibgraphen, `destructive` nie.
+
 ### 7.7 Suche
 
 SPARQL kann keine Ähnlichkeit. Ergänzend, gekoppelt über IRIs als gemeinsamen Schlüssel:
@@ -760,7 +762,7 @@ SPARQL SELECT · SPARQL DESCRIBE · SPARQL mit manipuliertem `FROM` · SPARQL UP
 
 Übernommen als Muster aus temet-nosce, nicht als Code. Der Workspace beschreibt sich selbst in seinem eigenen Graphen. **Umgesetzt mit M14** (siehe §13): Generator `src/lib/graph/meta/self-model.ts` aus der Modul-Registry `src/lib/app/modules.ts`, Einführungsstrecke unter `/onboarding`, Abnahme in `tests/graph/self-model.test.ts` und `tests/graph/onboarding.test.ts`; Betriebsdoku: [docs/selbstmodell.md](../selbstmodell.md).
 
-- In `graph/meta` liegt ein Modell der Anwendung: Module, Seiten, Entitätstypen, verfügbare Connectors, Tools, Skills, Agenten, aktive Capabilities der Runtime, Schema-Version. Alles als reguläre Knoten mit demselben Vokabular wie Nutzerinhalte.
+- In `graph/meta` liegt ein Modell der Anwendung: Module, Seiten, Entitätstypen, verfügbare Connectors, Tools, Skills, Agenten, aktive Capabilities der Runtime, Schema-Version. Alles als reguläre Knoten mit demselben Vokabular wie Nutzerinhalte. Die Tools im Selbstmodell stammen aus der Aktions-Registry ([ACTIONS_SPEC](./actions.md), A2): jede Aktion als `ow:Tool` mit `ow:inputSchema` und `ow:effectClass` — der Spiegel beschreibt, was das System kann, nicht die Handliste eines Tool-Loops.
 - Damit sind Fragen wie „was kann dieses System", „welche Quellen sind eingebunden", „welche Skills brauchen welche Tools", „was ist seit dem letzten Sync passiert" **abfragbar** statt hartkodiert — und über den MCP-Server auch für externe Agenten beantwortbar.
 - Der Assistent bezieht seinen Systemkontext aus dieser Abfrage statt aus einem gepflegten Prompt-Text. Ein neues Modul, das sich im Selbstmodell registriert, ist damit dem Assistenten automatisch bekannt. Das ersetzt handgepflegte Kontextlisten und ist der eigentliche Grund für diesen Abschnitt.
 - **Onboarding-Strecke**: eine geführte Einführung, die den Graphen an sich selbst erklärt — erst das Selbstmodell ansehen, dann einen eigenen Knoten anlegen, dann prima-materia als externe Quelle importieren und den Unterschied zwischen nativ, importiert und inferiert im Graph-Explorer sichtbar machen. Kein separates Tutorial-Format, sondern reale Aktionen im echten Graphen mit Rückgängig-Möglichkeit.

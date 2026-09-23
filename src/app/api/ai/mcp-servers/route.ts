@@ -1,20 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { parseBody, createMcpServerSchema } from '@/lib/api/validation';
-import { createMcpServer } from '@/lib/ai/store.server';
-import { refreshAiMirrorAfterMutation } from '@/lib/graph/server/instance';
+/** MCP-Server anlegen — Route-Adapter der Aktion `ai_create_mcp_server` (ACTIONS_SPEC §3). */
+
+import type { NextRequest } from 'next/server';
+import { readJsonBody, respondWithAction, actionErrorResponse } from '@/lib/actions/route';
+import { aiCreateMcpServer } from '@/lib/ai/actions.server';
 
 export async function POST(request: NextRequest) {
-    const parsed = await parseBody(createMcpServerSchema, request);
-    if (!parsed.ok) return parsed.response;
-
     try {
-        const server = await createMcpServer(parsed.data);
-        await refreshAiMirrorAfterMutation('MCP-Server angelegt');
-        return NextResponse.json({ server }, { status: 201 });
+        return await respondWithAction(aiCreateMcpServer, await readJsonBody(request), { status: 201 });
     } catch (error) {
-        return NextResponse.json(
-            { error: 'MCP-Server konnte nicht angelegt werden', details: error instanceof Error ? error.message : 'unknown' },
-            { status: 500 }
-        );
+        return actionErrorResponse(error);
     }
 }

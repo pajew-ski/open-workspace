@@ -12,6 +12,7 @@
 
 import type { Quad, Term } from '@rdfjs/types';
 import type { AccessGrant } from '../authz/grant';
+import type { ActionContext } from '@/lib/actions/contract';
 import { factory, literal, namedNode, typedLiteral } from '../rdf';
 import { OW, RDF } from '../vocab';
 import { parseRdf, serializeRdf } from '../serialize/io';
@@ -26,12 +27,17 @@ import {
     type RetrievalRequestInput,
     type RetrievalResult,
 } from '../search/retrieval';
-import { FulltextIndex } from '../search/fulltext';
+import { FulltextIndex, type FulltextHit } from '../search/fulltext';
 import { PROV, SCHEMA, SKOS, PREFIXES } from '../vocab';
 
 export interface McpGraphContext {
     handle: GraphHandle;
     grant: AccessGrant;
+    /**
+     * Aktionskontext des Tokens (ACTIONS_SPEC, A2): Aus ihm leitet der
+     * Server sein Werkzeug-Inventar ab und führt jedes Werkzeug aus.
+     */
+    actions: ActionContext;
     /**
      * Seed-Quellen für ein konkretes Dataset (Volltext Pflicht, Vektor
      * optional). Die Route injiziert den Index-Cache aus M8; Tests einen
@@ -99,7 +105,11 @@ export interface McpSearchHit {
     iri: string;
     score: number;
     label: string | null;
+    /** Wie das Label getroffen wurde (Präfix, enthalten, Token, unscharf). */
+    labelMatch: FulltextHit['labelMatch'];
     graphs: string[];
+    /** Treffer je Prädikat — für die Anzeige, welches Literal getroffen hat. */
+    matches: FulltextHit['matches'];
 }
 
 export interface McpSearchResult {
@@ -108,6 +118,8 @@ export interface McpSearchResult {
     vectorHits: Array<{ iri: string; similarity: number; graph: string }>;
     /** Ehrliche Auskunft, wenn Embeddings nicht konfiguriert sind. */
     notes: string[];
+    /** Verfügbarkeit der Embedding-Quelle (nur bei Vektorsuche ermittelt). */
+    embeddings: { available: boolean; reason?: string };
     indexedLiterals: number;
 }
 
@@ -137,10 +149,16 @@ export async function mcpSearch(
             iri: hit.iri,
             score: hit.score,
             label: hit.label ?? null,
+            labelMatch: hit.labelMatch,
             graphs: hit.graphs,
+            matches: hit.matches,
         })),
         vectorHits,
         notes,
+        embeddings: deps.embeddings ?? {
+            available: Boolean(deps.vector),
+            ...(deps.vector ? {} : { reason: 'Es sind keine Embeddings konfiguriert.' }),
+        },
         indexedLiterals: index.size,
     };
 }

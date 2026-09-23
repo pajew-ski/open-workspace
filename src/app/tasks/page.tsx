@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useWorkspaceChanges } from '@/lib/assistant/changes';
+import { OW } from '@/lib/graph/vocab';
 import { AppShell } from '@/components/layout';
 import { ConfirmDialog, FloatingActionButton } from '@/components/ui';
 import { TaskCard, Task } from '@/components/tasks/TaskCard';
@@ -61,6 +63,9 @@ export default function TasksPage() {
             setIsLoading(false);
         }
     };
+
+    // Rückfluss (A3): Legt der Assistent eine Aufgabe an, lädt die Liste neu.
+    useWorkspaceChanges([OW.Task, OW.Project], fetchData);
 
     const handleSaveTask = async (taskData: TaskDraft) => {
         const isUpdate = !!taskData.id;

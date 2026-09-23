@@ -885,6 +885,91 @@
       wären eine Nullstellensuche über dieselbe Funktion. Nur bauen, wenn
       eine Frage sie braucht
 
+## Aktionsvertrag (ACTIONS_SPEC, A1–A4)
+
+> Die Spec steht in [ACTIONS_SPEC](./docs/specs/actions.md), Herkunft
+> Issue #34. Arbeitsmodus wie gehabt: ein Meilenstein = eine Session =
+> ein Branch = ein PR. Ende ist erreicht, wenn die Liste „noch nicht
+> migriert" in `tests/platform/action-parity.test.ts` leer ist.
+
+- [x] **A1 Vertrag und Kern-Module**: Vertrag (`src/lib/actions/contract.ts`:
+      Name, Beschreibung, Zod-Eingabe, Effektklasse, Ziel, Abhängigkeiten,
+      `changes`, `run`), Registry (Module registrieren sich, `catalog.ts`
+      lädt sie), JSON-Schema aus Zod (`schema.ts`), Erlaubnis aus dem Grant
+      (`authorize.ts` — kein zweites Rechtesystem; der Grant kennt seit A1
+      auch Graphen mit Regel, aber ohne Quad), Route-Adapter
+      (`respondWithAction`), Server-Loop aus der Registry
+      (`actionEngineTools`, im Prozess mit der Identität des Requests),
+      Browser-Loop mit denselben Definitionen (`GET /api/actions`,
+      `POST /api/actions/<name>`), Engine-Signale (`changes`, `navigate`)
+      als Vorleistung für A3. Migriert: `finder`, `tasks`, `projects`,
+      `docs`, `canvas` (28 Aktionen unter `graph/workspace/actions.ts` und
+      `graph/search/actions.ts`); `tools.shared.ts` behält nur API-Tools,
+      MCP-Client-Tools und `use_skill`; die Workspace-Schemas aus
+      `validation.ts` sind Teil ihrer Aktionen. `ow:effectClass` als Term.
+      Abnahme: `tests/platform/action-parity.test.ts` (jeder Handler
+      Adapter, ausgenommen oder gelistet; Negativfall; Obergrenze),
+      `tests/ai/actions.test.ts` (Schema aus Zod, kein handgeschriebenes
+      Workspace-Tool, `destructive` in keiner Liste, Server = Browser,
+      Aufgabe landet im Graphen des Anfragenden)
+- [x] **A2 Selbstmodell und MCP**: Der AI-Spiegel (`meta/ai.ts`) liest
+      seine Tools aus der Registry — jede Aktion als `ow:Tool` mit
+      erzeugtem `ow:inputSchema` und `ow:effectClass`, auch die
+      destruktiven; `use_skill` bleibt das eine Builtin ohne Klasse.
+      `graph_search`/`graph_retrieve`/`graph_neighbors`/`graph_describe`/
+      `graph_sparql`/`graph_write` sind Aktionen (`graph/mcp/actions.ts`)
+      mit unveränderten Namen; das Rechtemodell steckt im Ziel
+      (`dataset`, `sparql` = Token-Recht, `grant-write` = freigegebener
+      Graph). Der MCP-Server (`graph/mcp/server.ts`) leitet sein Inventar
+      pro Sitzung aus der Registry ab: `read` per Default, `constructive`
+      nur mit freigegebenem Schreibgraphen, `destructive` nie; was dem
+      Kontext fehlt (Store-first-CRUD), erscheint nicht. Der Server reicht
+      dem Token denselben Aktionskontext wie einer Anfrage der Oberfläche
+      (`host.server.ts`), damit ein Token mit Schreibrecht auch Aufgaben
+      anlegen kann. Routen `graph/search` und `graph/retrieve` sind
+      Adapter. Abnahme: `tests/graph/self-model.test.ts` (Tools mit
+      Effektklasse unter „Open Workspace" = Registry),
+      `tests/graph/mcp-server.test.ts` (ein Lese-Token sieht nur
+      `read`-Aktionen, ein Schreib-Token nichts Destruktives)
+- [x] **A3 Kontext und Rückfluss** (`src/lib/assistant/actions.ts`,
+      `changes.ts`): `view_screen` liefert Seite, Modul, `viewState` und
+      Bühne über Getter — im Browser-Loop live (auch nach einer Navigation
+      im selben Turn), im Server-Loop der Stand der Anfrage, und die
+      Antwort nennt ihre Frische (`freshness`). `navigate` prüft die Route
+      gegen die Modul-Registry und gibt eine Navigationsabsicht als Signal
+      zurück; das Widget und der ganzseitige Assistent führen sie mit
+      `router.push` aus, der Chat bleibt offen. Beide Aktionen laufen im
+      Browser lokal (kein Netz) und gibt es nur mit Oberfläche. Nach einer
+      schreibenden Aktion trägt der Stream `{type:'changes', entityTypes}`;
+      der Client invalidiert die zugeordneten React-Query-Schlüssel und
+      löst `ow:workspace-changed` aus, an dem die Seiten Aufgaben,
+      Dokumente und Pinnwände hängen. `changes` bleibt handgepflegt, vom
+      Vertrag erzwungen — die Transaktion kennt nur den Graphen, nicht den
+      Typ (ACTIONS_SPEC §5). Abnahme: `tests/ai/surface.test.ts`
+- [x] **A4 Restmigration**: Die Liste „noch nicht migriert" ist leer,
+      Obergrenze 0. Neue Aktionsmodule: `graph/meta` (Ansicht,
+      Selbstmodell, Herkunft), `graph/reasoning` (Zustand, Lauf,
+      Validierung), `graph/views` (Query-Views, Auflösung, Vorschau),
+      `graph/search` (Retrieval-Profile), `graph/connectors` (Katalog,
+      Instanzen, Sync, Export; Ziel ist der Import-Graph der Instanz,
+      Backup-Verweigerung aus dem Grant), `graph/federation` (Endpoints,
+      Probe; Ändern verlangt `control` auf graph/meta), `graph/authz`
+      (Übersicht, Regeln, Gruppen, Räume, Freigeben — jede schreibende
+      Aktion zielt auf den Graphen, den sie verwaltet), `graph/causal`
+      (Modelle, Strukturänderung, Chronik, Fragen, Vorschläge, Studien;
+      Vorschlags- und Studienlauf brauchen `platform` und den Tier-1-Kern,
+      sonst 501), `graph/observations` (Größen, Messreihe, Rückgriff,
+      Erfassungslauf; Werte bleiben auf dem Dateibaum), `graph/onboarding`
+      (Zustand, Schritt, Rücknahme) und `graph/mcp` (Status). Zwei
+      Zielarten kamen dazu: `instance` (instanzweite Konfiguration,
+      Lesen = graph/meta lesbar, Ändern = `control`) und `registry` (ein
+      Eintrag in graph/meta unter der eigenen Nutzer-IRI). Statuscodes,
+      die eine Route aus dem Ergebnis ableitet (Backfill 409/502,
+      Erfassungslauf 502, Regel 201/200), stehen als `statusFor` im
+      Adapter. 147 Aktionen in 20 Modulen, 70 Adapter-Routen, 13 begründet
+      ausgenommen. Die verwaisten Hüllen-Schemas in `validation.ts` sind
+      weg. Abnahme: `tests/platform/action-parity.test.ts` mit leerer Liste
+
 ## Fundament (fertig)
 
 - [x] Next.js 16 App Router, TypeScript strict, CSS Modules, Design Tokens

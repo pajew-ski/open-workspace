@@ -128,9 +128,12 @@ describe('Vokabular (Invariante C8: fremdes vor eigenem)', () => {
         // Lauf und seine Kennzahl (C4). Die RELATION selbst darf nicht
         // eigen sein: Sobald hier ein Term stünde, der zwei Variablen
         // verbindet, wäre Invariante C8 gebrochen.
+        // `ow:effectClass` ist die Effektklasse eines Werkzeugs (ACTIONS_SPEC
+        // §2), keine kausale Aussage — sie trifft nur das Wort.
         expect(own.sort()).toEqual([
             `${OW_VOCAB_BASE}CausalModel`,
             `${OW_VOCAB_BASE}CausalStudy`,
+            `${OW_VOCAB_BASE}effectClass`,
             `${OW_VOCAB_BASE}effectSize`,
         ]);
     });

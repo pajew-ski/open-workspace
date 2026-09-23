@@ -10,13 +10,13 @@ import { checkBackend } from '@/lib/platform/backend';
 import { listClientSkills } from '@/lib/skills/store.client';
 import {
     apiToolToEngineTool,
-    makeCreateTaskTool,
-    makeFinderTool,
-    makeUpdateTaskTool,
     makeUseSkillTool,
     mcpToolsToEngineTools,
-    type TaskToolFields,
 } from '@/lib/ai/tools.shared';
+import { engineToolsFromDefinitions, fetchActionDefinitions, type LocalExecutors } from '@/lib/actions/browser';
+import type { ActionSurface } from '@/lib/actions/contract';
+import { formatActionError, formatActionOutput, withSignals } from '@/lib/actions/tools';
+import { runSurfaceAction, SURFACE_ACTIONS } from '@/lib/assistant/actions';
 import {
     listMcpTools,
     callMcpTool,
@@ -36,8 +36,10 @@ import { resolveBrowserProvider, resolveRoute, type ClientAIState, type ClientMc
  * Browser-side engine dependencies — the mirror image of
  * src/lib/ai/server/deps.ts for the serverless / direct-connection path:
  *
- * - workspace finder & credentialed API tools use the backend when it is
- *   reachable and degrade honestly when it is not
+ * - workspace actions come as definitions from `GET /api/actions` and
+ *   run over `POST /api/actions/<name>` — without a backend they are not
+ *   offered at all (Invariante 10); credentialed API tools use the
+ *   backend when it is reachable and degrade honestly when it is not
  * - MCP servers are contacted directly from the browser (with relay
  *   fallback), so local and CORS-enabled servers work without a backend
  * - agents: local personas run on browser-routed providers, remote A2A
@@ -237,7 +239,27 @@ export interface BrowserEngineDeps {
     callAgent: (agentId: string, prompt: string) => Promise<string>;
 }
 
-export async function buildBrowserEngineDeps(state: ClientAIState): Promise<BrowserEngineDeps> {
+/**
+ * Oberflächen-Aktionen (view_screen, navigate — A3) laufen im Browser
+ * selbst: Die Oberfläche ist hier, nicht auf dem Server. Dieselbe
+ * Definition wie überall, nur der Ausführer ist lokal.
+ */
+function surfaceExecutors(surface: ActionSurface): LocalExecutors {
+    const executors: LocalExecutors = {};
+    for (const action of SURFACE_ACTIONS) {
+        executors[action.name] = async args => {
+            try {
+                const result = await runSurfaceAction(action, args, surface);
+                return withSignals(formatActionOutput(result.output), result.signals);
+            } catch (error) {
+                return { text: formatActionError(error) };
+            }
+        };
+    }
+    return executors;
+}
+
+export async function buildBrowserEngineDeps(state: ClientAIState, surface?: ActionSurface): Promise<BrowserEngineDeps> {
     const backend = (await checkBackend()) === 'available';
 
     const [apiTools, agents, clientSkills] = await Promise.all([
@@ -249,33 +271,17 @@ export async function buildBrowserEngineDeps(state: ClientAIState): Promise<Brow
     const enabledSkills = clientSkills.filter(s => s.enabled);
     const skillMetas = enabledSkills.map(toSkillMeta);
 
-    const tools: EngineTool[] = [
-        makeFinderTool(async (query, type) => {
-            if (!backend) {
-                return 'Die Workspace-Suche benötigt das Workspace-Backend, das gerade nicht erreichbar ist.';
-            }
-            const url = new URL('/api/finder', window.location.origin);
-            url.searchParams.set('q', query);
-            if (type) url.searchParams.set('type', type);
-            const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
-            if (!res.ok) return `Fehler: Finder antwortete mit Status ${res.status}.`;
-            const data = await res.json();
-            const results = (data.results || []).slice(0, 10);
-            return results.length === 0 ? `Keine Treffer für "${query}".` : JSON.stringify(results);
-        }),
-        // Schreibende Aufgaben-Tools laufen im Browser über die Route —
-        // dort liegt die Validierung, dort liegt der Store. Ohne Backend
-        // gibt es sie nicht, und das sagt das Tool auch (die Runtime
-        // `local` ist für die Workspace-Inhalte noch offen, TODO P1).
-        makeCreateTaskTool(fields => taskWriteViaBackend(backend, '/api/tasks', 'POST', fields, 'angelegt')),
-        makeUpdateTaskTool((taskId, fields) => taskWriteViaBackend(
-            backend,
-            `/api/tasks/${encodeURIComponent(taskId)}`,
-            'PUT',
-            fields,
-            'geändert',
-        )),
-    ];
+    // Workspace-Aktionen: DIESELBEN Definitionen wie im Server-Loop
+    // (ACTIONS_SPEC §3), ausgeführt über die Route. Ohne Backend gibt es
+    // sie nicht — und dann erscheinen sie auch nicht als Werkzeug.
+    const definitions = backend
+        ? await fetchActionDefinitions((input, init) => fetch(input, init), { surface: Boolean(surface) })
+        : [];
+    const tools: EngineTool[] = engineToolsFromDefinitions(
+        definitions,
+        (input, init) => fetch(input, init),
+        surface ? surfaceExecutors(surface) : {},
+    );
 
     // API tools: server execution (credentials) when possible, direct
     // browser fetch as the serverless fallback (CORS permitting).
@@ -321,42 +327,6 @@ export async function buildBrowserEngineDeps(state: ClientAIState): Promise<Brow
         agents: enabledAgents.map(a => ({ id: a.id, name: a.name, description: a.description, type: a.type })),
         callAgent: (agentId, prompt) => callAgentFromBrowser(state, enabledAgents, agentId, prompt, backend),
     };
-}
-
-/**
- * Schreibende Aufgaben-Tools im Browser: eine Route, ein Ergebnissatz.
- * Die Validierung (Zod) und die SHACL-Prüfung liegen serverseitig — hier
- * wird nur durchgereicht und der Fehler wörtlich weitergegeben, damit das
- * Modell die Ursache sieht statt eines Statuscodes.
- */
-async function taskWriteViaBackend(
-    backend: boolean,
-    path: string,
-    method: 'POST' | 'PUT',
-    fields: TaskToolFields,
-    verb: 'angelegt' | 'geändert',
-): Promise<string> {
-    if (!backend) {
-        return 'Aufgaben brauchen das Workspace-Backend, das gerade nicht erreichbar ist. Ohne Backend laufen nur Chat, Konfiguration und Skills.';
-    }
-    try {
-        const response = await fetch(path, {
-            method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(fields),
-            signal: AbortSignal.timeout(15_000),
-        });
-        const data = await response.json().catch(() => null);
-        if (!response.ok) {
-            const detail = data && typeof data === 'object' && 'error' in data ? String(data.error) : `HTTP ${response.status}`;
-            return `Fehler: ${detail}`;
-        }
-        const task = data && typeof data === 'object' ? (data as { task?: { id?: string; title?: string; status?: string } }).task : undefined;
-        if (!task?.id) return `Aufgabe ${verb}.`;
-        return `Aufgabe "${task.title ?? task.id}" ${verb} (ID ${task.id}, Status ${task.status ?? 'unbekannt'}).`;
-    } catch (error) {
-        return `Fehler beim Schreiben der Aufgabe: ${error instanceof Error ? error.message : 'unbekannt'}`;
-    }
 }
 
 /** Direct browser execution of an API tool (serverless fallback, no stored credentials). */

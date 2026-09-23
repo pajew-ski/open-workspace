@@ -35,7 +35,11 @@ import type { Skill } from '@/lib/skills/types';
 import type { Agent } from '@/lib/agents/types';
 import type { Tool } from '@/lib/tools/types';
 import type { AIDefaults, AIProvider, McpServerConfig } from '@/lib/ai/types';
-import { apiToolToEngineTool, makeCreateTaskTool, makeFinderTool, makeUpdateTaskTool, makeUseSkillTool } from '@/lib/ai/tools.shared';
+import { apiToolToEngineTool, makeUseSkillTool } from '@/lib/ai/tools.shared';
+import { listActions } from '@/lib/actions/registry';
+import { inputJsonSchema } from '@/lib/actions/schema';
+import type { ActionEffect } from '@/lib/actions/contract';
+import '@/lib/actions/catalog';
 import type { GraphStore } from '../store/types';
 import type { IriFactory } from '../iri';
 import { factory, namedNode, literal, typedLiteral } from '../rdf';
@@ -73,24 +77,35 @@ interface ToolDescriptor {
     name: string;
     description: string;
     parameters: Record<string, unknown>;
+    /** Effektklasse der Aktion (ACTIONS_SPEC §2); Nicht-Aktionen tragen keine. */
+    effect?: ActionEffect;
 }
 
 const noopExecute = async () => ({ text: '' });
 
 /**
- * Die eingebauten Werkzeuge aus derselben Quelle wie die Engine
- * (tools.shared.ts) — keine zweite, handgepflegte Beschreibungs-Kopie.
+ * Die Fähigkeiten des Systems aus der Aktions-Registry (ACTIONS_SPEC,
+ * A2): JEDE Aktion als ow:Tool mit dem erzeugten Eingabe-Schema und ihrer
+ * Effektklasse — auch die destruktiven, die kein Agent sieht. Der Spiegel
+ * beschreibt, was das System kann, nicht die Handliste eines Tool-Loops
+ * (Invariante 6). Dazu `use_skill`, das einzige verbliebene Builtin, das
+ * keine Aktion ist (es lädt eine Anleitung, verändert nichts).
  */
 function builtinToolDescriptors(): ToolDescriptor[] {
-    const finder = makeFinderTool(async () => '');
     const useSkill = makeUseSkillTool([], async () => null);
-    const createTask = makeCreateTaskTool(async () => '');
-    const updateTask = makeUpdateTaskTool(async () => '');
-    return [finder, createTask, updateTask, useSkill].map(tool => ({
-        name: tool.name,
-        description: tool.description,
-        parameters: tool.parameters as Record<string, unknown>,
-    }));
+    return [
+        ...listActions().map(action => ({
+            name: action.name,
+            description: action.description,
+            parameters: inputJsonSchema(action),
+            effect: action.effect,
+        })),
+        {
+            name: useSkill.name,
+            description: useSkill.description,
+            parameters: useSkill.parameters as Record<string, unknown>,
+        },
+    ];
 }
 
 function apiToolDescriptor(tool: Tool): ToolDescriptor {
@@ -145,6 +160,9 @@ export function aiMirrorQuads(iri: IriFactory, input: AiMirrorInput): Quad[] {
             factory.quad(node, namedNode(OW.inputSchema), literal(JSON.stringify(tool.parameters))),
             factory.quad(node, namedNode(OW.providedBy), workspaceProvider),
         );
+        if (tool.effect) {
+            quads.push(factory.quad(node, namedNode(OW.effectClass), literal(tool.effect)));
+        }
     }
 
     // Konfigurierte MCP-Server als ow:ToolProvider — nur die
