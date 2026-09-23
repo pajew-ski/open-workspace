@@ -278,6 +278,13 @@ ow:inputSchema a owl:DatatypeProperty ;
     rdfs:comment "JSON-Schema der Tool-Parameter als Literal. Eine Abbildung von JSON-Schema nach RDF wäre verlustbehaftet und für den Zweck (Weitergabe an LLM-Function-Calling) kontraproduktiv."@de ;
     rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
 
+ow:effectClass a owl:DatatypeProperty ;
+    rdfs:domain ow:Tool ;
+    rdfs:range xsd:string ;
+    rdfs:label "Effektklasse"@de, "effect class"@en ;
+    rdfs:comment "Effektklasse einer Aktion nach dem Aktionsvertrag (ACTIONS_SPEC §2): read, constructive oder destructive. Sie entscheidet, auf welcher Agenten-Oberfläche die Aktion als Werkzeug erscheint; destruktive Aktionen erscheinen auf keiner. Kein Standard-Term beschreibt die Wirkung eines Werkzeugs auf den Bestand — MCP-Annotationen (readOnlyHint, destructiveHint) sind Protokoll-Hinweise, keine Vokabular-Terme."@de ;
+    rdfs:isDefinedBy <https://pajew-ski.github.io/open-workspace/ns/v1> .
+
 ow:providedBy a owl:ObjectProperty ;
     rdfs:subPropertyOf schema:provider ;
     rdfs:domain ow:Tool ;

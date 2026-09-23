@@ -10,6 +10,8 @@ import { checkChatRateLimit } from '@/lib/ai/server/chat-limits';
 import { currentIdentity, getRequestGraph } from '@/lib/graph/server/context';
 import { readSelfModel } from '@/lib/graph/meta/self-model-query';
 import type { SelfModelView } from '@/lib/graph/meta/self-model-view';
+import { actionContextFromRequest } from '@/lib/actions/context.server';
+import type { ActionSurface } from '@/lib/actions/contract';
 
 /**
  * Server chat route on the isomorphic engine.
@@ -24,6 +26,8 @@ import type { SelfModelView } from '@/lib/graph/meta/self-model-view';
  *   {message:{role:'assistant',content}, done:false}   visible text
  *   {type:'status', message:{…}}                       tool progress
  *   {type:'ui-resource', resource:{…}}                 MCP-UI resource for the stage
+ *   {type:'changes', entityTypes:[…]}                  a writing action changed these types (A3)
+ *   {type:'navigate', pathname, search?}               navigation intent of an action (A3)
  *   {error, done:true}                                 terminal error
  */
 
@@ -105,7 +109,17 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const deps = await buildServerEngineDeps(request.nextUrl.origin);
+        // Die Oberfläche des Aufrufers, wie sie zu Beginn des Turns war:
+        // Auf dem Server gibt es keinen Rückkanal in den Browser, deshalb
+        // sieht `view_screen` hier den Stand der Anfrage (ACTIONS_SPEC §5).
+        const surface: ActionSurface = {
+            pathname: () => context.pathname,
+            viewState: () => context.viewState ?? {},
+            module: () => ({ label: context.module, description: context.moduleDescription }),
+            activeSurface: () => context.activeSurface ?? [],
+        };
+        const actions = await actionContextFromRequest({ surface, origin: request.nextUrl.origin });
+        const deps = await buildServerEngineDeps(actions);
         const adapter = getAdapter(resolved.protocol);
         const nativeTools = resolved.provider.toolCalls !== 'text' && adapter.supportsNativeTools;
 
@@ -165,6 +179,12 @@ export async function POST(request: NextRequest) {
                                         break;
                                     case 'progress':
                                         emit({ type: 'progress', label: event.label, value: event.value, done: false });
+                                        break;
+                                    case 'changes':
+                                        emit({ type: 'changes', entityTypes: event.entityTypes, done: false });
+                                        break;
+                                    case 'navigate':
+                                        emit({ type: 'navigate', pathname: event.pathname, search: event.search, done: false });
                                         break;
                                 }
                             },

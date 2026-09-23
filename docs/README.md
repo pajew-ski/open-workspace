@@ -23,7 +23,8 @@ weiterhin AGENTS.md.
 | [specs/graph-core.md](./specs/graph-core.md) | `GRAPH_CORE_SPEC` | Der Graph-Kern: Invarianten 1–10, Meilensteine M0–M14 (vollständig) |
 | [specs/causal-layer.md](./specs/causal-layer.md) | `CAUSAL_LAYER_SPEC` | Kausal-Layer: Invarianten C1–C10, Meilensteine C0–C6 (verbindlich, vollständig), C7/C8 opt-in |
 | [specs/chat-widget.md](./specs/chat-widget.md) | `CHAT_WIDGET_SPEC` | Verhalten des Assistenten-Widgets (Scroll, Persistenz, Kontext) |
-| [specs/agent-tools.md](./specs/agent-tools.md) | — | Die eingebauten Werkzeuge des Tool-Loops und ihr Aufrufformat |
+| [specs/actions.md](./specs/actions.md) | `ACTIONS_SPEC` | Der Aktionsvertrag: jede Fähigkeit einmal definiert, Routen, Tool-Loops, MCP und Selbstmodell daraus abgeleitet (A1–A4) |
+| [specs/agent-tools.md](./specs/agent-tools.md) | — | Was im Tool-Loop KEINE Aktion ist: API-Tools, MCP-Client-Tools, `use_skill`, Delegation |
 
 Die Kürzel bleiben, wie sie sind: Sie stehen in hunderten Code-Kommentaren
 und in den TTL-Dateien als Referenz auf einen Paragraphen (`§7.5`), nicht

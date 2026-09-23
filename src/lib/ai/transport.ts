@@ -26,11 +26,21 @@ export interface TurnHandlers {
     onText(text: string): void;
     /** MCP-UI resource delivered by a tool — belongs on the stage. */
     onUiResource?(resource: UIResourceContent): void;
+    /** Eine schreibende Aktion hat diese Entitätstypen verändert (A3): Queries invalidieren. */
+    onChanges?(entityTypes: readonly string[]): void;
+    /** Navigationsabsicht einer Aktion (A3): das Widget navigiert, ohne seinen Zustand zu verlieren. */
+    onNavigate?(target: { pathname: string; search?: string }): void;
 }
 
 export interface AssistantTurnRequest {
     messages: Array<{ role: 'user' | 'assistant'; content: string }>;
     context: PromptContext;
+    /**
+     * Live-Sicht auf die Oberfläche für den Browser-Loop (A3): `view_screen`
+     * liest darüber den JETZIGEN Zustand, nicht den vom Turn-Anfang. Ohne
+     * Getter gilt `context`.
+     */
+    surface?: () => Pick<PromptContext, 'pathname' | 'viewState' | 'module' | 'moduleDescription' | 'activeSurface'>;
     provider?: ClientProviderRecord;
     model?: string;
     signal?: AbortSignal;
@@ -117,6 +127,9 @@ async function serverTurn(
                 message?: { content?: string };
                 type?: string;
                 resource?: UIResourceContent;
+                entityTypes?: string[];
+                pathname?: string;
+                search?: string;
                 error?: string;
             };
             try {
@@ -128,6 +141,14 @@ async function serverTurn(
             if (chunk.type === 'ui-resource' && chunk.resource) {
                 uiResources.push(chunk.resource);
                 request.handlers.onUiResource?.(chunk.resource);
+                continue;
+            }
+            if (chunk.type === 'changes' && Array.isArray(chunk.entityTypes)) {
+                request.handlers.onChanges?.(chunk.entityTypes);
+                continue;
+            }
+            if (chunk.type === 'navigate' && typeof chunk.pathname === 'string') {
+                request.handlers.onNavigate?.({ pathname: chunk.pathname, ...(chunk.search ? { search: chunk.search } : {}) });
                 continue;
             }
             if (chunk.message?.content) {
@@ -200,6 +221,12 @@ async function browserTurn(
                 case 'ui-resource':
                     uiResources.push(event.resource);
                     request.handlers.onUiResource?.(event.resource);
+                    break;
+                case 'changes':
+                    request.handlers.onChanges?.(event.entityTypes);
+                    break;
+                case 'navigate':
+                    request.handlers.onNavigate?.({ pathname: event.pathname, ...(event.search ? { search: event.search } : {}) });
                     break;
                 case 'progress': {
                     // Model load progress (WebLLM): report in 10% steps.

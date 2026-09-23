@@ -125,6 +125,7 @@ export const OW = {
     securityScheme: ow('securityScheme'),
     transport: ow('transport'),
     inputSchema: ow('inputSchema'),
+    effectClass: ow('effectClass'),
     providedBy: ow('providedBy'),
     requiresTool: ow('requiresTool'),
     // Connectors und Föderation

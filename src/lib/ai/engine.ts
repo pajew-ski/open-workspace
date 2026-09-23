@@ -2,6 +2,7 @@ import type { AdapterEvent, EngineMessage, EngineToolCall, ToolSpec } from './ty
 import { CallMarkerStreamFilter } from '@/lib/tools/callParser';
 import { NativeToolsUnsupportedError } from './protocols/shared';
 import type { UIResourceContent } from '@/components/a2ui/types';
+import type { ActionSignal } from '@/lib/actions/contract';
 
 /**
  * The isomorphic conversation engine: one tool/agent loop that runs
@@ -18,6 +19,11 @@ export interface EngineToolResult {
     text: string;
     /** MCP-UI resources (ui:// URIs) delivered by the tool, rendered on the stage. */
     uiResources?: UIResourceContent[];
+    /**
+     * Signale einer Aktion (ACTIONS_SPEC, A3): Änderungsereignisse für
+     * die Invalidierung und Navigationsabsichten, die das Widget ausführt.
+     */
+    signals?: ActionSignal[];
 }
 
 export interface EngineTool {
@@ -35,6 +41,10 @@ export type EngineEvent =
     | { type: 'status'; text: string }
     | { type: 'progress'; label: string; value?: number }
     | { type: 'ui-resource'; resource: UIResourceContent }
+    /** Eine schreibende Aktion hat diese Entitätstypen verändert (A3). */
+    | { type: 'changes'; entityTypes: readonly string[] }
+    /** Navigationsabsicht einer Aktion — das Widget führt sie aus (A3). */
+    | { type: 'navigate'; pathname: string; search?: string }
     | { type: 'round'; round: number };
 
 export interface EngineRunOptions {
@@ -108,6 +118,11 @@ export async function runEngineTurn(history: EngineMessage[], options: EngineRun
             const result = await tool.execute(args);
             for (const resource of result.uiResources ?? []) {
                 emit({ type: 'ui-resource', resource });
+            }
+            for (const signal of result.signals ?? []) {
+                emit(signal.type === 'changes'
+                    ? { type: 'changes', entityTypes: signal.entityTypes }
+                    : { type: 'navigate', pathname: signal.pathname, ...(signal.search ? { search: signal.search } : {}) });
             }
             return truncateResult(result.text);
         } catch (error) {

@@ -1,95 +1,32 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getDoc, updateDoc, deleteDoc } from '@/lib/storage/docs';
-import { parseBody, shaclErrorResponse, updateDocSchema } from '@/lib/api/validation';
+/**
+ * Ein Dokument — Route-Adapter der Aktionen `workspace_get_doc`,
+ * `workspace_update_doc` und `workspace_delete_doc` (ACTIONS_SPEC §3).
+ */
+
+import type { NextRequest } from 'next/server';
+import { readJsonBody, respondWithAction, actionErrorResponse } from '@/lib/actions/route';
+import { deleteDoc, getDoc, updateDoc } from '@/lib/graph/workspace/actions';
 
 interface RouteParams {
     params: Promise<{ id: string }>;
 }
 
-export async function GET(request: NextRequest, { params }: RouteParams) {
-    try {
-        const { id } = await params;
-        const doc = await getDoc(id);
-
-        if (!doc) {
-            return NextResponse.json(
-                { error: 'Dokument nicht gefunden' },
-                { status: 404 }
-            );
-        }
-
-        return NextResponse.json({ doc });
-    } catch (error) {
-        console.error('Doc get error:', error);
-        return NextResponse.json(
-            { error: 'Dokument konnte nicht geladen werden' },
-            { status: 500 }
-        );
-    }
+export async function GET(_request: NextRequest, { params }: RouteParams) {
+    const { id } = await params;
+    return respondWithAction(getDoc, { id });
 }
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
+    const { id } = await params;
     try {
-        const { id } = await params;
-        const parsed = await parseBody(updateDocSchema, request);
-        if (!parsed.ok) return parsed.response;
-        const body = parsed.data;
-
-        const doc = await updateDoc(id, {
-            title: body.title,
-            content: body.content,
-            category: body.category,
-            tags: body.tags,
-            type: body.type,
-            slug: body.slug,
-        });
-
-        if (!doc) {
-            return NextResponse.json(
-                { error: 'Dokument nicht gefunden' },
-                { status: 404 }
-            );
-        }
-
-        const { logActivity } = await import('@/lib/activity');
-        await logActivity('doc_updated', doc.id, `Dokument bearbeitet: ${doc.title}`);
-
-        return NextResponse.json({ doc });
+        const body = await readJsonBody(request);
+        return await respondWithAction(updateDoc, { ...(body as object), docId: id });
     } catch (error) {
-        const shacl = shaclErrorResponse(error);
-        if (shacl) return shacl;
-        console.error('Doc update error:', error);
-        return NextResponse.json(
-            { error: 'Dokument konnte nicht aktualisiert werden' },
-            { status: 500 }
-        );
+        return actionErrorResponse(error);
     }
 }
 
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
-    try {
-        const { id } = await params;
-        const doc = await getDoc(id);
-        const success = await deleteDoc(id);
-
-        if (!success) {
-            return NextResponse.json(
-                { error: 'Dokument nicht gefunden' },
-                { status: 404 }
-            );
-        }
-
-        if (doc) {
-            const { logActivity } = await import('@/lib/activity');
-            await logActivity('doc_deleted', id, `Dokument gelöscht: ${doc.title}`);
-        }
-
-        return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error('Doc delete error:', error);
-        return NextResponse.json(
-            { error: 'Dokument konnte nicht gelöscht werden' },
-            { status: 500 }
-        );
-    }
+export async function DELETE(_request: NextRequest, { params }: RouteParams) {
+    const { id } = await params;
+    return respondWithAction(deleteDoc, { id });
 }
