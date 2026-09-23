@@ -7,7 +7,7 @@
 # ausschließlich im Packaging:
 #
 #   server:    deploy/server/docker-compose.yml (TLS + OIDC davor)
-#   ha-addon:  deploy/ha-addon/config.yaml + run.sh (Supervisor/Ingress)
+#   ha-addon:  deploy/ha-addon/config.yaml (Supervisor/Ingress)
 #
 #   Build:  docker build -t open-workspace .
 #   Run:    docker run -p 3000:3000 -v ow-data:/app/data open-workspace
@@ -18,9 +18,9 @@
 #
 # The image ships seed/ — the delivery content shared by every installation
 # (issue #32). data/ is per-instance state and is in NEITHER the repo nor the
-# image (.gitignore, .dockerignore). /app/data is a volume mountpoint: mount a
-# named volume there (see run command above) to persist workspace data across
-# restarts; scripts/start.mjs seeds what is missing on every start.
+# image (.gitignore, .dockerignore). Mount a named volume at /app/data (see run
+# command above) to persist workspace data across restarts; scripts/start.mjs
+# seeds what is missing on every start.
 
 # ---- Stage 1: install dependencies (bun) --------------------------------
 FROM oven/bun:1 AS deps
@@ -49,7 +49,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-# Run as a non-root user (uid/gid 1001).
+# Application user (uid/gid 1001). The container starts as root and
+# scripts/start.mjs drops to this user (dropPrivileges) after preparing the
+# data directory — see the note above CMD.
 RUN addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 nextjs
 
@@ -62,16 +64,21 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/start.mjs /app/scripts/base-path.mjs /app/scripts/ingress-proxy.mjs /app/scripts/seed-data.mjs ./scripts/
 
 # Delivery content. scripts/start.mjs copies what is missing into /app/data on
-# start — declared as a volume so runtime writes persist outside the container
-# (mount: -v ow-data:/app/data).
+# start; persist it by mounting a volume there (-v ow-data:/app/data).
+#
+# Bewusst KEIN `VOLUME /app/data`: Docker hängt dann bei jedem Start ohne
+# eigenen Mount ein anonymes Volume ein, und im Add-on-Betrieb kann
+# start.mjs /app/data nicht durch den Symlink auf /data ersetzen (EBUSY).
 COPY --from=builder --chown=nextjs:nodejs /app/seed ./seed
 RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
-VOLUME /app/data
 
 # Der Start-Schritt schreibt die Base-Path-Markierung nach /app.
 RUN chown nextjs:nodejs /app
 
-USER nextjs
+# Bewusst KEIN `USER nextjs`: Der Home-Assistant-Supervisor startet den
+# Container mit dem User des Images und reicht /data root-eigen herein.
+# start.mjs muss es als root übernehmen und übereignen können; danach gibt
+# es die Rechte ab (setuid 1001) — in beiden Runtimes, bevor Next startet.
 EXPOSE 3000
 
 CMD ["node", "scripts/start.mjs"]

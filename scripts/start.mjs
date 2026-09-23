@@ -66,6 +66,27 @@ export async function fetchIngressEntry(env = process.env, fetchImpl = fetch) {
     return normalizeBasePath(entry);
 }
 
+/**
+ * Ports: Im Add-on-Betrieb verbindet sich der Supervisor mit dem
+ * `ingress_port` aus deploy/ha-addon/config.yaml (8099). `PORT` gehört dem
+ * Server-Betrieb — das Image setzt ihn auf 3000 — und darf den Ingress-Port
+ * deshalb nicht bestimmen, sonst hört der Proxy am Supervisor vorbei.
+ *
+ * @param {boolean} ingress
+ * @param {Record<string, string | undefined>} [env]
+ * @returns {{ publicPort: number, internalPort: number }}
+ */
+export function listenPorts(ingress, env = process.env) {
+    if (!ingress) {
+        const port = Number(env.PORT ?? 3000);
+        return { publicPort: port, internalPort: port };
+    }
+    return {
+        publicPort: Number(env.OW_INGRESS_PORT ?? 8099),
+        internalPort: Number(env.OW_INTERNAL_PORT ?? 3001),
+    };
+}
+
 /** Build-Verzeichnisse, in denen der Platzhalter steckt. */
 function rewriteTargets(root) {
     const targets = [];
@@ -224,8 +245,7 @@ async function main() {
               + `(${result.replacements} Stellen in ${result.changedFiles} Dateien).`,
     );
 
-    const publicPort = Number(process.env.PORT ?? (ingress ? 8099 : 3000));
-    const internalPort = ingress ? Number(process.env.OW_INTERNAL_PORT ?? 3001) : publicPort;
+    const { publicPort, internalPort } = listenPorts(ingress);
 
     const child = spawn(process.execPath, [path.join(root, 'server.js')], {
         cwd: root,

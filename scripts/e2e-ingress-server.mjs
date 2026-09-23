@@ -159,7 +159,7 @@ async function main() {
             OW_DIST_DIR: DIST,
             OW_RUNTIME: 'ha-addon',
             OW_AUTH_MODE: 'ha-ingress',
-            PORT: String(ADDON_PORT),
+            OW_INGRESS_PORT: String(ADDON_PORT),
             OW_INTERNAL_PORT: String(NEXT_PORT),
         },
     });
