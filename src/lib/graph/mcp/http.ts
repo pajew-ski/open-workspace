@@ -190,7 +190,7 @@ export class McpHost {
     actionContextFor(handle: GraphHandle, grant: AccessGrant, token: McpTokenConfig): ActionContext {
         if (this.deps.actionContext) return this.deps.actionContext(handle, grant, token);
         return {
-            identity: { userId: token.user, authenticated: true, label: token.id },
+            identity: { userId: token.user, authenticated: true, label: token.id, mode: 'mcp-token', groups: [] },
             grant,
             graph: handle,
             ...(this.deps.retrievalDeps

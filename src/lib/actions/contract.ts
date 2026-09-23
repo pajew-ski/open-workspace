@@ -107,6 +107,12 @@ export interface ActionIdentity {
     displayName?: string;
     /** Bezeichnung in PROV/Logs (Token-ID statt Nutzer-ID beim MCP-Zugang). */
     label: string;
+    /** Anmeldeverfahren (`single-user`, `ha-ingress`, …; `mcp-token` beim MCP-Zugang). */
+    mode?: string;
+    /** Gruppen der Identität aus dem Anmeldeverfahren. */
+    groups?: readonly string[];
+    /** Grund, wenn keine Identität ermittelt werden konnte. */
+    reason?: string;
 }
 
 /**
