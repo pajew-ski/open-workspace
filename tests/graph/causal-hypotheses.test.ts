@@ -63,6 +63,15 @@ import {
 import { compareStructureSources } from '@/lib/graph/causal/compare';
 import { runProposalSources } from '@/lib/graph/causal/propose.server';
 
+/**
+ * Die Lauf-, Übernahme- und Quellenvergleich-Fälle bauen je einen
+ * vollständigen Store und validieren gegen die Shapes. Einzeln dauert das
+ * ein bis zwei Sekunden, unter der Last der vollen Suite auf einem
+ * geteilten CI-Läufer mehr als die fünf Sekunden der Voreinstellung — wie
+ * in causal-estimation.test.ts und causal-study-interval.test.ts.
+ */
+vi.setConfig({ testTimeout: 60_000 });
+
 // --- Das Sprachmodell wird gestellt, nicht gerufen -----------------------
 
 /**
