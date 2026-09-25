@@ -47,7 +47,7 @@
 }
 
 .hasError:focus {
-    box-shadow: 0 0 0 3px rgba(194, 59, 59, 0.15);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-error) 15%, transparent);
 }
 
 .error {

@@ -124,68 +124,36 @@
     color: transparent;
 }
 
-/* Prism-Token — Licht-Palette (WCAG-AA auf --color-surface-sunken). */
+/* Prism-Token — achromatisch: Helligkeit und Schriftschnitt statt
+   Farbton. Die Text-Tokens folgen dem Theme (WCAG-AA auf
+   --color-surface-sunken in beiden), eine Dark-Variante entfällt. */
 .highlightLayer :global(.token.keyword),
 .highlightLayer :global(.token.builtin) {
-    color: #0550ae;
+    color: var(--color-text-primary);
     font-weight: 600;
 }
 
-.highlightLayer :global(.token.variable) {
-    color: #953800;
+.highlightLayer :global(.token.variable),
+.highlightLayer :global(.token.function) {
+    color: var(--color-text-primary);
 }
 
 .highlightLayer :global(.token.string),
 .highlightLayer :global(.token.url),
-.highlightLayer :global(.token.iri) {
-    color: #0a3069;
-}
-
-.highlightLayer :global(.token.function) {
-    color: #6639ba;
-}
-
+.highlightLayer :global(.token.iri),
 .highlightLayer :global(.token.number),
 .highlightLayer :global(.token.boolean) {
-    color: #953800;
+    color: var(--color-text-secondary);
 }
 
 .highlightLayer :global(.token.comment) {
-    color: #57606a;
+    color: var(--color-text-tertiary);
     font-style: italic;
 }
 
 .highlightLayer :global(.token.punctuation),
 .highlightLayer :global(.token.operator) {
-    color: var(--color-text-secondary);
-}
-
-:global([data-theme='dark']) .highlightLayer :global(.token.keyword),
-:global([data-theme='dark']) .highlightLayer :global(.token.builtin) {
-    color: #79c0ff;
-}
-
-:global([data-theme='dark']) .highlightLayer :global(.token.variable) {
-    color: #ffa657;
-}
-
-:global([data-theme='dark']) .highlightLayer :global(.token.string),
-:global([data-theme='dark']) .highlightLayer :global(.token.url),
-:global([data-theme='dark']) .highlightLayer :global(.token.iri) {
-    color: #a5d6ff;
-}
-
-:global([data-theme='dark']) .highlightLayer :global(.token.function) {
-    color: #d2a8ff;
-}
-
-:global([data-theme='dark']) .highlightLayer :global(.token.number),
-:global([data-theme='dark']) .highlightLayer :global(.token.boolean) {
-    color: #ffa657;
-}
-
-:global([data-theme='dark']) .highlightLayer :global(.token.comment) {
-    color: #8b949e;
+    color: var(--color-text-tertiary);
 }
 
 /* --- Vorschläge ----------------------------------------------------------- */
@@ -273,7 +241,7 @@
     padding: var(--space-3);
     border-radius: var(--radius-md);
     background: var(--color-error-subtle);
-    color: var(--color-error-text, #b91c1c);
+    color: var(--color-error-text);
     font-size: var(--text-sm);
     overflow-wrap: anywhere;
 }
@@ -399,7 +367,7 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     background: var(--color-surface);
-    color: var(--color-error-text, #b91c1c);
+    color: var(--color-error-text);
     cursor: pointer;
 }
 

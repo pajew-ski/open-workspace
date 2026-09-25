@@ -57,7 +57,7 @@
 
 .actions button.primary {
     background: var(--color-primary);
-    color: white;
+    color: var(--color-on-primary);
     border: none;
 }
 
@@ -215,13 +215,13 @@
 
 .saveBtn {
     background: var(--color-primary);
-    color: white;
+    color: var(--color-on-primary);
     border: none;
 }
 
 .overlayBtn {
-    background: white;
-    color: black;
+    background: var(--color-surface-elevated);
+    color: var(--color-text-primary);
     border: none;
     font-weight: 500;
 }

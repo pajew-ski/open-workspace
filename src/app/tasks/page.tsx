@@ -140,7 +140,7 @@ export default function TasksPage() {
         const swimlanes = [...projects];
         // Only add unassigned if there are tasks
         if (groupedTasks['unassigned']) {
-            swimlanes.push({ id: 'unassigned', title: 'Ohne Projekt', prefix: '', color: '#ccc', status: 'active' });
+            swimlanes.push({ id: 'unassigned', title: 'Ohne Projekt', prefix: '', color: '#b8b8b8', status: 'active' });
         }
         return swimlanes;
     }, [projects, groupedTasks]);

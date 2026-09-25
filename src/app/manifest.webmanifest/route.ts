@@ -44,8 +44,8 @@ export function GET() {
         lang: 'de',
         dir: 'ltr',
         display: 'standalone',
-        background_color: '#FAFAFA',
-        theme_color: '#00674F',
+        background_color: '#f8f8f8',
+        theme_color: '#f8f8f8',
         orientation: 'portrait-primary',
         categories: ['productivity', 'utilities'],
         icons: [

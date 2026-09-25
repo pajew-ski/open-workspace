@@ -85,7 +85,7 @@ export default function CalendarPage() {
             // Enrich with provider colors
             const enrichedEvents = (data.events || []).map((ev: CalendarEvent) => {
                 const provider = providers.find(p => p.id === ev.providerId);
-                return { ...ev, color: provider?.color || '#ccc' };
+                return { ...ev, color: provider?.color || '#b8b8b8' };
             });
 
             setEvents(enrichedEvents);

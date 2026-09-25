@@ -55,13 +55,14 @@
     background: rgba(255, 255, 255, 0.1);
 }
 
-/* Code blocks */
+/* Code blocks: kein fest dunkler Block mehr — die Fläche folgt dem Theme
+   über die Tokens (globals.css). */
 .code-block {
     margin: 12px 0;
     border-radius: 8px;
     overflow: hidden;
-    background: #1e1e1e;
-    border: 1px solid var(--color-border, #333);
+    background: var(--color-surface-sunken);
+    border: 1px solid var(--color-border);
 }
 
 .code-block-header {
@@ -69,8 +70,8 @@
     justify-content: space-between;
     align-items: center;
     padding: 8px 12px;
-    background: #2d2d2d;
-    border-bottom: 1px solid #3d3d3d;
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
 }
 
 .code-block-language {
@@ -78,24 +79,24 @@
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: #888;
+    color: var(--color-text-secondary);
 }
 
 .code-block-copy {
     padding: 4px 10px;
     background: transparent;
-    border: 1px solid #555;
+    border: 1px solid var(--color-border);
     border-radius: 4px;
-    color: #aaa;
+    color: var(--color-text-secondary);
     cursor: pointer;
     font-size: 11px;
     transition: all 0.2s;
 }
 
 .code-block-copy:hover {
-    background: var(--color-primary, #00674F);
-    color: white;
-    border-color: var(--color-primary, #00674F);
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+    border-color: var(--color-primary);
 }
 
 .code-block pre {
@@ -105,7 +106,7 @@
     font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
     font-size: 13px;
     line-height: 1.5;
-    color: #d4d4d4;
+    color: var(--color-text-primary);
 }
 
 .code-block code {
@@ -118,15 +119,10 @@
 .mermaid-diagram {
     margin: 12px 0;
     padding: 16px;
-    background: #fafafa;
+    background: var(--color-surface-sunken);
     border-radius: 8px;
     overflow-x: auto;
     text-align: center;
-}
-
-[data-theme="dark"] .mermaid-diagram,
-.dark .mermaid-diagram {
-    background: #2a2a2a;
 }
 
 .mermaid-diagram svg {
@@ -137,16 +133,16 @@
 .mermaid-loading {
     padding: 16px;
     text-align: center;
-    color: var(--color-text-secondary, #666);
+    color: var(--color-text-secondary);
     font-style: italic;
 }
 
 .mermaid-error {
     padding: 12px;
-    background: #ffebee;
-    border: 1px solid #ffcdd2;
+    background: var(--color-error-subtle);
+    border: 1px solid var(--color-border);
     border-radius: 8px;
-    color: #c62828;
+    color: var(--color-error-text);
     font-size: 13px;
 }
 
@@ -189,12 +185,12 @@
 .md-table th,
 .md-table td {
     padding: 8px 12px;
-    border: 1px solid var(--color-border, #ddd);
+    border: 1px solid var(--color-border);
     text-align: left;
 }
 
 .md-table th {
-    background: var(--color-surface-sunken, #f5f5f5);
+    background: var(--color-surface-sunken);
     font-weight: 600;
 }
 
@@ -207,8 +203,8 @@
 .md-blockquote {
     margin: 12px 0;
     padding: 8px 16px;
-    border-left: 4px solid var(--color-primary, #00674F);
-    background: var(--color-surface-sunken, #f9f9f9);
+    border-left: 4px solid var(--color-primary);
+    background: var(--color-surface-sunken);
     font-style: italic;
 }
 
@@ -231,16 +227,21 @@
     list-style-type: decimal;
 }
 
-/* Prism.js token colors */
+/* Prism.js-Token — achromatisch: Unterscheidung über Helligkeit und
+   Schriftschnitt statt Farbton. Die Tokens folgen dem Theme, deshalb
+   braucht es keine Dark-Variante. */
 .token.comment,
 .token.prolog,
 .token.doctype,
 .token.cdata {
-    color: #6a9955;
+    color: var(--color-text-tertiary);
+    font-style: italic;
 }
 
-.token.punctuation {
-    color: #d4d4d4;
+.token.punctuation,
+.token.operator,
+.token.entity {
+    color: var(--color-text-tertiary);
 }
 
 .token.property,
@@ -250,39 +251,32 @@
 .token.constant,
 .token.symbol,
 .token.deleted {
-    color: #b5cea8;
+    color: var(--color-text-secondary);
 }
 
 .token.selector,
 .token.attr-name,
 .token.string,
 .token.char,
-.token.builtin,
-.token.inserted {
-    color: #ce9178;
-}
-
-.token.operator,
-.token.entity,
+.token.inserted,
 .token.url,
 .language-css .token.string,
 .style .token.string {
-    color: #d4d4d4;
+    color: var(--color-text-secondary);
 }
 
 .token.atrule,
 .token.attr-value,
-.token.keyword {
-    color: #569cd6;
+.token.keyword,
+.token.builtin {
+    color: var(--color-text-primary);
+    font-weight: 600;
 }
 
 .token.function,
-.token.class-name {
-    color: #dcdcaa;
-}
-
+.token.class-name,
 .token.regex,
 .token.important,
 .token.variable {
-    color: #d16969;
+    color: var(--color-text-primary);
 }

@@ -15,7 +15,10 @@
  * Diese Suite prüft deshalb zwei Dinge:
  *  1. Jedes benutzte `--token` ist irgendwo definiert.
  *  2. Jedes Farb-Token, das im Light Mode steht, hat auch im Dark Mode
- *     einen Wert — oder ist ausdrücklich themenkonstant.
+ *     einen Wert — direkt, oder über `var(--…)`-Verweise auf Tokens, die
+ *     ihrerseits im Dark Mode stehen (die Familien-Skala flippt, und die
+ *     `--color-*`-Token leiten daraus ab) — oder ist ausdrücklich
+ *     themenkonstant.
  */
 import { describe, it, expect } from 'vitest';
 import { promises as fs } from 'node:fs';
@@ -27,16 +30,12 @@ const GLOBALS = path.join(SRC, 'app', 'globals.css');
 
 /**
  * Token, die bewusst in beiden Themes denselben Wert haben. Jede Zeile
- * hier ist eine Entscheidung, keine Lücke.
+ * hier ist eine Entscheidung, keine Lücke. Seit der achromatischen Skala
+ * ist das Set leer: Die Primärfarbe IST die Textfarbe und flippt mit ihr,
+ * es gibt keine themenkonstante Fläche mehr. Das Set bleibt stehen, damit
+ * eine künftige Ausnahme hier begründet wird statt im Test zu verschwinden.
  */
-const THEME_CONSTANT = new Set([
-    // Fläche bleibt in beiden Themes dunkelgrün, also bleibt der Text weiß.
-    '--color-on-primary',
-    // Die Markenfarbe selbst und ihre Ableitungen als FLÄCHE.
-    '--color-primary',
-    '--color-primary-dark',
-    '--color-primary-light',
-]);
+const THEME_CONSTANT = new Set<string>([]);
 
 async function cssFiles(dir: string): Promise<string[]> {
     const found: string[] = [];
@@ -80,14 +79,34 @@ describe('Design-Token-Skala', () => {
 
         const light = globals.slice(0, darkStart);
         const dark = globals.slice(darkStart);
-        const colorTokens = (block: string) =>
-            new Set([...block.matchAll(/^\s*(--color-[\w-]+)\s*:/gm)].map(m => m[1]));
+        const declarations = (block: string) =>
+            new Map([...block.matchAll(/^\s*(--[\w-]+)\s*:\s*([^;]+);/gm)].map(m => [m[1], m[2].trim()]));
 
-        const lightTokens = colorTokens(light);
-        const darkTokens = colorTokens(dark);
+        const lightDecls = declarations(light);
+        const darkTokens = new Set(declarations(dark).keys());
 
-        const onlyLight = [...lightTokens]
-            .filter(token => !darkTokens.has(token) && !THEME_CONSTANT.has(token))
+        /**
+         * Dark-abgedeckt ist ein Token, das im Dark-Block steht — oder
+         * dessen Light-Wert ausschließlich aus `var(--…)`-Verweisen auf
+         * Tokens besteht, die selbst dark-abgedeckt sind (rekursiv). Ein
+         * Zyklus oder ein Literal neben dem Verweis zählt nicht.
+         */
+        const covered = (token: string, seen: Set<string> = new Set()): boolean => {
+            if (darkTokens.has(token)) return true;
+            if (seen.has(token)) return false;
+            seen.add(token);
+            const value = lightDecls.get(token);
+            if (!value) return false;
+            const refs = [...value.matchAll(/var\(\s*(--[\w-]+)\s*\)/g)].map(m => m[1]);
+            if (refs.length === 0) return false;
+            const rest = value.replace(/var\(\s*--[\w-]+\s*\)/g, '').trim();
+            if (rest !== '') return false;
+            return refs.every(ref => covered(ref, seen));
+        };
+
+        const onlyLight = [...lightDecls.keys()]
+            .filter(token => token.startsWith('--color-'))
+            .filter(token => !covered(token) && !THEME_CONSTANT.has(token))
             .sort();
 
         expect(onlyLight, `Ohne Dark-Mode-Wert: ${onlyLight.join(', ')}`).toEqual([]);

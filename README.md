@@ -1,9 +1,9 @@
 # Open Workspace
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 [![Stack: Next.js 16](https://img.shields.io/badge/Stack-Next.js_16-black)](https://nextjs.org/)
-[![Protocol: A2UI](https://img.shields.io/badge/Protocol-A2UI-00674F)](https://github.com/google/A2UI)
-[![Protocol: A2A](https://img.shields.io/badge/Protocol-A2A-00674F)](https://github.com/a2aproject/A2A)
-[![Protocol: MCP](https://img.shields.io/badge/Protocol-MCP-00674F)](https://modelcontextprotocol.io/)
+[![Protocol: A2UI](https://img.shields.io/badge/Protocol-A2UI-0b0b0b)](https://github.com/google/A2UI)
+[![Protocol: A2A](https://img.shields.io/badge/Protocol-A2A-0b0b0b)](https://github.com/a2aproject/A2A)
+[![Protocol: MCP](https://img.shields.io/badge/Protocol-MCP-0b0b0b)](https://modelcontextprotocol.io/)
 
 Open Workspace ist eine **Local-First Kognitions-Architektur**: eine installierbare
 PWA, die als kollaborativer Partner agiert. Ein kontext-bewusster AI-Assistent
@@ -94,7 +94,7 @@ konfigurierte Tools selbstständig aus.
 
 - **Framework**: Next.js 16 (App Router, Turbopack)
 - **Sprache**: TypeScript (strict, ES2022)
-- **Styling**: CSS Modules, Material Design 3 inspiriert
+- **Styling**: CSS Modules über dem achromatischen Token-System der temet-nosce-Familie
 - **State**: TanStack React Query (Server-State), useSyncExternalStore (persistenter UI-State)
 - **Validierung**: Zod an allen schreibenden API-Routen
 - **Offline**: Eigener Service Worker (Turbopack-kompatibel, ohne Build-Plugin)
@@ -179,8 +179,11 @@ Accessibility, Home-Assistant-Ingress).
 
 ## Design-Philosophie
 
-**Digital Zen Garden**: Ruhige, fokussierte Oberfläche mit minimalen Ablenkungen.
-Neutrale Töne mit `#00674F`-Teal-Akzent. Hell-/Dunkelmodus mit System-Erkennung.
+Das Design ist das der Geschwister-Apps [temet-nosce](https://github.com/pajew-ski/temet-nosce),
+open-entrainer, open-desensitizer und prompts: strikt achromatisch (oklch ohne
+Chroma, kein Farbton), Fibonacci-Abstände, Schriftgrößen in Potenzen von φ,
+nichts glüht. Hell-/Dunkelmodus folgt dem System, ein Umschalter steht in den
+Einstellungen.
 
 ## Sicherheit & Credentials
 

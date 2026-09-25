@@ -25,6 +25,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/components/ui/Toast';
+import { useTheme } from '@/components/providers';
 import { classifySparql, type SparqlOperation } from '@/lib/graph/sparql/classify';
 import { OW_VOCAB_BASE, PREFIXES, SPARQL_PREFIXES } from '@/lib/graph/vocab';
 import styles from './page.module.css';
@@ -94,12 +95,20 @@ const KEYWORDS = [
 
 const DEFAULT_QUERY = `PREFIX schema: <https://schema.org/>\nPREFIX ow: <${OW_VOCAB_BASE}>\n\nSELECT ?titel ?status WHERE {\n  ?aufgabe a ow:Task ;\n           schema:name ?titel ;\n           ow:workflowStatus ?status .\n}\nORDER BY ?status ?titel`;
 
-const NODE_COLORS = ['#00674F', '#7C5CBF', '#B3541E', '#2B6CB0', '#8D6E63', '#C2185B', '#455A64'];
+/**
+ * Knotenfarben der Graph-Ansicht: sieben Graustufen, gleichmäßig zwischen
+ * 15 % und 75 % oklch-Helligkeit (als sRGB-Hex, weil sie auf dem Canvas
+ * landen). Light und Dark sind gespiegelt, damit der Typ in beiden Themes
+ * gleich weit vom Hintergrund absteht.
+ */
+const NODE_COLORS_LIGHT = ['#0b0b0b', '#222222', '#3a3a3a', '#555555', '#717171', '#8f8f8f', '#aeaeae'];
+const NODE_COLORS_DARK = ['#eeeeee', '#cdcdcd', '#aeaeae', '#8f8f8f', '#717171', '#555555', '#3a3a3a'];
 
-function nodeColor(type: string): string {
+function nodeColor(type: string, isDark: boolean): string {
+    const palette = isDark ? NODE_COLORS_DARK : NODE_COLORS_LIGHT;
     let hash = 0;
     for (const char of type) hash = (hash * 31 + char.charCodeAt(0)) % 100_000;
-    return NODE_COLORS[hash % NODE_COLORS.length];
+    return palette[hash % palette.length] ?? palette[0]!;
 }
 
 function termText(term: SparqlJsonTerm | undefined): string {
@@ -122,6 +131,8 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
 export default function SparqlEditorPage() {
     const queryClient = useQueryClient();
     const toast = useToast();
+    const { resolvedTheme } = useTheme();
+    const isDark = resolvedTheme === 'dark';
     const [queryText, setQueryText] = useState(DEFAULT_QUERY);
     const [highlighted, setHighlighted] = useState('');
     const [running, setRunning] = useState(false);
@@ -355,10 +366,10 @@ export default function SparqlEditorPage() {
     const graphData = useMemo(() => {
         if (result?.kind !== 'graph') return { nodes: [], links: [] };
         return {
-            nodes: result.nodes.map(node => ({ ...node, color: nodeColor(node.type), val: 2 })),
+            nodes: result.nodes.map(node => ({ ...node, color: nodeColor(node.type, isDark), val: 2 })),
             links: result.links.map(link => ({ ...link })),
         };
-    }, [result]);
+    }, [result, isDark]);
 
     const operationLabel: Record<SparqlOperation, string> = {
         select: 'SELECT — Ergebnistabelle',

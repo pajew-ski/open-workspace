@@ -320,5 +320,5 @@
 
 /* SHACL-Kurzfassung des letzten Laufs (M7, GRAPH_CORE_SPEC §7.2) */
 .metaRow dd[data-conforms='false'] {
-    color: var(--color-warning-text, #8a6d1a);
+    color: var(--color-warning-text);
 }

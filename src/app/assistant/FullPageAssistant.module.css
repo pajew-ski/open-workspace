@@ -20,11 +20,11 @@
     flex-direction: column;
     min-height: 0;
     min-width: 0;
-    border-right: 1px solid var(--color-border, #e0e0e0);
+    border-right: 1px solid var(--color-border);
 }
 
 .withStage .dialog {
-    border-right: 1px solid var(--color-border, #e0e0e0);
+    border-right: 1px solid var(--color-border);
 }
 
 .dialogHeader {
@@ -32,7 +32,7 @@
     align-items: center;
     justify-content: space-between;
     padding: var(--space-3, 12px) var(--space-4, 16px);
-    border-bottom: 1px solid var(--color-border, #e0e0e0);
+    border-bottom: 1px solid var(--color-border);
     flex-shrink: 0;
 }
 
@@ -50,16 +50,16 @@
     justify-content: center;
     width: 34px;
     height: 34px;
-    border: 1px solid var(--color-border, #e0e0e0);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-md, 8px);
-    background: var(--color-surface, #fff);
-    color: var(--color-text-secondary, #555);
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
     cursor: pointer;
 }
 
 .stageToggle:hover {
     color: var(--color-primary-text);
-    border-color: var(--color-primary, #00674F);
+    border-color: var(--color-primary);
 }
 
 .messages {
@@ -82,8 +82,8 @@
 }
 
 .userBubble {
-    background: var(--color-primary, #00674F);
-    color: #fff;
+    background: var(--color-primary);
+    color: var(--color-on-primary);
     padding: var(--space-2, 8px) var(--space-3, 12px);
     border-radius: 14px 14px 2px 14px;
     max-width: 80%;
@@ -93,7 +93,7 @@
 
 .assistantBody {
     max-width: 92%;
-    color: var(--color-text-primary, #1a1a1a);
+    color: var(--color-text-primary);
     line-height: 1.6;
 }
 
@@ -106,7 +106,7 @@
     margin: auto;
     text-align: center;
     max-width: 44ch;
-    color: var(--color-text-secondary, #666);
+    color: var(--color-text-secondary);
     padding: var(--space-6, 24px) 0;
 }
 
@@ -118,7 +118,7 @@
 .empty h2 {
     font-size: 1.35rem;
     margin: 0 0 var(--space-2, 8px);
-    color: var(--color-text-primary, #1a1a1a);
+    color: var(--color-text-primary);
 }
 
 .suggestions {
@@ -130,10 +130,10 @@
 
 .suggestion {
     padding: var(--space-2, 8px) var(--space-3, 12px);
-    border: 1px solid var(--color-border, #e0e0e0);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-md, 8px);
-    background: var(--color-surface, #fff);
-    color: var(--color-text-primary, #1a1a1a);
+    background: var(--color-surface);
+    color: var(--color-text-primary);
     cursor: pointer;
     font-size: var(--text-sm, 0.875rem);
     text-align: left;
@@ -141,7 +141,7 @@
 }
 
 .suggestion:hover {
-    border-color: var(--color-primary, #00674F);
+    border-color: var(--color-primary);
     color: var(--color-primary-text);
 }
 
@@ -151,7 +151,7 @@
     gap: var(--space-2, 8px);
     align-items: flex-end;
     padding: var(--space-3, 12px) var(--space-4, 16px);
-    border-top: 1px solid var(--color-border, #e0e0e0);
+    border-top: 1px solid var(--color-border);
     flex-shrink: 0;
 }
 
@@ -160,10 +160,10 @@
     resize: none;
     max-height: 160px;
     padding: var(--space-2, 8px) var(--space-3, 12px);
-    border: 1px solid var(--color-border, #e0e0e0);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-md, 8px);
-    background: var(--color-surface, #fff);
-    color: var(--color-text-primary, #1a1a1a);
+    background: var(--color-surface);
+    color: var(--color-text-primary);
     font: inherit;
     font-size: var(--text-sm, 0.875rem);
     line-height: 1.5;
@@ -171,8 +171,8 @@
 
 .input:focus {
     outline: none;
-    border-color: var(--color-primary, #00674F);
-    box-shadow: 0 0 0 3px var(--color-primary-subtle, #e4efea);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-subtle);
 }
 
 .send {
@@ -183,8 +183,8 @@
     height: 40px;
     border: none;
     border-radius: var(--radius-md, 8px);
-    background: var(--color-primary, #00674F);
-    color: #fff;
+    background: var(--color-primary);
+    color: var(--color-on-primary);
     cursor: pointer;
     flex-shrink: 0;
 }
@@ -204,7 +204,7 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: var(--color-text-secondary, #999);
+    background: var(--color-text-secondary);
     animation: typing 1.2s infinite ease-in-out;
 }
 
@@ -235,16 +235,16 @@
     align-items: baseline;
     justify-content: space-between;
     padding: var(--space-3, 12px) var(--space-4, 16px);
-    border-bottom: 1px solid var(--color-border, #e0e0e0);
+    border-bottom: 1px solid var(--color-border);
     font-weight: 600;
-    color: var(--color-text-primary, #1a1a1a);
+    color: var(--color-text-primary);
     flex-shrink: 0;
 }
 
 .stageHint {
     font-size: var(--text-xs, 0.75rem);
     font-weight: 400;
-    color: var(--color-text-secondary, #666);
+    color: var(--color-text-secondary);
 }
 
 .stageContent {
@@ -264,6 +264,6 @@
 
     .stage {
         max-height: 50vh;
-        border-top: 1px solid var(--color-border, #e0e0e0);
+        border-top: 1px solid var(--color-border);
     }
 }

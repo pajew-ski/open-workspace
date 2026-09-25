@@ -59,25 +59,27 @@
 .a2ui-chip--primary {
     background: var(--color-primary);
     border-color: var(--color-primary);
-    color: white;
+    color: var(--color-on-primary);
 }
 
+/* Status-Chips: achromatisch, der Status steht im Wortlaut. Fehler und
+   Warnung tragen den vollen Text, Erfolg den gedämpften (globals.css). */
 .a2ui-chip--success {
-    background: #e8f5e9;
-    border-color: #a5d6a7;
-    color: #2e7d32;
+    background: var(--color-success-subtle);
+    border-color: var(--color-border);
+    color: var(--color-success-text);
 }
 
 .a2ui-chip--warning {
-    background: #fff3e0;
-    border-color: #ffcc80;
-    color: #ef6c00;
+    background: var(--color-warning-subtle);
+    border-color: var(--color-border);
+    color: var(--color-warning-text);
 }
 
 .a2ui-chip--error {
-    background: #ffebee;
-    border-color: #ef9a9a;
-    color: #c62828;
+    background: var(--color-error-subtle);
+    border-color: var(--color-border);
+    color: var(--color-error-text);
 }
 
 .a2ui-chip-icon {
@@ -116,7 +118,7 @@
     height: 18px;
     padding: 0 5px;
     background: var(--color-primary);
-    color: white;
+    color: var(--color-on-primary);
     border-radius: 9px;
     font-size: 11px;
     font-weight: 600;
@@ -141,34 +143,13 @@
 }
 
 .a2ui-badge--success {
-    background: #4caf50;
+    background: var(--color-success);
 }
 
 .a2ui-badge--warning {
-    background: #ff9800;
+    background: var(--color-warning);
 }
 
 .a2ui-badge--error {
-    background: #f44336;
-}
-
-/* Dark mode adjustments */
-@media (prefers-color-scheme: dark) {
-    .a2ui-chip--success {
-        background: rgba(76, 175, 80, 0.15);
-        border-color: rgba(76, 175, 80, 0.3);
-        color: #a5d6a7;
-    }
-
-    .a2ui-chip--warning {
-        background: rgba(255, 152, 0, 0.15);
-        border-color: rgba(255, 152, 0, 0.3);
-        color: #ffcc80;
-    }
-
-    .a2ui-chip--error {
-        background: rgba(244, 67, 54, 0.15);
-        border-color: rgba(244, 67, 54, 0.3);
-        color: #ef9a9a;
-    }
+    background: var(--color-error);
 }

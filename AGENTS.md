@@ -1287,10 +1287,37 @@ bun run build      # Produktion
 
 ## Design System
 
-- **Stil**: Digital Zen Garden (minimal, fokussiert)
-- **Primärfarbe**: #00674F (Teal)
-- **Themes**: Light / Dark / System-auto
-- **Komponenten**: Material Design 3 inspiriert
+Der Workspace teilt sein Design mit **temet-nosce**, **open-entrainer**,
+**open-desensitizer** und **prompts**; die fünf sollen als eine Familie
+lesbar sein. Die Quelle ist der Token-Block in `src/app/globals.css`, und
+`tests/platform/design-tokens.test.ts` hält ihn dicht.
+
+- **Farbe**: strikt achromatisch, oklch mit Chroma 0 — nirgends ein
+  Farbton. Die fünf Familien-Token stehen wörtlich am Anfang von
+  `globals.css` (`--bg` 98 %, `--surface` 94 %, `--border` 85 %, `--text`
+  15 %, `--text-muted` 40 %; Dark spiegelt die Skala: 15/20/30/95/70).
+  Alle `--color-*`-Token leiten sich daraus ab: die Primärfarbe IST die
+  Textfarbe, eine Primärfläche ist die Seite invertiert (wie der primäre
+  Button der Geschwister-Apps), `--color-on-primary` ist die Seitenfarbe.
+  Status (`success`/`warning`/`error`/`info`) unterscheidet sich durch
+  Helligkeit, Wortlaut und Icon, nie durch einen Farbton. Nutzerdaten
+  (Projekt-, Kalender-, Kartenfarben) bieten Graustufen als Voreinstellung.
+- **Geometrie aus φ**: Spacing ist die Fibonacci-Folge in Pixeln
+  (`--space-1` 5 … `--space-12` 233), Radien dieselbe Leiter,
+  Schriftgrößen Potenzen von φ über der Basis 1rem (`--text-lg` φ^½,
+  `--text-xl` φ, `--text-3xl` φ², `--text-4xl` φ³), Zeilenhöhe 1.618.
+  Sidebar 233px, Header 55px, Inhaltsbreite 987px wie die Shell der
+  Geschwister.
+- **Nichts glüht**: die Schatten-Token sind eine Haarlinie in Rahmenfarbe.
+  Links tragen im Fließtext die Unterstreichung, sonst nichts.
+- **Themes**: Hell / Dunkel / System; die Umschaltung setzt
+  `data-theme` auf `<html>`, `color-scheme` folgt, Voreinstellung ist
+  System. Kein Farbton, der beim Wechsel neu abgestimmt werden müsste.
+- **Token-Namen** (`--color-*`, `--space-*`, `--text-*`, `--radius-*`,
+  `--shadow-*`) sind Tailwind-Vokabular, damit sie flüssig lesbar sind;
+  die Werte sind φ und Fibonacci, nichts ist generiert. Hartkodierte
+  Hex-Farben im Quellcode sind ein Verstoß; nur Graustufen (gleiche
+  RGB-Anteile) sind als Datenwert erlaubt.
 
 ### Chat Widget Protocol (A2A Interface)
 - **Single Source of Truth**: The behavior of the Assistant Chat is strictly defined in [docs/specs/chat-widget.md](./docs/specs/chat-widget.md).

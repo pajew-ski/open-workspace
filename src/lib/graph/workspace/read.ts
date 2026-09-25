@@ -38,10 +38,10 @@ const PROJECT_STATUSES: ReadonlySet<string> = new Set(['planning', 'active', 'co
 const DEPENDENCY_KINDS: ReadonlySet<string> = new Set(['FS', 'SS', 'FF', 'SF']);
 
 /** Default-Farbe neuer Projekte (storage/projects.ts) — Fallback ohne Presentation-Wert. */
-const DEFAULT_PROJECT_COLOR = '#00674F';
+const DEFAULT_PROJECT_COLOR = '#3d3d3d';
 
 /** Default-Farbe abonnierter Kalender (storage/calendar.ts) — Fallback ohne Presentation-Wert. */
-const DEFAULT_CALENDAR_COLOR = '#00674F';
+const DEFAULT_CALENDAR_COLOR = '#3d3d3d';
 
 /**
  * Stellt die JS-ISO-Form eines Zeitstempels wieder her, wenn Oxigraph

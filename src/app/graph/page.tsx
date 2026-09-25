@@ -7,6 +7,7 @@ import { AppShell } from '@/components/layout';
 import { Card, CardContent, Button, ConfirmDialog, FloatingActionButton } from '@/components/ui';
 import { Settings2, X, RotateCcw, Activity, CloudDownload, GitBranch, Globe, ShieldCheck, TerminalSquare } from 'lucide-react';
 import { isGraphQuery } from '@/lib/graph/sparql/classify';
+import { useTheme } from '@/components/providers';
 import styles from './page.module.css';
 import type { LegacyGraphNode, LegacyGraphView } from '@/lib/graph/projection/schema-org';
 import type { ForceGraphMethods, ForceGraphProps, LinkObject, NodeObject } from 'react-force-graph-2d';
@@ -24,7 +25,8 @@ interface GraphNode {
     name: string;
     val: number;
     type: string;
-    color: string;
+    /** Helligkeitsstufe; die Farbe entsteht erst beim Zeichnen aus dem Theme. */
+    shade: Shade;
     group?: number;
     /** Hop-Tiefe für hierarchisches/radiales Layout (Query-Views). */
     depth?: number;
@@ -198,13 +200,13 @@ interface CustomForce {
     initialize?: (nodes: SimNode[], ...args: unknown[]) => void;
 }
 
-/** Deterministische Farbe für unbekannte Typen einer Query-View. */
-function typeColor(type: string): string {
+/** Deterministische Helligkeitsstufe für unbekannte Typen einer Query-View. */
+function typeShade(type: string): Shade {
     let hash = 0;
     for (const char of type) {
         hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
     }
-    return `hsl(${hash % 360}, 45%, 42%)`;
+    return SHADES[hash % SHADES.length] ?? 'mid';
 }
 
 /**
@@ -248,37 +250,59 @@ function computeDepths(
 }
 
 /**
- * Präsentationswerte (Farbe, Knotengröße) sind seit dem Graph-Core-Umbau
+ * Knoten tragen keinen Farbton (Design-System: achromatisch). Ein Typ
+ * unterscheidet sich vom anderen durch die Helligkeit, fünf Stufen von
+ * „steht am stärksten ab" bis „tritt zurück"; die Legende und die
+ * Beschriftung greifen auf dieselbe Palette zu.
+ */
+type Shade = 'strong' | 'firm' | 'mid' | 'soft' | 'faint';
+const SHADES: readonly Shade[] = ['strong', 'firm', 'mid', 'soft', 'faint'];
+
+/**
+ * Graustufen als sRGB-Hex, weil sie auf dem Canvas landen (react-force-graph
+ * schreibt sie direkt in `ctx.fillStyle`). Light: oklch 15/39/50/60/72 %,
+ * Dark gespiegelt — der Abstand zum Hintergrund bleibt in beiden Themes
+ * gleich.
+ */
+function nodePalette(isDark: boolean): Record<Shade, string> {
+    return isDark
+        ? { strong: '#ececec', firm: '#b9b9b9', mid: '#8a8a8a', soft: '#6b6b6b', faint: '#4f4f4f' }
+        : { strong: '#0b0b0b', firm: '#454545', mid: '#6b6b6b', soft: '#8a8a8a', faint: '#ababab' };
+}
+
+/**
+ * Präsentationswerte (Helligkeit, Knotengröße) sind seit dem Graph-Core-Umbau
  * nicht mehr Teil der API-Antwort (Trennung Wissen/Präsentation, SPEC §2).
  * Sie werden hier clientseitig aus dem Typ berechnet.
  */
-const NODE_STYLE: Record<string, { color: string; val: number }> = {
-    Project: { color: '#00674F', val: 8 },
-    Action: { color: '#2E7D4A', val: 3 },
-    TechArticle: { color: '#2563A0', val: 4 },
-    BlogPosting: { color: '#2563A0', val: 4 },
-    HowTo: { color: '#2563A0', val: 4 },
-    CreativeWork: { color: '#B8860B', val: 6 },
-    DefinedTerm: { color: '#8A8A8A', val: 1 },
+const NODE_STYLE: Record<string, { shade: Shade; val: number }> = {
+    Project: { shade: 'strong', val: 8 },
+    Action: { shade: 'firm', val: 3 },
+    TechArticle: { shade: 'mid', val: 4 },
+    BlogPosting: { shade: 'mid', val: 4 },
+    HowTo: { shade: 'mid', val: 4 },
+    CreativeWork: { shade: 'soft', val: 6 },
+    DefinedTerm: { shade: 'faint', val: 1 },
 };
-const FALLBACK_STYLE = { color: '#999', val: 1 };
+const FALLBACK_STYLE: { shade: Shade; val: number } = { shade: 'faint', val: 1 };
 
 /**
  * Darstellung der kausalen Rollen (§9). Ursache und Wirkung stechen
- * heraus, die adjustierten Größen tragen die Warnfarbe der Herkunft, und
- * alles, was nur Material zur Kette ist, bleibt grau — man soll auf einen
- * Blick sehen, was Modell ist und was Beleg dazu.
+ * heraus, die Kette dazwischen liegt eine Stufe darunter, die adjustierten
+ * Größen noch eine, und alles, was nur Material zur Kette ist, tritt
+ * zurück — man soll auf einen Blick sehen, was Modell ist und was Beleg
+ * dazu.
  */
-const CAUSAL_NODE_STYLE: Record<string, { color: string; val: number }> = {
-    treatment: { color: '#00674F', val: 9 },
-    outcome: { color: '#2563A0', val: 9 },
-    conditioned: { color: '#B8860B', val: 6 },
-    'on-path': { color: '#2E7D4A', val: 6 },
-    ancestor: { color: '#2E7D4A', val: 6 },
-    descendant: { color: '#2E7D4A', val: 6 },
-    blanket: { color: '#2E7D4A', val: 6 },
-    default: { color: '#2E7D4A', val: 5 },
-    context: { color: '#8A8A8A', val: 3 },
+const CAUSAL_NODE_STYLE: Record<string, { shade: Shade; val: number }> = {
+    treatment: { shade: 'strong', val: 9 },
+    outcome: { shade: 'strong', val: 9 },
+    conditioned: { shade: 'soft', val: 6 },
+    'on-path': { shade: 'firm', val: 6 },
+    ancestor: { shade: 'firm', val: 6 },
+    descendant: { shade: 'firm', val: 6 },
+    blanket: { shade: 'firm', val: 6 },
+    default: { shade: 'firm', val: 5 },
+    context: { shade: 'faint', val: 3 },
 };
 
 /** Die kausale Kante ist fremdes Vokabular (Invariante C8, OBO RO). */
@@ -301,6 +325,11 @@ const DEFAULTS = {
 };
 
 export default function GraphExplorerPage() {
+    // Theme-abhängige Graustufen für Canvas und Legende (kein Farbton).
+    const { resolvedTheme } = useTheme();
+    const isDark = resolvedTheme === 'dark';
+    const palette = nodePalette(isDark);
+
     // --- State: Data ---
     const [graphData, setGraphData] = useState<{ nodes: GraphNode[], links: GraphLink[] }>({ nodes: [], links: [] });
     const [isLoading, setIsLoading] = useState(true);
@@ -506,7 +535,7 @@ export default function GraphExplorerPage() {
                     name: node.name,
                     type: node.type,
                     val: style?.val ?? 3,
-                    color: style?.color ?? typeColor(node.type),
+                    shade: style?.shade ?? typeShade(node.type),
                     depth,
                     ...(hierarchical ? { fy: depth * 140 } : {}),
                 };
@@ -686,7 +715,7 @@ export default function GraphExplorerPage() {
                     name: node.label ?? localName(node.iri),
                     type: node.causal ? CAUSAL_ROLE_LABELS[node.causal.role] ?? node.causal.role : 'Kontext',
                     val: style.val,
-                    color: style.color,
+                    shade: style.shade,
                 };
             });
             const known = new Set(nodes.map(node => node.id));
@@ -778,7 +807,7 @@ export default function GraphExplorerPage() {
                             name: entity.name || entity.headline || entity['@id'],
                             type: entity['@type'],
                             val: style.val,
-                            color: style.color,
+                            shade: style.shade,
                         };
                         nodes.push(node);
 
@@ -959,7 +988,7 @@ export default function GraphExplorerPage() {
                             ref={graphRef}
                             graphData={displayData}
                             nodeLabel="name"
-                            nodeColor="color"
+                            nodeColor={(node: SimNode) => palette[node.shade]}
                             nodeVal="val"
 
                             // Links
@@ -969,9 +998,10 @@ export default function GraphExplorerPage() {
 
                             // Link Color
                             linkColor={(link: SimLink) => {
-                                // Inferierte Kanten (M7): violett + gestrichelt.
-                                if (link.inferred) return 'rgba(126, 87, 194, 0.75)';
-                                if (link.type === 'depends_on' || link.type === 'blocks') return showDependencies ? '#ff4444' : 'rgba(150,150,150,0.2)';
+                                // Inferierte Kanten (M7): gestrichelt, im gedämpften Text.
+                                if (link.inferred) return isDark ? 'rgba(180,180,180,0.75)' : 'rgba(90,90,90,0.75)';
+                                // Abhängigkeiten: im vollen Text, wenn eingeblendet.
+                                if (link.type === 'depends_on' || link.type === 'blocks') return showDependencies ? palette.strong : 'rgba(150,150,150,0.2)';
                                 return 'rgba(150,150,150,0.2)';
                             }}
                             linkLineDash={(link: SimLink) => (link.inferred ? [4, 3] : null)}
@@ -995,13 +1025,12 @@ export default function GraphExplorerPage() {
                                 const midX = x1 + (x2 - x1) / 2;
                                 const midY = y1 + (y2 - y1) / 2;
 
-                                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
                                 ctx.fillStyle = isDark ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.8)';
                                 ctx.fillRect(midX - bckgDimensions[0] / 2, midY - bckgDimensions[1] / 2, bckgDimensions[0], bckgDimensions[1]);
 
                                 ctx.textAlign = 'center';
                                 ctx.textBaseline = 'middle';
-                                ctx.fillStyle = isDark ? '#aaa' : '#555';
+                                ctx.fillStyle = palette.mid;
                                 ctx.fillText(label, midX, midY);
                             } : undefined}
                             linkCanvasObjectMode={() => 'after'}
@@ -1015,10 +1044,9 @@ export default function GraphExplorerPage() {
                                 const textWidth = ctx.measureText(label).width;
                                 const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.2); // some padding
 
-                                // Check theme for correct colors
-                                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                                // Theme-abhängige Werte aus der Palette der Seite
                                 const bgColor = isDark ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.8)';
-                                const textColor = node.color;
+                                const textColor = palette[node.shade];
                                 const x = node.x ?? 0;
                                 const y = node.y ?? 0;
 
@@ -1114,11 +1142,11 @@ export default function GraphExplorerPage() {
                                     <h4>Filter</h4>
                                     {/* Zahl je Gruppe: macht sichtbar, was ein ausgeschalteter
                                         Filter kostet — Tags sind per Default aus (DEFAULTS). */}
-                                    <label><input type="checkbox" checked={showProjects} onChange={e => setShowProjects(e.target.checked)} /> <span style={{ color: '#00674F' }}>●</span> Projekte <span className={styles.filterCount}>{inventory.projects}</span></label>
-                                    <label><input type="checkbox" checked={showTasks} onChange={e => setShowTasks(e.target.checked)} /> <span style={{ color: '#2E7D4A' }}>●</span> Aufgaben <span className={styles.filterCount}>{inventory.tasks}</span></label>
-                                    <label><input type="checkbox" checked={showDocs} onChange={e => setShowDocs(e.target.checked)} /> <span style={{ color: '#2563A0' }}>●</span> Dokumente <span className={styles.filterCount}>{inventory.docs}</span></label>
-                                    <label><input type="checkbox" checked={showCanvas} onChange={e => setShowCanvas(e.target.checked)} /> <span style={{ color: '#B8860B' }}>●</span> Canvas <span className={styles.filterCount}>{inventory.canvas}</span></label>
-                                    <label><input type="checkbox" checked={showTags} onChange={e => setShowTags(e.target.checked)} /> <span style={{ color: '#8A8A8A' }}>●</span> Tags <span className={styles.filterCount}>{inventory.tags}</span></label>
+                                    <label><input type="checkbox" checked={showProjects} onChange={e => setShowProjects(e.target.checked)} /> <span style={{ color: palette.strong }}>●</span> Projekte <span className={styles.filterCount}>{inventory.projects}</span></label>
+                                    <label><input type="checkbox" checked={showTasks} onChange={e => setShowTasks(e.target.checked)} /> <span style={{ color: palette.firm }}>●</span> Aufgaben <span className={styles.filterCount}>{inventory.tasks}</span></label>
+                                    <label><input type="checkbox" checked={showDocs} onChange={e => setShowDocs(e.target.checked)} /> <span style={{ color: palette.mid }}>●</span> Dokumente <span className={styles.filterCount}>{inventory.docs}</span></label>
+                                    <label><input type="checkbox" checked={showCanvas} onChange={e => setShowCanvas(e.target.checked)} /> <span style={{ color: palette.soft }}>●</span> Canvas <span className={styles.filterCount}>{inventory.canvas}</span></label>
+                                    <label><input type="checkbox" checked={showTags} onChange={e => setShowTags(e.target.checked)} /> <span style={{ color: palette.faint }}>●</span> Tags <span className={styles.filterCount}>{inventory.tags}</span></label>
                                 </div>
 
                                 <div className={styles.section}>

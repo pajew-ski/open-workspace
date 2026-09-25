@@ -16,7 +16,7 @@ const RenderNode = ({ node, onAction, componentMap }: { node: A2UINode, onAction
 
     if (!Component) {
         console.warn(`A2UI: Unknown component ${componentName}`, node);
-        return <div style={{ color: 'red', fontSize: '10px' }}>Unknown: {componentName}</div>;
+        return <div style={{ color: 'var(--color-error-text)', fontSize: '10px' }}>Unknown: {componentName}</div>;
     }
 
     // Handle children

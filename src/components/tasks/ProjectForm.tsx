@@ -19,7 +19,9 @@ interface ProjectFormProps {
     onSave: () => void;
 }
 
-const PRESET_COLORS = ['#00674F', '#2563eb', '#7c3aed', '#dc2626', '#ea580c', '#0891b2'];
+// Achromatische Voreinstellungen — Nutzer dürfen jede Farbe eintragen,
+// die App selbst bietet nur Graustufen an (kein Farbton im UI).
+const PRESET_COLORS = ['#1a1a1a', '#3d3d3d', '#5c5c5c', '#7a7a7a', '#999999', '#b8b8b8', '#d6d6d6'];
 
 export function ProjectForm({ project, onClose, onSave }: ProjectFormProps) {
     const [formData, setFormData] = useState<Project>(project || {

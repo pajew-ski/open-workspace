@@ -68,8 +68,8 @@ export function entityHtml(entityIri: string, quads: readonly Quad[]): string {
 <style>
 body { font-family: system-ui, sans-serif; margin: 0 auto; max-width: 60rem; padding: 1.5rem; line-height: 1.5; }
 table { border-collapse: collapse; width: 100%; }
-td { border-bottom: 1px solid #ccc; padding: 0.4rem 0.6rem; vertical-align: top; word-break: break-word; }
-td:first-child { width: 35%; color: #555; }
+td { border-bottom: 1px solid oklch(85% 0 0); padding: 0.4rem 0.6rem; vertical-align: top; word-break: break-word; }
+td:first-child { width: 35%; color: oklch(40% 0 0); }
 </style>
 </head>
 <body>

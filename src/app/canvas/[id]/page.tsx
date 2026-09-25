@@ -44,7 +44,8 @@ interface CanvasData {
 type ConnectionMode = 'none' | 'connecting';
 type ResizeDirection = 'se' | 'sw' | 'ne' | 'nw' | 'e' | 'w' | 'n' | 's' | null;
 
-const CARD_COLORS = ['#00674F', '#2563eb', '#7c3aed', '#dc2626', '#ea580c', '#65a30d'];
+// Achromatische Kartenfarben (Rahmen und 12 % Kopffläche) — kein Farbton im UI.
+const CARD_COLORS = ['#1a1a1a', '#3d3d3d', '#5c5c5c', '#7a7a7a', '#999999', '#b8b8b8', '#d6d6d6'];
 const MIN_CARD_SIZE = { width: 150, height: 100 };
 const GRID_SIZE = 20;
 

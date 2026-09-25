@@ -89,7 +89,7 @@ export const Button = ({ props, onAction }: ComponentProps) => {
             style={{
                 padding: '6px 12px',
                 backgroundColor: 'var(--color-primary)',
-                color: 'white',
+                color: 'var(--color-on-primary)',
                 border: 'none',
                 borderRadius: 'var(--radius-sm)',
                 cursor: 'pointer',
@@ -187,7 +187,7 @@ export const Image = ({ props }: ComponentProps) => {
     // If no src found after extraction, show error immediately
     if (!src) {
         return (
-            <div className="a2ui-image-loading" style={{ color: 'red' }}>
+            <div className="a2ui-image-loading" style={{ color: 'var(--color-error-text)' }}>
                 Bild-Quelle fehlt
             </div>
         );

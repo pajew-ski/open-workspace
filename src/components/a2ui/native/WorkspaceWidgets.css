@@ -1,9 +1,9 @@
 /* Native workspace widgets rendered on the generative surface */
 
 .ws-widget {
-    border: 1px solid var(--color-border, #e0e0e0);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-lg, 12px);
-    background: var(--color-surface, #fff);
+    background: var(--color-surface);
     padding: var(--space-3, 12px) var(--space-4, 16px);
     margin: var(--space-2, 8px) 0;
     font-size: var(--text-sm, 0.875rem);
@@ -19,7 +19,7 @@
 
 .ws-widget-title {
     font-weight: 600;
-    color: var(--color-text-primary, #1a1a1a);
+    color: var(--color-text-primary);
 }
 
 .ws-widget-more {
@@ -34,7 +34,7 @@
 }
 
 .ws-widget-state {
-    color: var(--color-text-secondary, #666);
+    color: var(--color-text-secondary);
     font-size: var(--text-xs, 0.75rem);
     margin: var(--space-1, 4px) 0 0;
 }
@@ -56,7 +56,7 @@
     align-items: center;
     gap: var(--space-2, 8px);
     padding: var(--space-1, 4px) 0;
-    border-bottom: 1px solid var(--color-border-subtle, var(--color-border, #eee));
+    border-bottom: 1px solid var(--color-border-subtle);
 }
 
 .ws-task-item:last-child {
@@ -70,19 +70,19 @@
     padding: 0.1rem 0.5rem;
     border-radius: 999px;
     background: var(--color-surface-sunken);
-    color: var(--color-text-secondary, #555);
+    color: var(--color-text-secondary);
     white-space: nowrap;
     flex-shrink: 0;
 }
 
 .ws-status-done {
-    background: var(--color-primary-subtle, #e4efea);
+    background: var(--color-primary-subtle);
     color: var(--color-primary-text);
 }
 
 .ws-status-in-progress {
-    background: var(--color-warning-subtle, #f7efdc);
-    color: var(--color-warning, #8f6400);
+    background: var(--color-warning-subtle);
+    color: var(--color-warning-text);
 }
 
 .ws-task-title {
@@ -95,7 +95,7 @@
 
 .ws-task-due {
     font-size: var(--text-xs, 0.75rem);
-    color: var(--color-text-secondary, #666);
+    color: var(--color-text-secondary);
     font-variant-numeric: tabular-nums;
     flex-shrink: 0;
 }
@@ -110,7 +110,7 @@
 
 .ws-event-date {
     font-size: var(--text-xs, 0.75rem);
-    color: var(--color-text-secondary, #666);
+    color: var(--color-text-secondary);
     min-width: 5.2em;
     font-variant-numeric: tabular-nums;
     flex-shrink: 0;
@@ -139,7 +139,7 @@
 }
 
 .ws-doc-link {
-    color: var(--color-text-primary, #1a1a1a);
+    color: var(--color-text-primary);
     font-weight: 500;
     text-decoration: none;
 }
@@ -151,7 +151,7 @@
 
 .ws-doc-sub {
     font-size: var(--text-xs, 0.75rem);
-    color: var(--color-text-secondary, #666);
+    color: var(--color-text-secondary);
 }
 
 /* Stats */
@@ -179,16 +179,16 @@
 
 .ws-stat-label {
     font-size: var(--text-xs, 0.75rem);
-    color: var(--color-text-secondary, #666);
+    color: var(--color-text-secondary);
 }
 
 /* MCP-UI resource frame */
 .ws-uiresource {
-    border: 1px solid var(--color-border, #e0e0e0);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-lg, 12px);
     overflow: hidden;
     margin: var(--space-2, 8px) 0;
-    background: var(--color-surface, #fff);
+    background: var(--color-surface);
 }
 
 .ws-uiresource iframe {
@@ -201,14 +201,14 @@
     display: flex;
     justify-content: space-between;
     font-size: var(--text-xs, 0.75rem);
-    color: var(--color-text-secondary, #666);
+    color: var(--color-text-secondary);
     padding: var(--space-1, 4px) var(--space-3, 12px);
-    border-top: 1px solid var(--color-border-subtle, var(--color-border, #eee));
+    border-top: 1px solid var(--color-border-subtle);
     background: var(--color-surface-sunken);
 }
 
 .ws-uiresource-error {
     padding: var(--space-3, 12px);
-    color: var(--color-text-secondary, #666);
+    color: var(--color-text-secondary);
     font-size: var(--text-sm, 0.875rem);
 }

@@ -344,7 +344,7 @@ export async function createProject(ctx: WorkspaceContext, input: CreateProjectI
         description: input.description,
         prefix: input.prefix.toUpperCase(),
         status: input.status ?? 'planning',
-        color: input.color ?? '#00674F',
+        color: input.color ?? '#3d3d3d',
         createdAt: now,
         updatedAt: now,
     };

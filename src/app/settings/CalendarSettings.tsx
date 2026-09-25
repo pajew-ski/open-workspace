@@ -13,7 +13,9 @@ interface CalendarProvider {
     lastSync: string | null;
 }
 
-const PRESET_COLORS = ['#00674F', '#2563eb', '#7c3aed', '#dc2626', '#ea580c', '#65a30d', '#0891b2', '#be185d'];
+// Achromatische Voreinstellungen — Provider dürfen jede Farbe liefern,
+// die App selbst bietet nur Graustufen an (kein Farbton im UI).
+const PRESET_COLORS = ['#1a1a1a', '#3d3d3d', '#5c5c5c', '#7a7a7a', '#999999', '#b8b8b8', '#d6d6d6'];
 
 export function CalendarSettings() {
     const [providers, setProviders] = useState<CalendarProvider[]>([]);

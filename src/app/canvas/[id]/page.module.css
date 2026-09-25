@@ -254,7 +254,8 @@
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    border: 2px solid transparent;
+    /* Haarlinie, damit auch eine Graustufe nahe der Fläche sichtbar bleibt */
+    border: 2px solid var(--color-border);
     cursor: pointer;
     transition: transform var(--transition-fast);
 }

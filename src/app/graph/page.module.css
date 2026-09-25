@@ -234,14 +234,14 @@
 
 .viewDelete:hover,
 .viewDelete:focus-visible {
-    color: var(--color-error, #b3261e);
+    color: var(--color-error);
     background-color: var(--color-surface-sunken);
 }
 
 .viewError {
     margin: 0;
     font-size: 12px;
-    color: var(--color-error, #b3261e);
+    color: var(--color-error);
 }
 
 .viewForm {
@@ -287,7 +287,7 @@
 /* --- Reasoning & Validierung (M7, GRAPH_CORE_SPEC §7.2/§7.3) --- */
 
 .inferredSwatch {
-    color: rgba(126, 87, 194, 0.9);
+    color: var(--color-text-secondary);
     font-weight: 700;
 }
 
@@ -337,13 +337,13 @@
 }
 
 .validationItem[data-severity='Violation'] .validationSeverity {
-    border-color: var(--color-error, #b3261e);
-    color: var(--color-error, #b3261e);
+    border-color: var(--color-error);
+    color: var(--color-error);
 }
 
 .validationItem[data-severity='Warning'] .validationSeverity {
-    border-color: var(--color-warning-text, #8a6d1a);
-    color: var(--color-warning-text, #8a6d1a);
+    border-color: var(--color-warning-text);
+    color: var(--color-warning-text);
 }
 
 /* Herkunft: nativ / importiert / inferiert (SPEC §11/§18, M14) */
@@ -430,10 +430,10 @@
     overflow-wrap: anywhere;
 }
 
-/* Offener Weg vs. geschlossener: Die Farbe sagt nur, was der Text auch
-   sagt — sie ist nie die einzige Auskunft (Kontrast/Accessibility). */
+/* Offener Weg vs. geschlossener: Die Helligkeit sagt nur, was der Text
+   auch sagt — sie ist nie die einzige Auskunft (Kontrast/Accessibility). */
 .causalPaths li[data-open='true'] {
-    border-left-color: #2E7D4A;
+    border-left-color: var(--color-text-primary);
 }
 
 .causalPaths li[data-open='false'] {

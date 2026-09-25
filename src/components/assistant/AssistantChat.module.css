@@ -11,8 +11,8 @@
     height: 48px;
     border-radius: 50%;
     border: none;
-    background-color: var(--color-primary, #00674F);
-    color: white;
+    background-color: var(--color-primary);
+    color: var(--color-on-primary);
     cursor: pointer;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     display: flex;
@@ -47,7 +47,7 @@
     height: 10px;
     border-radius: 50%;
     background-color: var(--color-success);
-    border: 2px solid white;
+    border: 2px solid var(--color-on-primary);
 }
 
 /* Chat Window */
@@ -55,8 +55,6 @@
     position: fixed;
     bottom: calc(var(--fab-bottom) + 60px);
     right: var(--fab-right);
-    background-color: #FFFFFF;
-    /* Fallback */
     background-color: var(--color-surface-elevated);
     border-radius: var(--radius-lg);
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
@@ -187,10 +185,8 @@
     align-items: center;
     gap: var(--space-2);
     padding: var(--space-3);
-    background-color: #00674F;
-    /* Fallback */
     background-color: var(--color-primary);
-    color: white;
+    color: var(--color-on-primary);
     flex-shrink: 0;
     /* Important: Don't squish */
     min-height: 52px;
@@ -250,7 +246,7 @@
     border: none;
     border-radius: var(--radius-sm);
     background: rgba(255, 255, 255, 0.15);
-    color: white;
+    color: var(--color-on-primary);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -274,7 +270,7 @@
     border: none;
     border-radius: var(--radius-sm);
     background: transparent;
-    color: white;
+    color: var(--color-on-primary);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -364,7 +360,7 @@
     border: none;
     border-radius: var(--radius-sm);
     background-color: var(--color-primary);
-    color: white;
+    color: var(--color-on-primary);
     font-size: var(--text-xs);
     cursor: pointer;
 }
@@ -476,7 +472,7 @@
 .message.user {
     align-self: flex-end;
     background-color: var(--color-primary);
-    color: white;
+    color: var(--color-on-primary);
 }
 
 .message.assistant {
@@ -598,7 +594,7 @@
     border: none;
     border-radius: var(--radius-md);
     background-color: var(--color-primary);
-    color: white;
+    color: var(--color-on-primary);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -666,7 +662,7 @@
 .dialogButtons button.primary {
     background-color: var(--color-primary);
     border-color: var(--color-primary);
-    color: white;
+    color: var(--color-on-primary);
 }
 
 /* Animations */

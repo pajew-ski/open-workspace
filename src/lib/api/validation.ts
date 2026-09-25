@@ -305,7 +305,7 @@ export const calendarActionSchema = z.discriminatedUnion('action', [
         action: z.literal('addProvider'),
         name: z.string().min(1, 'Name ist erforderlich').max(200),
         url: httpUrlSchema,
-        color: z.string().max(50).default('#00674F'),
+        color: z.string().max(50).default('#3d3d3d'),
     }),
     z.object({
         action: z.literal('updateProvider'),
